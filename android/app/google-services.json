@@ -1,0 +1,54 @@
+{
+  "project_info": {
+    "project_number": "250320257023",
+    "project_id": "santiye-yonetim-app",
+    "storage_bucket": "santiye-yonetim-app.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:250320257023:android:0afe9ca09964dfcd06b1ca",
+        "android_client_info": {
+          "package_name": "com.example.santiyeyonetim2"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "250320257023-storl5i479r7is37ms382jcn89j2gpbj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.example.santiyeyonetim2",
+            "certificate_hash": "41273c0d346b775389a0dbdf6418e46048d16f18"
+          }
+        },
+        {
+          "client_id": "250320257023-e0oa6mdlcs6sktvek3uanclp4rqg5f47.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyCpIddWKFYDMWFDGu6hr9gAykjjeIXK3WY"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "250320257023-e0oa6mdlcs6sktvek3uanclp4rqg5f47.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "250320257023-pab7el0d4m6dff3vd0bpld3njft0k8k9.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.example.santiyeyonetim2"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}
