@@ -16,27 +16,45 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
   final List<Map<String, dynamic>> _pages = [
     {
       "title": "Hoş Geldiniz!",
-      "desc": "Şantiye Defteri ile tüm saha operasyonlarını tek yerden, kolayca yönetin.",
+      "desc":
+          "Şantiye Defteri ile tüm saha operasyonlarını tek yerden, kolayca yönetin.",
       "icon": Icons.waving_hand,
-      "color": Colors.orange
+      "color": Colors.orange,
     },
     {
       "title": "Günlük Raporlar",
-      "desc": "Hızlı yoklama ile işçileri seçin, masrafları girin ve günü kapatın.",
+      "desc":
+          "Hızlı yoklama ile işçileri seçin, masrafları girin ve günü kapatın.",
       "icon": Icons.edit_calendar,
-      "color": Colors.green
+      "color": Colors.green,
     },
     {
       "title": "Hesap Takibi",
-      "desc": "İşçi alacaklarını, avansları ve şantiye kâr/zarar durumunu anlık görün.",
+      "desc":
+          "İşçi alacaklarını, avansları ve şantiye kâr/zarar durumunu anlık görün.",
       "icon": Icons.account_balance_wallet,
-      "color": Colors.blue
+      "color": Colors.blue,
+    },
+    {
+      "title": "Hatırlatmalar",
+      "desc":
+          "Günlük rapor girmeyi unutmayın! İstediğiniz saatte bildirim alarak raporlarınızı zamanında tamamlayın.",
+      "icon": Icons.notifications_active,
+      "color": Colors.purple,
+    },
+    {
+      "title": "İşlem Geçmişi",
+      "desc":
+          "Ekip içinde kim ne yaptı? Tüm işlemleri tarihli olarak görüntüleyin ve takip edin.",
+      "icon": Icons.history,
+      "color": Colors.teal,
     },
     {
       "title": "PDF Paylaşım",
-      "desc": "Ay sonu raporlarını tek tıkla PDF yapın veya WhatsApp'tan özet geçin.",
+      "desc":
+          "Ay sonu raporlarını tek tıkla PDF yapın veya WhatsApp'tan özet geçin.",
       "icon": Icons.picture_as_pdf,
-      "color": Colors.redAccent
+      "color": Colors.redAccent,
     },
   ];
 
@@ -63,10 +81,16 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
               alignment: Alignment.topRight,
               child: TextButton(
                 onPressed: _bitir,
-                child: Text(widget.isFromMenu ? "Kapat" : "Atla", style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
+                child: Text(
+                  widget.isFromMenu ? "Kapat" : "Atla",
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
               ),
             ),
-            
+
             // SLIDER ALANI
             Expanded(
               child: PageView.builder(
@@ -86,19 +110,30 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
                             color: (page['color'] as Color).withOpacity(0.1),
                             shape: BoxShape.circle,
                           ),
-                          child: Icon(page['icon'], size: 100, color: page['color']),
+                          child: Icon(
+                            page['icon'],
+                            size: 100,
+                            color: page['color'],
+                          ),
                         ),
                         const SizedBox(height: 40),
                         Text(
                           page['title'],
                           textAlign: TextAlign.center,
-                          style: const TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                          style: const TextStyle(
+                            fontSize: 28,
+                            fontWeight: FontWeight.bold,
+                          ),
                         ),
                         const SizedBox(height: 16),
                         Text(
                           page['desc'],
                           textAlign: TextAlign.center,
-                          style: TextStyle(fontSize: 16, color: Colors.grey[600], height: 1.5),
+                          style: TextStyle(
+                            fontSize: 16,
+                            color: Colors.grey[600],
+                            height: 1.5,
+                          ),
                         ),
                       ],
                     ),
@@ -123,7 +158,10 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
                         height: 8,
                         width: _currentPage == index ? 24 : 8,
                         decoration: BoxDecoration(
-                          color: _currentPage == index ? Colors.green : Colors.grey.withOpacity(0.3),
+                          color:
+                              _currentPage == index
+                                  ? Colors.green
+                                  : Colors.grey.withOpacity(0.3),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       ),
@@ -136,16 +174,26 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
                       if (_currentPage == _pages.length - 1) {
                         _bitir();
                       } else {
-                        _controller.nextPage(duration: const Duration(milliseconds: 300), curve: Curves.ease);
+                        _controller.nextPage(
+                          duration: const Duration(milliseconds: 300),
+                          curve: Curves.ease,
+                        );
                       }
                     },
                     style: ElevatedButton.styleFrom(
                       backgroundColor: Colors.green,
                       foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 24,
+                        vertical: 12,
+                      ),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
                     ),
-                    child: Text(_currentPage == _pages.length - 1 ? "BAŞLA" : "İLERİ"),
+                    child: Text(
+                      _currentPage == _pages.length - 1 ? "BAŞLA" : "İLERİ",
+                    ),
                   ),
                 ],
               ),

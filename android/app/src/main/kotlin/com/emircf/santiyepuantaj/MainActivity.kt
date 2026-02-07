@@ -1,4 +1,4 @@
-package com.example.santiyeyonetim2
+package com.emircf.santiyepuantaj
 
 import io.flutter.embedding.android.FlutterActivity
 

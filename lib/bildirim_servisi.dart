@@ -17,9 +17,14 @@ class BildirimServisi {
       FlutterLocalNotificationsPlugin();
 
   Future<void> init() async {
-    const androidInit = AndroidInitializationSettings('@mipmap/ic_launcher'); // İkon adını düzelttik
+    const androidInit = AndroidInitializationSettings(
+      '@mipmap/ic_launcher',
+    ); // İkon adını düzelttik
     const iosInit = DarwinInitializationSettings();
-    const initSettings = InitializationSettings(android: androidInit, iOS: iosInit);
+    const initSettings = InitializationSettings(
+      android: androidInit,
+      iOS: iosInit,
+    );
 
     tz.initializeTimeZones();
     try {
@@ -27,38 +32,52 @@ class BildirimServisi {
     } catch (e) {
       debugPrint("Saat dilimi yüklenemedi: $e");
     }
-    
+
     await flutterLocalNotificationsPlugin.initialize(initSettings);
     await _izinleriIste();
   }
-  
+
   Future<void> _izinleriIste() async {
-    final androidPlugin = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
+    final androidPlugin =
+        flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
     await Permission.notification.request();
     await androidPlugin?.requestExactAlarmsPermission();
   }
 
   Future<void> _zamanlanmisBildirimOlustur(TimeOfDay saat) async {
-    final androidPlugin = flutterLocalNotificationsPlugin.resolvePlatformSpecificImplementation<AndroidFlutterLocalNotificationsPlugin>();
-    final canSchedule = await androidPlugin?.canScheduleExactNotifications() ?? false;
+    final androidPlugin =
+        flutterLocalNotificationsPlugin
+            .resolvePlatformSpecificImplementation<
+              AndroidFlutterLocalNotificationsPlugin
+            >();
+    final canSchedule =
+        await androidPlugin?.canScheduleExactNotifications() ?? false;
 
-    if(!canSchedule) return;
+    if (!canSchedule) return;
 
     await flutterLocalNotificationsPlugin.cancelAll();
     final tzTime = _sonrakiBildirimZamani(saat);
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      0, 'Şantiye Yönetim', 'Bugünkü günlük raporu girdiniz mi?',
+      0,
+      'Şantiye Puantaj Defteri',
+      'Bugünkü günlük raporu girdiniz mi?',
       tzTime,
       const NotificationDetails(
         android: AndroidNotificationDetails(
-          'gunluk_rapor_kanali', 'Günlük Rapor Hatırlatıcı',
-          importance: Importance.max, priority: Priority.high,
+          'gunluk_rapor_kanali',
+          'Günlük Rapor Hatırlatıcı',
+          importance: Importance.max,
+          priority: Priority.high,
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
       matchDateTimeComponents: DateTimeComponents.time,
-      uiLocalNotificationDateInterpretation: UILocalNotificationDateInterpretation.absoluteTime,
+      uiLocalNotificationDateInterpretation:
+          UILocalNotificationDateInterpretation.absoluteTime,
     );
   }
 
@@ -69,7 +88,7 @@ class BildirimServisi {
     // İleride Firestore'dan kontrol eklenebilir.
     await _zamanlanmisBildirimOlustur(saat);
   }
-  
+
   Future<void> gunlukHatirlatmaAyarlaSimple(TimeOfDay saat) async {
     await _zamanlanmisBildirimOlustur(saat);
   }
@@ -77,8 +96,12 @@ class BildirimServisi {
   tz.TZDateTime _sonrakiBildirimZamani(TimeOfDay saat) {
     final simdi = tz.TZDateTime.now(tz.local);
     var zaman = tz.TZDateTime(
-      tz.local, simdi.year, simdi.month, simdi.day,
-      saat.hour, saat.minute,
+      tz.local,
+      simdi.year,
+      simdi.month,
+      simdi.day,
+      saat.hour,
+      saat.minute,
     );
     if (zaman.isBefore(simdi)) {
       zaman = zaman.add(const Duration(days: 1));

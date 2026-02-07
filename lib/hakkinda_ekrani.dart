@@ -21,25 +21,36 @@ class HakkindaEkrani extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.all(20),
                 decoration: BoxDecoration(
-                  color: isDark ? Colors.white.withOpacity(0.05) : Colors.green.withOpacity(0.1),
+                  color:
+                      isDark
+                          ? Colors.white.withOpacity(0.05)
+                          : Colors.green.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(Icons.construction, size: 80, color: Colors.green),
+                child: const Icon(
+                  Icons.construction,
+                  size: 80,
+                  color: Colors.green,
+                ),
               ),
               const SizedBox(height: 24),
-              
+
               Text(
-                "Şantiye Defteri",
-                style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold, color: textColor),
+                "Şantiye Puantaj Defteri",
+                style: TextStyle(
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                  color: textColor,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
                 "Profesyonel Saha Yönetimi",
                 style: TextStyle(fontSize: 16, color: Colors.grey[600]),
               ),
-              
+
               const SizedBox(height: 40),
-              
+
               // BİLGİ KARTI
               Container(
                 padding: const EdgeInsets.all(20),
@@ -47,7 +58,12 @@ class HakkindaEkrani extends StatelessWidget {
                   color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
                   borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 10)],
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withOpacity(0.05),
+                      blurRadius: 10,
+                    ),
+                  ],
                 ),
                 child: Column(
                   children: [
@@ -59,9 +75,12 @@ class HakkindaEkrani extends StatelessWidget {
                   ],
                 ),
               ),
-              
+
               const Spacer(),
-              Text("© 2025 Tüm Hakları Saklıdır", style: TextStyle(color: Colors.grey[500], fontSize: 12)),
+              Text(
+                "© 2025 Tüm Hakları Saklıdır",
+                style: TextStyle(color: Colors.grey[500], fontSize: 12),
+              ),
             ],
           ),
         ),

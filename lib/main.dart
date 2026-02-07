@@ -81,7 +81,7 @@ class MyApp extends StatelessWidget {
               final textTheme = Theme.of(context).textTheme;
               return MaterialApp(
                 debugShowCheckedModeBanner: false,
-                title: 'Şantiye Yönetim Sistemi',
+                title: 'Şantiye Puantaj Defteri',
                 themeMode: themeProvider.themeMode,
                 theme: ThemeData(
                   useMaterial3: true,

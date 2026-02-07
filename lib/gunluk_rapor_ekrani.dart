@@ -7,6 +7,8 @@ import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'data_models.dart';
 import 'privacy_provider.dart';
+import 'santiye_ekrani.dart';
+import 'isci_ekrani.dart';
 
 class GunlukRaporEkrani extends StatefulWidget {
   final String teamId;
@@ -1022,6 +1024,139 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
     );
   }
 
+  // ==========================================
+  // YENİ KULLANICI ONBOARDING WIDGET'I
+  // ==========================================
+  Widget _buildOnboardingWidget({
+    required BuildContext context,
+    required bool isDark,
+    required bool santiyelerBos,
+    required bool iscilerBos,
+  }) {
+    return Center(
+      child: Padding(
+        padding: const EdgeInsets.all(32.0),
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Icon(
+              Icons.engineering_outlined,
+              size: 80,
+              color: isDark ? Colors.grey[600] : Colors.grey[400],
+            ),
+            const SizedBox(height: 24),
+            Text(
+              "Başlamak için hazır mısınız?",
+              style: TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: isDark ? Colors.white : Colors.black87,
+              ),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 12),
+            Text(
+              "Günlük rapor oluşturabilmek için önce şantiye ve işçi eklemeniz gerekiyor.",
+              style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              textAlign: TextAlign.center,
+            ),
+            const SizedBox(height: 32),
+
+            // Şantiye Ekle Butonu
+            if (santiyelerBos)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.construction, size: 20),
+                  label: const Text("Şantiye Ekle"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (context) => SantiyeEkrani(teamId: widget.teamId),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            // İşçi Ekle Butonu
+            if (iscilerBos)
+              Container(
+                width: double.infinity,
+                margin: const EdgeInsets.only(bottom: 12),
+                child: ElevatedButton.icon(
+                  icon: const Icon(Icons.person_add, size: 20),
+                  label: const Text("İşçi Ekle"),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    foregroundColor: Colors.white,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (context) => IsciEkrani(teamId: widget.teamId),
+                      ),
+                    );
+                  },
+                ),
+              ),
+
+            // Durum bilgileri
+            const SizedBox(height: 24),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                Icon(
+                  santiyelerBos ? Icons.close : Icons.check_circle,
+                  size: 16,
+                  color: santiyelerBos ? Colors.red : Colors.green,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  santiyelerBos ? "Şantiye yok" : "Şantiye ✓",
+                  style: TextStyle(
+                    color: santiyelerBos ? Colors.red : Colors.green,
+                    fontSize: 13,
+                  ),
+                ),
+                const SizedBox(width: 20),
+                Icon(
+                  iscilerBos ? Icons.close : Icons.check_circle,
+                  size: 16,
+                  color: iscilerBos ? Colors.red : Colors.green,
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  iscilerBos ? "İşçi yok" : "İşçi ✓",
+                  style: TextStyle(
+                    color: iscilerBos ? Colors.red : Colors.green,
+                    fontSize: 13,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel?>(context, listen: false);
@@ -1163,10 +1298,17 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                       stream: servisi.getIscilerStream(widget.teamId),
                       builder: (context, snapshotIsciler) {
                         final tumIsciler = snapshotIsciler.data ?? [];
-                        if (santiyeler.isEmpty)
-                          return const Center(
-                            child: Text("Henüz şantiye eklenmemiş."),
+
+                        // Yeni kullanıcı için onboarding kontrolü
+                        if (santiyeler.isEmpty || tumIsciler.isEmpty) {
+                          return _buildOnboardingWidget(
+                            context: context,
+                            isDark: isDark,
+                            santiyelerBos: santiyeler.isEmpty,
+                            iscilerBos: tumIsciler.isEmpty,
                           );
+                        }
+
                         return ListView.builder(
                           padding: const EdgeInsets.all(16),
                           itemCount: santiyeler.length,

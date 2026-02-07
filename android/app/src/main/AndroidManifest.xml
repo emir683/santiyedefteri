@@ -9,7 +9,7 @@
     <uses-permission android:name="android.permission.USE_EXACT_ALARM" tools:ignore="ExactAlarm"/>
 
     <application
-        android:label="Şantiye Yönetim"
+        android:label="Şantiye Puantaj Defteri"
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon">
 
@@ -44,11 +44,6 @@
         </receiver>
 
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
-
-        <!-- Google Sign-In için gerekli meta-data -->
-        <meta-data
-            android:name="com.google.android.gms.ads.APPLICATION_ID"
-            android:value="ca-app-pub-3940256099942544~3347511713"/>
 
         <meta-data
             android:name="flutterEmbedding"
