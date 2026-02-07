@@ -19,24 +19,31 @@ class AuthServisi {
   String? get currentUserEmail => _auth.currentUser?.email;
 
   // GÜNCELLENDİ: E-posta VEYA Kullanıcı Adı ile Giriş
-  Future<UserModel?> signInWithEmailOrUsername(String emailOrUsername, String password) async {
+  Future<UserModel?> signInWithEmailOrUsername(
+    String emailOrUsername,
+    String password,
+  ) async {
     try {
       String email = emailOrUsername.trim();
       // Girdi bir e-posta değilse, kullanıcı adı olduğunu varsayarak Firestore'dan e-postayı bul
       if (!email.contains('@')) {
-        final userQuery = await _firestore
-            .collection('users')
-            .where('username_lowercase', isEqualTo: email.toLowerCase())
-            .limit(1)
-            .get();
+        final userQuery =
+            await _firestore
+                .collection('users')
+                .where('username_lowercase', isEqualTo: email.toLowerCase())
+                .limit(1)
+                .get();
 
         if (userQuery.docs.isEmpty) {
           throw Exception("Kullanıcı adı bulunamadı.");
         }
         email = userQuery.docs.first.data()['email'];
       }
-      
-      UserCredential result = await _auth.signInWithEmailAndPassword(email: email, password: password);
+
+      UserCredential result = await _auth.signInWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       return _userFromFirebaseUser(result.user);
     } catch (e) {
       rethrow;
@@ -44,27 +51,37 @@ class AuthServisi {
   }
 
   // GÜNCELLENDİ: Kayıt olurken ek bilgileri de kaydeder
-  Future<UserModel?> createUserWithEmailAndPassword(String email, String password, String adSoyad, String username) async {
+  Future<UserModel?> createUserWithEmailAndPassword(
+    String email,
+    String password,
+    String adSoyad,
+    String username,
+  ) async {
     // Kullanıcı adının benzersiz olup olmadığını kontrol et
-    final usernameQuery = await _firestore
-        .collection('users')
-        .where('username_lowercase', isEqualTo: username.toLowerCase())
-        .limit(1)
-        .get();
+    final usernameQuery =
+        await _firestore
+            .collection('users')
+            .where('username_lowercase', isEqualTo: username.toLowerCase())
+            .limit(1)
+            .get();
 
     if (usernameQuery.docs.isNotEmpty) {
       throw Exception("Bu kullanıcı adı zaten alınmış.");
     }
-    
+
     try {
-      UserCredential result = await _auth.createUserWithEmailAndPassword(email: email, password: password);
+      UserCredential result = await _auth.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
       User? user = result.user;
 
       if (user != null) {
         // Kullanıcıyı 'users' koleksiyonuna ek bilgilerle kaydet
         await _firestore.collection('users').doc(user.uid).set({
           'username': username,
-          'username_lowercase': username.toLowerCase(), // Arama için küçük harfli versiyon
+          'username_lowercase':
+              username.toLowerCase(), // Arama için küçük harfli versiyon
           'adSoyad': adSoyad,
           'email': email,
         });
@@ -81,26 +98,35 @@ class AuthServisi {
       final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
       if (googleUser == null) return null;
 
-      final GoogleSignInAuthentication googleAuth = await googleUser.authentication;
+      final GoogleSignInAuthentication googleAuth =
+          await googleUser.authentication;
       final AuthCredential credential = GoogleAuthProvider.credential(
         accessToken: googleAuth.accessToken,
         idToken: googleAuth.idToken,
       );
 
-      final UserCredential userCredential = await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       final User? user = userCredential.user;
 
       if (user != null) {
         // Bu kullanıcı 'users' koleksiyonunda var mı diye kontrol et.
-        final userDoc = await _firestore.collection('users').doc(user.uid).get();
+        final userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
         if (!userDoc.exists) {
           // Eğer yoksa (yani Google ile ilk girişi ise), geçici bir UserModel döndür.
           // Bu, Wrapper'ın onu Profil Tamamlama ekranına yönlendirmesini sağlayacak.
           // Gerçek 'users' dokümanı, Profil Tamamlama ekranında oluşturulacak.
-          return UserModel(uid: user.uid, isProfileComplete: false, googleDisplayName: user.displayName, email: user.email);
+          return UserModel(
+            uid: user.uid,
+            isProfileComplete: false,
+            googleDisplayName: user.displayName,
+            email: user.email,
+          );
         }
       }
-      
+
       return _userFromFirebaseUser(user);
     } catch (e) {
       rethrow;
@@ -117,18 +143,46 @@ class AuthServisi {
       print("Çıkış yaparken hata: ${e.toString()}");
     }
   }
-  Future<void> kullaniciParolasiniGuncelle(String mevcutParola, String yeniParola) async {
+
+  /// Şifre sıfırlama e-postası gönderir
+  Future<void> sifreSifirlamaEmailiGonder(String email) async {
+    try {
+      await _auth.sendPasswordResetEmail(email: email.trim());
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'user-not-found') {
+        throw Exception("Bu e-posta adresiyle kayıtlı bir hesap bulunamadı.");
+      } else if (e.code == 'invalid-email') {
+        throw Exception("Geçersiz e-posta adresi.");
+      } else {
+        throw Exception("E-posta gönderilemedi: ${e.message}");
+      }
+    } catch (e) {
+      throw Exception("Bir hata oluştu. Lütfen tekrar deneyin.");
+    }
+  }
+
+  Future<void> kullaniciParolasiniGuncelle(
+    String mevcutParola,
+    String yeniParola,
+  ) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception("Kullanıcı oturumu bulunamadı.");
 
     // Google ile giriş yapanlar parola değiştiremez (Hata vermemesi için kontrol)
-    if (user.providerData.any((userInfo) => userInfo.providerId == 'google.com')) {
-      throw Exception("Google ile giriş yaptığınız için parolanızı Google hesabınızdan değiştirmelisiniz.");
+    if (user.providerData.any(
+      (userInfo) => userInfo.providerId == 'google.com',
+    )) {
+      throw Exception(
+        "Google ile giriş yaptığınız için parolanızı Google hesabınızdan değiştirmelisiniz.",
+      );
     }
 
     try {
       // 1. Önce kullanıcının mevcut parolasını doğruluyoruz (Re-Auth)
-      final cred = EmailAuthProvider.credential(email: user.email!, password: mevcutParola);
+      final cred = EmailAuthProvider.credential(
+        email: user.email!,
+        password: mevcutParola,
+      );
       await user.reauthenticateWithCredential(cred);
 
       // 2. Doğrulama başarılıysa yeni parolayı set ediyoruz
