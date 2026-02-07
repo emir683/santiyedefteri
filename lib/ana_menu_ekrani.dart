@@ -563,7 +563,15 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                               ],
                             ),
                       );
-                      if (onayla == true) await authServisi.signOut();
+                      if (onayla == true) {
+                        await authServisi.signOut();
+                        if (mounted) {
+                          Navigator.of(context).pushAndRemoveUntil(
+                            MaterialPageRoute(builder: (_) => const MyApp()),
+                            (route) => false,
+                          );
+                        }
+                      }
                     },
                   ),
                 ),

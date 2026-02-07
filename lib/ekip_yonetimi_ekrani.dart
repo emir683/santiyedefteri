@@ -591,6 +591,28 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                 ),
               ),
               const SizedBox(height: 32),
+
+              // Başka Ekibe Geç Butonu
+              OutlinedButton.icon(
+                icon: const Icon(Icons.swap_horiz),
+                label: const Text("Başka Ekibe Geç"),
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: const BorderSide(color: Colors.blue),
+                ),
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(builder: (_) => const TeamGate()),
+                  );
+                },
+              ),
+              const SizedBox(height: 12),
+
               if (!isKurucu)
                 ElevatedButton.icon(
                   icon: const Icon(Icons.exit_to_app),

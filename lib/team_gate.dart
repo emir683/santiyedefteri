@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
-import 'ana_menu_ekrani.dart'; 
+import 'ana_menu_ekrani.dart';
 
 class TeamGate extends StatefulWidget {
   const TeamGate({super.key});
@@ -43,7 +43,9 @@ class _TeamGateState extends State<TeamGate> {
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
               Text(
-                _isJoining ? "Devam etmek için bir ekibe katılın." : "Yeni bir ekip oluşturarak başlayın.",
+                _isJoining
+                    ? "Devam etmek için bir ekibe katılın."
+                    : "Yeni bir ekip oluşturarak başlayın.",
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 18),
               ),
@@ -53,7 +55,9 @@ class _TeamGateState extends State<TeamGate> {
                 decoration: InputDecoration(
                   labelText: "Ekip Adı",
                   prefixIcon: const Icon(Icons.groups_outlined),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
               const SizedBox(height: 16),
@@ -63,69 +67,167 @@ class _TeamGateState extends State<TeamGate> {
                 decoration: InputDecoration(
                   labelText: "Ekip Şifresi",
                   prefixIcon: const Icon(Icons.lock_outline),
-                  border: OutlineInputBorder(borderRadius: BorderRadius.circular(12)),
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
                 ),
               ),
               const SizedBox(height: 24),
               if (_error.isNotEmpty)
                 Padding(
                   padding: const EdgeInsets.only(bottom: 16.0),
-                  child: Text(_error, style: const TextStyle(color: Colors.red), textAlign: TextAlign.center),
+                  child: Text(
+                    _error,
+                    style: const TextStyle(color: Colors.red),
+                    textAlign: TextAlign.center,
+                  ),
                 ),
               _loading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
-                      onPressed: () async {
-                        if (_ekipAdiController.text.isEmpty || _sifreController.text.isEmpty) {
-                          setState(() => _error = "Lütfen tüm alanları doldurun.");
-                          return;
+                    onPressed: () async {
+                      if (_ekipAdiController.text.isEmpty ||
+                          _sifreController.text.isEmpty) {
+                        setState(
+                          () => _error = "Lütfen tüm alanları doldurun.",
+                        );
+                        return;
+                      }
+
+                      setState(() {
+                        _loading = true;
+                        _error = '';
+                      });
+
+                      final firestoreServisi = FirestoreServisi(
+                        kullaniciId: user.uid,
+                      );
+                      String? teamId;
+                      String? errorMessage;
+
+                      try {
+                        if (_isJoining) {
+                          teamId = await firestoreServisi.ekibeKatil(
+                            _ekipAdiController.text.trim(),
+                            _sifreController.text.trim(),
+                          );
+                        } else {
+                          teamId = await firestoreServisi.yeniEkipOlustur(
+                            _ekipAdiController.text.trim(),
+                            _sifreController.text.trim(),
+                          );
                         }
+                      } catch (e) {
+                        errorMessage = e.toString().replaceFirst(
+                          'Exception: ',
+                          '',
+                        );
+                      }
 
-                        setState(() { _loading = true; _error = ''; });
-
-                        final firestoreServisi = FirestoreServisi(kullaniciId: user.uid);
-                        String? teamId;
-                        String? errorMessage;
-
-                        try {
-                          if (_isJoining) {
-                            teamId = await firestoreServisi.ekibeKatil(
-                                _ekipAdiController.text.trim(), _sifreController.text.trim());
-                          } else {
-                            teamId = await firestoreServisi.yeniEkipOlustur(
-                                _ekipAdiController.text.trim(), _sifreController.text.trim());
-                          }
-                        } catch (e) {
-                          errorMessage = e.toString().replaceFirst('Exception: ', '');
+                      if (mounted) {
+                        if (teamId != null) {
+                          Navigator.pushReplacement(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (context) => AnaMenuEkrani(teamId: teamId!),
+                            ),
+                          );
+                        } else {
+                          setState(() {
+                            _error =
+                                errorMessage ??
+                                "İşlem başarısız. Bilgileri kontrol edin.";
+                            _loading = false;
+                          });
                         }
-
-                        if (mounted) {
-                          if (teamId != null) {
-                            Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                    builder: (context) => AnaMenuEkrani(teamId: teamId!)));
-                          } else {
-                            setState(() {
-                              _error = errorMessage ?? "İşlem başarısız. Bilgileri kontrol edin.";
-                              _loading = false;
-                            });
-                          }
-                        }
-                      },
-                      style: ElevatedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      }
+                    },
+                    style: ElevatedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
                       ),
-                      child: Text(_isJoining ? "EKİBE KATIL" : "EKİP OLUŞTUR"),
                     ),
+                    child: Text(_isJoining ? "EKİBE KATIL" : "EKİP OLUŞTUR"),
+                  ),
               const SizedBox(height: 20),
               TextButton(
                 onPressed: () {
-                  setState(() { _isJoining = !_isJoining; _error = ''; });
+                  setState(() {
+                    _isJoining = !_isJoining;
+                    _error = '';
+                  });
                 },
-                child: Text(_isJoining ? "Veya yeni bir ekip oluştur" : "Veya mevcut bir ekibe katıl"),
-              )
+                child: Text(
+                  _isJoining
+                      ? "Veya yeni bir ekip oluştur"
+                      : "Veya mevcut bir ekibe katıl",
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Divider(),
+              const SizedBox(height: 8),
+              Text(
+                "Veya şimdilik ekipsiz devam edin",
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey[600]),
+              ),
+              const SizedBox(height: 12),
+              OutlinedButton.icon(
+                icon: const Icon(Icons.person_outline),
+                label: const Text("Ekipsiz Devam Et"),
+                onPressed:
+                    _loading
+                        ? null
+                        : () async {
+                          setState(() {
+                            _loading = true;
+                            _error = '';
+                          });
+
+                          final firestoreServisi = FirestoreServisi(
+                            kullaniciId: user.uid,
+                          );
+                          String? teamId;
+                          String? errorMessage;
+
+                          try {
+                            teamId =
+                                await firestoreServisi.kisiselEkipOlustur();
+                          } catch (e) {
+                            errorMessage = e.toString().replaceFirst(
+                              'Exception: ',
+                              '',
+                            );
+                          }
+
+                          if (mounted) {
+                            if (teamId != null) {
+                              Navigator.pushReplacement(
+                                context,
+                                MaterialPageRoute(
+                                  builder:
+                                      (context) =>
+                                          AnaMenuEkrani(teamId: teamId!),
+                                ),
+                              );
+                            } else {
+                              setState(() {
+                                _error = errorMessage ?? "Bir hata oluştu.";
+                                _loading = false;
+                              });
+                            }
+                          }
+                        },
+                style: OutlinedButton.styleFrom(
+                  padding: const EdgeInsets.symmetric(vertical: 14),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  side: BorderSide(color: Colors.grey[400]!),
+                ),
+              ),
             ],
           ),
         ),

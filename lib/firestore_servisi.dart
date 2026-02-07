@@ -27,6 +27,7 @@ class FirestoreServisi {
         'kurucu': kullaniciId,
         'uyeler': [kullaniciId],
         'santiyeListesi': [],
+        'isPersonal': false, // Normal ekip, başkaları katılabilir
       });
 
       await _kullaniciRef.update({'teamId': teamRef.id});
@@ -43,6 +44,10 @@ class FirestoreServisi {
               .collection('teams')
               .where('ad', isEqualTo: ekipAdi)
               .where('sifre', isEqualTo: sifre)
+              .where(
+                'isPersonal',
+                isEqualTo: false,
+              ) // Kişisel ekipleri hariç tut
               .limit(1)
               .get();
       if (query.docs.isEmpty)
@@ -54,6 +59,45 @@ class FirestoreServisi {
         'uyeler': FieldValue.arrayUnion([kullaniciId]),
       });
       return teamDoc.id;
+    } catch (e) {
+      rethrow;
+    }
+  }
+
+  /// Kullanıcı için otomatik kişisel ekip oluşturur.
+  /// Bu ekip başkaları tarafından bulunamaz ve sadece kullanıcıya özeldir.
+  Future<String?> kisiselEkipOlustur() async {
+    try {
+      // Kullanıcının zaten kişisel ekibi var mı kontrol et
+      final existingQuery =
+          await _db
+              .collection('teams')
+              .where('isPersonal', isEqualTo: true)
+              .where('kurucu', isEqualTo: kullaniciId)
+              .limit(1)
+              .get();
+
+      if (existingQuery.docs.isNotEmpty) {
+        // Zaten kişisel ekibi var, onu kullan
+        final existingTeamId = existingQuery.docs.first.id;
+        await _kullaniciRef.update({'teamId': existingTeamId});
+        return existingTeamId;
+      }
+
+      // Yeni kişisel ekip oluştur
+      final personalTeamId = 'personal_$kullaniciId';
+
+      await _db.collection('teams').doc(personalTeamId).set({
+        'ad': 'Kişisel Defterim',
+        'sifre': '', // Boş şifre, kimse katılamaz
+        'kurucu': kullaniciId,
+        'uyeler': [kullaniciId],
+        'santiyeListesi': [],
+        'isPersonal': true, // Bu bayrak kişisel ekip olduğunu belirtir
+      });
+
+      await _kullaniciRef.update({'teamId': personalTeamId});
+      return personalTeamId;
     } catch (e) {
       rethrow;
     }
