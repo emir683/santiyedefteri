@@ -14,6 +14,22 @@
       },
       "oauth_client": [
         {
+          "client_id": "250320257023-4emedpsvdjsdunron35hgavrh79cu5rj.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.emircf.santiyepuantaj",
+            "certificate_hash": "b775b722d97be8bef940c2275f18d8159ed846f2"
+          }
+        },
+        {
+          "client_id": "250320257023-f0lg17608puebk1qfeund3l7dgv8c27t.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.emircf.santiyepuantaj",
+            "certificate_hash": "41273c0d346b775389a0dbdf6418e46048d16f18"
+          }
+        },
+        {
           "client_id": "250320257023-e0oa6mdlcs6sktvek3uanclp4rqg5f47.apps.googleusercontent.com",
           "client_type": 3
         }
