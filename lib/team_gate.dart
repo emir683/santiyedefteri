@@ -1,8 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'user_model.dart';
+
 import 'firestore_servisi.dart';
-import 'ana_menu_ekrani.dart';
+import 'user_model.dart';
 
 class TeamGate extends StatefulWidget {
   const TeamGate({super.key});
@@ -26,13 +26,64 @@ class _TeamGateState extends State<TeamGate> {
     super.dispose();
   }
 
+  Future<void> _submitTeamAction() async {
+    final user = Provider.of<UserModel>(context, listen: false);
+
+    if (_ekipAdiController.text.isEmpty || _sifreController.text.isEmpty) {
+      setState(() => _error = "L\u00fctfen t\u00fcm alanlar\u0131 doldurun.");
+      return;
+    }
+
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+
+    final firestoreServisi = FirestoreServisi(kullaniciId: user.uid);
+    String? teamId;
+    String? errorMessage;
+
+    try {
+      if (_isJoining) {
+        teamId = await firestoreServisi.ekibeKatil(
+          _ekipAdiController.text.trim(),
+          _sifreController.text.trim(),
+        );
+      } else {
+        teamId = await firestoreServisi.yeniEkipOlustur(
+          _ekipAdiController.text.trim(),
+          _sifreController.text.trim(),
+        );
+      }
+    } catch (e) {
+      errorMessage = e.toString().replaceFirst('Exception: ', '');
+    }
+
+    if (!mounted) return;
+
+    if (teamId != null) {
+      setState(() {
+        _loading = false;
+      });
+      return;
+    }
+
+    setState(() {
+      _error =
+          errorMessage ?? "\u0130\u015flem ba\u015far\u0131s\u0131z. Bilgileri kontrol edin.";
+      _loading = false;
+    });
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel>(context);
 
     return Scaffold(
       appBar: AppBar(
-        title: Text(_isJoining ? "Bir Ekibe Katıl" : "Yeni Ekip Oluştur"),
+        title: Text(
+          _isJoining ? "Bir Ekibe Kat\u0131l" : "Yeni Ekip Olu\u015ftur",
+        ),
         centerTitle: true,
       ),
       body: Center(
@@ -44,8 +95,8 @@ class _TeamGateState extends State<TeamGate> {
             children: [
               Text(
                 _isJoining
-                    ? "Devam etmek için bir ekibe katılın."
-                    : "Yeni bir ekip oluşturarak başlayın.",
+                    ? "Devam etmek i\u00e7in bir ekibe kat\u0131l\u0131n."
+                    : "Yeni bir ekip olu\u015fturarak ba\u015flay\u0131n.",
                 textAlign: TextAlign.center,
                 style: const TextStyle(fontSize: 18),
               ),
@@ -53,7 +104,7 @@ class _TeamGateState extends State<TeamGate> {
               TextField(
                 controller: _ekipAdiController,
                 decoration: InputDecoration(
-                  labelText: "Ekip Adı",
+                  labelText: "Ekip Ad\u0131",
                   prefixIcon: const Icon(Icons.groups_outlined),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -65,7 +116,7 @@ class _TeamGateState extends State<TeamGate> {
                 controller: _sifreController,
                 obscureText: true,
                 decoration: InputDecoration(
-                  labelText: "Ekip Şifresi",
+                  labelText: "Ekip \u015eifresi",
                   prefixIcon: const Icon(Icons.lock_outline),
                   border: OutlineInputBorder(
                     borderRadius: BorderRadius.circular(12),
@@ -85,71 +136,16 @@ class _TeamGateState extends State<TeamGate> {
               _loading
                   ? const Center(child: CircularProgressIndicator())
                   : ElevatedButton(
-                    onPressed: () async {
-                      if (_ekipAdiController.text.isEmpty ||
-                          _sifreController.text.isEmpty) {
-                        setState(
-                          () => _error = "Lütfen tüm alanları doldurun.",
-                        );
-                        return;
-                      }
-
-                      setState(() {
-                        _loading = true;
-                        _error = '';
-                      });
-
-                      final firestoreServisi = FirestoreServisi(
-                        kullaniciId: user.uid,
-                      );
-                      String? teamId;
-                      String? errorMessage;
-
-                      try {
-                        if (_isJoining) {
-                          teamId = await firestoreServisi.ekibeKatil(
-                            _ekipAdiController.text.trim(),
-                            _sifreController.text.trim(),
-                          );
-                        } else {
-                          teamId = await firestoreServisi.yeniEkipOlustur(
-                            _ekipAdiController.text.trim(),
-                            _sifreController.text.trim(),
-                          );
-                        }
-                      } catch (e) {
-                        errorMessage = e.toString().replaceFirst(
-                          'Exception: ',
-                          '',
-                        );
-                      }
-
-                      if (mounted) {
-                        if (teamId != null) {
-                          Navigator.pushReplacement(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (context) => AnaMenuEkrani(teamId: teamId!),
-                            ),
-                          );
-                        } else {
-                          setState(() {
-                            _error =
-                                errorMessage ??
-                                "İşlem başarısız. Bilgileri kontrol edin.";
-                            _loading = false;
-                          });
-                        }
-                      }
-                    },
+                    onPressed: _submitTeamAction,
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 16),
                       shape: RoundedRectangleBorder(
                         borderRadius: BorderRadius.circular(12),
                       ),
                     ),
-                    child: Text(_isJoining ? "EKİBE KATIL" : "EKİP OLUŞTUR"),
+                    child: Text(
+                      _isJoining ? "EK\u0130BE KATIL" : "EK\u0130P OLU\u015eTUR",
+                    ),
                   ),
               const SizedBox(height: 20),
               TextButton(
@@ -161,15 +157,15 @@ class _TeamGateState extends State<TeamGate> {
                 },
                 child: Text(
                   _isJoining
-                      ? "Veya yeni bir ekip oluştur"
-                      : "Veya mevcut bir ekibe katıl",
+                      ? "Veya yeni bir ekip olu\u015ftur"
+                      : "Veya mevcut bir ekibe kat\u0131l",
                 ),
               ),
               const SizedBox(height: 16),
               const Divider(),
               const SizedBox(height: 8),
               Text(
-                "Veya şimdilik ekipsiz devam edin",
+                "Veya \u015fimdilik ekipsiz devam edin",
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               ),
@@ -202,22 +198,17 @@ class _TeamGateState extends State<TeamGate> {
                             );
                           }
 
-                          if (mounted) {
-                            if (teamId != null) {
-                              Navigator.pushReplacement(
-                                context,
-                                MaterialPageRoute(
-                                  builder:
-                                      (context) =>
-                                          AnaMenuEkrani(teamId: teamId!),
-                                ),
-                              );
-                            } else {
-                              setState(() {
-                                _error = errorMessage ?? "Bir hata oluştu.";
-                                _loading = false;
-                              });
-                            }
+                          if (!mounted) return;
+
+                          if (teamId != null) {
+                            setState(() {
+                              _loading = false;
+                            });
+                          } else {
+                            setState(() {
+                              _error = errorMessage ?? "Bir hata olu\u015ftu.";
+                              _loading = false;
+                            });
                           }
                         },
                 style: OutlinedButton.styleFrom(

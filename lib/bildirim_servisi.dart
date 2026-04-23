@@ -9,6 +9,8 @@ import 'package:timezone/timezone.dart' as tz;
 // NOT: 'veri_yardimcisi.dart' importunu SİLİN.
 
 class BildirimServisi {
+  static const String _androidNotificationIcon = '@drawable/notification_icon';
+
   static final BildirimServisi _instance = BildirimServisi._internal();
   factory BildirimServisi() => _instance;
   BildirimServisi._internal();
@@ -18,7 +20,7 @@ class BildirimServisi {
 
   Future<void> init() async {
     const androidInit = AndroidInitializationSettings(
-      '@mipmap/ic_launcher',
+      _androidNotificationIcon,
     ); // İkon adını düzelttik
     const iosInit = DarwinInitializationSettings();
     const initSettings = InitializationSettings(
@@ -70,6 +72,8 @@ class BildirimServisi {
         android: AndroidNotificationDetails(
           'gunluk_rapor_kanali',
           'Günlük Rapor Hatırlatıcı',
+          icon: _androidNotificationIcon,
+          color: Color(0xFF14B8A6),
           importance: Importance.max,
           priority: Priority.high,
         ),

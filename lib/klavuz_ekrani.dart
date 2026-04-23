@@ -1,8 +1,8 @@
-import 'package:flutter/material.dart';
+﻿import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class KlavuzEkrani extends StatefulWidget {
-  final bool isFromMenu; // Menüden mi açıldı yoksa ilk açılış mı?
+  final bool isFromMenu;
   const KlavuzEkrani({super.key, this.isFromMenu = false});
 
   @override
@@ -13,54 +13,39 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
   final PageController _controller = PageController();
   int _currentPage = 0;
 
-  final List<Map<String, dynamic>> _pages = [
+  final List<Map<String, dynamic>> _pages = const [
     {
-      "title": "Hoş Geldiniz!",
-      "desc":
-          "Şantiye Defteri ile tüm saha operasyonlarını tek yerden, kolayca yönetin.",
-      "icon": Icons.waving_hand,
-      "color": Colors.orange,
+      'title': 'Hoş Geldiniz',
+      'desc':
+          'Şantiye Defteri ile saha operasyonlarını tek merkezden yönetin.',
+      'icon': Icons.waving_hand_rounded,
+      'color': Color(0xFFF59E0B),
     },
     {
-      "title": "Günlük Raporlar",
-      "desc":
-          "Hızlı yoklama ile işçileri seçin, masrafları girin ve günü kapatın.",
-      "icon": Icons.edit_calendar,
-      "color": Colors.green,
+      'title': 'Günlük Rapor',
+      'desc':
+          'Yoklama, puantaj ve masraf kayıtlarını tek ekranda hızlıca girin.',
+      'icon': Icons.edit_calendar_rounded,
+      'color': Color(0xFF14B8A6),
     },
     {
-      "title": "Hesap Takibi",
-      "desc":
-          "İşçi alacaklarını, avansları ve şantiye kâr/zarar durumunu anlık görün.",
-      "icon": Icons.account_balance_wallet,
-      "color": Colors.blue,
+      'title': 'Şantiye ve İşçi',
+      'desc':
+          'Projeleri ve personeli ayrı ayrı yönetin, kayıtları düzenli takip edin.',
+      'icon': Icons.groups_2_rounded,
+      'color': Color(0xFF3B82F6),
     },
     {
-      "title": "Hatırlatmalar",
-      "desc":
-          "Günlük rapor girmeyi unutmayın! İstediğiniz saatte bildirim alarak raporlarınızı zamanında tamamlayın.",
-      "icon": Icons.notifications_active,
-      "color": Colors.purple,
-    },
-    {
-      "title": "İşlem Geçmişi",
-      "desc":
-          "Ekip içinde kim ne yaptı? Tüm işlemleri tarihli olarak görüntüleyin ve takip edin.",
-      "icon": Icons.history,
-      "color": Colors.teal,
-    },
-    {
-      "title": "PDF Paylaşım",
-      "desc":
-          "Ay sonu raporlarını tek tıkla PDF yapın veya WhatsApp'tan özet geçin.",
-      "icon": Icons.picture_as_pdf,
-      "color": Colors.redAccent,
+      'title': 'Finans ve Özet',
+      'desc':
+          'Ödeme, avans ve ay sonu özetlerini tek bakışta görün.',
+      'icon': Icons.account_balance_wallet_rounded,
+      'color': Color(0xFF8B5CF6),
     },
   ];
 
   Future<void> _bitir() async {
     if (!widget.isFromMenu) {
-      // Eğer ilk açılışsa, hafızaya "görüldü" olarak kaydet
       final prefs = await SharedPreferences.getInstance();
       await prefs.setBool('klavuzGoruldu', true);
     }
@@ -68,138 +53,219 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
   }
 
   @override
-  Widget build(BuildContext context) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
 
-    return Scaffold(
-      backgroundColor: isDark ? const Color(0xFF121212) : Colors.white,
-      body: SafeArea(
-        child: Column(
-          children: [
-            // SKIP BUTONU
-            Align(
-              alignment: Alignment.topRight,
-              child: TextButton(
-                onPressed: _bitir,
-                child: Text(
-                  widget.isFromMenu ? "Kapat" : "Atla",
-                  style: const TextStyle(
-                    fontSize: 16,
-                    fontWeight: FontWeight.bold,
-                  ),
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final page = _pages[_currentPage];
+    final bgTop = isDark ? const Color(0xFF0B0F14) : const Color(0xFFF4F7FB);
+    final bgBottom =
+        isDark ? const Color(0xFF101822) : const Color(0xFFEAF1F8);
+    final cardColor = isDark ? const Color(0xFF161D27) : Colors.white;
+    final titleColor = isDark ? Colors.white : const Color(0xFF102A43);
+    final bodyColor = isDark ? Colors.white70 : const Color(0xFF4A5568);
+
+    return PopScope(
+      canPop: false,
+      onPopInvoked: (didPop) async {
+        if (didPop) return;
+        await _bitir();
+      },
+      child: Scaffold(
+      body: DecoratedBox(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [bgTop, bgBottom],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            widget.isFromMenu
+                                ? 'Kullanım Kılavuzu'
+                                : 'Başlangıç Turu',
+                            style: TextStyle(
+                              fontSize: 24,
+                              fontWeight: FontWeight.w800,
+                              color: titleColor,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            '${_currentPage + 1}/${_pages.length}',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white60 : Colors.black45,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    TextButton(
+                      onPressed: _bitir,
+                      child: Text(
+                        widget.isFromMenu ? 'Kapat' : 'Şimdilik Atla',
+                        style: TextStyle(color: bodyColor),
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ),
-
-            // SLIDER ALANI
-            Expanded(
-              child: PageView.builder(
-                controller: _controller,
-                onPageChanged: (value) => setState(() => _currentPage = value),
-                itemCount: _pages.length,
-                itemBuilder: (context, index) {
-                  final page = _pages[index];
-                  return Padding(
-                    padding: const EdgeInsets.all(32.0),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Container(
-                          padding: const EdgeInsets.all(30),
-                          decoration: BoxDecoration(
-                            color: (page['color'] as Color).withOpacity(0.1),
-                            shape: BoxShape.circle,
-                          ),
-                          child: Icon(
-                            page['icon'],
-                            size: 100,
-                            color: page['color'],
-                          ),
-                        ),
-                        const SizedBox(height: 40),
-                        Text(
-                          page['title'],
-                          textAlign: TextAlign.center,
-                          style: const TextStyle(
-                            fontSize: 28,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
-                        const SizedBox(height: 16),
-                        Text(
-                          page['desc'],
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: Colors.grey[600],
-                            height: 1.5,
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                },
-              ),
-            ),
-
-            // NOKTALAR VE BUTON
-            Padding(
-              padding: const EdgeInsets.all(24.0),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                children: [
-                  // Sayfa Noktaları
-                  Row(
-                    children: List.generate(
-                      _pages.length,
-                      (index) => AnimatedContainer(
-                        duration: const Duration(milliseconds: 300),
-                        margin: const EdgeInsets.only(right: 8),
-                        height: 8,
-                        width: _currentPage == index ? 24 : 8,
+              Expanded(
+                child: PageView.builder(
+                  controller: _controller,
+                  itemCount: _pages.length,
+                  onPageChanged: (value) => setState(() => _currentPage = value),
+                  itemBuilder: (context, index) {
+                    final item = _pages[index];
+                    final accent = item['color'] as Color;
+                    return Padding(
+                      padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
+                      child: Container(
                         decoration: BoxDecoration(
-                          color:
-                              _currentPage == index
-                                  ? Colors.green
-                                  : Colors.grey.withOpacity(0.3),
-                          borderRadius: BorderRadius.circular(4),
+                          color: cardColor,
+                          borderRadius: BorderRadius.circular(24),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : const Color(0xFFD7DFEA),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withOpacity(
+                                isDark ? 0.24 : 0.06,
+                              ),
+                              blurRadius: 16,
+                              offset: const Offset(0, 8),
+                            ),
+                          ],
+                        ),
+                        child: Padding(
+                          padding: const EdgeInsets.all(24),
+                          child: Column(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              Container(
+                                width: 82,
+                                height: 82,
+                                decoration: BoxDecoration(
+                                  color: accent.withOpacity(
+                                    isDark ? 0.20 : 0.12,
+                                  ),
+                                  borderRadius: BorderRadius.circular(20),
+                                ),
+                                child: Icon(
+                                  item['icon'] as IconData,
+                                  color: accent,
+                                  size: 36,
+                                ),
+                              ),
+                              const SizedBox(height: 24),
+                              Text(
+                                item['title'] as String,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 27,
+                                  height: 1.1,
+                                  fontWeight: FontWeight.w800,
+                                  color: titleColor,
+                                ),
+                              ),
+                              const SizedBox(height: 14),
+                              Text(
+                                item['desc'] as String,
+                                textAlign: TextAlign.center,
+                                style: TextStyle(
+                                  fontSize: 15,
+                                  height: 1.5,
+                                  color: bodyColor,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    );
+                  },
+                ),
+              ),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(20, 8, 20, 24),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: Row(
+                        children: List.generate(
+                          _pages.length,
+                          (index) => AnimatedContainer(
+                            duration: const Duration(milliseconds: 220),
+                            curve: Curves.easeOutCubic,
+                            margin: const EdgeInsets.only(right: 8),
+                            width: _currentPage == index ? 24 : 8,
+                            height: 8,
+                            decoration: BoxDecoration(
+                              color: _currentPage == index
+                                  ? (page['color'] as Color)
+                                  : (isDark ? Colors.white24 : Colors.black12),
+                              borderRadius: BorderRadius.circular(999),
+                            ),
+                          ),
                         ),
                       ),
                     ),
-                  ),
-
-                  // İleri / Bitir Butonu
-                  ElevatedButton(
-                    onPressed: () {
-                      if (_currentPage == _pages.length - 1) {
-                        _bitir();
-                      } else {
-                        _controller.nextPage(
-                          duration: const Duration(milliseconds: 300),
-                          curve: Curves.ease,
-                        );
-                      }
-                    },
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: Colors.green,
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 24,
-                        vertical: 12,
+                    ElevatedButton(
+                      onPressed: () {
+                        if (_currentPage == _pages.length - 1) {
+                          _bitir();
+                        } else {
+                          _controller.nextPage(
+                            duration: const Duration(milliseconds: 260),
+                            curve: Curves.easeOutCubic,
+                          );
+                        }
+                      },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: page['color'] as Color,
+                        foregroundColor: Colors.white,
+                        elevation: 0,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 13,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
                       ),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(12),
+                      child: Text(
+                        _currentPage == _pages.length - 1
+                            ? 'Tamamla'
+                            : 'İleri',
+                        style: const TextStyle(fontWeight: FontWeight.w700),
                       ),
                     ),
-                    child: Text(
-                      _currentPage == _pages.length - 1 ? "BAŞLA" : "İLERİ",
-                    ),
-                  ),
-                ],
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
+      ),
       ),
     );
   }

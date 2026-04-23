@@ -1,27 +1,49 @@
-import 'dart:ui'; // Blur efekti için GEREKLİ
+import 'dart:ui';
+
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
-import 'user_model.dart';
-import 'firestore_servisi.dart';
+
+import 'animasyon_yardimcisi.dart';
 import 'data_models.dart';
-import 'format_yardimcisi.dart'; // Para formatı için
+import 'firestore_servisi.dart';
+import 'format_yardimcisi.dart';
+import 'user_model.dart';
+
+const double _shellDockBodyPadding = 132;
+const double _shellDockFabPadding = 96;
+const Color _kBrandTeal = Color(0xFF14B8A6);
 
 class OdemelerEkrani extends StatefulWidget {
   final String teamId;
+
   const OdemelerEkrani({super.key, required this.teamId});
 
   @override
   State<OdemelerEkrani> createState() => _OdemelerEkraniState();
 }
 
-class _OdemelerEkraniState extends State<OdemelerEkrani> {
-  // --- 1. SİLME ONAYI (MODERN & BLUR) ---
+class _OdemelerEkraniState extends State<OdemelerEkrani>
+    with SingleTickerProviderStateMixin {
+  late final TabController _tabController;
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
+
   Future<void> _silmeOnayi(BuildContext context, VoidCallback onConfirm) async {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: "Kapat",
+      barrierLabel: 'Kapat',
       barrierColor: Colors.black.withOpacity(0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
@@ -58,7 +80,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                       ),
                       const SizedBox(height: 16),
                       const Text(
-                        "Silinsin mi?",
+                        'Silinsin mi?',
                         style: TextStyle(
                           color: Colors.white,
                           fontSize: 20,
@@ -67,7 +89,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                       ),
                       const SizedBox(height: 12),
                       const Text(
-                        "Bu kaydı kalıcı olarak silmek istediğinize emin misiniz?",
+                        'Bu kayd\u0131 kal\u0131c\u0131 olarak silmek istedi\u011Finize emin misiniz?',
                         textAlign: TextAlign.center,
                         style: TextStyle(color: Colors.grey, fontSize: 15),
                       ),
@@ -78,7 +100,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                             child: TextButton(
                               onPressed: () => Navigator.pop(ctx),
                               child: const Text(
-                                "İptal",
+                                '\u0130ptal',
                                 style: TextStyle(color: Colors.grey),
                               ),
                             ),
@@ -92,15 +114,13 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.redAccent,
-                                padding: const EdgeInsets.symmetric(
-                                  vertical: 14,
-                                ),
+                                padding: const EdgeInsets.symmetric(vertical: 14),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
                               ),
                               child: const Text(
-                                "Sil",
+                                'Sil',
                                 style: TextStyle(
                                   color: Colors.white,
                                   fontWeight: FontWeight.bold,
@@ -121,7 +141,6 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
     );
   }
 
-  // --- 2. ÖDEME EKLEME DİYALOĞU (MODERN & BLUR) ---
   void _odemeEkleDialog(BuildContext context, FirestoreServisi servisi) {
     final miktarCtrl = TextEditingController();
     final alanKisiCtrl = TextEditingController();
@@ -131,7 +150,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: "Kapat",
+      barrierLabel: 'Kapat',
       barrierColor: Colors.black.withOpacity(0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
@@ -171,7 +190,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   const Text(
-                                    "Yeni Ödeme Girişi",
+                                    '\u00D6deme Giri\u015Fi',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,
@@ -179,10 +198,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                     ),
                                   ),
                                   const SizedBox(height: 24),
-
                                   if (santiyeler.isEmpty)
                                     const Text(
-                                      "Önce şantiye ekleyin.",
+                                      '\u00D6nce \u015Fantiye ekleyin.',
                                       style: TextStyle(color: Colors.redAccent),
                                     )
                                   else
@@ -198,14 +216,10 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                         child: DropdownButton<String>(
                                           value: seciliSantiye,
                                           hint: const Text(
-                                            "Şantiye Seçin",
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                            ),
+                                            '\u015Eantiye Se\u00E7in',
+                                            style: TextStyle(color: Colors.grey),
                                           ),
-                                          dropdownColor: const Color(
-                                            0xFF2C2C2E,
-                                          ),
+                                          dropdownColor: const Color(0xFF2C2C2E),
                                           isExpanded: true,
                                           style: const TextStyle(
                                             color: Colors.white,
@@ -228,31 +242,30 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                       ),
                                     ),
                                   const SizedBox(height: 16),
-
                                   _buildBlurInput(
                                     miktarCtrl,
-                                    "Miktar",
+                                    'Miktar',
                                     Icons.attach_money,
                                   ),
                                   const SizedBox(height: 16),
                                   _buildBlurInput(
                                     alanKisiCtrl,
-                                    "Alan Kişi",
+                                    'Alan Ki\u015Fi',
                                     Icons.person_outline,
                                     isNumber: false,
                                   ),
                                   const SizedBox(height: 16),
-
                                   InkWell(
                                     onTap: () async {
-                                      final p = await showDatePicker(
+                                      final picked = await showDatePicker(
                                         context: context,
                                         initialDate: seciliTarih,
                                         firstDate: DateTime(2020),
                                         lastDate: DateTime.now(),
                                       );
-                                      if (p != null)
-                                        setDialogState(() => seciliTarih = p);
+                                      if (picked != null) {
+                                        setDialogState(() => seciliTarih = picked);
+                                      }
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.all(16),
@@ -265,7 +278,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                             MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            "Tarih: ${DateFormat('dd.MM.yyyy').format(seciliTarih)}",
+                                            'Tarih: ${DateFormat('dd.MM.yyyy').format(seciliTarih)}',
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w500,
@@ -280,26 +293,22 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                       ),
                                     ),
                                   ),
-
                                   const SizedBox(height: 24),
-
                                   Row(
                                     children: [
                                       Expanded(
                                         child: TextButton(
                                           onPressed: () => Navigator.pop(ctx),
                                           child: const Text(
-                                            "İptal",
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                            ),
+                                            '\u0130ptal',
+                                            style: TextStyle(color: Colors.grey),
                                           ),
                                         ),
                                       ),
                                       Expanded(
                                         child: ElevatedButton(
                                           onPressed:
-                                              (seciliSantiye == null)
+                                              seciliSantiye == null
                                                   ? null
                                                   : () async {
                                                     if (miktarCtrl
@@ -325,7 +334,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                                     }
                                                   },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.green,
+                                            backgroundColor: _kBrandTeal,
                                             padding: const EdgeInsets.symmetric(
                                               vertical: 14,
                                             ),
@@ -335,7 +344,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                             ),
                                           ),
                                           child: const Text(
-                                            "Kaydet",
+                                            'Kaydet',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -360,7 +369,6 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
     );
   }
 
-  // --- 3. AVANS EKLEME DİYALOĞU (MODERN & BLUR) ---
   void _avansEkleDialog(BuildContext context, FirestoreServisi servisi) {
     final miktarCtrl = TextEditingController();
     Isci? seciliIsci;
@@ -369,7 +377,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
-      barrierLabel: "Kapat",
+      barrierLabel: 'Kapat',
       barrierColor: Colors.black.withOpacity(0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
@@ -409,7 +417,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   const Text(
-                                    "Yeni Avans Girişi",
+                                    'Avans Giri\u015Fi',
                                     style: TextStyle(
                                       color: Colors.white,
                                       fontSize: 20,
@@ -417,10 +425,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                     ),
                                   ),
                                   const SizedBox(height: 24),
-
                                   if (isciler.isEmpty)
                                     const Text(
-                                      "Önce işçi ekleyin.",
+                                      '\u00D6nce i\u015F\u00E7i ekleyin.',
                                       style: TextStyle(color: Colors.redAccent),
                                     )
                                   else
@@ -436,14 +443,10 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                         child: DropdownButton<Isci>(
                                           value: seciliIsci,
                                           hint: const Text(
-                                            "İşçi Seçin",
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                            ),
+                                            '\u0130\u015F\u00E7i Se\u00E7in',
+                                            style: TextStyle(color: Colors.grey),
                                           ),
-                                          dropdownColor: const Color(
-                                            0xFF2C2C2E,
-                                          ),
+                                          dropdownColor: const Color(0xFF2C2C2E),
                                           isExpanded: true,
                                           style: const TextStyle(
                                             color: Colors.white,
@@ -466,24 +469,23 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                       ),
                                     ),
                                   const SizedBox(height: 16),
-
                                   _buildBlurInput(
                                     miktarCtrl,
-                                    "Miktar",
+                                    'Miktar',
                                     Icons.attach_money,
                                   ),
                                   const SizedBox(height: 16),
-
                                   InkWell(
                                     onTap: () async {
-                                      final p = await showDatePicker(
+                                      final picked = await showDatePicker(
                                         context: context,
                                         initialDate: seciliTarih,
                                         firstDate: DateTime(2020),
                                         lastDate: DateTime.now(),
                                       );
-                                      if (p != null)
-                                        setDialogState(() => seciliTarih = p);
+                                      if (picked != null) {
+                                        setDialogState(() => seciliTarih = picked);
+                                      }
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.all(16),
@@ -496,7 +498,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                             MainAxisAlignment.spaceBetween,
                                         children: [
                                           Text(
-                                            "Tarih: ${DateFormat('dd.MM.yyyy').format(seciliTarih)}",
+                                            'Tarih: ${DateFormat('dd.MM.yyyy').format(seciliTarih)}',
                                             style: const TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.w500,
@@ -511,42 +513,36 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                       ),
                                     ),
                                   ),
-
                                   const SizedBox(height: 24),
-
                                   Row(
                                     children: [
                                       Expanded(
                                         child: TextButton(
                                           onPressed: () => Navigator.pop(ctx),
                                           child: const Text(
-                                            "İptal",
-                                            style: TextStyle(
-                                              color: Colors.grey,
-                                            ),
+                                            '\u0130ptal',
+                                            style: TextStyle(color: Colors.grey),
                                           ),
                                         ),
                                       ),
                                       Expanded(
                                         child: ElevatedButton(
                                           onPressed:
-                                              (seciliIsci == null)
+                                              seciliIsci == null
                                                   ? null
                                                   : () async {
                                                     if (miktarCtrl
                                                         .text
                                                         .isNotEmpty) {
-                                                      final avans =
-                                                          VerilenAvans(
-                                                            miktar:
-                                                                double.tryParse(
-                                                                  miktarCtrl
-                                                                      .text,
-                                                                ) ??
-                                                                0,
-                                                            isci: seciliIsci!,
-                                                            tarih: seciliTarih,
-                                                          );
+                                                      final avans = VerilenAvans(
+                                                        miktar:
+                                                            double.tryParse(
+                                                              miktarCtrl.text,
+                                                            ) ??
+                                                            0,
+                                                        isci: seciliIsci!,
+                                                        tarih: seciliTarih,
+                                                      );
                                                       Navigator.pop(ctx);
                                                       await servisi.avansEkle(
                                                         widget.teamId,
@@ -555,7 +551,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                                     }
                                                   },
                                           style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.orange,
+                                            backgroundColor: _kBrandTeal,
                                             padding: const EdgeInsets.symmetric(
                                               vertical: 14,
                                             ),
@@ -565,7 +561,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
                                             ),
                                           ),
                                           child: const Text(
-                                            "Kaydet",
+                                            'Kaydet',
                                             style: TextStyle(
                                               color: Colors.white,
                                               fontWeight: FontWeight.bold,
@@ -590,7 +586,6 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
     );
   }
 
-  // --- YARDIMCI INPUT WIDGET ---
   Widget _buildBlurInput(
     TextEditingController controller,
     String hint,
@@ -615,123 +610,132 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
     );
   }
 
-  @override
-  Widget build(BuildContext context) {
-    final user = Provider.of<UserModel?>(context, listen: false);
-    final servisi = FirestoreServisi(kullaniciId: user?.uid ?? '');
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildOdemelerListesi(
+    BuildContext context,
+    FirestoreServisi servisi,
+    bool isDark,
+  ) {
+    return StreamBuilder<List<AlinanOdeme>>(
+      stream: servisi.getOdemelerStream(widget.teamId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const ShimmerYukleniyor(satirSayisi: 5);
+        }
 
-    return DefaultTabController(
-      length: 2,
-      child: Scaffold(
-        appBar: AppBar(
-          title: const Text("Ödemeler ve Avanslar"),
-          bottom: const TabBar(
-            tabs: [
-              Tab(icon: Icon(Icons.download), text: "Alınan"),
-              Tab(icon: Icon(Icons.upload), text: "Verilen"),
-            ],
+        final odemeler = snapshot.data ?? [];
+        if (odemeler.isEmpty) {
+          return Center(
+            child: Text(
+              'Kay\u0131tl\u0131 \u00F6deme yok.',
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            _shellDockBodyPadding,
           ),
-        ),
-        body: TabBarView(
-          children: [
-            // TAB 1: ÖDEMELER LİSTESİ
-            Scaffold(
-              floatingActionButton: FloatingActionButton.extended(
-                onPressed: () => _odemeEkleDialog(context, servisi),
-                label: const Text("Ödeme Ekle"),
-                icon: const Icon(Icons.add),
-                backgroundColor: Colors.green,
-                foregroundColor: Colors.white,
-              ),
-              body: StreamBuilder<List<AlinanOdeme>>(
-                stream: servisi.getOdemelerStream(widget.teamId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting)
-                    return const Center(child: CircularProgressIndicator());
-                  final odemeler = snapshot.data ?? [];
-                  if (odemeler.isEmpty)
-                    return const Center(child: Text("Kayıtlı ödeme yok."));
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: odemeler.length,
-                    itemBuilder: (context, index) {
-                      final odeme = odemeler[index];
-                      // Formatlayici.yap() kullanıyoruz
-                      return _buildModernListCard(
-                        context: context,
-                        isDark: isDark,
-                        icon: Icons.arrow_downward,
-                        iconColor: Colors.green,
-                        title: Formatlayici.yap(
-                          odeme.miktar,
-                        ), // ÖRNEK: 10.000,00 TL
-                        subtitle: "${odeme.santiyeAdi} - ${odeme.alanKisi}",
-                        date: odeme.tarih,
-                        onDelete:
-                            () => _silmeOnayi(
-                              context,
-                              () => servisi.odemeSil(widget.teamId, odeme.id!),
-                            ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-            // TAB 2: AVANSLAR LİSTESİ
-            Scaffold(
-              floatingActionButton: FloatingActionButton.extended(
-                onPressed: () => _avansEkleDialog(context, servisi),
-                label: const Text("Avans Ekle"),
-                icon: const Icon(Icons.add),
-                backgroundColor: Colors.redAccent,
-                foregroundColor: Colors.white,
-              ),
-              body: StreamBuilder<List<VerilenAvans>>(
-                stream: servisi.getAvanslarStream(widget.teamId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting)
-                    return const Center(child: CircularProgressIndicator());
-                  final avanslar = snapshot.data ?? [];
-                  if (avanslar.isEmpty)
-                    return const Center(child: Text("Kayıtlı avans yok."));
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.all(16),
-                    itemCount: avanslar.length,
-                    itemBuilder: (context, index) {
-                      final avans = avanslar[index];
-                      // Formatlayici.yap() kullanıyoruz
-                      return _buildModernListCard(
-                        context: context,
-                        isDark: isDark,
-                        icon: Icons.arrow_upward,
-                        iconColor: Colors.redAccent,
-                        title: Formatlayici.yap(
-                          avans.miktar,
-                        ), // ÖRNEK: 5.000,00 TL
-                        subtitle: avans.isci.ad,
-                        date: avans.tarih,
-                        onDelete:
-                            () => _silmeOnayi(
-                              context,
-                              () => servisi.avansSil(widget.teamId, avans.id!),
-                            ),
-                      );
-                    },
-                  );
-                },
-              ),
-            ),
-          ],
-        ),
-      ),
+          itemCount: odemeler.length,
+          itemBuilder: (context, index) {
+            final odeme = odemeler[index];
+            return _buildModernListCard(
+              context: context,
+              isDark: isDark,
+              icon: Icons.arrow_downward,
+              iconColor: Colors.green,
+              title: Formatlayici.yap(odeme.miktar),
+              subtitle: '${odeme.santiyeAdi} - ${odeme.alanKisi}',
+              date: odeme.tarih,
+              onDelete:
+                  () => _silmeOnayi(
+                    context,
+                    () => servisi.odemeSil(widget.teamId, odeme.id!),
+                  ),
+            );
+          },
+        );
+      },
     );
   }
 
-  // --- ORTAK MODERN KART TASARIMI ---
+  Widget _buildAvanslarListesi(
+    BuildContext context,
+    FirestoreServisi servisi,
+    bool isDark,
+  ) {
+    return StreamBuilder<List<VerilenAvans>>(
+      stream: servisi.getAvanslarStream(widget.teamId),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const ShimmerYukleniyor(satirSayisi: 5);
+        }
+
+        final avanslar = snapshot.data ?? [];
+        if (avanslar.isEmpty) {
+          return Center(
+            child: Text(
+              'Kay\u0131tl\u0131 avans yok.',
+              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
+            ),
+          );
+        }
+
+        return ListView.builder(
+          padding: const EdgeInsets.fromLTRB(
+            16,
+            16,
+            16,
+            _shellDockBodyPadding,
+          ),
+          itemCount: avanslar.length,
+          itemBuilder: (context, index) {
+            final avans = avanslar[index];
+            return _buildModernListCard(
+              context: context,
+              isDark: isDark,
+              icon: Icons.arrow_upward,
+              iconColor: Colors.redAccent,
+              title: Formatlayici.yap(avans.miktar),
+              subtitle: avans.isci.ad,
+              date: avans.tarih,
+              onDelete:
+                  () => _silmeOnayi(
+                    context,
+                    () => servisi.avansSil(widget.teamId, avans.id!),
+                  ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildAktifFab(FirestoreServisi servisi) {
+    if (_tabController.index == 0) {
+      return FloatingActionButton.extended(
+        heroTag: 'odeme_fab',
+        onPressed: () => _odemeEkleDialog(context, servisi),
+        label: const Text('\u00D6deme Ekle'),
+        icon: const Icon(Icons.add),
+        backgroundColor: _kBrandTeal,
+        foregroundColor: Colors.white,
+      );
+    }
+
+    return FloatingActionButton.extended(
+      heroTag: 'avans_fab',
+      onPressed: () => _avansEkleDialog(context, servisi),
+      label: const Text('Avans Ekle'),
+      icon: const Icon(Icons.add),
+      backgroundColor: _kBrandTeal,
+      foregroundColor: Colors.white,
+    );
+  }
+
   Widget _buildModernListCard({
     required BuildContext context,
     required bool isDark,
@@ -742,26 +746,15 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
     required DateTime date,
     required VoidCallback onDelete,
   }) {
-    return Card(
-      elevation: 4,
+    return Container(
       margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color: isDark ? Colors.grey[800]! : Colors.grey[300]!,
-          width: 1.5,
-        ),
-      ),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+      decoration: _glassCardDecoration(isDark),
       child: ListTile(
         contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: iconColor.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(12),
-          ),
-          child: Icon(icon, color: iconColor, size: 24),
+        leading: _buildGlassIconBadge(
+          isDark: isDark,
+          icon: icon,
+          color: iconColor,
         ),
         title: Text(
           title,
@@ -787,6 +780,132 @@ class _OdemelerEkraniState extends State<OdemelerEkrani> {
         trailing: IconButton(
           icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
           onPressed: onDelete,
+        ),
+      ),
+    );
+  }
+
+  BoxDecoration _glassCardDecoration(bool isDark) {
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          (isDark ? const Color(0xFF15181D) : const Color(0xFFEDFFFF))
+              .withOpacity(isDark ? 0.96 : 0.72),
+          (isDark ? const Color(0xFF090B0F) : const Color(0xFFF7FBFD))
+              .withOpacity(isDark ? 0.98 : 0.90),
+        ],
+      ),
+      borderRadius: BorderRadius.circular(20),
+      border: Border.all(
+        color:
+            isDark
+                ? Colors.white.withOpacity(0.07)
+                : const Color(0xFFD8EAF0).withOpacity(0.90),
+        width: 1.2,
+      ),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withOpacity(isDark ? 0.28 : 0.05),
+          blurRadius: isDark ? 22 : 18,
+          offset: const Offset(0, 12),
+        ),
+        BoxShadow(
+          color: const Color(0xFF79E9D7).withOpacity(isDark ? 0.04 : 0.10),
+          blurRadius: isDark ? 18 : 28,
+          offset: const Offset(0, 14),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildGlassIconBadge({
+    required bool isDark,
+    required IconData icon,
+    required Color color,
+  }) {
+    return Container(
+      padding: const EdgeInsets.all(12),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            color.withOpacity(isDark ? 0.18 : 0.14),
+            (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
+              isDark ? 0.82 : 0.92,
+            ),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: color.withOpacity(isDark ? 0.16 : 0.12)),
+      ),
+      child: Icon(icon, color: color, size: 24),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final user = Provider.of<UserModel?>(context, listen: false);
+    final servisi = FirestoreServisi(kullaniciId: user?.uid ?? '');
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Scaffold(
+      backgroundColor:
+          isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor:
+            isDark
+                ? const Color(0xFF101317).withOpacity(0.92)
+                : Colors.white.withOpacity(0.88),
+        surfaceTintColor: Colors.transparent,
+        title: const Text('\u00D6demeler ve Avanslar'),
+        bottom: TabBar(
+          controller: _tabController,
+          labelColor: _kBrandTeal,
+          unselectedLabelColor: isDark ? Colors.white70 : Colors.black54,
+          indicatorColor: _kBrandTeal,
+          indicatorWeight: 2.8,
+          tabs: const [
+            Tab(icon: Icon(Icons.download), text: 'Al\u0131nan'),
+            Tab(icon: Icon(Icons.upload), text: 'Verilen'),
+          ],
+        ),
+      ),
+      body: Container(
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors:
+                isDark
+                    ? const [
+                      Color(0xFF06090D),
+                      Color(0xFF0C1219),
+                      Color(0xFF111827),
+                    ]
+                    : const [
+                      Color(0xFFF6FBFD),
+                      Color(0xFFECF5F9),
+                      Color(0xFFE4EEF4),
+                    ],
+          ),
+        ),
+        child: TabBarView(
+          controller: _tabController,
+          children: [
+            _buildOdemelerListesi(context, servisi, isDark),
+            _buildAvanslarListesi(context, servisi, isDark),
+          ],
+        ),
+      ),
+      floatingActionButton: Padding(
+        padding: const EdgeInsets.only(bottom: _shellDockFabPadding),
+        child: AnimatedBuilder(
+          animation: _tabController,
+          builder: (context, child) => _buildAktifFab(servisi),
         ),
       ),
     );

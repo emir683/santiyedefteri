@@ -1,4 +1,5 @@
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'user_model.dart';
@@ -95,19 +96,26 @@ class AuthServisi {
   // GÜNCELLENDİ: Google ile giriş yapıldığında profilin tam olup olmadığını kontrol eder
   Future<UserModel?> signInWithGoogle() async {
     try {
-      final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
-      if (googleUser == null) return null;
+      late final UserCredential userCredential;
 
-      final GoogleSignInAuthentication googleAuth =
-          await googleUser.authentication;
-      final AuthCredential credential = GoogleAuthProvider.credential(
-        accessToken: googleAuth.accessToken,
-        idToken: googleAuth.idToken,
-      );
+      if (kIsWeb) {
+        final provider = GoogleAuthProvider();
+        provider.setCustomParameters({'prompt': 'select_account'});
+        userCredential = await _auth.signInWithPopup(provider);
+      } else {
+        final GoogleSignInAccount? googleUser = await _googleSignIn.signIn();
+        if (googleUser == null) return null;
 
-      final UserCredential userCredential = await _auth.signInWithCredential(
-        credential,
-      );
+        final GoogleSignInAuthentication googleAuth =
+            await googleUser.authentication;
+        final AuthCredential credential = GoogleAuthProvider.credential(
+          accessToken: googleAuth.accessToken,
+          idToken: googleAuth.idToken,
+        );
+
+        userCredential = await _auth.signInWithCredential(credential);
+      }
+
       final User? user = userCredential.user;
 
       if (user != null) {
@@ -135,7 +143,7 @@ class AuthServisi {
 
   Future<void> signOut() async {
     try {
-      if (await _googleSignIn.isSignedIn()) {
+      if (!kIsWeb && await _googleSignIn.isSignedIn()) {
         await _googleSignIn.signOut();
       }
       await _auth.signOut();

@@ -1,18 +1,27 @@
 import 'dart:ui'; // Blur efekti için gerekli
+import 'animasyon_yardimcisi.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
+import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'data_models.dart';
 import 'privacy_provider.dart';
 import 'santiye_ekrani.dart';
 import 'isci_ekrani.dart';
+import 'tur_servisi.dart';
+import 'widgets/glass_surface.dart';
 
 class GunlukRaporEkrani extends StatefulWidget {
   final String teamId;
-  const GunlukRaporEkrani({super.key, required this.teamId});
+  final bool baslatRehber;
+  const GunlukRaporEkrani({
+    super.key,
+    required this.teamId,
+    this.baslatRehber = false,
+  });
 
   @override
   State<GunlukRaporEkrani> createState() => _GunlukRaporEkraniState();
@@ -23,16 +32,321 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
   DateTime _odaklanilanGun = DateTime.now();
   bool _calendarVisible = false;
 
+  // GlobalKeys for guided onboarding tour
+  final GlobalKey _santiyeEkleKey = GlobalKey();
+  final GlobalKey _isciEkleKey = GlobalKey();
+  final GlobalKey _santiyeKartiKey = GlobalKey();
+  final GlobalKey _hizliYoklamaKey = GlobalKey();
+  final GlobalKey _kaydetKapatKey = GlobalKey();
+
+  // Onboarding flow control flags
+  bool _santiyeTuruGosterildi = false;
+  bool _isciTuruGosterildi = false;
+  bool _santiyeKartiTuruGosterildi = false;
+  bool _bottomSheetTuruGosterildi = false;
+
+  @override
+  void initState() {
+    super.initState();
+  }
+
+  // ===================================================
+  // REHBER TURU (MODÜLER)
+  // ===================================================
+
+  void _santiyeEkleTuruBaslat() {
+    if (_santiyeEkleKey.currentContext == null) return;
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'santiye_ekle_btn',
+          keyTarget: _santiyeEkleKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 14,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top, // Değiştirildi: Ekrandan taşmaması için
+              builder:
+                  (ctx, ctrl) => _rehberTooltip(
+                    emoji: '🏗️',
+                    baslik: '1. Adım: Şantiye Ekle',
+                    aciklama:
+                        'Şimdi ilk şantiyenizi ekleyin.\nŞantiyeyi kaydettikten sonra geri dönme tuşuna basarak tekrar bu ekrana gelin.',
+                    controller: ctrl,
+                    renk: Colors.green,
+                  ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'TURU ATLA',
+      alignSkip: Alignment.topRight,
+      paddingFocus: 12,
+      onClickTarget: (target) {
+        Navigator.push(
+          context,
+          SayfaGecisi(sayfa: SantiyeEkrani(teamId: widget.teamId)),
+        ).then((_) {
+          if (mounted) setState(() {});
+        });
+      },
+    ).show(context: context);
+  }
+
+  void _isciEkleTuruBaslat() {
+    if (_isciEkleKey.currentContext == null) return;
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'isci_ekle_btn',
+          keyTarget: _isciEkleKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 14,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              builder:
+                  (ctx, ctrl) => _rehberTooltip(
+                    emoji: '👨\u200d🚧',
+                    baslik: '2. Adım: İşçi Ekle',
+                    aciklama:
+                        'Harika, şantiyeni ekledin!\nŞimdi çalışan kişileri ekle, sonra tekrar arka plandaki geri tuşuna basarak buraya dön.',
+                    controller: ctrl,
+                    renk: Colors.blue,
+                  ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'TURU ATLA',
+      alignSkip: Alignment.topRight,
+      paddingFocus: 12,
+      onClickTarget: (target) {
+        Navigator.push(
+          context,
+          SayfaGecisi(sayfa: IsciEkrani(teamId: widget.teamId)),
+        ).then((_) {
+          if (mounted) setState(() {});
+        });
+      },
+    ).show(context: context);
+  }
+
+  void _santiyeKartiTurBaslat() {
+    if (_santiyeKartiKey.currentContext == null) return;
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'santiye_karti',
+          keyTarget: _santiyeKartiKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 18,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              builder:
+                  (ctx, ctrl) => _rehberTooltip(
+                    emoji: '📊',
+                    baslik: '3. Adım: Rapor Girişi',
+                    aciklama:
+                        'Her şey hazır!\nGünlük yoklamayı alıp kaydetmek için oluşturduğunuz bu şantiye kartına tıklayın.',
+                    controller: ctrl,
+                    renk: Colors.teal,
+                  ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'TURU ATLA',
+      alignSkip: Alignment.topRight,
+      paddingFocus: 10,
+    ).show(context: context);
+  }
+
+  void _bottomSheetTuruBaslat() {
+    TutorialCoachMark(
+      targets: [
+        TargetFocus(
+          identify: 'hizli_yoklama',
+          keyTarget: _hizliYoklamaKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 10,
+          contents: [
+            TargetContent(
+              align: ContentAlign.bottom,
+              builder:
+                  (ctx, ctrl) => _rehberTooltip(
+                    emoji: '⚡',
+                    baslik: 'Hızlı Yoklama',
+                    aciklama:
+                        'Bu butona basarak tüm işçileri tek seferde "Tam Gün", "Yarım Gün" veya "Yok" olarak topluca işaretleyebilirsiniz.',
+                    controller: ctrl,
+                    renk: Colors.orange.shade800,
+                  ),
+            ),
+          ],
+        ),
+        TargetFocus(
+          identify: 'kaydet_kapat',
+          keyTarget: _kaydetKapatKey,
+          shape: ShapeLightFocus.RRect,
+          radius: 14,
+          contents: [
+            TargetContent(
+              align: ContentAlign.top,
+              builder:
+                  (ctx, ctrl) => _rehberTooltip(
+                    emoji: '💾',
+                    baslik: 'Son Adım: Kaydet',
+                    aciklama:
+                        'Puantaj işlemini bitirdiğinizde kaydetmeyi unutmayın!\nHadi kaydedelim.',
+                    controller: ctrl,
+                    renk: Colors.green,
+                  ),
+            ),
+          ],
+        ),
+      ],
+      colorShadow: Colors.black,
+      opacityShadow: 0.85,
+      textSkip: 'TURU ATLA',
+      alignSkip: Alignment.topRight,
+      paddingFocus: 8,
+      onClickTarget: (target) {
+        if (target.identify == 'hizli_yoklama') {
+          // Scroll to the bottom so that Kaydet button becomes visible and position calculation is correct
+          Scrollable.ensureVisible(
+            _kaydetKapatKey.currentContext!,
+            duration: const Duration(milliseconds: 300),
+            curve: Curves.easeInOut,
+          );
+        }
+      },
+    ).show(context: context);
+  }
+
+  Widget _rehberTooltip({
+    required String emoji,
+    required String baslik,
+    required String aciklama,
+    required TutorialCoachMarkController controller,
+    required Color renk,
+  }) {
+    return Container(
+      margin: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1A1A2E).withOpacity(0.97),
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: renk.withOpacity(0.35)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Text(emoji, style: const TextStyle(fontSize: 28)),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  baslik,
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 17,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            aciklama,
+            style: TextStyle(
+              color: Colors.grey[300],
+              fontSize: 14,
+              height: 1.5,
+            ),
+          ),
+          const SizedBox(height: 16),
+          // Sadece hedef butona tıklamaya zorlamak için İleri/Geri butonları kaldırıldı
+        ],
+      ),
+    );
+  }
+
   // --- HIZLI YOKLAMA POPUP (Aynı) ---
+  Set<String> _isciEslesmeAnahtarlari(Isci isci) {
+    final anahtarlar = <String>{'ad:${isci.ad.trim().toLowerCase()}'};
+    final id = isci.id?.trim();
+    if (id != null && id.isNotEmpty) {
+      anahtarlar.add('id:$id');
+    }
+    return anahtarlar;
+  }
+
+  Set<String> _raporlardakiIsciAnahtarlari(
+    Iterable<GunlukSantiyeRaporu> raporlar,
+  ) {
+    final anahtarlar = <String>{};
+    for (final rapor in raporlar) {
+      for (final calisma in rapor.calisanlar) {
+        anahtarlar.addAll(_isciEslesmeAnahtarlari(calisma.isci));
+      }
+    }
+    return anahtarlar;
+  }
+
+  List<Isci> _gunIcinSecilebilirIsciler({
+    required List<Isci> tumIsciler,
+    required List<GunlukSantiyeRaporu> seciliGunRaporlari,
+    required String aktifSantiyeAdi,
+    required GunlukSantiyeRaporu aktifRapor,
+  }) {
+    final digerRaporlar = seciliGunRaporlari.where(
+      (rapor) => rapor.santiyeAdi != aktifSantiyeAdi,
+    );
+    final digerSantiyeAnahtarlari = _raporlardakiIsciAnahtarlari(digerRaporlar);
+    final aktifRaporAnahtarlari = _raporlardakiIsciAnahtarlari([aktifRapor]);
+
+    final sonuc = tumIsciler.where((isci) {
+      final isciAnahtarlari = _isciEslesmeAnahtarlari(isci);
+      if (isciAnahtarlari.any(aktifRaporAnahtarlari.contains)) {
+        return true;
+      }
+      return !isciAnahtarlari.any(digerSantiyeAnahtarlari.contains);
+    }).toList();
+
+    sonuc.sort(
+      (a, b) =>
+          a.ad.trim().toLowerCase().compareTo(b.ad.trim().toLowerCase()),
+    );
+    return sonuc;
+  }
+
   void _hizliYoklamaBaslat(
     BuildContext context,
     GunlukSantiyeRaporu rapor,
-    List<Isci> tumIsciler,
+    List<Isci> secilebilirIsciler,
     StateSetter setMainModalState,
     VoidCallback onDegisiklik,
   ) {
     Map<String, String> geciciDurumlar = {};
-    for (var isci in tumIsciler) {
+    for (var isci in secilebilirIsciler) {
       var mevcutKayit =
           rapor.calisanlar.where((c) => c.isci.ad == isci.ad).firstOrNull;
       geciciDurumlar[isci.id ?? isci.ad] =
@@ -46,49 +360,91 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
       builder:
           (ctx) => StatefulBuilder(
             builder: (context, setSheetState) {
-              final bool isDark =
-                  Theme.of(context).brightness == Brightness.dark;
-              return Container(
-                height: MediaQuery.of(context).size.height * 0.85,
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                  borderRadius: const BorderRadius.vertical(
-                    top: Radius.circular(24),
-                  ),
+              final bool isDark = Theme.of(ctx).brightness == Brightness.dark;
+              return ClipRRect(
+                borderRadius: const BorderRadius.vertical(
+                  top: Radius.circular(24),
                 ),
-                child: Column(
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  child: Container(
+                    height: MediaQuery.of(context).size.height * 0.85,
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? const Color(0xFF121821).withOpacity(0.84)
+                              : Colors.white.withOpacity(0.86),
+                      borderRadius: const BorderRadius.vertical(
+                        top: Radius.circular(24),
+                      ),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : const Color(0xFFD9E6EC),
+                        width: 1,
+                      ),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.black.withOpacity(
+                            isDark ? 0.24 : 0.08,
+                          ),
+                          blurRadius: 28,
+                          offset: const Offset(0, -6),
+                        ),
+                      ],
+                    ),
+                    child: Column(
                   children: [
                     Padding(
                       padding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
                       child: Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             "Hızlı Yoklama",
                             style: TextStyle(
                               fontSize: 20,
-                              fontWeight: FontWeight.bold,
+                              fontWeight: FontWeight.w800,
+                              color:
+                                  isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
                             ),
                           ),
                           IconButton(
-                            icon: const Icon(Icons.close),
+                            icon: Icon(
+                              Icons.close_rounded,
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF516772),
+                            ),
                             onPressed: () => Navigator.pop(context),
                           ),
                         ],
                       ),
                     ),
-                    const Divider(),
+                    Divider(
+                      height: 1,
+                      color:
+                          isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : const Color(0xFFD9E6EC),
+                    ),
                     Expanded(
                       child:
-                          tumIsciler.isEmpty
-                              ? const Center(
-                                child: Text("Kayıtlı işçi bulunamadı."),
+                          secilebilirIsciler.isEmpty
+                              ? Center(
+                                child: Text(
+                                  "Kayıtlı işçi bulunamadı.",
+                                ),
                               )
                               : ListView.builder(
                                 padding: const EdgeInsets.all(16),
-                                itemCount: tumIsciler.length,
+                                itemCount: secilebilirIsciler.length,
                                 itemBuilder: (context, index) {
-                                  final isci = tumIsciler[index];
+                                  final isci = secilebilirIsciler[index];
                                   final String id = isci.id ?? isci.ad;
                                   final String durum =
                                       geciciDurumlar[id] ?? "Yok";
@@ -98,14 +454,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                     decoration: BoxDecoration(
                                       color:
                                           isDark
-                                              ? const Color(0xFF2C2C2E)
-                                              : Colors.grey.shade50,
+                                              ? const Color(0xFF181E27)
+                                              : const Color(0xFFF9FCFD),
                                       borderRadius: BorderRadius.circular(12),
                                       border: Border.all(
                                         color:
                                             isDark
-                                                ? Colors.transparent
-                                                : Colors.grey.shade200,
+                                                ? Colors.white.withOpacity(0.06)
+                                                : const Color(0xFFDCE8ED),
                                       ),
                                     ),
                                     child: Column(
@@ -164,15 +520,17 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                 },
                               ),
                     ),
-                    Padding(
-                      padding: const EdgeInsets.all(24.0),
+                    SafeArea(
+                      top: false,
+                      minimum: const EdgeInsets.fromLTRB(24, 0, 24, 12),
                       child: ElevatedButton(
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: Colors.blueAccent,
+                          backgroundColor: const Color(0xFF14B8A6),
                           foregroundColor: Colors.white,
-                          minimumSize: const Size(double.infinity, 50),
+                          minimumSize: const Size(double.infinity, 54),
+                          elevation: 0,
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                         ),
                         onPressed: () {
@@ -180,7 +538,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                             rapor.calisanlar.clear();
                             geciciDurumlar.forEach((id, seciliDurum) {
                               if (seciliDurum != "Yok") {
-                                final isci = tumIsciler.firstWhere(
+                                final isci = secilebilirIsciler.firstWhere(
                                   (i) => (i.id ?? i.ad) == id,
                                 );
                                 rapor.calisanlar.add(
@@ -199,6 +557,8 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                       ),
                     ),
                   ],
+                    ),
+                  ),
                 ),
               );
             },
@@ -217,27 +577,34 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
       child: GestureDetector(
         onTap: onTap,
         child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 10),
+          duration: const Duration(milliseconds: 220),
+          curve: Curves.easeOutCubic,
+          padding: const EdgeInsets.symmetric(vertical: 11),
           alignment: Alignment.center,
           decoration: BoxDecoration(
             color:
-                isSelected ? color : (isDark ? Colors.grey[800] : Colors.white),
-            borderRadius: BorderRadius.circular(8),
+                isSelected
+                    ? color.withOpacity(isDark ? 0.92 : 0.16)
+                    : (isDark
+                        ? const Color(0xFF0F141B)
+                        : Colors.white.withOpacity(0.82)),
+            borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color:
                   isSelected
-                      ? color
-                      : (isDark ? Colors.grey[700]! : Colors.grey[300]!),
-              width: isSelected ? 0 : 1,
+                      ? color.withOpacity(0.90)
+                      : (isDark
+                          ? Colors.white.withOpacity(0.08)
+                          : const Color(0xFFD7E4EA)),
+              width: 1,
             ),
             boxShadow:
                 isSelected
                     ? [
                       BoxShadow(
-                        color: color.withOpacity(0.4),
-                        blurRadius: 4,
-                        offset: const Offset(0, 2),
+                        color: color.withOpacity(isDark ? 0.18 : 0.14),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
                       ),
                     ]
                     : [],
@@ -247,9 +614,11 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
             style: TextStyle(
               color:
                   isSelected
-                      ? Colors.white
-                      : (isDark ? Colors.grey[400] : Colors.black54),
-              fontWeight: FontWeight.bold,
+                      ? (isDark ? Colors.white : color)
+                      : (isDark
+                          ? Colors.white70
+                          : const Color(0xFF516772)),
+              fontWeight: FontWeight.w700,
               fontSize: 13,
             ),
           ),
@@ -259,16 +628,164 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
   }
 
   // --- RAPOR DÜZENLEME EKRANI ---
+  Widget _buildKaydedilmemisDialog(BuildContext context) {
+    final dialogDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Dialog(
+      backgroundColor: Colors.transparent,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24),
+      child: Container(
+        padding: const EdgeInsets.all(22),
+        decoration: BoxDecoration(
+          color: dialogDark
+              ? const Color(0xFF161A20)
+              : const Color(0xFFF7FBFD),
+          borderRadius: BorderRadius.circular(24),
+          border: Border.all(
+            color: dialogDark
+                ? Colors.white.withOpacity(0.08)
+                : const Color(0xFFD8EAF0),
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(dialogDark ? 0.30 : 0.08),
+              blurRadius: 22,
+              offset: const Offset(0, 12),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: Colors.orange.withOpacity(0.14),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: const Icon(
+                    Icons.warning_amber_rounded,
+                    color: Colors.orange,
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Text(
+                    "Kaydedilmemi\u015f De\u011fi\u015fiklikler",
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w700,
+                      color: dialogDark
+                          ? Colors.white
+                          : const Color(0xFF0F172A),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+              Text(
+              "Verileri kaydetmeden \u00e7\u0131kmak istiyor musunuz?",
+              style: TextStyle(
+                height: 1.45,
+                color: dialogDark
+                    ? Colors.white70
+                    : const Color(0xFF516772),
+              ),
+            ),
+            const SizedBox(height: 20),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                final darEkran = constraints.maxWidth < 380;
+
+                Widget iptalButon() => OutlinedButton(
+                  onPressed: () => Navigator.pop(context, 'iptal'),
+                  child: const Text(
+                    "Vazge\u00e7",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+
+                Widget kapatButon() => ElevatedButton(
+                  onPressed: () => Navigator.pop(context, 'kapat'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.red,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text(
+                    "Kaydetme",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+
+                Widget kaydetButon() => ElevatedButton(
+                  onPressed: () => Navigator.pop(context, 'kaydet'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green,
+                    foregroundColor: Colors.white,
+                  ),
+                  child: const Text(
+                    "Kaydet",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                );
+
+                if (darEkran) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      iptalButon(),
+                      const SizedBox(height: 8),
+                      kapatButon(),
+                      const SizedBox(height: 8),
+                      kaydetButon(),
+                    ],
+                  );
+                }
+
+                return Row(
+                  children: [
+                    Expanded(child: iptalButon()),
+                    const SizedBox(width: 10),
+                    Expanded(child: kapatButon()),
+                    const SizedBox(width: 10),
+                    Expanded(child: kaydetButon()),
+                  ],
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   void _raporDuzenle(
     BuildContext context,
     FirestoreServisi servisi,
     String santiyeAdi,
     GunlukSantiyeRaporu? mevcutRapor,
     List<Isci> tumIsciler,
+    List<GunlukSantiyeRaporu> seciliGunRaporlari,
   ) {
     final rapor =
         mevcutRapor ??
         GunlukSantiyeRaporu(santiyeAdi: santiyeAdi, tarih: _seciliGun);
+    final digerSantiyeAnahtarlari = _raporlardakiIsciAnahtarlari(
+      seciliGunRaporlari.where((kayit) => kayit.santiyeAdi != santiyeAdi),
+    );
+    final kullanilabilirIsciler = _gunIcinSecilebilirIsciler(
+      tumIsciler: tumIsciler,
+      seciliGunRaporlari: seciliGunRaporlari,
+      aktifSantiyeAdi: santiyeAdi,
+      aktifRapor: rapor,
+    );
 
     final benzinCtrl = TextEditingController(
       text: rapor.benzinGideri == 0 ? "" : rapor.benzinGideri.toString(),
@@ -280,71 +797,163 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
       text: rapor.ekMasraflar == 0 ? "" : rapor.ekMasraflar.toString(),
     );
     final aciklamaCtrl = TextEditingController(text: rapor.aciklama);
+    String? benzinHarcayanId = rapor.benzinGideriIsciId;
+    String? benzinHarcayanAd = rapor.benzinGideriIsciAdi;
+    String? yemekHarcayanId = rapor.yemekGideriIsciId;
+    String? yemekHarcayanAd = rapor.yemekGideriIsciAdi;
+    String? ekMasrafHarcayanId = rapor.ekMasraflarIsciId;
+    String? ekMasrafHarcayanAd = rapor.ekMasraflarIsciAdi;
 
     bool degisiklikVar = false;
+    bool kaydetmeDevamEdiyor = false;
 
     showModalBottomSheet(
       context: context,
       isScrollControlled: true,
       isDismissible: false,
+      enableDrag: false,
       backgroundColor: Colors.transparent, // 1. ARKA PLAN ŞEFFAF
       builder:
           (ctx) => StatefulBuilder(
             builder: (ctx, setModalState) {
+              if (widget.baslatRehber && !_bottomSheetTuruGosterildi) {
+                WidgetsBinding.instance.addPostFrameCallback((_) {
+                  if (!mounted) return;
+                  if (!_bottomSheetTuruGosterildi) {
+                    setState(() => _bottomSheetTuruGosterildi = true);
+                    Future.delayed(const Duration(milliseconds: 450), () {
+                      if (mounted) _bottomSheetTuruBaslat();
+                    });
+                  }
+                });
+              }
               final bool isDark =
-                  Theme.of(context).brightness == Brightness.dark;
+                  Theme.of(ctx).brightness == Brightness.dark;
 
               Future<void> verileriKaydet() async {
+                if (kaydetmeDevamEdiyor) return;
+                setModalState(() => kaydetmeDevamEdiyor = true);
                 rapor.benzinGideri = double.tryParse(benzinCtrl.text) ?? 0;
                 rapor.yemekGideri = double.tryParse(yemekCtrl.text) ?? 0;
                 rapor.ekMasraflar = double.tryParse(ekMasrafCtrl.text) ?? 0;
+                rapor.benzinGideriIsciId =
+                    rapor.benzinGideri > 0 ? benzinHarcayanId : null;
+                rapor.benzinGideriIsciAdi =
+                    rapor.benzinGideri > 0 ? benzinHarcayanAd : null;
+                rapor.yemekGideriIsciId =
+                    rapor.yemekGideri > 0 ? yemekHarcayanId : null;
+                rapor.yemekGideriIsciAdi =
+                    rapor.yemekGideri > 0 ? yemekHarcayanAd : null;
+                rapor.ekMasraflarIsciId =
+                    rapor.ekMasraflar > 0 ? ekMasrafHarcayanId : null;
+                rapor.ekMasraflarIsciAdi =
+                    rapor.ekMasraflar > 0 ? ekMasrafHarcayanAd : null;
                 rapor.aciklama = aciklamaCtrl.text.trim();
-                await servisi.raporKaydet(widget.teamId, rapor);
-                if (mounted) Navigator.pop(context);
+                rapor.calisanlar.removeWhere((calisma) {
+                  final anahtarlar = _isciEslesmeAnahtarlari(calisma.isci);
+                  return anahtarlar.any(digerSantiyeAnahtarlari.contains);
+                });
+                try {
+                  await servisi.raporKaydet(widget.teamId, rapor);
+
+                  if (widget.baslatRehber && mounted) {
+                    await TurServisi.adim3Isaretle();
+                    await showDialog(
+                      context: ctx,
+                      barrierDismissible: false,
+                      builder:
+                          (dialogContext) => AlertDialog(
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          title: const Column(
+                            children: [
+                              Icon(
+                                Icons.celebration,
+                                color: Colors.amber,
+                                size: 60,
+                              ),
+                              SizedBox(height: 16),
+                              Text(
+                                "Tebrikler!",
+                                style: TextStyle(fontWeight: FontWeight.bold),
+                                textAlign: TextAlign.center,
+                              ),
+                            ],
+                          ),
+                          content: const Text(
+                            "İlk günlük raporunuzu başarıyla girdiniz.\nArtık uygulamayı kullanmaya hazırsınız!",
+                            textAlign: TextAlign.center,
+                            style: TextStyle(fontSize: 16),
+                          ),
+                          actionsAlignment: MainAxisAlignment.center,
+                          actions: [
+                            ElevatedButton(
+                              style: ElevatedButton.styleFrom(
+                                backgroundColor: Colors.green,
+                                foregroundColor: Colors.white,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 32,
+                                  vertical: 14,
+                                ),
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                              onPressed: () {
+                                Navigator.of(dialogContext).pop();
+                                if (ctx.mounted) {
+                                  Navigator.of(ctx).pop();
+                                }
+                              },
+                              child: const Text(
+                                "Uygulamayı Kullanmaya Hazırsınız",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                            ),
+                          ],
+                          ),
+                    );
+                  } else if (ctx.mounted) {
+                    Navigator.of(ctx).pop();
+                  }
+                } finally {
+                  if (ctx.mounted) {
+                    setModalState(() => kaydetmeDevamEdiyor = false);
+                  }
+                }
               }
 
               Future<bool> onWillPop() async {
+                if (kaydetmeDevamEdiyor) return false;
                 if (!degisiklikVar) return true;
                 final sonuc = await showDialog<String>(
-                  context: context,
-                  builder:
-                      (c) => AlertDialog(
-                        title: const Text("Kaydedilmemiş Değişiklikler"),
-                        content: const Text("Kaydetmek ister misiniz?"),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(c, 'iptal'),
-                            child: const Text("Vazgeç"),
-                          ),
-                          TextButton(
-                            onPressed: () => Navigator.pop(c, 'kapat'),
-                            child: const Text(
-                              "Kaydetme",
-                              style: TextStyle(color: Colors.red),
-                            ),
-                          ),
-                          ElevatedButton(
-                            onPressed: () => Navigator.pop(c, 'kaydet'),
-                            child: const Text("Kaydet"),
-                          ),
-                        ],
-                      ),
+                  context: ctx,
+                  builder: (c) => _buildKaydedilmemisDialog(c),
                 );
                 if (sonuc == 'kaydet') {
                   await verileriKaydet();
-                  return true;
+                  return false;
                 } else if (sonuc == 'kapat') {
                   return true;
                 }
                 return false;
               }
 
+              Future<void> kapatmayiDene() async {
+                if (await onWillPop() && ctx.mounted) {
+                  Navigator.of(ctx).pop();
+                }
+              }
+
               return PopScope(
                 canPop: !degisiklikVar,
                 onPopInvoked: (didPop) async {
                   if (didPop) return;
-                  if (await onWillPop() && context.mounted)
-                    Navigator.of(context).pop();
+                  await kapatmayiDene();
                 },
 
                 // 2. BLUR EFEKTİ İÇİN ClipRRect ve BackdropFilter KULLANIYORUZ
@@ -379,27 +988,39 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                         ), // Üstte ince cam çizgisi
                       ),
                       padding: EdgeInsets.only(
-                        bottom: MediaQuery.of(context).viewInsets.bottom,
+                        bottom: MediaQuery.of(ctx).viewInsets.bottom,
                       ),
                       child: DraggableScrollableSheet(
-                        initialChildSize: 0.9,
-                        maxChildSize: 0.95,
-                        minChildSize: 0.5,
-                        expand: false,
+                        initialChildSize: 1.0,
+                        maxChildSize: 1.0,
+                        minChildSize: 1.0,
+                        expand: true,
                         builder:
                             (_, scrollController) => Column(
                               children: [
                                 // Tutamaç
                                 Center(
-                                  child: Container(
-                                    margin: const EdgeInsets.symmetric(
-                                      vertical: 12,
-                                    ),
-                                    width: 40,
-                                    height: 4,
-                                    decoration: BoxDecoration(
-                                      color: Colors.grey.withOpacity(0.3),
-                                      borderRadius: BorderRadius.circular(10),
+                                  child: GestureDetector(
+                                    behavior: HitTestBehavior.opaque,
+                                    onTap: kapatmayiDene,
+                                    onVerticalDragEnd: (details) async {
+                                      if ((details.primaryVelocity ?? 0) > 0) {
+                                        await kapatmayiDene();
+                                      }
+                                    },
+                                    child: Padding(
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                        horizontal: 24,
+                                      ),
+                                      child: Container(
+                                        width: 40,
+                                        height: 4,
+                                        decoration: BoxDecoration(
+                                          color: Colors.grey.withOpacity(0.3),
+                                          borderRadius: BorderRadius.circular(10),
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 ),
@@ -441,30 +1062,32 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                             ),
                                           ),
                                           ElevatedButton.icon(
+                                            key: _hizliYoklamaKey,
                                             icon: const Icon(
-                                              Icons.flash_on,
-                                              size: 16,
+                                              Icons.person_add_alt_1_rounded,
+                                              size: 18,
                                             ),
                                             label: const Text("Hızlı Yoklama"),
                                             style: ElevatedButton.styleFrom(
                                               backgroundColor:
-                                                  Colors.orange.shade800,
+                                                  const Color(0xFFEF7C00),
                                               foregroundColor: Colors.white,
                                               padding:
                                                   const EdgeInsets.symmetric(
-                                                    horizontal: 12,
-                                                    vertical: 8,
+                                                    horizontal: 14,
+                                                    vertical: 10,
                                                   ),
+                                              elevation: 2,
                                               shape: RoundedRectangleBorder(
                                                 borderRadius:
-                                                    BorderRadius.circular(8),
+                                                    BorderRadius.circular(12),
                                               ),
                                             ),
                                             onPressed:
                                                 () => _hizliYoklamaBaslat(
                                                   context,
                                                   rapor,
-                                                  tumIsciler,
+                                                  kullanilabilirIsciler,
                                                   setModalState,
                                                   () => degisiklikVar = true,
                                                 ),
@@ -472,135 +1095,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                         ],
                                       ),
 
-                                      Align(
-                                        alignment: Alignment.centerRight,
-                                        child: TextButton.icon(
-                                          icon: const Icon(Icons.add, size: 16),
-                                          label: const Text("Tek Kişi Ekle"),
-                                          onPressed: () {
-                                            final eklenebilirIsciler =
-                                                tumIsciler
-                                                    .where(
-                                                      (i) =>
-                                                          !rapor.calisanlar.any(
-                                                            (c) =>
-                                                                c.isci.ad ==
-                                                                i.ad,
-                                                          ),
-                                                    )
-                                                    .toList();
-                                            showDialog(
-                                              context: context,
-                                              builder: (dCtx) {
-                                                return AlertDialog(
-                                                  title: const Text("İşçi Seç"),
-                                                  content: SizedBox(
-                                                    width: double.maxFinite,
-                                                    child:
-                                                        eklenebilirIsciler
-                                                                .isEmpty
-                                                            ? const Text(
-                                                              "Eklenebilecek işçi kalmadı.",
-                                                            )
-                                                            : ListView.builder(
-                                                              shrinkWrap: true,
-                                                              itemCount:
-                                                                  eklenebilirIsciler
-                                                                      .length,
-                                                              itemBuilder:
-                                                                  (
-                                                                    c,
-                                                                    i,
-                                                                  ) => ListTile(
-                                                                    leading: CircleAvatar(
-                                                                      child: Text(
-                                                                        eklenebilirIsciler[i]
-                                                                            .ad[0],
-                                                                      ),
-                                                                    ),
-                                                                    title: Text(
-                                                                      eklenebilirIsciler[i]
-                                                                          .ad,
-                                                                    ),
-                                                                    onTap: () {
-                                                                      Navigator.pop(
-                                                                        dCtx,
-                                                                      );
-                                                                      showDialog(
-                                                                        context:
-                                                                            context,
-                                                                        builder:
-                                                                            (
-                                                                              secimCtx,
-                                                                            ) => AlertDialog(
-                                                                              title: Text(
-                                                                                "${eklenebilirIsciler[i].ad} Durumu",
-                                                                              ),
-                                                                              content: const Text(
-                                                                                "Nasıl çalıştı?",
-                                                                              ),
-                                                                              actions: [
-                                                                                TextButton(
-                                                                                  onPressed: () {
-                                                                                    setModalState(
-                                                                                      () {
-                                                                                        rapor.calisanlar.add(
-                                                                                          GunlukCalisma(
-                                                                                            isci:
-                                                                                                eklenebilirIsciler[i],
-                                                                                            durum:
-                                                                                                "Yarım Gün",
-                                                                                          ),
-                                                                                        );
-                                                                                        degisiklikVar =
-                                                                                            true;
-                                                                                      },
-                                                                                    );
-                                                                                    Navigator.pop(
-                                                                                      secimCtx,
-                                                                                    );
-                                                                                  },
-                                                                                  child: const Text(
-                                                                                    "Yarım",
-                                                                                  ),
-                                                                                ),
-                                                                                ElevatedButton(
-                                                                                  onPressed: () {
-                                                                                    setModalState(
-                                                                                      () {
-                                                                                        rapor.calisanlar.add(
-                                                                                          GunlukCalisma(
-                                                                                            isci:
-                                                                                                eklenebilirIsciler[i],
-                                                                                            durum:
-                                                                                                "Tam Gün",
-                                                                                          ),
-                                                                                        );
-                                                                                        degisiklikVar =
-                                                                                            true;
-                                                                                      },
-                                                                                    );
-                                                                                    Navigator.pop(
-                                                                                      secimCtx,
-                                                                                    );
-                                                                                  },
-                                                                                  child: const Text(
-                                                                                    "Tam",
-                                                                                  ),
-                                                                                ),
-                                                                              ],
-                                                                            ),
-                                                                      );
-                                                                    },
-                                                                  ),
-                                                            ),
-                                                  ),
-                                                );
-                                              },
-                                            );
-                                          },
-                                        ),
-                                      ),
+                                      const SizedBox(height: 16),
 
                                       // Çalışan Listesi
                                       if (rapor.calisanlar.isEmpty)
@@ -609,17 +1104,18 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                           decoration: BoxDecoration(
                                             color:
                                                 isDark
-                                                    ? Colors.white.withOpacity(
-                                                      0.05,
-                                                    )
-                                                    : Colors.grey[100],
+                                                    ? const Color(0xFF171D25)
+                                                    : const Color(0xFFF9FCFD),
                                             borderRadius: BorderRadius.circular(
                                               12,
                                             ),
                                             border: Border.all(
-                                              color: Colors.white.withOpacity(
-                                                0.1,
-                                              ),
+                                              color:
+                                                  isDark
+                                                      ? Colors.white.withOpacity(
+                                                        0.08,
+                                                      )
+                                                      : const Color(0xFFDCE8ED),
                                             ),
                                           ),
                                           child: const Center(
@@ -641,14 +1137,18 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                             decoration: BoxDecoration(
                                               color:
                                                   isDark
-                                                      ? const Color(0xFF252525)
-                                                      : Colors.white,
+                                                      ? const Color(0xFF171D25)
+                                                      : const Color(0xFFF9FCFD),
                                               borderRadius:
                                                   BorderRadius.circular(12),
                                               border: Border.all(
-                                                color: Colors.grey.withOpacity(
-                                                  0.1,
-                                                ),
+                                                color:
+                                                    isDark
+                                                        ? Colors.white
+                                                            .withOpacity(0.06)
+                                                        : const Color(
+                                                            0xFFDCE8ED,
+                                                          ),
                                               ),
                                             ),
                                             child: Row(
@@ -759,6 +1259,15 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                         label: "Benzin Gideri",
                                         icon: Icons.local_gas_station_outlined,
                                         isDark: isDark,
+                                        tumIsciler: tumIsciler,
+                                        seciliIsciAdi: benzinHarcayanAd,
+                                        onIsciSecildi: (isci) {
+                                          setModalState(() {
+                                            benzinHarcayanId = isci?.id;
+                                            benzinHarcayanAd = isci?.ad;
+                                            degisiklikVar = true;
+                                          });
+                                        },
                                         onChanged:
                                             () => setModalState(
                                               () => degisiklikVar = true,
@@ -771,6 +1280,15 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                         label: "Yemek Gideri",
                                         icon: Icons.restaurant_outlined,
                                         isDark: isDark,
+                                        tumIsciler: tumIsciler,
+                                        seciliIsciAdi: yemekHarcayanAd,
+                                        onIsciSecildi: (isci) {
+                                          setModalState(() {
+                                            yemekHarcayanId = isci?.id;
+                                            yemekHarcayanAd = isci?.ad;
+                                            degisiklikVar = true;
+                                          });
+                                        },
                                         onChanged:
                                             () => setModalState(
                                               () => degisiklikVar = true,
@@ -783,6 +1301,15 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                         label: "Ek Masraflar",
                                         icon: Icons.add_shopping_cart_outlined,
                                         isDark: isDark,
+                                        tumIsciler: tumIsciler,
+                                        seciliIsciAdi: ekMasrafHarcayanAd,
+                                        onIsciSecildi: (isci) {
+                                          setModalState(() {
+                                            ekMasrafHarcayanId = isci?.id;
+                                            ekMasrafHarcayanAd = isci?.ad;
+                                            degisiklikVar = true;
+                                          });
+                                        },
                                         onChanged:
                                             () => setModalState(
                                               () => degisiklikVar = true,
@@ -814,28 +1341,51 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                       ),
 
                                       const SizedBox(height: 32),
-                                      ElevatedButton(
-                                        style: ElevatedButton.styleFrom(
-                                          backgroundColor: Colors.green,
-                                          foregroundColor: Colors.white,
-                                          padding: const EdgeInsets.symmetric(
-                                            vertical: 18,
-                                          ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
+                                      SafeArea(
+                                        top: false,
+                                        minimum: const EdgeInsets.only(bottom: 12),
+                                        child: ElevatedButton(
+                                          key: _kaydetKapatKey,
+                                          style: ElevatedButton.styleFrom(
+                                            backgroundColor: Colors.green,
+                                            foregroundColor: Colors.white,
+                                            padding: const EdgeInsets.symmetric(
+                                              vertical: 18,
                                             ),
+                                            shape: RoundedRectangleBorder(
+                                              borderRadius: BorderRadius.circular(
+                                                16,
+                                              ),
+                                            ),
+                                            elevation: 4,
                                           ),
-                                          elevation: 4,
-                                        ),
-                                        onPressed: verileriKaydet,
-                                        child: const Text(
-                                          "KAYDET VE KAPAT",
-                                          style: TextStyle(
-                                            fontSize: 16,
-                                            fontWeight: FontWeight.bold,
-                                            letterSpacing: 1,
-                                          ),
+                                          onPressed:
+                                              kaydetmeDevamEdiyor
+                                                  ? null
+                                                  : verileriKaydet,
+                                          child:
+                                              kaydetmeDevamEdiyor
+                                                  ? const SizedBox(
+                                                    height: 22,
+                                                    width: 22,
+                                                    child:
+                                                        CircularProgressIndicator(
+                                                          strokeWidth: 2.4,
+                                                          valueColor:
+                                                              AlwaysStoppedAnimation<
+                                                                Color
+                                                              >(Colors.white),
+                                                        ),
+                                                  )
+                                                  : const Text(
+                                                    "KAYDET VE KAPAT",
+                                                    style: TextStyle(
+                                                      fontSize: 16,
+                                                      fontWeight:
+                                                          FontWeight.bold,
+                                                      letterSpacing: 1,
+                                                    ),
+                                                  ),
                                         ),
                                       ),
                                     ],
@@ -853,6 +1403,89 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
     );
   }
 
+  Future<Isci?> _harcamaIscisiSec(
+    BuildContext context,
+    List<Isci> tumIsciler,
+    String? seciliIsciAdi,
+  ) async {
+    return showModalBottomSheet<Isci?>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (sheetContext) {
+        final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
+        return SafeArea(
+          child: Container(
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF171B20) : const Color(0xFFF7FBFD),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+              border: Border.all(
+                color:
+                    isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : const Color(0xFFD5E6EC),
+              ),
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const SizedBox(height: 12),
+                Container(
+                  width: 42,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.grey.withOpacity(0.35),
+                    borderRadius: BorderRadius.circular(999),
+                  ),
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  "Masraf Kimin Kartından Yapıldı?",
+                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 12),
+                Flexible(
+                  child: ListView(
+                    shrinkWrap: true,
+                    children: [
+                      ListTile(
+                        leading: const Icon(Icons.close_rounded),
+                        title: const Text("Seçimi Temizle"),
+                        onTap: () => Navigator.pop(sheetContext, null),
+                      ),
+                      ...tumIsciler.map(
+                        (isci) => ListTile(
+                          leading: CircleAvatar(
+                            backgroundColor: Colors.teal.withOpacity(0.14),
+                            child: Text(
+                              isci.ad.isEmpty ? "?" : isci.ad[0].toUpperCase(),
+                              style: const TextStyle(
+                                color: Colors.teal,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ),
+                          title: Text(isci.ad),
+                          trailing:
+                              seciliIsciAdi == isci.ad
+                                  ? const Icon(
+                                    Icons.check_circle,
+                                    color: Colors.teal,
+                                  )
+                                  : null,
+                          onTap: () => Navigator.pop(sheetContext, isci),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+    );
+  }
+
   // ==========================================
   // 3. ODAKLANAN INPUT WIDGET'I (YENİ) 👁️✨
   // ==========================================
@@ -864,6 +1497,9 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
     required bool isDark,
     required VoidCallback onChanged,
     bool isMultiLine = false,
+    List<Isci>? tumIsciler,
+    String? seciliIsciAdi,
+    ValueChanged<Isci?>? onIsciSecildi,
   }) {
     return Consumer<PrivacyProvider>(
       builder: (context, privacy, child) {
@@ -874,6 +1510,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
 
         return InkWell(
           onTap: () {
+            String? dialogSeciliIsciAdi = seciliIsciAdi;
             // Tıklayınca Odak Modunu Aç (Dialog)
             showGeneralDialog(
               context: context,
@@ -885,8 +1522,10 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                 return Scaffold(
                   // Klavye yönetimi için Scaffold şart
                   backgroundColor: Colors.transparent,
-                  body: Stack(
-                    children: [
+                  body: StatefulBuilder(
+                    builder:
+                        (dialogContext, setDialogState) => Stack(
+                          children: [
                       // Bulanıklık Efekti
                       BackdropFilter(
                         filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
@@ -940,6 +1579,83 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                   onChanged(); // Değişiklik var işaretle
                                 },
                               ),
+                              if (!isMultiLine && tumIsciler != null) ...[
+                                const SizedBox(height: 16),
+                                OutlinedButton.icon(
+                                  onPressed: () async {
+                                    final secilenIsci = await _harcamaIscisiSec(
+                                      dialogContext,
+                                      tumIsciler,
+                                      dialogSeciliIsciAdi,
+                                    );
+                                    setDialogState(() {
+                                      dialogSeciliIsciAdi = secilenIsci?.ad;
+                                    });
+                                    onIsciSecildi?.call(secilenIsci);
+                                  },
+                                  style: OutlinedButton.styleFrom(
+                                    foregroundColor: const Color(0xFF22C55E),
+                                    side: BorderSide(
+                                      color: Colors.white.withOpacity(0.32),
+                                    ),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 18,
+                                      vertical: 12,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(999),
+                                    ),
+                                  ),
+                                  icon: const Icon(Icons.badge_outlined),
+                                  label: Text(
+                                    dialogSeciliIsciAdi == null ||
+                                            dialogSeciliIsciAdi!.isEmpty
+                                        ? "\u0130\u015f\u00e7i Se\u00e7"
+                                        : dialogSeciliIsciAdi!,
+                                  ),
+                                ),
+                                if (dialogSeciliIsciAdi != null &&
+                                    dialogSeciliIsciAdi!.isNotEmpty) ...[
+                                  const SizedBox(height: 10),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFF22C55E,
+                                      ).withOpacity(0.14),
+                                      borderRadius: BorderRadius.circular(14),
+                                      border: Border.all(
+                                        color: const Color(
+                                          0xFF22C55E,
+                                        ).withOpacity(0.34),
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        const Icon(
+                                          Icons.credit_card_rounded,
+                                          size: 18,
+                                          color: Color(0xFF22C55E),
+                                        ),
+                                        const SizedBox(width: 8),
+                                        Flexible(
+                                          child: Text(
+                                            "Kart\u0131 kullanan: $dialogSeciliIsciAdi",
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ],
                               const SizedBox(height: 20),
                               ElevatedButton(
                                 onPressed: () => Navigator.pop(ctx),
@@ -974,7 +1690,8 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                           ),
                         ),
                       ),
-                    ],
+                          ],
+                        ),
                   ),
                 );
               },
@@ -1033,18 +1750,23 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
     required bool santiyelerBos,
     required bool iscilerBos,
   }) {
+    const accent = Color(0xFF14B8A6);
     return Center(
       child: Padding(
-        padding: const EdgeInsets.all(32.0),
-        child: Column(
-          mainAxisAlignment: MainAxisAlignment.center,
-          children: [
-            Icon(
-              Icons.engineering_outlined,
-              size: 80,
-              color: isDark ? Colors.grey[600] : Colors.grey[400],
-            ),
-            const SizedBox(height: 24),
+        padding: const EdgeInsets.all(20),
+        child: GlassSectionCard(
+          borderRadius: 28,
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              GlassIconBadge(
+                icon: Icons.fact_check_outlined,
+                color: accent,
+                size: 82,
+                iconSize: 34,
+              ),
+              const SizedBox(height: 18),
             Text(
               "Başlamak için hazır mısınız?",
               style: TextStyle(
@@ -1054,65 +1776,68 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
               ),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 12),
-            Text(
+              const SizedBox(height: 12),
+              Text(
               "Günlük rapor oluşturabilmek için önce şantiye ve işçi eklemeniz gerekiyor.",
               style: TextStyle(fontSize: 14, color: Colors.grey[600]),
               textAlign: TextAlign.center,
             ),
-            const SizedBox(height: 32),
+              const SizedBox(height: 32),
 
             // Şantiye Ekle Butonu
             if (santiyelerBos)
               Container(
+                key: _santiyeEkleKey,
                 width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ElevatedButton.icon(
                   icon: const Icon(Icons.construction, size: 20),
                   label: const Text("Şantiye Ekle"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.green,
+                    backgroundColor: accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder:
-                            (context) => SantiyeEkrani(teamId: widget.teamId),
-                      ),
-                    );
+                      SayfaGecisi(sayfa: SantiyeEkrani(teamId: widget.teamId)),
+                    ).then((_) {
+                      if (mounted) setState(() {});
+                    });
                   },
                 ),
               ),
 
             // İşçi Ekle Butonu
-            if (iscilerBos)
+            if (!santiyelerBos && iscilerBos)
               Container(
+                key: _isciEkleKey,
                 width: double.infinity,
                 margin: const EdgeInsets.only(bottom: 12),
                 child: ElevatedButton.icon(
-                  icon: const Icon(Icons.person_add, size: 20),
+                  icon: const Icon(Icons.person_add_alt_1_rounded, size: 20),
                   label: const Text("İşçi Ekle"),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.blue,
+                    backgroundColor: accent,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 16),
+                    elevation: 0,
                     shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(12),
+                      borderRadius: BorderRadius.circular(16),
                     ),
                   ),
                   onPressed: () {
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder: (context) => IsciEkrani(teamId: widget.teamId),
-                      ),
-                    );
+                      SayfaGecisi(sayfa: IsciEkrani(teamId: widget.teamId)),
+                    ).then((_) {
+                      if (mounted) setState(() {});
+                    });
                   },
                 ),
               ),
@@ -1154,6 +1879,41 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
           ],
         ),
       ),
+    )
+    );
+  }
+
+  Widget _buildHazirlikChip({
+    required String label,
+    required bool aktif,
+  }) {
+    final renk = aktif ? const Color(0xFF14B8A6) : const Color(0xFFEF4444);
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      decoration: BoxDecoration(
+        color: renk.withOpacity(0.12),
+        borderRadius: BorderRadius.circular(999),
+        border: Border.all(color: renk.withOpacity(0.28)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(
+            aktif ? Icons.check_circle_rounded : Icons.close_rounded,
+            size: 15,
+            color: renk,
+          ),
+          const SizedBox(width: 6),
+          Text(
+            label,
+            style: TextStyle(
+              color: renk,
+              fontSize: 12,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -1166,8 +1926,19 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
     final genisBitis = DateTime(2026, 12, 31);
 
     return Scaffold(
-      appBar: AppBar(title: const Text('Günlük Rapor')),
-      body: StreamBuilder<List<GunlukSantiyeRaporu>>(
+      backgroundColor: Colors.transparent,
+      appBar: AppBar(
+        title: const Text('Günlük Rapor'),
+        elevation: 0,
+        backgroundColor:
+            isDark
+                ? const Color(0xFF06080B).withOpacity(0.96)
+                : const Color(0xFFF8FCFE).withOpacity(0.92),
+        surfaceTintColor: Colors.transparent,
+      ),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: StreamBuilder<List<GunlukSantiyeRaporu>>(
         stream: servisi.getRaporlarStream(
           widget.teamId,
           genisBaslangic,
@@ -1175,7 +1946,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
         ),
         builder: (context, snapshotRaporlar) {
           if (!snapshotRaporlar.hasData)
-            return const Center(child: CircularProgressIndicator());
+            return const ShimmerYukleniyor(kartGorunumu: true);
           final tumRaporlar = snapshotRaporlar.data!;
           List<GunlukSantiyeRaporu> _gununEtkinlikleri(DateTime gun) {
             return tumRaporlar
@@ -1186,26 +1957,15 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
           final seciliGunRaporlari =
               tumRaporlar.where((r) => isSameDay(r.tarih, _seciliGun)).toList();
 
-          return Column(
+          return SafeArea(
+            top: false,
+            child: Column(
             children: [
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: Container(
-                  decoration: BoxDecoration(
-                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                      width: 1,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 5,
-                        offset: const Offset(0, 2),
-                      ),
-                    ],
-                  ),
+                child: GlassSectionCard(
+                  padding: EdgeInsets.zero,
+                  borderRadius: 22,
                   child: ListTile(
                     contentPadding: const EdgeInsets.symmetric(horizontal: 16),
                     title: Text(
@@ -1236,22 +1996,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
               ),
               if (_calendarVisible)
                 Center(
-                  child: Card(
-                    elevation: 4,
-                    margin: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 8,
-                    ),
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                      side: BorderSide(
-                        color: isDark ? Colors.grey[700]! : Colors.grey[300]!,
-                        width: 1,
-                      ),
-                    ),
-                    color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
+                  child: GlassSectionCard(
+                    borderRadius: 24,
+                    padding: const EdgeInsets.symmetric(vertical: 8),
                     child: Padding(
-                      padding: const EdgeInsets.symmetric(vertical: 8.0),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 0,
+                      ),
                       child: TableCalendar(
                         locale: 'tr_TR',
                         firstDay: genisBaslangic,
@@ -1261,27 +2013,61 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                         eventLoader: _gununEtkinlikleri,
                         calendarStyle: CalendarStyle(
                           markerDecoration: const BoxDecoration(
-                            color: Colors.green,
+                            color: Color(0xFF14B8A6),
                             shape: BoxShape.circle,
                           ),
                           todayDecoration: BoxDecoration(
-                            color: Colors.blue.withOpacity(0.5),
+                            color: const Color(0xFF14B8A6).withOpacity(0.25),
                             shape: BoxShape.circle,
                           ),
                           selectedDecoration: const BoxDecoration(
-                            color: Colors.blue,
+                            color: Color(0xFF14B8A6),
                             shape: BoxShape.circle,
                           ),
                         ),
-                        headerStyle: const HeaderStyle(
+                        headerStyle: HeaderStyle(
                           formatButtonVisible: false,
                           titleCentered: true,
+                          titleTextStyle: TextStyle(
+                            fontWeight: FontWeight.w700,
+                            color:
+                                isDark
+                                    ? Colors.white
+                                    : const Color(0xFF0F172A),
+                          ),
+                          leftChevronIcon: Icon(
+                            Icons.chevron_left_rounded,
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF516772),
+                          ),
+                          rightChevronIcon: Icon(
+                            Icons.chevron_right_rounded,
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF516772),
+                          ),
                         ),
-                        onDaySelected:
-                            (s, f) => setState(() {
-                              _seciliGun = s;
-                              _odaklanilanGun = f;
-                            }),
+                        daysOfWeekStyle: DaysOfWeekStyle(
+                          weekdayStyle: TextStyle(
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF516772),
+                          ),
+                          weekendStyle: TextStyle(
+                            color:
+                                isDark
+                                    ? Colors.white60
+                                    : const Color(0xFF7A8E98),
+                          ),
+                        ),
+                        onDaySelected: (s, f) => setState(() {
+                          _seciliGun = s;
+                          _odaklanilanGun = f;
+                        }),
                       ),
                     ),
                   ),
@@ -1292,21 +2078,56 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                   stream: servisi.getSantiyelerStream(widget.teamId),
                   builder: (context, snapshotSantiyeler) {
                     if (!snapshotSantiyeler.hasData)
-                      return const Center(child: CircularProgressIndicator());
+                      return const ShimmerYukleniyor(satirSayisi: 4);
                     final santiyeler = snapshotSantiyeler.data!;
                     return StreamBuilder<List<Isci>>(
                       stream: servisi.getIscilerStream(widget.teamId),
                       builder: (context, snapshotIsciler) {
+                        if (!snapshotIsciler.hasData ||
+                            snapshotIsciler.connectionState ==
+                                ConnectionState.waiting) {
+                          return const ShimmerYukleniyor(satirSayisi: 4);
+                        }
                         final tumIsciler = snapshotIsciler.data ?? [];
+                        final bool isTopRoute =
+                            ModalRoute.of(context)?.isCurrent == true;
 
                         // Yeni kullanıcı için onboarding kontrolü
                         if (santiyeler.isEmpty || tumIsciler.isEmpty) {
+                          if (widget.baslatRehber && isTopRoute) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              if (santiyeler.isEmpty &&
+                                  !_santiyeTuruGosterildi) {
+                                setState(() => _santiyeTuruGosterildi = true);
+                                _santiyeEkleTuruBaslat();
+                              } else if (santiyeler.isNotEmpty &&
+                                  tumIsciler.isEmpty &&
+                                  !_isciTuruGosterildi) {
+                                setState(() => _isciTuruGosterildi = true);
+                                _isciEkleTuruBaslat();
+                              }
+                            });
+                          }
                           return _buildOnboardingWidget(
                             context: context,
                             isDark: isDark,
                             santiyelerBos: santiyeler.isEmpty,
                             iscilerBos: tumIsciler.isEmpty,
                           );
+                        } else {
+                          // İkisi de dolu, kart bazlı tutorial kontrolü
+                          if (widget.baslatRehber &&
+                              isTopRoute &&
+                              !_santiyeKartiTuruGosterildi) {
+                            WidgetsBinding.instance.addPostFrameCallback((_) {
+                              if (!mounted) return;
+                              setState(
+                                () => _santiyeKartiTuruGosterildi = true,
+                              );
+                              _santiyeKartiTurBaslat();
+                            });
+                          }
                         }
 
                         return ListView.builder(
@@ -1319,33 +2140,17 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                     .where((r) => r.santiyeAdi == santiyeAdi)
                                     .firstOrNull;
                             final bool dolu = mevcutRapor != null;
-                            Color cardColor =
-                                isDark ? const Color(0xFF1E1E1E) : Colors.white;
-                            Color? borderColor = Colors.grey.withOpacity(0.3);
-                            if (dolu) {
-                              cardColor =
-                                  isDark
-                                      ? Colors.green.withOpacity(0.1)
-                                      : Colors.green.shade50;
-                              borderColor = Colors.green;
-                            }
                             return Container(
+                              key: index == 0 ? _santiyeKartiKey : null,
                               margin: const EdgeInsets.symmetric(
                                 vertical: 8,
                                 horizontal: 12,
                               ),
-                              child: Card(
-                                elevation: 4,
-                                shape: RoundedRectangleBorder(
-                                  borderRadius: BorderRadius.circular(20),
-                                  side: BorderSide(
-                                    color: borderColor!,
-                                    width: 2.0,
-                                  ),
-                                ),
-                                color: cardColor,
+                              child: GlassSectionCard(
+                                borderRadius: 24,
+                                padding: EdgeInsets.zero,
                                 child: InkWell(
-                                  borderRadius: BorderRadius.circular(20),
+                                  borderRadius: BorderRadius.circular(24),
                                   onTap:
                                       () => _raporDuzenle(
                                         context,
@@ -1353,6 +2158,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                         santiyeAdi,
                                         mevcutRapor,
                                         tumIsciler,
+                                        seciliGunRaporlari,
                                       ),
                                   child: Padding(
                                     padding: const EdgeInsets.symmetric(
@@ -1368,15 +2174,28 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                               decoration: BoxDecoration(
                                                 color:
                                                     dolu
-                                                        ? Colors.green
-                                                        : Colors.grey.shade400,
+                                                        ? const Color(0xFF14B8A6)
+                                                            .withOpacity(0.18)
+                                                        : (isDark
+                                                            ? Colors.white
+                                                                .withOpacity(0.12)
+                                                            : const Color(
+                                                                0xFFDCE9EE,
+                                                              )),
                                                 shape: BoxShape.circle,
                                               ),
                                               child: Icon(
-                                                dolu
-                                                    ? Icons.check
-                                                    : Icons.construction,
-                                                color: Colors.white,
+                                                Icons.apartment_rounded,
+                                                color:
+                                                    dolu
+                                                        ? const Color(
+                                                          0xFF14B8A6,
+                                                        )
+                                                        : (isDark
+                                                            ? Colors.white70
+                                                            : const Color(
+                                                                0xFF516772,
+                                                              )),
                                                 size: 24,
                                               ),
                                             ),
@@ -1402,10 +2221,16 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                                       child,
                                                     ) {
                                                       if (!dolu)
-                                                        return const Text(
+                                                        return Text(
                                                           "Veri girilmemiş",
                                                           style: TextStyle(
-                                                            color: Colors.grey,
+                                                            color:
+                                                                isDark
+                                                                    ? Colors
+                                                                        .white60
+                                                                    : const Color(
+                                                                        0xFF7A8E98,
+                                                                      ),
                                                           ),
                                                         );
                                                       final toplam =
@@ -1443,11 +2268,12 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                                                                       .bold,
                                                               color:
                                                                   isDark
-                                                                      ? Colors
-                                                                          .greenAccent
-                                                                      : Colors
-                                                                          .green
-                                                                          .shade800,
+                                                                      ? const Color(
+                                                                          0xFF5EEAD4,
+                                                                        )
+                                                                      : const Color(
+                                                                          0xFF0F766E,
+                                                                        ),
                                                             ),
                                                           ),
                                                           if (mevcutRapor
@@ -1495,8 +2321,10 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                 ),
               ),
             ],
+            ),
           );
         },
+      ),
       ),
     );
   }

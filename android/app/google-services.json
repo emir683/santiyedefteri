@@ -30,6 +30,14 @@
           }
         },
         {
+          "client_id": "250320257023-ooaqnlil3gmnsjqgqk0qfldjnsub7qu2.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.emircf.santiyepuantaj",
+            "certificate_hash": "e6de3fec923f34ed52ad60b87a4ea5d392531f73"
+          }
+        },
+        {
           "client_id": "250320257023-e0oa6mdlcs6sktvek3uanclp4rqg5f47.apps.googleusercontent.com",
           "client_type": 3
         }

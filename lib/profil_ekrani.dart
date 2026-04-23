@@ -5,6 +5,9 @@ import 'package:provider/provider.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'auth_servisi.dart';
+import 'widgets/glass_surface.dart';
+
+const Color _kBrandTeal = Color(0xFF14B8A6);
 
 class ProfilEkrani extends StatefulWidget {
   const ProfilEkrani({super.key});
@@ -105,7 +108,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                                       await _authServisi.kullaniciParolasiniGuncelle(mevcutParolaCtrl.text, yeniParolaCtrl.text);
                                       if (mounted) { 
                                         Navigator.pop(ctx); 
-                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Parolanız başarıyla güncellendi."), backgroundColor: Colors.green)); 
+                                        ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Parolanız başarıyla güncellendi."), backgroundColor: _kBrandTeal)); 
                                       }
                                     } catch (e) {
                                       setDialogState(() { loading = false; hataMesaji = e.toString().replaceFirst("Exception: ", ""); });
@@ -183,7 +186,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                               Navigator.pop(ctx); 
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: Colors.green, 
+                              backgroundColor: _kBrandTeal, 
                               foregroundColor: Colors.white, 
                               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16), 
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30))
@@ -270,9 +273,23 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
     final user = Provider.of<UserModel?>(context, listen: false);
     final firestoreServisi = FirestoreServisi(kullaniciId: user?.uid ?? '');
     
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Scaffold(
-      appBar: AppBar(title: const Text("Profilim")),
-      body: StreamBuilder<DocumentSnapshot>(
+      backgroundColor:
+          isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
+      appBar: AppBar(
+        elevation: 0,
+        backgroundColor:
+            isDark
+                ? const Color(0xFF101317).withOpacity(0.92)
+                : Colors.white.withOpacity(0.88),
+        surfaceTintColor: Colors.transparent,
+        title: const Text("Profilim"),
+      ),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: StreamBuilder<DocumentSnapshot>(
         stream: firestoreServisi.getKullaniciVeriStream(),
         builder: (context, snapshot) {
           if (!snapshot.hasData) return const Center(child: CircularProgressIndicator());
@@ -292,7 +309,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                 // PROFİL İKONU
                 CircleAvatar(
                   radius: 50,
-                  backgroundColor: Colors.green.shade800,
+                  backgroundColor: const Color(0xFF0F7C86),
                   child: Text(
                     adSoyad.isNotEmpty ? adSoyad[0].toUpperCase() : '?',
                     style: const TextStyle(fontSize: 40, color: Colors.white),
@@ -322,7 +339,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                       icon: const Icon(Icons.check),
                       label: const Text("Değişiklikleri Kaydet"),
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green, 
+                        backgroundColor: _kBrandTeal, 
                         foregroundColor: Colors.white, 
                         padding: const EdgeInsets.symmetric(vertical: 16), 
                         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))
@@ -331,7 +348,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                         if (_usernameController.text.trim().isNotEmpty) {
                           await firestoreServisi.kullaniciAdiniGuncelle(_usernameController.text.trim());
                           setState(() => _degisiklikYapildi = false);
-                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kullanıcı adı güncellendi."), backgroundColor: Colors.green));
+                          ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kullanıcı adı güncellendi."), backgroundColor: _kBrandTeal));
                         }
                       },
                     ),
@@ -358,6 +375,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
             ),
           );
         },
+        ),
       ),
     );
   }

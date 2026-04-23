@@ -1,5 +1,7 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -7,11 +9,16 @@ import 'package:flutter_localizations/flutter_localizations.dart';
 import 'auth_gate.dart';
 import 'firebase_options.dart';
 import 'auth_servisi.dart';
+import 'deep_link_service.dart';
 import 'user_model.dart';
 import 'tema_ayarlari.dart';
 import 'bildirim_servisi.dart';
 import 'privacy_provider.dart';
-// Native test
+import 'rol_provider.dart';
+
+final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
+bool _firebaseReady = false;
+String? _bootstrapError;
 
 // Tema yönetimi sınıfı
 class ThemeProvider with ChangeNotifier {
@@ -32,18 +39,37 @@ class ThemeProvider with ChangeNotifier {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+  try {
+    await LiquidGlassWidgets.initialize();
+  } catch (e) {
+    _bootstrapError = e.toString();
+    debugPrint("Liquid glass baslatilamadi: $e");
+  }
   debugPrint("--- UYGULAMA BAŞLATILIYOR ---");
 
   try {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
+    _firebaseReady = true;
     debugPrint("✅ Firebase başarıyla başlatıldı.");
   } catch (e) {
     debugPrint("🔥 Firebase başlatılırken KRİTİK HATA: $e");
   }
 
-  await BildirimServisi().init();
+  if (!kIsWeb) {
+    try {
+      await BildirimServisi().init();
+    } catch (e) {
+      debugPrint("Bildirim servisi baslatilamadi: $e");
+    }
+
+    try {
+      await DeepLinkService.instance.initialize(navigatorKey: navigatorKey);
+    } catch (e) {
+      debugPrint("Deep link servisi baslatilamadi: $e");
+    }
+  }
   runApp(const MyApp());
 }
 
@@ -52,6 +78,14 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    if (!_firebaseReady) {
+      return MaterialApp(
+        debugShowCheckedModeBanner: false,
+        title: 'Santiye Puantaj Defteri',
+        home: _BootstrapErrorScreen(message: _bootstrapError),
+      );
+    }
+
     return FutureBuilder<SharedPreferences>(
       future: SharedPreferences.getInstance(),
       builder: (context, snapshot) {
@@ -67,10 +101,9 @@ class MyApp extends StatelessWidget {
         // MultiProvider, birden fazla Provider'ı bir araya getirir.
         return MultiProvider(
           providers: [
-            // Tema durumu için
             ChangeNotifierProvider(create: (_) => ThemeProvider(isDarkMode)),
             ChangeNotifierProvider(create: (_) => PrivacyProvider()),
-            // Kullanıcı oturum durumu için
+            ChangeNotifierProvider(create: (_) => RolProvider()),
             StreamProvider<UserModel?>.value(
               value: AuthServisi().userStream,
               initialData: null,
@@ -81,6 +114,7 @@ class MyApp extends StatelessWidget {
               final textTheme = Theme.of(context).textTheme;
               return MaterialApp(
                 debugShowCheckedModeBanner: false,
+                navigatorKey: navigatorKey,
                 title: 'Şantiye Puantaj Defteri',
                 themeMode: themeProvider.themeMode,
                 theme: ThemeData(
@@ -175,6 +209,109 @@ class MyApp extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+}
+
+class _BootstrapErrorScreen extends StatelessWidget {
+  const _BootstrapErrorScreen({this.message});
+
+  final String? message;
+
+  @override
+  Widget build(BuildContext context) {
+    final isWebSetupIssue =
+        kIsWeb && (message?.contains('configured for web') ?? false);
+
+    return Scaffold(
+      backgroundColor: const Color(0xFFF4F8FA),
+      body: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 560),
+          child: Padding(
+            padding: const EdgeInsets.all(24),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(28),
+                border: Border.all(
+                  color: const Color(0xFF0F7C86).withOpacity(0.12),
+                ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Color(0x140F172A),
+                    blurRadius: 30,
+                    offset: Offset(0, 16),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Container(
+                    width: 58,
+                    height: 58,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F7C86).withOpacity(0.10),
+                      borderRadius: BorderRadius.circular(18),
+                    ),
+                    child: const Icon(
+                      Icons.cloud_off_rounded,
+                      color: Color(0xFF0F7C86),
+                      size: 30,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    isWebSetupIssue
+                        ? 'Web surumu henuz tamamlanmadi'
+                        : 'Uygulama baslatilamadi',
+                    style: GoogleFonts.poppins(
+                      fontSize: 24,
+                      fontWeight: FontWeight.w700,
+                      color: const Color(0xFF0F172A),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    isWebSetupIssue
+                        ? 'Firebase web yapilandirmasi eklenmedigi icin giris ekrani acilamiyor. Firebase projesine bir web uygulamasi ekleyip yeni ayarlari bu projeye baglamamiz gerekiyor.'
+                        : 'Baslangicta bir yapilandirma hatasi olustu. Ayrinti teknik mesajda gorunuyor.',
+                    style: GoogleFonts.poppins(
+                      fontSize: 14,
+                      height: 1.6,
+                      color: const Color(0xFF475569),
+                    ),
+                  ),
+                  if ((message ?? '').isNotEmpty) ...[
+                    const SizedBox(height: 18),
+                    Container(
+                      width: double.infinity,
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFFF8FAFC),
+                        borderRadius: BorderRadius.circular(18),
+                        border: Border.all(
+                          color: const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: SelectableText(
+                        message!,
+                        style: GoogleFonts.robotoMono(
+                          fontSize: 12.5,
+                          color: const Color(0xFF334155),
+                        ),
+                      ),
+                    ),
+                  ],
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
     );
   }
 }

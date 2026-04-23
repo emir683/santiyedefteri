@@ -1,5 +1,8 @@
 import 'package:flutter/material.dart';
-// import 'package:package_info_plus/package_info_plus.dart'; // BU SATIRI SİLDİK VEYA YORUMA ALDIK
+import 'widgets/glass_surface.dart';
+
+const Color _kBrandTeal = Color(0xFF14B8A6);
+// import 'package:package_info_plus/package_info_plus.dart'; // BU SATIRI SÄ°LDÄ°K VEYA YORUMA ALDIK
 
 class HakkindaEkrani extends StatelessWidget {
   const HakkindaEkrani({super.key});
@@ -10,8 +13,22 @@ class HakkindaEkrani extends StatelessWidget {
     final textColor = isDark ? Colors.white : Colors.black87;
 
     return Scaffold(
-      appBar: AppBar(title: const Text("Hakkında")),
-      body: Center(
+      backgroundColor:
+          isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
+      appBar: AppBar(
+        title: const Text("Hakkında"),
+        backgroundColor:
+            isDark
+                ? const Color(0xFF101317).withOpacity(0.92)
+                : Colors.white.withOpacity(0.88),
+        foregroundColor: isDark ? Colors.white : const Color(0xFF102A43),
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        surfaceTintColor: Colors.transparent,
+      ),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: Center(
         child: Padding(
           padding: const EdgeInsets.all(24.0),
           child: Column(
@@ -24,13 +41,13 @@ class HakkindaEkrani extends StatelessWidget {
                   color:
                       isDark
                           ? Colors.white.withOpacity(0.05)
-                          : Colors.green.withOpacity(0.1),
+                          : _kBrandTeal.withOpacity(0.1),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.construction,
                   size: 80,
-                  color: Colors.green,
+                  color: _kBrandTeal,
                 ),
               ),
               const SizedBox(height: 24),
@@ -51,23 +68,12 @@ class HakkindaEkrani extends StatelessWidget {
 
               const SizedBox(height: 40),
 
-              // BİLGİ KARTI
-              Container(
+              // BÄ°LGÄ° KARTI
+              GlassSectionCard(
                 padding: const EdgeInsets.all(20),
-                decoration: BoxDecoration(
-                  color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(color: Colors.grey.withOpacity(0.2)),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
-                    ),
-                  ],
-                ),
                 child: Column(
                   children: [
-                    _buildRow("Versiyon", "1.0.0"), // BURAYI ELLE YAZDIK
+                    _buildRow("Versiyon", "2.0.0"), // BURAYI ELLE YAZDIK
                     const Divider(),
                     _buildRow("Geliştirici", "Emir Çiftçi"),
                     const Divider(),
@@ -84,6 +90,7 @@ class HakkindaEkrani extends StatelessWidget {
             ],
           ),
         ),
+      ),
       ),
     );
   }

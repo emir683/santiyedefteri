@@ -1,11 +1,11 @@
 {
-    "name": "santiyeyonetim2",
-    "short_name": "santiyeyonetim2",
-    "start_url": ".",
+    "name": "Şantiye Puantaj Defteri",
+    "short_name": "Şantiye",
+    "start_url": "/app/",
     "display": "standalone",
-    "background_color": "#0175C2",
-    "theme_color": "#0175C2",
-    "description": "A new Flutter project.",
+    "background_color": "#0F7C86",
+    "theme_color": "#0F7C86",
+    "description": "Şantiye takibi, günlük rapor, ödeme ve ay sonu kontrol merkezi.",
     "orientation": "portrait-primary",
     "prefer_related_applications": false,
     "icons": [

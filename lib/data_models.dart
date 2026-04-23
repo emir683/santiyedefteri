@@ -1,27 +1,26 @@
-// lib/data_models.dart
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
-// --- YARDIMCI FONKSİYONLAR ---
 DateTime _tarihCevir(dynamic val) {
   if (val is Timestamp) return val.toDate();
   if (val is String) return DateTime.parse(val);
   return DateTime.now();
 }
 
-// --- VERİ MODELLERİ ---
-
 class Santiye {
+  String? id;
   String ad;
 
-  Santiye({required this.ad});
+  Santiye({this.id, required this.ad});
 
   Map<String, dynamic> toMap() {
     return {'ad': ad};
   }
 
-  factory Santiye.fromMap(Map<String, dynamic> map) {
-    return Santiye(ad: map['ad'] ?? '');
+  factory Santiye.fromMap(Map<String, dynamic> map, String documentId) {
+    return Santiye(
+      id: documentId,
+      ad: map['ad'] ?? '',
+    );
   }
 }
 
@@ -44,13 +43,12 @@ class Isci {
     );
   }
 
-  // Eski kodlardan kalan uyumluluk için (Opsiyonel)
   Map<String, dynamic> toJson() => toMap();
 }
 
 class GunlukCalisma {
   final Isci isci;
-  final String durum; // "Tam Gün" veya "Yarım Gün"
+  final String durum;
 
   GunlukCalisma({required this.isci, required this.durum});
 
@@ -61,7 +59,7 @@ class GunlukCalisma {
   factory GunlukCalisma.fromMap(Map<String, dynamic> map) {
     return GunlukCalisma(
       isci: Isci.fromMap(map['isci'] ?? {}, ''),
-      durum: map['durum'] ?? 'Tam Gün',
+      durum: map['durum'] ?? 'Tam G\u00fcn',
     );
   }
 }
@@ -72,9 +70,15 @@ class GunlukSantiyeRaporu {
   double benzinGideri;
   double yemekGideri;
   double ekMasraflar;
+  String? benzinGideriIsciId;
+  String? benzinGideriIsciAdi;
+  String? yemekGideriIsciId;
+  String? yemekGideriIsciAdi;
+  String? ekMasraflarIsciId;
+  String? ekMasraflarIsciAdi;
   String aciklama;
   List<GunlukCalisma> calisanlar;
-  DateTime tarih; // "tarih is required" hatası için bu alan zorunlu
+  DateTime tarih;
 
   GunlukSantiyeRaporu({
     this.id,
@@ -83,9 +87,15 @@ class GunlukSantiyeRaporu {
     this.benzinGideri = 0,
     this.yemekGideri = 0,
     this.ekMasraflar = 0,
+    this.benzinGideriIsciId,
+    this.benzinGideriIsciAdi,
+    this.yemekGideriIsciId,
+    this.yemekGideriIsciAdi,
+    this.ekMasraflarIsciId,
+    this.ekMasraflarIsciAdi,
     this.aciklama = '',
     List<GunlukCalisma>? calisanlar,
-  }) : this.calisanlar = calisanlar ?? [];
+  }) : calisanlar = calisanlar ?? [];
 
   Map<String, dynamic> toMap() {
     return {
@@ -94,7 +104,13 @@ class GunlukSantiyeRaporu {
       'benzinGideri': benzinGideri,
       'yemekGideri': yemekGideri,
       'ekMasraflar': ekMasraflar,
-      'aciklama': aciklama, // Veritabanına yaz
+      'benzinGideriIsciId': benzinGideriIsciId,
+      'benzinGideriIsciAdi': benzinGideriIsciAdi,
+      'yemekGideriIsciId': yemekGideriIsciId,
+      'yemekGideriIsciAdi': yemekGideriIsciAdi,
+      'ekMasraflarIsciId': ekMasraflarIsciId,
+      'ekMasraflarIsciAdi': ekMasraflarIsciAdi,
+      'aciklama': aciklama,
       'calisanlar': calisanlar.map((c) => c.toMap()).toList(),
     };
   }
@@ -110,7 +126,13 @@ class GunlukSantiyeRaporu {
       benzinGideri: (map['benzinGideri'] ?? 0).toDouble(),
       yemekGideri: (map['yemekGideri'] ?? 0).toDouble(),
       ekMasraflar: (map['ekMasraflar'] ?? 0).toDouble(),
-      aciklama: map['aciklama'] ?? '', // Veritabanından oku
+      benzinGideriIsciId: map['benzinGideriIsciId'],
+      benzinGideriIsciAdi: map['benzinGideriIsciAdi'],
+      yemekGideriIsciId: map['yemekGideriIsciId'],
+      yemekGideriIsciAdi: map['yemekGideriIsciAdi'],
+      ekMasraflarIsciId: map['ekMasraflarIsciId'],
+      ekMasraflarIsciAdi: map['ekMasraflarIsciAdi'],
+      aciklama: map['aciklama'] ?? '',
       calisanlar:
           (map['calisanlar'] as List<dynamic>? ?? [])
               .map((c) => GunlukCalisma.fromMap(c))
