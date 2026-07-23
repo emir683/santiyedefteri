@@ -1,4 +1,5 @@
 import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
@@ -13,6 +14,7 @@ import 'deep_link_service.dart';
 import 'user_model.dart';
 import 'tema_ayarlari.dart';
 import 'bildirim_servisi.dart';
+import 'fcm_servisi.dart';
 import 'privacy_provider.dart';
 import 'rol_provider.dart';
 
@@ -39,6 +41,10 @@ class ThemeProvider with ChangeNotifier {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Uygulama KAPALI iken FCM mesajı geldiğinde çalışacak top-level handler
+  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
+
   try {
     await LiquidGlassWidgets.initialize();
   } catch (e) {
@@ -48,9 +54,13 @@ void main() async {
   debugPrint("--- UYGULAMA BAŞLATILIYOR ---");
 
   try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
+    if (kIsWeb) {
+      await Firebase.initializeApp(
+        options: DefaultFirebaseOptions.currentPlatform,
+      );
+    } else {
+      await Firebase.initializeApp();
+    }
     _firebaseReady = true;
     debugPrint("✅ Firebase başarıyla başlatıldı.");
   } catch (e) {
@@ -62,6 +72,13 @@ void main() async {
       await BildirimServisi().init();
     } catch (e) {
       debugPrint("Bildirim servisi baslatilamadi: $e");
+    }
+
+    // FCM servisi başlat (uygulama kapalıyken bildirim için)
+    try {
+      await FcmServisi().init();
+    } catch (e) {
+      debugPrint("FCM servisi baslatilamadi: $e");
     }
 
     try {
@@ -97,6 +114,7 @@ class MyApp extends StatelessWidget {
         }
         final prefs = snapshot.data!;
         final isDarkMode = prefs.getBool('isDarkMode') ?? false;
+        final authServisi = AuthServisi();
 
         // MultiProvider, birden fazla Provider'ı bir araya getirir.
         return MultiProvider(
@@ -105,8 +123,8 @@ class MyApp extends StatelessWidget {
             ChangeNotifierProvider(create: (_) => PrivacyProvider()),
             ChangeNotifierProvider(create: (_) => RolProvider()),
             StreamProvider<UserModel?>.value(
-              value: AuthServisi().userStream,
-              initialData: null,
+              value: authServisi.userStream,
+              initialData: authServisi.currentUser,
             ),
           ],
           child: Consumer<ThemeProvider>(

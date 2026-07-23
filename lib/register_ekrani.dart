@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import 'auth_servisi.dart';
+import 'fcm_servisi.dart';
 import 'web_install_helper.dart';
 
 class RegisterEkrani extends StatefulWidget {
@@ -64,6 +65,12 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
         _adSoyadController.text.trim(),
         _usernameController.text.trim(),
       );
+
+      // Kayıt başarılı: FCM token'a kaydet ve bildirim onboarding göster
+      await FcmServisi().kullaniciBagla();
+      if (mounted) {
+        await _bildirimOnboardingGoster();
+      }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -79,6 +86,198 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
     }
   }
 
+  /// Kayıt sonrası bildirim izin onboarding dialog'ı.
+  Future<void> _bildirimOnboardingGoster() async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    await showGeneralDialog(
+      context: context,
+      barrierDismissible: false,
+      barrierLabel: 'bildirim_onboarding',
+      barrierColor: Colors.black.withOpacity(0.75),
+      transitionDuration: const Duration(milliseconds: 350),
+      transitionBuilder: (ctx, anim, _, child) {
+        return SlideTransition(
+          position: Tween<Offset>(
+            begin: const Offset(0, 0.12),
+            end: Offset.zero,
+          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
+          child: FadeTransition(opacity: anim, child: child),
+        );
+      },
+      pageBuilder: (ctx, _, __) {
+        return Center(
+          child: Container(
+            margin: const EdgeInsets.symmetric(horizontal: 24),
+            padding: const EdgeInsets.all(28),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(28),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: isDark
+                    ? const [Color(0xFF151B24), Color(0xFF0D1117)]
+                    : const [Color(0xFFFFFFFF), Color(0xFFF0F7FA)],
+              ),
+              border: Border.all(
+                color: isDark
+                    ? Colors.white.withOpacity(0.10)
+                    : const Color(0xFFB6DDE8),
+                width: 1.2,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(isDark ? 0.35 : 0.12),
+                  blurRadius: 32,
+                  offset: const Offset(0, 14),
+                ),
+              ],
+            ),
+            child: Material(
+              color: Colors.transparent,
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // İkon
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [Color(0xFF14B8A6), Color(0xFF0F7C86)],
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                      ),
+                      borderRadius: BorderRadius.circular(22),
+                      boxShadow: [
+                        BoxShadow(
+                          color: const Color(0xFF14B8A6).withOpacity(0.35),
+                          blurRadius: 18,
+                          offset: const Offset(0, 6),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.notifications_active_rounded,
+                      color: Colors.white,
+                      size: 36,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  Text(
+                    'Bildirimlerden Haberdar Ol',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 22,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF102A43),
+                      height: 1.2,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Ekibindeki işlemler, avans ve rapor girdiğinde anında bildirim al. Uygulama kapalıyken de çalışır.',
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      height: 1.55,
+                      color: isDark ? Colors.white60 : const Color(0xFF526772),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Özellik listesi
+                  ..._bildirimOzellikleri(isDark),
+                  const SizedBox(height: 24),
+                  // Aktif et butonu
+                  SizedBox(
+                    width: double.infinity,
+                    child: ElevatedButton.icon(
+                      onPressed: () async {
+                        Navigator.pop(ctx);
+                        // FCM izni init() sırasında zaten isteniyor;
+                        // burada sadece kapatıyoruz.
+                      },
+                      icon: const Icon(Icons.notifications_active_rounded, size: 18),
+                      label: const Text(
+                        'Bildirimleri Aç',
+                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
+                      ),
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF14B8A6),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 15),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        elevation: 0,
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 10),
+                  TextButton(
+                    onPressed: () => Navigator.pop(ctx),
+                    child: Text(
+                      'Daha sonra',
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: isDark ? Colors.white38 : Colors.black38,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+
+  List<Widget> _bildirimOzellikleri(bool isDark) {
+    final ozellikler = [
+      ('👷 İşçi işlemleri', 'Ekleme, güncelleme ve ödeme bildirimleri'),
+      ('📄 Rapor girilince', 'Günlük rapor kaydedilince haberdar ol'),
+      ('⏰ Kapalıyken de çalışır', 'Uygulamanı açman gerekmez'),
+    ];
+    return [
+      const SizedBox(height: 16),
+      ...ozellikler.map(
+        (o) => Padding(
+          padding: const EdgeInsets.only(bottom: 10),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF14B8A6).withOpacity(0.12),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: Text(
+                  o.$1,
+                  style: const TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: Color(0xFF0F7C86),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  o.$2,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white60 : const Color(0xFF526772),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    ];
+  }
+
   @override
   Widget build(BuildContext context) {
     final theme = Theme.of(context);
@@ -89,11 +288,11 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 480),
+                constraints: const BoxConstraints(maxWidth: 430),
                 child: _AuthCardSurface(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -102,29 +301,30 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                           const _AuthIconBadge(
                             icon: Icons.person_add_alt_1_rounded,
                             color: Color(0xFF24B7A4),
-                            size: 60,
-                            iconSize: 28,
+                            size: 52,
+                            iconSize: 25,
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   "Yeni Hesap Olu\u015ftur",
-                                  style: theme.textTheme.headlineSmall
-                                      ?.copyWith(
-                                        fontWeight: FontWeight.w700,
-                                      ),
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontSize: 21,
+                                    height: 1.15,
+                                    fontWeight: FontWeight.w700,
+                                  ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  "Ekibini ve \u015fantiye takibini y\u00f6netmek i\u00e7in yeni hesab\u0131n\u0131 olu\u015ftur.",
+                                  "Yeni hesab\u0131n\u0131 olu\u015ftur.",
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: isDark
                                         ? Colors.white70
                                         : const Color(0xFF526772),
-                                    height: 1.4,
+                                    height: 1.3,
                                   ),
                                 ),
                               ],
@@ -136,7 +336,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                         const SizedBox(height: 18),
                         const _RegisterWebInstallCard(),
                       ],
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 22),
                       _GlassAuthInput(
                         controller: _adSoyadController,
                         label: "Ad Soyad",
@@ -162,6 +362,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                         icon: Icons.lock_outline_rounded,
                         obscureText: _isPasswordObscured,
                         suffixIcon: IconButton(
+                          iconSize: 22,
                           icon: Icon(
                             _isPasswordObscured
                                 ? Icons.visibility_off_rounded
@@ -181,6 +382,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                         icon: Icons.lock_reset_outlined,
                         obscureText: _isConfirmObscured,
                         suffixIcon: IconButton(
+                          iconSize: 22,
                           icon: Icon(
                             _isConfirmObscured
                                 ? Icons.visibility_off_rounded
@@ -205,7 +407,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 17),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                         ),
                         child: _loading
@@ -225,7 +427,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                                 ),
                               ),
                       ),
-                      const SizedBox(height: 20),
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -284,13 +486,18 @@ class _GlassAuthInput extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon),
+          prefixIcon: Icon(icon, size: 22),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 44,
+            minHeight: 44,
+          ),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
           labelStyle: TextStyle(
             color: isDark ? Colors.white60 : const Color(0xFF607480),
+            fontSize: 15,
           ),
         ),
       ),
@@ -520,12 +727,12 @@ class _AuthFieldSurface extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withOpacity(0.05)
             : Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark
               ? Colors.white.withOpacity(0.06)

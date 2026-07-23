@@ -102,13 +102,16 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                             child: ElevatedButton(
                               onPressed: () async {
                                 if (controller.text.trim().isNotEmpty) {
+                                  final messenger = ScaffoldMessenger.of(
+                                    context,
+                                  );
                                   await servisi.ekipAdiniGuncelle(
                                     widget.teamId,
                                     controller.text.trim(),
                                   );
                                   if (mounted) {
                                     Navigator.pop(ctx);
-                                    ScaffoldMessenger.of(context).showSnackBar(
+                                    messenger.showSnackBar(
                                       const SnackBar(
                                         content: Text("Ekip adı güncellendi."),
                                         backgroundColor: _kBrandTeal,
@@ -279,15 +282,15 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                           return;
                                         }
 
+                                        final messenger =
+                                            ScaffoldMessenger.of(context);
                                         await servisi.ekipParolasiniGuncelle(
                                           widget.teamId,
                                           yeniParolaCtrl.text.trim(),
                                         );
                                         if (mounted) {
                                           Navigator.pop(ctx);
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
+                                          messenger.showSnackBar(
                                             const SnackBar(
                                               content: Text(
                                                 "Ekip parolası başarıyla değiştirildi.",

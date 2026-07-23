@@ -14,8 +14,10 @@ class AuthServisi {
   }
 
   Stream<UserModel?> get userStream {
-    return _auth.authStateChanges().map(_userFromFirebaseUser);
+    return _auth.userChanges().map(_userFromFirebaseUser);
   }
+
+  UserModel? get currentUser => _userFromFirebaseUser(_auth.currentUser);
 
   String? get currentUserEmail => _auth.currentUser?.email;
 

@@ -9,8 +9,10 @@ class RolProvider with ChangeNotifier {
   UserRole _rol = UserRole.uye;
   String _teamId = '';
   String _kullaniciId = '';
+  bool _isPersonal = false;
 
   UserRole get rol => _rol;
+  bool get isPersonal => _isPersonal;
 
   bool get isFinansalErisim =>
       _rol == UserRole.kurucu || _rol == UserRole.yonetici;
@@ -58,6 +60,7 @@ class RolProvider with ChangeNotifier {
           final List<String> yoneticiler = List<String>.from(
             data['yoneticiler'] ?? [],
           );
+          final bool personal = data['isPersonal'] ?? false;
 
           UserRole yeniRol;
           if (_kullaniciId == kurucuUid) {
@@ -68,8 +71,9 @@ class RolProvider with ChangeNotifier {
             yeniRol = UserRole.uye;
           }
 
-          if (yeniRol != _rol) {
+          if (yeniRol != _rol || personal != _isPersonal) {
             _rol = yeniRol;
+            _isPersonal = personal;
             notifyListeners();
           }
         });
@@ -79,6 +83,7 @@ class RolProvider with ChangeNotifier {
     _rol = UserRole.uye;
     _teamId = '';
     _kullaniciId = '';
+    _isPersonal = false;
     notifyListeners();
   }
 }

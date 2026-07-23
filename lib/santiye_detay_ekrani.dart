@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:http/http.dart' as http;
+import 'dart:convert';
 
 import 'data_models.dart';
 import 'firestore_servisi.dart';
@@ -13,11 +15,13 @@ const Color _kBrandTealDark = Color(0xFF0F7C86);
 class SantiyeDetayEkrani extends StatefulWidget {
   final String santiyeAdi;
   final String teamId;
+  final String? il;
 
   const SantiyeDetayEkrani({
     super.key,
     required this.santiyeAdi,
     required this.teamId,
+    this.il,
   });
 
   @override
@@ -26,11 +30,51 @@ class SantiyeDetayEkrani extends StatefulWidget {
 
 class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
   late DateTime _gosterilenAy;
+  Map<String, dynamic>? _weatherData;
+  bool _isLoadingWeather = false;
 
   @override
   void initState() {
     super.initState();
     _gosterilenAy = DateTime.now();
+    if (widget.il != null && widget.il!.isNotEmpty) {
+      _fetchWeather(widget.il!);
+    }
+  }
+
+  Future<void> _fetchWeather(String il) async {
+    setState(() {
+      _isLoadingWeather = true;
+    });
+    try {
+      final geoUrl = Uri.parse('https://geocoding-api.open-meteo.com/v1/search?name=$il&count=1&language=tr&format=json');
+      final geoRes = await http.get(geoUrl);
+      if (geoRes.statusCode == 200) {
+        final geoData = jsonDecode(geoRes.body);
+        if (geoData['results'] != null && geoData['results'].isNotEmpty) {
+          final lat = geoData['results'][0]['latitude'];
+          final lon = geoData['results'][0]['longitude'];
+          final weatherUrl = Uri.parse('https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true');
+          final weatherRes = await http.get(weatherUrl);
+          if (weatherRes.statusCode == 200) {
+            final wData = jsonDecode(weatherRes.body);
+            if (mounted) {
+              setState(() {
+                _weatherData = wData['current_weather'];
+              });
+            }
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint("Hava durumu alinirken hata: $e");
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingWeather = false;
+        });
+      }
+    }
   }
 
   @override
@@ -254,6 +298,45 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           ),
                         ),
                       ),
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 8),
+                          child: Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: isDark ? const Color(0xFF101317).withOpacity(0.94) : const Color(0xFFF7FBFD),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD8EAF0)),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(Icons.cloud, color: _kBrandTealDark, size: 28),
+                                const SizedBox(width: 12),
+                                Expanded(
+                                  child: Column(
+                                    crossAxisAlignment: CrossAxisAlignment.start,
+                                    children: [
+                                      Text(
+                                        (widget.il != null && widget.il!.isNotEmpty) ? widget.il! : 'Konum Belirtilmedi',
+                                        style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                      ),
+                                      if (widget.il == null || widget.il!.isEmpty)
+                                        const Text('Şantiye düzenle ekranından il ekleyin', style: TextStyle(fontSize: 12, color: Colors.grey))
+                                      else if (_isLoadingWeather)
+                                        const Text('Hava durumu yükleniyor...', style: TextStyle(fontSize: 12, color: Colors.grey))
+                                      else if (_weatherData != null)
+                                        Text(
+                                          'Sıcaklık: ${_weatherData!['temperature']}°C, Rüzgar: ${_weatherData!['windspeed']} km/s',
+                                          style: const TextStyle(fontSize: 12, color: Colors.grey),
+                                        )
+                                      else
+                                        const Text('Hava durumu alınamadı.', style: TextStyle(fontSize: 12, color: Colors.grey)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
                       Expanded(
                         child: ListView.builder(
                           padding: const EdgeInsets.fromLTRB(

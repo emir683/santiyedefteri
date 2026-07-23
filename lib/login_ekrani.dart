@@ -228,11 +228,11 @@ class _LoginEkraniState extends State<LoginEkrani> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 460),
+                constraints: const BoxConstraints(maxWidth: 430),
                 child: _AuthCardSurface(
-                  padding: const EdgeInsets.all(24),
+                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
@@ -241,28 +241,30 @@ class _LoginEkraniState extends State<LoginEkrani> {
                           const _AuthIconBadge(
                             icon: Icons.construction_rounded,
                             color: Color(0xFF24B7A4),
-                            size: 60,
-                            iconSize: 30,
+                            size: 52,
+                            iconSize: 26,
                           ),
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   "\u015eantiye Puantaj Defteri",
-                                  style: theme.textTheme.titleLarge?.copyWith(
+                                  style: theme.textTheme.titleMedium?.copyWith(
+                                    fontSize: 21,
+                                    height: 1.15,
                                     fontWeight: FontWeight.w700,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  "Hesab\u0131na giri\u015f yap ve kontrol merkezine devam et.",
+                                  "Kontrol merkezine devam et.",
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: isDark
                                         ? Colors.white70
                                         : const Color(0xFF526772),
-                                    height: 1.4,
+                                    height: 1.3,
                                   ),
                                 ),
                               ],
@@ -274,10 +276,10 @@ class _LoginEkraniState extends State<LoginEkrani> {
                         const SizedBox(height: 18),
                         const _WebInstallCard(),
                       ],
-                      const SizedBox(height: 26),
+                      const SizedBox(height: 22),
                       _GlassAuthInput(
                         controller: _emailOrUsernameController,
-                        label: "E-posta veya kullan\u0131c\u0131 ad\u0131",
+                        label: "E-posta / kullan\u0131c\u0131 ad\u0131",
                         icon: Icons.person_outline_rounded,
                         keyboardType: TextInputType.emailAddress,
                       ),
@@ -288,6 +290,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                         icon: Icons.lock_outline_rounded,
                         obscureText: _isObscured,
                         suffixIcon: IconButton(
+                          iconSize: 22,
                           icon: Icon(
                             _isObscured
                                 ? Icons.visibility_off_rounded
@@ -303,6 +306,12 @@ class _LoginEkraniState extends State<LoginEkrani> {
                       Align(
                         alignment: Alignment.centerRight,
                         child: TextButton(
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 8,
+                              vertical: 4,
+                            ),
+                          ),
                           onPressed: () => _showForgotPasswordDialog(context),
                           child: const Text("\u015eifremi Unuttum"),
                         ),
@@ -319,7 +328,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                           foregroundColor: Colors.white,
                           padding: const EdgeInsets.symmetric(vertical: 17),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                         ),
                         child: _loading
@@ -339,7 +348,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                                 ),
                               ),
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
                       Row(
                         children: [
                           Expanded(
@@ -369,7 +378,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 18),
+                      const SizedBox(height: 16),
                       OutlinedButton.icon(
                         icon: Image.asset('assets/google_logo.png', height: 20),
                         label: const Text(
@@ -378,9 +387,9 @@ class _LoginEkraniState extends State<LoginEkrani> {
                         ),
                         onPressed: _loading ? null : _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 15),
+                          padding: const EdgeInsets.symmetric(vertical: 14),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(18),
                           ),
                           side: BorderSide(
                             color: isDark
@@ -395,7 +404,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                               : const Color(0xFF10232C),
                         ),
                       ),
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 16),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -454,13 +463,18 @@ class _GlassAuthInput extends StatelessWidget {
         style: const TextStyle(fontWeight: FontWeight.w600),
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon),
+          prefixIcon: Icon(icon, size: 22),
+          prefixIconConstraints: const BoxConstraints(
+            minWidth: 44,
+            minHeight: 44,
+          ),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
           labelStyle: TextStyle(
             color: isDark ? Colors.white60 : const Color(0xFF607480),
+            fontSize: 15,
           ),
         ),
       ),
@@ -812,12 +826,12 @@ class _AuthFieldSurface extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
       decoration: BoxDecoration(
         color: isDark
             ? Colors.white.withOpacity(0.05)
             : Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
           color: isDark
               ? Colors.white.withOpacity(0.06)

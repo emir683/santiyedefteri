@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'app_update_service.dart';
 import 'deep_link_service.dart';
+import 'fcm_servisi.dart';
 import 'login_or_register.dart';
 import 'wrapper.dart';
 import 'widgets/glass_surface.dart';
@@ -16,17 +17,39 @@ class AuthGate extends StatefulWidget {
 
 class _AuthGateState extends State<AuthGate> {
   late Future<AppUpdateStatus> _updateFuture;
+  late Future<User?> _initialUserFuture;
+  String? _lastInviteHandledUserId;
 
   @override
   void initState() {
     super.initState();
     _updateFuture = AppUpdateService().checkStatus();
+    _initialUserFuture = _loadInitialUser();
   }
 
   void _refreshUpdateCheck() {
     setState(() {
       _updateFuture = AppUpdateService().checkStatus();
     });
+  }
+
+  Future<User?> _loadInitialUser() async {
+    final auth = FirebaseAuth.instance;
+    final cachedUser = auth.currentUser;
+    if (cachedUser != null) return cachedUser;
+
+    try {
+      final streamedUser = await auth
+          .userChanges()
+          .first
+          .timeout(const Duration(seconds: 3));
+      if (streamedUser != null) return streamedUser;
+    } catch (e) {
+      debugPrint("AuthGate: Ilk auth durumu beklenirken hata/zaman asimi: $e");
+    }
+
+    await Future<void>.delayed(const Duration(milliseconds: 700));
+    return auth.currentUser;
   }
 
   @override
@@ -45,24 +68,39 @@ class _AuthGateState extends State<AuthGate> {
           );
         }
 
-        return Scaffold(
-          body: StreamBuilder<User?>(
-            stream: FirebaseAuth.instance.idTokenChanges(),
-            builder: (context, snapshot) {
-              if (snapshot.connectionState == ConnectionState.waiting) {
-                return _buildSplash();
-              }
+        return FutureBuilder<User?>(
+          future: _initialUserFuture,
+          builder: (context, initialSnapshot) {
+            if (initialSnapshot.connectionState == ConnectionState.waiting) {
+              return _buildSplash();
+            }
 
-              if (snapshot.hasData) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  DeepLinkService.instance.tryPresentPendingInvite();
-                });
-                return const Wrapper();
-              }
+            return Scaffold(
+              body: StreamBuilder<User?>(
+                stream: FirebaseAuth.instance.userChanges(),
+                initialData:
+                    initialSnapshot.data ?? FirebaseAuth.instance.currentUser,
+                builder: (context, snapshot) {
+                  final user = snapshot.data ?? FirebaseAuth.instance.currentUser;
+                  if (user != null) {
+                    if (_lastInviteHandledUserId != user.uid) {
+                      _lastInviteHandledUserId = user.uid;
+                      WidgetsBinding.instance.addPostFrameCallback((_) {
+                        if (!mounted) return;
+                        DeepLinkService.instance.tryPresentPendingInvite();
+                        // Giriş yaptığında FCM token'a güncelle
+                        FcmServisi().kullaniciBagla();
+                      });
+                    }
+                    return Wrapper(userId: user.uid);
+                  }
 
-              return const LoginOrRegister();
-            },
-          ),
+                  _lastInviteHandledUserId = null;
+                  return const LoginOrRegister();
+                },
+              ),
+            );
+          },
         );
       },
     );

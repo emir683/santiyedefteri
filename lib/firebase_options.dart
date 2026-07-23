@@ -48,7 +48,7 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCpIddWKFYDMWFDGu6hr9gAykjjeIXK3WY',
-    appId: '1:250320257023:android:0afe9ca09964dfcd06b1ca',
+    appId: '1:250320257023:android:0b3448f8cec06ecd06b1ca',
     messagingSenderId: '250320257023',
     projectId: 'santiye-yonetim-app',
     storageBucket: 'santiye-yonetim-app.firebasestorage.app',

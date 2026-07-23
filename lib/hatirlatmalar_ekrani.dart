@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 import 'bildirim_servisi.dart';
 import 'widgets/glass_surface.dart';
@@ -15,6 +17,7 @@ class HatirlatmalarEkrani extends StatefulWidget {
 
 class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
   late bool _geciciHatirlatmalarAktif;
+  late bool _geciciIslemBildirimleriAktif;
   late TimeOfDay _geciciSeciliSaat;
   bool _isLoading = true;
 
@@ -29,16 +32,39 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
     if (!mounted) return;
     setState(() {
       _geciciHatirlatmalarAktif = prefs.getBool('hatirlatmalarAktif') ?? false;
+      _geciciIslemBildirimleriAktif = prefs.getBool('islemBildirimleriAktif') ?? true;
       final saat = prefs.getInt('hatirlatmaSaati') ?? 20;
       final dakika = prefs.getInt('hatirlatmaDakikasi') ?? 0;
       _geciciSeciliSaat = TimeOfDay(hour: saat, minute: dakika);
       _isLoading = false;
     });
+
+    // Firestore'dan güncel durumu çekip senkronize et
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        final userDoc = await FirebaseFirestore.instance.collection('users').doc(user.uid).get();
+        if (userDoc.exists && mounted) {
+          final data = userDoc.data();
+          if (data != null && data.containsKey('islemBildirimleriAktif')) {
+            final aktif = data['islemBildirimleriAktif'] as bool;
+            setState(() {
+              _geciciIslemBildirimleriAktif = aktif;
+            });
+            await prefs.setBool('islemBildirimleriAktif', aktif);
+          }
+        }
+      } catch (e) {
+        debugPrint("İşlem bildirim ayarı yüklenemedi: $e");
+      }
+    }
   }
 
   Future<void> _ayarlariKaydetVeUygula() async {
+    setState(() => _isLoading = true);
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool('hatirlatmalarAktif', _geciciHatirlatmalarAktif);
+    await prefs.setBool('islemBildirimleriAktif', _geciciIslemBildirimleriAktif);
     await prefs.setInt('hatirlatmaSaati', _geciciSeciliSaat.hour);
     await prefs.setInt('hatirlatmaDakikasi', _geciciSeciliSaat.minute);
 
@@ -48,10 +74,23 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
       await BildirimServisi().tumBildirimleriIptalEt();
     }
 
+    // Firestore'a kaydet
+    final user = FirebaseAuth.instance.currentUser;
+    if (user != null) {
+      try {
+        await FirebaseFirestore.instance.collection('users').doc(user.uid).update({
+          'islemBildirimleriAktif': _geciciIslemBildirimleriAktif,
+        });
+      } catch (e) {
+        debugPrint("İşlem bildirim ayarı kaydedilemedi: $e");
+      }
+    }
+
     if (!mounted) return;
+    setState(() => _isLoading = false);
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
-        content: Text('Hatırlatma ayarları kaydedildi ve uygulandı.'),
+        content: Text('Bildirim ayarları kaydedildi ve uygulandı.'),
         backgroundColor: _kBrandTeal,
       ),
     );
@@ -298,12 +337,45 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                           enabled: _geciciHatirlatmalarAktif,
                         ),
                       ),
+                      const SizedBox(height: 14),
+                      GlassSectionCard(
+                        padding: EdgeInsets.zero,
+                        child: SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 20,
+                            vertical: 12,
+                          ),
+                          title: const Text(
+                            'Ekip İşlemleri Bildirimi',
+                            style: TextStyle(fontWeight: FontWeight.bold),
+                          ),
+                          subtitle: Text(
+                            'Ekip yöneticileri bir işlem yaptığında anlık bildirim alırsınız.',
+                            style: TextStyle(
+                              color: isDark ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                          value: _geciciIslemBildirimleriAktif,
+                          onChanged: (value) => setState(
+                            () => _geciciIslemBildirimleriAktif = value,
+                          ),
+                          activeColor: _kBrandTeal,
+                          secondary: Icon(
+                            _geciciIslemBildirimleriAktif
+                                ? Icons.group_work
+                                : Icons.group_work_outlined,
+                            color: _geciciIslemBildirimleriAktif
+                                ? _kBrandTeal
+                                : Colors.grey,
+                          ),
+                        ),
+                      ),
                       const Spacer(),
                       SizedBox(
                         width: double.infinity,
                         child: ElevatedButton.icon(
                           icon: const Icon(Icons.check_circle_outline),
-                          label: const Text('Hatırlatmayı Ayarla'),
+                          label: const Text('Ayarları Kaydet'),
                           onPressed: _ayarlariKaydetVeUygula,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: _kBrandTeal,

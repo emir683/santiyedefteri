@@ -29,8 +29,23 @@ class SantiyeEkrani extends StatefulWidget {
 
 class _SantiyeEkraniState extends State<SantiyeEkrani> {
   final TextEditingController _controller = TextEditingController();
+  final TextEditingController _ilController = TextEditingController();
+  final TextEditingController _searchController = TextEditingController();
+  String _searchQuery = '';
   final GlobalKey _fabKey = GlobalKey();
   TutorialCoachMark? _tutorialCoachMark;
+
+  String _turkceKucukHarf(String metin) {
+    return metin
+        .toLowerCase()
+        .replaceAll('I', 'ı')
+        .replaceAll('İ', 'i')
+        .replaceAll('Ğ', 'ğ')
+        .replaceAll('Ü', 'ü')
+        .replaceAll('Ş', 'ş')
+        .replaceAll('Ö', 'ö')
+        .replaceAll('Ç', 'ç');
+  }
 
   @override
   void initState() {
@@ -174,14 +189,18 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
   @override
   void dispose() {
     _controller.dispose();
+    _ilController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
   void _santiyeEkleVeyaDuzenleDialog(FirestoreServisi servisi, {Santiye? mevcutSantiye}) {
     if (mevcutSantiye != null) {
       _controller.text = mevcutSantiye.ad;
+      _ilController.text = mevcutSantiye.il ?? '';
     } else {
       _controller.clear();
+      _ilController.clear();
     }
 
     showGeneralDialog(
@@ -230,6 +249,20 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
                           border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
                         ),
                       ),
+                      const SizedBox(height: 16),
+                      TextField(
+                        controller: _ilController,
+                        textCapitalization: TextCapitalization.words,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: InputDecoration(
+                          hintText: "İl (Hava durumu için)",
+                          hintStyle: TextStyle(color: Colors.grey[400]),
+                          prefixIcon: const Icon(Icons.location_city, color: Colors.grey),
+                          filled: true,
+                          fillColor: Colors.white.withOpacity(0.05),
+                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
+                        ),
+                      ),
                       const SizedBox(height: 24),
                       Row(
                         children: [
@@ -244,7 +277,11 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
                             child: ElevatedButton(
                               onPressed: () async {
                                 if (_controller.text.isNotEmpty) {
-                                  final yeniSantiye = Santiye(id: mevcutSantiye?.id, ad: _controller.text.trim());
+                                  final yeniSantiye = Santiye(
+                                    id: mevcutSantiye?.id,
+                                    ad: _controller.text.trim(),
+                                    il: _ilController.text.trim().isEmpty ? null : _ilController.text.trim(),
+                                  );
                                   if (mevcutSantiye != null) {
                                     await servisi.santiyeGuncelle(widget.teamId, yeniSantiye);
                                   } else {
@@ -392,29 +429,59 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
                     ],
           ),
         ),
-        child: StreamBuilder<List<Santiye>>(
-        stream: servisi.getSantiyelerStream(widget.teamId),
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return const ShimmerYukleniyor(satirSayisi: 5);
-          }
-          if (!snapshot.hasData || snapshot.data!.isEmpty) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  Icon(Icons.location_city, size: 64, color: Colors.grey[400]),
-                  const SizedBox(height: 16),
-                  Text(
-                    "Henüz şantiye eklenmemiş.",
-                    style: TextStyle(color: Colors.grey[600], fontSize: 16),
+        child: Column(
+          children: [
+            Padding(
+              padding: const EdgeInsets.all(16.0),
+              child: TextField(
+                controller: _searchController,
+                onChanged: (value) {
+                  setState(() {
+                    _searchQuery = _turkceKucukHarf(value);
+                  });
+                },
+                decoration: InputDecoration(
+                  hintText: 'Şantiye Ara...',
+                  prefixIcon: const Icon(Icons.search),
+                  filled: true,
+                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+                  border: OutlineInputBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    borderSide: BorderSide.none,
                   ),
-                ],
+                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+                ),
               ),
-            );
-          }
-
-          final santiyeler = snapshot.data!;
+            ),
+            Expanded(
+              child: StreamBuilder<List<Santiye>>(
+              stream: servisi.getSantiyelerStream(widget.teamId),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const ShimmerYukleniyor(satirSayisi: 5);
+                }
+                if (!snapshot.hasData || snapshot.data!.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.location_city, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Henüz şantiye eklenmemiş.",
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+                final tumSantiyeler = snapshot.data!;
+                final santiyeler = tumSantiyeler.where((s) {
+                  if (_searchQuery.isEmpty) return true;
+                  final adUygun = _turkceKucukHarf(s.ad).contains(_searchQuery);
+                  final ilUygun = s.il != null && _turkceKucukHarf(s.il!).contains(_searchQuery);
+                  return adUygun || ilUygun;
+                }).toList();
 
           return ListView.builder(
             padding: const EdgeInsets.fromLTRB(
@@ -435,6 +502,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
                       sayfa: SantiyeDetayEkrani(
                         santiyeAdi: santiye.ad,
                         teamId: widget.teamId,
+                        il: santiye.il,
                       ),
                     ),
                   );
@@ -467,12 +535,30 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
                         ),
                         const SizedBox(width: 16),
                         Expanded(
-                          child: Text(
-                            santiye.ad,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                santiye.ad,
+                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                              ),
+                              if (santiye.il != null && santiye.il!.isNotEmpty) ...[
+                                const SizedBox(height: 4),
+                                Row(
+                                  children: [
+                                    Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      santiye.il!,
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        color: Colors.grey[500],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ],
                           ),
                         ),
                         IconButton(
@@ -496,6 +582,9 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
             },
           );
         },
+        ),
+            ),
+          ],
         ),
       ),
       floatingActionButton: Padding(

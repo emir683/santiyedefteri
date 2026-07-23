@@ -1,12 +1,15 @@
-﻿import 'dart:ui';
+import 'dart:ui';
 import 'dart:async';
 import 'animasyon_yardimcisi.dart';
 import 'package:flutter/material.dart';
+import 'package:table_calendar/table_calendar.dart';
+import 'widgets/weather_dashboard_card.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+import 'package:connectivity_plus/connectivity_plus.dart';
 import 'main.dart';
 import 'user_model.dart';
 import 'auth_servisi.dart';
@@ -24,6 +27,7 @@ import 'profil_ekrani.dart';
 import 'privacy_provider.dart';
 import 'hakkinda_ekrani.dart';
 import 'klavuz_ekrani.dart';
+import 'destek_ekrani.dart';
 import 'rol_provider.dart';
 import 'tur_servisi.dart';
 import 'format_yardimcisi.dart';
@@ -67,6 +71,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   bool _turAktif = false;
   bool _turDenendiBuAcilis = false;
 
+  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
+  bool _isOffline = false;
+
   late TutorialCoachMark _tutorialCoachMark;
 
   void _hizliErisimAc(int index, bool finansalErisim) {
@@ -74,7 +81,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     if (finansSekmesi && !finansalErisim) {
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
-          content: Text('Bu b\u00F6l\u00FCm i\u00E7in finansal eri\u015Fim gerekiyor.'),
+          content: Text(
+            'Bu b\u00F6l\u00FCm i\u00E7in finansal eri\u015Fim gerekiyor.',
+          ),
         ),
       );
       return;
@@ -126,10 +135,33 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _klavuzKontrol();
     });
+
+    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
+      List<ConnectivityResult> results,
+    ) {
+      final isOffline =
+          results.contains(ConnectivityResult.none) || results.isEmpty;
+      if (mounted && _isOffline != isOffline) {
+        setState(() {
+          _isOffline = isOffline;
+        });
+      }
+    });
+
+    Connectivity().checkConnectivity().then((results) {
+      final isOffline =
+          results.contains(ConnectivityResult.none) || results.isEmpty;
+      if (mounted && _isOffline != isOffline) {
+        setState(() {
+          _isOffline = isOffline;
+        });
+      }
+    });
   }
 
   @override
   void dispose() {
+    _connectivitySubscription?.cancel();
     _disposePanelStream();
     super.dispose();
   }
@@ -190,40 +222,30 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       );
     }
 
-    _panelSantiyeSub = servisi.getSantiyelerStream(widget.teamId).listen(
-      (data) {
-        _panelSantiyeler = data;
-        emitIfReady();
-      },
-      onError: controller.addError,
-    );
+    _panelSantiyeSub = servisi.getSantiyelerStream(widget.teamId).listen((
+      data,
+    ) {
+      _panelSantiyeler = data;
+      emitIfReady();
+    }, onError: controller.addError);
 
-    _panelIsciSub = servisi.getIscilerStream(widget.teamId).listen(
-      (data) {
-        _panelIsciler = data;
-        emitIfReady();
-      },
-      onError: controller.addError,
-    );
+    _panelIsciSub = servisi.getIscilerStream(widget.teamId).listen((data) {
+      _panelIsciler = data;
+      emitIfReady();
+    }, onError: controller.addError);
 
     _panelRaporSub = servisi
         .getRaporlarStream(widget.teamId, ayBaslangic, ayBitis)
-        .listen(
-          (data) {
-            _panelRaporlar = data;
-            emitIfReady();
-          },
-          onError: controller.addError,
-        );
+        .listen((data) {
+          _panelRaporlar = data;
+          emitIfReady();
+        }, onError: controller.addError);
 
     if (finansalErisim) {
-      _panelOdemeSub = servisi.getOdemelerStream(widget.teamId).listen(
-        (data) {
-          _panelOdemeler = data;
-          emitIfReady();
-        },
-        onError: controller.addError,
-      );
+      _panelOdemeSub = servisi.getOdemelerStream(widget.teamId).listen((data) {
+        _panelOdemeler = data;
+        emitIfReady();
+      }, onError: controller.addError);
     } else {
       _panelOdemeler = const [];
     }
@@ -298,14 +320,16 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: isDark
-                    ? const [Color(0xFF171B22), Color(0xFF10141B)]
-                    : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
+                colors:
+                    isDark
+                        ? const [Color(0xFF171B22), Color(0xFF10141B)]
+                        : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
               ),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withOpacity(0.08)
-                    : const Color(0xFFD6E1EE),
+                color:
+                    isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : const Color(0xFFD6E1EE),
               ),
             ),
             child: Column(
@@ -314,9 +338,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 Icon(
                   Icons.explore_rounded,
                   size: 42,
-                  color: isDark
-                      ? const Color(0xFF34D399)
-                      : const Color(0xFF10B981),
+                  color:
+                      isDark
+                          ? const Color(0xFF34D399)
+                          : const Color(0xFF10B981),
                 ),
                 const SizedBox(height: 12),
                 Text(
@@ -536,14 +561,16 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: isDark
-                    ? const [Color(0xFF171B22), Color(0xFF10141B)]
-                    : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
+                colors:
+                    isDark
+                        ? const [Color(0xFF171B22), Color(0xFF10141B)]
+                        : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
               ),
               border: Border.all(
-                color: isDark
-                    ? Colors.white.withOpacity(0.08)
-                    : const Color(0xFFD6E1EE),
+                color:
+                    isDark
+                        ? Colors.white.withOpacity(0.08)
+                        : const Color(0xFFD6E1EE),
               ),
               boxShadow: [
                 BoxShadow(
@@ -559,9 +586,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 Icon(
                   Icons.check_circle_rounded,
                   size: 44,
-                  color: isDark
-                      ? const Color(0xFF34D399)
-                      : const Color(0xFF10B981),
+                  color:
+                      isDark
+                          ? const Color(0xFF34D399)
+                          : const Color(0xFF10B981),
                 ),
                 const SizedBox(height: 14),
                 Text(
@@ -585,7 +613,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 const SizedBox(height: 20),
                 SizedBox(
                   width: double.infinity,
-                    child: ElevatedButton(
+                  child: ElevatedButton(
                     style: ElevatedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 15),
                       backgroundColor: const Color(0xFF14B8A6),
@@ -649,14 +677,14 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isDark
-              ? const [Color(0xFF171B22), Color(0xFF0F131A)]
-              : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
+          colors:
+              isDark
+                  ? const [Color(0xFF171B22), Color(0xFF0F131A)]
+                  : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
         ),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.08)
-              : const Color(0xFFD6E1EE),
+          color:
+              isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD6E1EE),
         ),
         boxShadow: [
           BoxShadow(
@@ -676,16 +704,12 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 width: 40,
                 height: 40,
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withOpacity(
-                    isDark ? 0.24 : 0.14,
-                  ),
+                  color: const Color(
+                    0xFF14B8A6,
+                  ).withOpacity(isDark ? 0.24 : 0.14),
                   borderRadius: BorderRadius.circular(12),
                 ),
-                child: Icon(
-                  icon,
-                  color: const Color(0xFF14B8A6),
-                  size: 20,
-                ),
+                child: Icon(icon, color: const Color(0xFF14B8A6), size: 20),
               ),
               const SizedBox(width: 12),
               Expanded(
@@ -811,7 +835,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     child: Container(
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        border: Border.all(color: Colors.white.withOpacity(0.18)),
+                        border: Border.all(
+                          color: Colors.white.withOpacity(0.18),
+                        ),
                         borderRadius: BorderRadius.circular(18),
                       ),
                       child: Icon(
@@ -891,6 +917,8 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
 
         final panel = snapshot.data!;
         final isDark = Theme.of(context).brightness == Brightness.dark;
+        final rolProvider = context.watch<RolProvider>();
+
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
           _anaEkranWidgetiniGuncelle(
@@ -902,136 +930,126 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         });
 
         return Stack(
-                      children: [
-                        Positioned.fill(
-                          child: DecoratedBox(
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topCenter,
-                                end: Alignment.bottomCenter,
-                                colors: [
-                                  const Color(0xFF0B5D68).withOpacity(0.18),
-                                  Colors.transparent,
-                                ],
-                              ),
-                            ),
-                          ),
+          children: [
+            Positioned.fill(
+              child: DecoratedBox(
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    begin: Alignment.topCenter,
+                    end: Alignment.bottomCenter,
+                    colors: [
+                      const Color(0xFF0B5D68).withOpacity(0.18),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              left: -40,
+              right: -40,
+              bottom: -28,
+              child: IgnorePointer(
+                child: Container(
+                  height: 220,
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment.bottomCenter,
+                      radius: 0.92,
+                      colors: [
+                        const Color(0xFF5EEAD4).withOpacity(
+                          Theme.of(context).brightness == Brightness.dark
+                              ? 0.14
+                              : 0.18,
                         ),
-                        Positioned(
-                          left: -40,
-                          right: -40,
-                          bottom: -28,
-                          child: IgnorePointer(
-                            child: Container(
-                              height: 220,
-                              decoration: BoxDecoration(
-                                gradient: RadialGradient(
-                                  center: Alignment.bottomCenter,
-                                  radius: 0.92,
-                                  colors: [
-                                    const Color(0xFF5EEAD4).withOpacity(
-                                      Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? 0.14
-                                          : 0.18,
-                                    ),
-                                    const Color(0xFFB6F5ED).withOpacity(
-                                      Theme.of(context).brightness ==
-                                              Brightness.dark
-                                          ? 0.08
-                                          : 0.10,
-                                    ),
-                                    Colors.transparent,
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
+                        const Color(0xFFB6F5ED).withOpacity(
+                          Theme.of(context).brightness == Brightness.dark
+                              ? 0.08
+                              : 0.10,
                         ),
-                        Positioned.fill(
-                          child: RepaintBoundary(
-                            child: CustomScrollView(
-                              physics: const BouncingScrollPhysics(),
-                              slivers: [
-                                SliverToBoxAdapter(
-                                  child: Padding(
-                                    padding: const EdgeInsets.fromLTRB(
-                                      16,
-                                      96,
-                                      16,
-                                      132,
-                                    ),
-                                    child: Column(
-                                      crossAxisAlignment:
-                                          CrossAxisAlignment.start,
-                                      children: [
-                                        Text(
-                                          ekipAdi,
-                                          style: TextStyle(
-                                            fontSize: 14,
-                                            fontWeight: FontWeight.w600,
-                                            color:
-                                                Theme.of(context).brightness ==
-                                                        Brightness.dark
-                                                    ? Colors.white70
-                                                    : Colors.black54,
-                                          ),
-                                        ),
-                                        const SizedBox(height: 6),
-                                        Text(
-                                          'Kontrol Merkezi',
-                                          style: TextStyle(
-                                            fontSize: 32,
-                                            fontWeight: FontWeight.w800,
-                                            color:
-                                                Theme.of(context).brightness ==
-                                                        Brightness.dark
-                                                    ? Colors.white
-                                                    : const Color(0xFF102A43),
-                                          ),
-                                        ),
-                                        const SizedBox(height: 20),
-                                        _buildQuickReportCardMinimal(),
-                                        const SizedBox(height: 18),
-                                        _buildTodayOverviewCardMinimal(
-                                          bugun: panel.bugun,
-                                          bugunCalisanSayisi:
-                                              panel.bugunCalisanSayisi,
-                                          bugunSantiyeSayisi:
-                                              panel.bugunSantiyeSayisi,
-                                          bugunMasraf: panel.bugunMasraf,
-                                          bugunOdemeToplami:
-                                              panel.bugunOdemeToplami,
-                                          privacyHidden: privacy.isHidden,
-                                          finansalErisim: finansalErisim,
-                                        ),
-                                        const SizedBox(height: 18),
-                                        _buildTodayWorkersCardMinimal(
-                                          bugunCalisanlari:
-                                              panel.bugunCalisanlari,
-                                        ),
-                                        const SizedBox(height: 18),
-                                        _buildMonthSummaryCardMinimal(
-                                          tarih: panel.tarih,
-                                          raporGirilenGun:
-                                              panel.ayRaporGirilenGun,
-                                          calisanSayisi: panel.ayCalisanSayisi,
-                                          santiyeSayisi: panel.aySantiyeSayisi,
-                                          odemeToplami: panel.ayOdemeToplami,
-                                          toplamMasraf: panel.ayToplamMasraf,
-                                          privacyHidden: privacy.isHidden,
-                                          finansalErisim: finansalErisim,
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
+                        Colors.transparent,
                       ],
-                    );
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned.fill(
+              child: RepaintBoundary(
+                child: CustomScrollView(
+                  physics: const BouncingScrollPhysics(),
+                  slivers: [
+                    SliverToBoxAdapter(
+                      child: Padding(
+                        padding: const EdgeInsets.fromLTRB(16, 96, 16, 132),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Text(
+                              ekipAdi,
+                              style: TextStyle(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors.white70
+                                        : Colors.black54,
+                              ),
+                            ),
+                            const SizedBox(height: 6),
+                            Text(
+                              'Kontrol Merkezi',
+                              style: TextStyle(
+                                fontSize: 32,
+                                fontWeight: FontWeight.w800,
+                                color:
+                                    Theme.of(context).brightness ==
+                                            Brightness.dark
+                                        ? Colors.white
+                                        : const Color(0xFF102A43),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                            _buildQuickReportCardMinimal(),
+                            const SizedBox(height: 18),
+                            _buildTodayOverviewCardMinimal(
+                              bugun: panel.bugun,
+                              bugunCalisanSayisi: panel.bugunCalisanSayisi,
+                              bugunSantiyeSayisi: panel.bugunSantiyeSayisi,
+                              bugunMasraf: panel.bugunMasraf,
+                              bugunOdemeToplami: panel.bugunOdemeToplami,
+                              privacyHidden: privacy.isHidden,
+                              finansalErisim: finansalErisim,
+                              bugunCalisanlari: panel.bugunCalisanlari,
+                              bugunSantiyeleri: panel.bugunSantiyeleri,
+                            ),
+                            const SizedBox(height: 18),
+                            const WeatherDashboardCard(),
+                            const SizedBox(height: 18),
+                            _buildMonthSummaryCardMinimal(
+                              tarih: panel.tarih,
+                              raporGirilenGun: panel.ayRaporGirilenGun,
+                              calisanSayisi: panel.ayCalisanSayisi,
+                              santiyeSayisi: panel.aySantiyeSayisi,
+                              odemeToplami: panel.ayOdemeToplami,
+                              toplamMasraf: panel.ayToplamMasraf,
+                              privacyHidden: privacy.isHidden,
+                              finansalErisim: finansalErisim,
+                              ayCalisanlari: panel.ayCalisanlari,
+                              aySantiyeleri: panel.aySantiyeleri,
+                              ayRaporGunleri: panel.ayRaporGunleri,
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        );
       },
     );
   }
@@ -1113,9 +1131,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       onPressed:
           () => Navigator.push(
             context,
-            SayfaGecisi(
-              sayfa: GunlukRaporEkrani(teamId: widget.teamId),
-            ),
+            SayfaGecisi(sayfa: GunlukRaporEkrani(teamId: widget.teamId)),
           ),
       child: _buildPanelGlassCard(
         child: Row(
@@ -1134,8 +1150,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     style: TextStyle(
                       fontSize: 17,
                       fontWeight: FontWeight.w700,
-                      color:
-                          isDark ? Colors.white : const Color(0xFF102A43),
+                      color: isDark ? Colors.white : const Color(0xFF102A43),
                     ),
                   ),
                   const SizedBox(height: 2),
@@ -1168,6 +1183,8 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     required double bugunOdemeToplami,
     required bool privacyHidden,
     required bool finansalErisim,
+    required List<String> bugunCalisanlari,
+    required List<String> bugunSantiyeleri,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1175,143 +1192,115 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       key: _panelVeriKey,
       child: _buildPanelGlassCard(
         child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'Bug\u00FCn',
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w600,
-              color: isDark ? Colors.white60 : Colors.black45,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            _turkceTamTarih(bugun),
-            style: TextStyle(
-              fontSize: 23,
-              fontWeight: FontWeight.w800,
-              color: isDark ? Colors.white : const Color(0xFF102A43),
-            ),
-          ),
-          const SizedBox(height: 14),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOverviewMiniCardMinimal(
-                  icon: Icons.groups_rounded,
-                  value: '$bugunCalisanSayisi Ki\u015Fi',
-                  label: '\u00C7al\u0131\u015Fan',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildOverviewMiniCardMinimal(
-                  icon: Icons.apartment_rounded,
-                  value: '$bugunSantiyeSayisi Proje',
-                  label: 'Aktif \u015Eantiye',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOverviewMiniCardMinimal(
-                  icon: Icons.receipt_long_rounded,
-                  value: _formatAmount(
-                    bugunMasraf,
-                    privacyHidden: privacyHidden,
-                  ),
-                  label: 'Toplam Masraf',
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: _buildOverviewMiniCardMinimal(
-                  icon:
-                      finansalErisim
-                          ? Icons.payments_rounded
-                          : Icons.lock_outline,
-                  value:
-                      finansalErisim
-                          ? (bugunOdemeToplami == 0
-                              ? '\u00D6deme yok'
-                              : _formatAmount(
-                                bugunOdemeToplami,
-                                privacyHidden: privacyHidden,
-                              ))
-                          : 'Kilitli',
-                  label:
-                      finansalErisim
-                          ? 'Al\u0131nan \u00D6deme'
-                          : 'Finans',
-                ),
-              ),
-            ],
-          ),
-        ],
-      ),
-      ),
-    );
-  }
-
-  Widget _buildTodayWorkersCardMinimal({
-    required List<String> bugunCalisanlari,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return _buildPanelGlassCard(
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(
-                'Bug\u00FCn \u00C7al\u0131\u015Fanlar',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : const Color(0xFF102A43),
-                ),
-              ),
-              const Spacer(),
-              _buildPanelGlassInset(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 7,
-                ),
-                child: Text(
-                  '${bugunCalisanlari.length} Ki\u015Fi',
-                  style: const TextStyle(
-                    color: Color(0xFF15803D),
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 14),
-          if (bugunCalisanlari.isEmpty)
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
             Text(
-              'Bug\u00FCn i\u00E7in hen\u00FCz \u00E7al\u0131\u015Fan kayd\u0131 yok.',
+              'Bug\u00FCn',
               style: TextStyle(
-                color: isDark ? Colors.white60 : Colors.black54,
+                fontSize: 12,
+                fontWeight: FontWeight.w600,
+                color: isDark ? Colors.white60 : Colors.black45,
               ),
-            )
-          else
-            Wrap(
-              spacing: 8,
-              runSpacing: 8,
-              children:
-                  bugunCalisanlari
-                      .take(8)
-                      .map((ad) => _buildWorkerChipMinimal(ad))
-                      .toList(),
             ),
-        ],
+            const SizedBox(height: 4),
+            Text(
+              _turkceTamTarih(bugun),
+              style: TextStyle(
+                fontSize: 23,
+                fontWeight: FontWeight.w800,
+                color: isDark ? Colors.white : const Color(0xFF102A43),
+              ),
+            ),
+            const SizedBox(height: 14),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOverviewMiniCardMinimal(
+                    heroTag: 'today_summary_calisan',
+                    onTap:
+                        () => _showExpandedMiniCard(
+                          'today_summary_calisan',
+                          Icons.groups_rounded,
+                          '\u00C7al\u0131\u015Fan',
+                          '$bugunCalisanSayisi Ki\u015Fi',
+                          'Bug\u00FCn \u00E7al\u0131\u015Fan personel listesi:',
+                          detailsWidget: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children:
+                                bugunCalisanlari
+                                    .map((ad) => _buildWorkerChipMinimal(ad))
+                                    .toList(),
+                          ),
+                        ),
+                    icon: Icons.groups_rounded,
+                    value: '$bugunCalisanSayisi Ki\u015Fi',
+                    label: '\u00C7al\u0131\u015Fan',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildOverviewMiniCardMinimal(
+                    heroTag: 'today_summary_santiye',
+                    onTap:
+                        () => _showExpandedMiniCard(
+                          'today_summary_santiye',
+                          Icons.apartment_rounded,
+                          'Aktif \u015Eantiye',
+                          '$bugunSantiyeSayisi Proje',
+                          'Bug\u00FCn aktif olan \u015Fantiyeler:',
+                          detailsWidget: Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children:
+                                bugunSantiyeleri
+                                    .map((ad) => _buildWorkerChipMinimal(ad))
+                                    .toList(),
+                          ),
+                        ),
+                    icon: Icons.apartment_rounded,
+                    value: '$bugunSantiyeSayisi Proje',
+                    label: 'Aktif \u015Eantiye',
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildOverviewMiniCardMinimal(
+                    icon: Icons.receipt_long_rounded,
+                    value: _formatAmount(
+                      bugunMasraf,
+                      privacyHidden: privacyHidden,
+                    ),
+                    label: 'Toplam Masraf',
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: _buildOverviewMiniCardMinimal(
+                    icon:
+                        finansalErisim
+                            ? Icons.payments_rounded
+                            : Icons.lock_outline,
+                    value:
+                        finansalErisim
+                            ? (bugunOdemeToplami == 0
+                                ? '\u00D6deme yok'
+                                : _formatAmount(
+                                  bugunOdemeToplami,
+                                  privacyHidden: privacyHidden,
+                                ))
+                            : 'Kilitli',
+                    label: finansalErisim ? 'Al\u0131nan \u00D6deme' : 'Finans',
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -1325,6 +1314,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     required double toplamMasraf,
     required bool privacyHidden,
     required bool finansalErisim,
+    required List<String> ayCalisanlari,
+    required List<String> aySantiyeleri,
+    required List<DateTime> ayRaporGunleri,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
@@ -1354,8 +1346,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
-                    color:
-                        isDark ? Colors.white70 : const Color(0xFF0F7C86),
+                    color: isDark ? Colors.white70 : const Color(0xFF0F7C86),
                   ),
                 ),
               ),
@@ -1366,6 +1357,119 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             children: [
               Expanded(
                 child: _buildOverviewMiniCardMinimal(
+                  heroTag: 'month_summary_rapor_gun',
+                  onTap:
+                      () => _showExpandedMiniCard(
+                        'month_summary_rapor_gun',
+                        Icons.event_note_rounded,
+                        'Rapor Girilen G\u00FCn',
+                        '$raporGirilenGun G\u00FCn',
+                        'Bu ay rapor girilen g\u00FCnler takvim \u00FCzerinde i\u015Faretlenmi\u015Ftir:',
+                        detailsWidget: SizedBox(
+                          width: 320,
+                          child: _buildPanelGlassInset(
+                            padding: const EdgeInsets.all(8),
+                            child: TableCalendar(
+                              locale: 'tr_TR',
+                              firstDay: DateTime(tarih.year, tarih.month, 1),
+                              lastDay: DateTime(tarih.year, tarih.month + 1, 0),
+                              focusedDay: tarih,
+                              headerStyle: const HeaderStyle(
+                                formatButtonVisible: false,
+                                titleCentered: true,
+                                leftChevronVisible: false,
+                                rightChevronVisible: false,
+                              ),
+                              availableGestures: AvailableGestures.none,
+                              calendarBuilders: CalendarBuilders(
+                                defaultBuilder: (context, day, focusedDay) {
+                                  bool hasReport = ayRaporGunleri.any(
+                                    (d) =>
+                                        d.year == day.year &&
+                                        d.month == day.month &&
+                                        d.day == day.day,
+                                  );
+                                  return Center(
+                                    child: Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color:
+                                            hasReport
+                                                ? const Color(0xFF0F7C86)
+                                                : Colors.transparent,
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${day.day}',
+                                          style: TextStyle(
+                                            color:
+                                                hasReport
+                                                    ? Colors.white
+                                                    : (Theme.of(
+                                                              context,
+                                                            ).brightness ==
+                                                            Brightness.dark
+                                                        ? Colors.white
+                                                        : Colors.black87),
+                                            fontWeight:
+                                                hasReport
+                                                    ? FontWeight.bold
+                                                    : FontWeight.normal,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                                todayBuilder: (context, day, focusedDay) {
+                                  bool hasReport = ayRaporGunleri.any(
+                                    (d) =>
+                                        d.year == day.year &&
+                                        d.month == day.month &&
+                                        d.day == day.day,
+                                  );
+                                  return Center(
+                                    child: Container(
+                                      width: 36,
+                                      height: 36,
+                                      decoration: BoxDecoration(
+                                        shape: BoxShape.circle,
+                                        color:
+                                            hasReport
+                                                ? const Color(0xFF0F7C86)
+                                                : Colors.transparent,
+                                        border: Border.all(
+                                          color: const Color(0xFF0F7C86),
+                                          width: 2,
+                                        ),
+                                      ),
+                                      child: Center(
+                                        child: Text(
+                                          '${day.day}',
+                                          style: TextStyle(
+                                            color:
+                                                hasReport
+                                                    ? Colors.white
+                                                    : (Theme.of(
+                                                              context,
+                                                            ).brightness ==
+                                                            Brightness.dark
+                                                        ? Colors.white
+                                                        : Colors.black87),
+                                            fontWeight: FontWeight.bold,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ),
                   icon: Icons.event_note_rounded,
                   value: '$raporGirilenGun G\u00FCn',
                   label: 'Rapor Girilen G\u00FCn',
@@ -1374,6 +1478,23 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildOverviewMiniCardMinimal(
+                  heroTag: 'month_summary_personel',
+                  onTap:
+                      () => _showExpandedMiniCard(
+                        'month_summary_personel',
+                        Icons.groups_rounded,
+                        'Personel',
+                        '$calisanSayisi Ki\u015Fi',
+                        'Bu ay projelerinizde g\u00F6rev alan personel listesi:',
+                        detailsWidget: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children:
+                              ayCalisanlari
+                                  .map((ad) => _buildWorkerChipMinimal(ad))
+                                  .toList(),
+                        ),
+                      ),
                   icon: Icons.groups_rounded,
                   value: '$calisanSayisi Ki\u015Fi',
                   label: 'Personel',
@@ -1386,6 +1507,23 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             children: [
               Expanded(
                 child: _buildOverviewMiniCardMinimal(
+                  heroTag: 'month_summary_santiye',
+                  onTap:
+                      () => _showExpandedMiniCard(
+                        'month_summary_santiye',
+                        Icons.apartment_rounded,
+                        'Aktif \u015Eantiye',
+                        '$santiyeSayisi Proje',
+                        'Bu ay aktif olarak i\u015Flem yap\u0131lan \u015Fantiyeler:',
+                        detailsWidget: Wrap(
+                          spacing: 8,
+                          runSpacing: 8,
+                          children:
+                              aySantiyeleri
+                                  .map((ad) => _buildWorkerChipMinimal(ad))
+                                  .toList(),
+                        ),
+                      ),
                   icon: Icons.apartment_rounded,
                   value: '$santiyeSayisi Proje',
                   label: 'Aktif \u015Eantiye',
@@ -1394,6 +1532,21 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               const SizedBox(width: 10),
               Expanded(
                 child: _buildOverviewMiniCardMinimal(
+                  heroTag: 'month_summary_finans',
+                  onTap: () {
+                    if (finansalErisim) {
+                      _showExpandedMiniCard(
+                        'month_summary_finans',
+                        Icons.wallet_rounded,
+                        'Al\u0131nan \u00D6deme',
+                        _formatAmount(
+                          odemeToplami,
+                          privacyHidden: privacyHidden,
+                        ),
+                        'Bu ay i\u00E7erisinde toplam al\u0131nan \u00F6deme (gelir) miktar\u0131d\u0131r. Daha detayl\u0131 b\u00FCt\u00E7e analizine ula\u015Fmak i\u00E7in rapor k\u0131sm\u0131n\u0131 inceleyebilirsiniz.',
+                      );
+                    }
+                  },
                   icon:
                       finansalErisim
                           ? Icons.wallet_rounded
@@ -1405,10 +1558,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                             privacyHidden: privacyHidden,
                           )
                           : 'Kilitli',
-                  label:
-                      finansalErisim
-                          ? 'Al\u0131nan \u00D6deme'
-                          : 'Finans',
+                  label: finansalErisim ? 'Al\u0131nan \u00D6deme' : 'Finans',
                 ),
               ),
             ],
@@ -1436,10 +1586,12 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     required IconData icon,
     required String value,
     required String label,
+    VoidCallback? onTap,
+    String? heroTag,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return _buildPanelGlassInset(
+    Widget content = _buildPanelGlassInset(
       child: Row(
         children: [
           Icon(
@@ -1451,6 +1603,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
                   value,
@@ -1472,6 +1625,154 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             ),
           ),
         ],
+      ),
+    );
+
+    if (heroTag != null) {
+      content = Hero(
+        tag: heroTag,
+        flightShuttleBuilder: (
+          flightContext,
+          animation,
+          flightDirection,
+          fromHeroContext,
+          toHeroContext,
+        ) {
+          return Material(
+            type: MaterialType.transparency,
+            child: toHeroContext.widget,
+          );
+        },
+        child: Material(type: MaterialType.transparency, child: content),
+      );
+    }
+
+    if (onTap != null) {
+      content = GestureDetector(onTap: onTap, child: content);
+    }
+
+    return content;
+  }
+
+  void _showExpandedMiniCard(
+    String heroTag,
+    IconData icon,
+    String label,
+    String value,
+    String details, {
+    Widget? detailsWidget,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        opaque: false,
+        barrierDismissible: true,
+        barrierColor: Colors.black54,
+        transitionDuration: const Duration(milliseconds: 350),
+        reverseTransitionDuration: const Duration(milliseconds: 350),
+        pageBuilder: (context, animation, secondaryAnimation) {
+          return FadeTransition(
+            opacity: animation,
+            child: SafeArea(
+              child: Padding(
+                padding: const EdgeInsets.all(24.0),
+                child: Center(
+                  child: Hero(
+                    tag: heroTag,
+                    flightShuttleBuilder: (
+                      flightContext,
+                      animation,
+                      flightDirection,
+                      fromHeroContext,
+                      toHeroContext,
+                    ) {
+                      return Material(
+                        type: MaterialType.transparency,
+                        child: toHeroContext.widget,
+                      );
+                    },
+                    child: Material(
+                      type: MaterialType.transparency,
+                      child: _buildPanelGlassCard(
+                        child: SingleChildScrollView(
+                          child: Column(
+                            mainAxisSize: MainAxisSize.min,
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                children: [
+                                  Icon(
+                                    icon,
+                                    size: 24,
+                                    color:
+                                        isDark
+                                            ? Colors.white70
+                                            : const Color(0xFF0F7C86),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Text(
+                                      label,
+                                      style: TextStyle(
+                                        fontSize: 20,
+                                        fontWeight: FontWeight.bold,
+                                        color:
+                                            isDark
+                                                ? Colors.white
+                                                : const Color(0xFF102A43),
+                                      ),
+                                    ),
+                                  ),
+                                  IconButton(
+                                    icon: Icon(
+                                      Icons.close,
+                                      color:
+                                          isDark
+                                              ? Colors.white
+                                              : Colors.black87,
+                                    ),
+                                    onPressed:
+                                        () => Navigator.of(context).pop(),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 16),
+                              Text(
+                                value,
+                                style: TextStyle(
+                                  fontSize: 28,
+                                  fontWeight: FontWeight.w900,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF102A43),
+                                ),
+                              ),
+                              const SizedBox(height: 12),
+                              Text(
+                                details,
+                                style: TextStyle(
+                                  color:
+                                      isDark ? Colors.white60 : Colors.black54,
+                                  height: 1.5,
+                                  fontSize: 15,
+                                ),
+                              ),
+                              if (detailsWidget != null) ...[
+                                const SizedBox(height: 16),
+                                detailsWidget,
+                              ],
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+          );
+        },
       ),
     );
   }
@@ -1559,9 +1860,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           ],
         ),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.07)
-              : const Color(0xFFBFD0D6).withOpacity(0.92),
+          color:
+              isDark
+                  ? Colors.white.withOpacity(0.07)
+                  : const Color(0xFFBFD0D6).withOpacity(0.92),
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
@@ -1577,10 +1879,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           ),
         ],
       ),
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: Padding(padding: padding, child: child),
     );
   }
 
@@ -1603,16 +1902,14 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           ],
         ),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withOpacity(0.05)
-              : const Color(0xFFBFD0D6).withOpacity(0.88),
+          color:
+              isDark
+                  ? Colors.white.withOpacity(0.05)
+                  : const Color(0xFFBFD0D6).withOpacity(0.88),
         ),
         borderRadius: BorderRadius.circular(18),
       ),
-      child: Padding(
-        padding: padding,
-        child: child,
-      ),
+      child: Padding(padding: padding, child: child),
     );
   }
 
@@ -1642,11 +1939,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           color: accentColor.withOpacity(isDark ? 0.20 : 0.14),
         ),
       ),
-      child: Icon(
-        icon,
-        color: accentColor,
-        size: compact ? 18 : 24,
-      ),
+      child: Icon(icon, color: accentColor, size: compact ? 18 : 24),
     );
   }
 
@@ -1819,7 +2112,11 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
-            Icon(icon, color: isSelected ? color : color.withOpacity(0.82), size: 20),
+            Icon(
+              icon,
+              color: isSelected ? color : color.withOpacity(0.82),
+              size: 20,
+            ),
             const SizedBox(height: 4),
             Text(
               label,
@@ -1860,7 +2157,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               color:
                   isSelected
                       ? color
-                      : (isDark ? const Color(0xFF183238) : const Color(0xFFE8F7F8)),
+                      : (isDark
+                          ? const Color(0xFF183238)
+                          : const Color(0xFFE8F7F8)),
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
@@ -1891,7 +2190,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             style: TextStyle(
               fontSize: 10,
               fontWeight: FontWeight.w800,
-              color: isSelected ? color : (isDark ? Colors.white70 : Colors.black54),
+              color:
+                  isSelected
+                      ? color
+                      : (isDark ? Colors.white70 : Colors.black54),
             ),
           ),
         ],
@@ -1907,9 +2209,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       onPressed:
           () => Navigator.push(
             context,
-            SayfaGecisi(
-              sayfa: GunlukRaporEkrani(teamId: widget.teamId),
-            ),
+            SayfaGecisi(sayfa: GunlukRaporEkrani(teamId: widget.teamId)),
           ),
       child: Container(
         padding: const EdgeInsets.all(18),
@@ -2060,7 +2360,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           const SizedBox(height: 12),
           _buildOverviewWideCard(
             icon: finansalErisim ? Icons.payments_rounded : Icons.lock_outline,
-            title: finansalErisim ? 'BugÃ¼n alÄ±nan Ã¶deme' : 'Finans bÃ¶lÃ¼mÃ¼ kilitli',
+            title:
+                finansalErisim
+                    ? 'BugÃ¼n alÄ±nan Ã¶deme'
+                    : 'Finans bÃ¶lÃ¼mÃ¼ kilitli',
             value:
                 finansalErisim
                     ? (bugunOdemeToplami == 0
@@ -2090,9 +2393,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(
           color:
-              isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : const Color(0xFFDAE6F2),
+              isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFDAE6F2),
         ),
         boxShadow: [
           BoxShadow(
@@ -2226,7 +2527,11 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 child: const Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    Icon(Icons.grid_view_rounded, color: Colors.white, size: 18),
+                    Icon(
+                      Icons.grid_view_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    ),
                     SizedBox(width: 8),
                     Text(
                       'Bu Ay',
@@ -2275,7 +2580,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               const SizedBox(width: 12),
               Expanded(
                 child: _buildOverviewMiniCard(
-                  icon: finansalErisim ? Icons.wallet_rounded : Icons.lock_outline,
+                  icon:
+                      finansalErisim
+                          ? Icons.wallet_rounded
+                          : Icons.lock_outline,
                   value:
                       finansalErisim
                           ? _formatAmount(
@@ -2292,10 +2600,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           _buildOverviewWideCard(
             icon: Icons.analytics_rounded,
             title: 'Ay sonu raporunu aÃ§',
-            value:
-                finansalErisim
-                    ? 'Analizi gÃ¶rÃ¼ntÃ¼le'
-                    : 'Yetki gerekiyor',
+            value: finansalErisim ? 'Analizi gÃ¶rÃ¼ntÃ¼le' : 'Yetki gerekiyor',
             helper:
                 finansalErisim
                     ? 'Toplam masraf: ${_formatAmount(toplamMasraf, privacyHidden: privacyHidden)}'
@@ -2527,176 +2832,27 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           ),
           body: Consumer<RolProvider>(
             builder: (context, rolProvider, _) {
-              return _buildPrimaryShell(
-                rolProvider.isFinansalErisim,
-                ekipAdi,
-              );
-            },
-          ),
-        );
-
-        return Scaffold(
-          appBar: AppBar(
-            title: Text(tamBaslik),
-            centerTitle: true,
-            actions: [
-              Consumer<PrivacyProvider>(
-                builder: (context, privacy, child) {
-                  return IconButton(
-                    icon: Icon(
-                      privacy.isHidden
-                          ? Icons.visibility_off
-                          : Icons.visibility,
-                    ),
-                    tooltip: "Tutarları Gizle/Göster",
-                    onPressed: () => privacy.togglePrivacy(),
-                  );
-                },
-              ),
-            ],
-          ),
-          drawer: _buildBlurryDrawer(
-            context,
-            authServisi,
-            widget.teamId,
-            tamBaslik,
-          ),
-          body: Consumer<RolProvider>(
-            builder: (context, rolProvider, _) {
-              return Stack(
+              return Column(
                 children: [
-                  ListView(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 12.0,
-                    ),
-                    children: [
-                  // Eski RehberKarti KALDIRILDI
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4),
-                    child: Text(
-                      "YÖNETİM",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
+                  if (_isOffline)
+                    Container(
+                      width: double.infinity,
+                      color: Colors.redAccent,
+                      padding: const EdgeInsets.symmetric(vertical: 4),
+                      child: const Text(
+                        'İnternet bağlantısı yok (Çevrimdışı Çalışıyorsunuz)',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
                       ),
                     ),
-                  ),
-
-                  _buildDashboardCard(
-                    key: _raporKey,
-                    context: context,
-                    icon: Icons.edit_calendar_outlined,
-                    title: 'Günlük Rapor',
-                    subtitle: 'Veri Girişi',
-                    color: AppColors.greenDark,
-                    onTap:
-                        () => Navigator.push(
-                          context,
-                          SayfaGecisi(
-                            sayfa: GunlukRaporEkrani(teamId: widget.teamId),
-                          ),
-                        ),
-                  ),
-                  _buildDashboardCard(
-                    key: _santiyeKey,
-                    context: context,
-                    icon: Icons.home_work_outlined,
-                    title: 'Şantiyeler',
-                    subtitle: 'Şantiye Listesi',
-                    color: AppColors.tealDark,
-                    onTap:
-                        () => Navigator.push(
-                          context,
-                          SayfaGecisi(
-                            sayfa: SantiyeEkrani(teamId: widget.teamId),
-                          ),
-                        ),
-                  ),
-                  _buildDashboardCard(
-                    key: _isciKey,
-                    context: context,
-                    icon: Icons.groups_outlined,
-                    title: 'İşçiler',
-                    subtitle: 'Personel Yönetimi',
-                    color: AppColors.blueDark,
-                    onTap:
-                        () => Navigator.push(
-                          context,
-                          SayfaGecisi(sayfa: IsciEkrani(teamId: widget.teamId)),
-                        ),
-                  ),
-
-                  const SizedBox(height: 10),
-                  const Padding(
-                    padding: EdgeInsets.symmetric(vertical: 8.0, horizontal: 4),
-                    child: Text(
-                      "Finans",
-                      style: TextStyle(
-                        color: Colors.grey,
-                        fontSize: 12,
-                        fontWeight: FontWeight.bold,
-                      ),
-                    ),
-                  ),
-
-                  // Finansal kartlar: sadece kurucu ve yÃ¶netici gÃ¶rebilir
-                  if (rolProvider.isFinansalErisim)
-                    ...([
-                      _buildDashboardCard(
-                        key: _odemeKey,
-                        context: context,
-                        icon: Icons.receipt_long_outlined,
-                        title: 'Ödemeler',
-                        subtitle: 'Gelir & Gider',
-                        color: AppColors.purpleDark,
-                        onTap:
-                            () => Navigator.push(
-                              context,
-                              SayfaGecisi(
-                                sayfa: OdemelerEkrani(teamId: widget.teamId),
-                              ),
-                            ),
-                      ),
-                      _buildDashboardCard(
-                        context: context,
-                        icon: Icons.pie_chart_outline,
-                        title: 'Ay Sonu Raporu',
-                        subtitle: 'Detaylı Analiz',
-                        color: AppColors.orangeDark,
-                        onTap:
-                            () => Navigator.push(
-                              context,
-                              SayfaGecisi(
-                                sayfa: AySonuRaporEkrani(teamId: widget.teamId),
-                              ),
-                            ),
-                      ),
-                    ])
-                  else
-                    ...([
-                      _buildLockedCard(
-                        context: context,
-                        icon: Icons.receipt_long_outlined,
-                        title: 'Ödemeler',
-                        subtitle: 'Gelir & Gider',
-                      ),
-                      _buildLockedCard(
-                        context: context,
-                        icon: Icons.pie_chart_outline,
-                        title: 'Ay Sonu Raporu',
-                        subtitle: 'Detaylı Analiz',
-                      ),
-                    ]),
-                      const SizedBox(height: 136),
-                    ],
-                  ),
-                  Align(
-                    alignment: Alignment.bottomCenter,
-                    child: _buildQuickAccessDock(
-                      context,
+                  Expanded(
+                    child: _buildPrimaryShell(
                       rolProvider.isFinansalErisim,
+                      ekipAdi,
                     ),
                   ),
                 ],
@@ -2733,7 +2889,12 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               color:
                   isDarkMode
                       ? const Color(0xFF1E1E1E).withOpacity(0.15)
-                      : const Color.fromARGB(255, 255, 255, 255).withOpacity(0.25),
+                      : const Color.fromARGB(
+                        255,
+                        255,
+                        255,
+                        255,
+                      ).withOpacity(0.25),
               border: Border(
                 right: BorderSide(
                   color: Colors.white.withOpacity(0.5),
@@ -2768,9 +2929,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       Icon(
                         Icons.business,
                         color:
-                            isDarkMode
-                                ? Colors.white
-                                : const Color(0xFF1E6F78),
+                            isDarkMode ? Colors.white : const Color(0xFF1E6F78),
                         size: 40,
                       ),
                       const SizedBox(height: 16),
@@ -2875,6 +3034,18 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       ),
                       _buildGlassDrawerItem(
                         context,
+                        icon: Icons.support_agent_outlined,
+                        title: 'Destek',
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            SayfaGecisi(sayfa: const DestekEkrani()),
+                          );
+                        },
+                      ),
+                      _buildGlassDrawerItem(
+                        context,
                         icon: Icons.info_outline,
                         title: 'Hakkında',
                         onTap: () {
@@ -2930,10 +3101,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                                   : const Color(0xFFD7E3EC),
                           secondary: Icon(
                             isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                            color:
-                                isDarkMode
-                                    ? Colors.white70
-                                    : Colors.black87,
+                            color: isDarkMode ? Colors.white70 : Colors.black87,
                           ),
                           onChanged: (val) => themeProvider.toggleTheme(val),
                         ),
@@ -3008,7 +3176,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     isTransparent: false,
                     onTap: () async {
                       Navigator.pop(context);
-                      await Future<void>.delayed(const Duration(milliseconds: 180));
+                      await Future<void>.delayed(
+                        const Duration(milliseconds: 180),
+                      );
                       if (!mounted) return;
                       final onayla = await AnimasyonluDialog.goster<bool>(
                         context: context,
@@ -3178,9 +3348,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color:
-                      isSelected
-                          ? color.withOpacity(0.34)
-                          : Colors.transparent,
+                      isSelected ? color.withOpacity(0.34) : Colors.transparent,
                 ),
               ),
               child: Icon(icon, color: color, size: 22),
@@ -3461,6 +3629,10 @@ class _AnaPanelVerisi {
     required this.ayToplamYevmiye,
     required this.ayToplamMasraf,
     required this.ayOdemeToplami,
+    required this.ayCalisanlari,
+    required this.aySantiyeleri,
+    required this.ayRaporGunleri,
+    required this.bugunSantiyeleri,
   });
 
   final DateTime tarih;
@@ -3477,6 +3649,10 @@ class _AnaPanelVerisi {
   final double ayToplamYevmiye;
   final double ayToplamMasraf;
   final double ayOdemeToplami;
+  final List<String> ayCalisanlari;
+  final List<String> aySantiyeleri;
+  final List<DateTime> ayRaporGunleri;
+  final List<String> bugunSantiyeleri;
 
   factory _AnaPanelVerisi.olustur({
     required List<Santiye> santiyeler,
@@ -3514,8 +3690,7 @@ class _AnaPanelVerisi {
 
     for (final rapor in bugunRaporlari) {
       bugunSantiyeleri.add(rapor.santiyeAdi);
-      bugunMasraf +=
-          rapor.benzinGideri + rapor.yemekGideri + rapor.ekMasraflar;
+      bugunMasraf += rapor.benzinGideri + rapor.yemekGideri + rapor.ekMasraflar;
       for (final calisma in rapor.calisanlar) {
         bugunCalisanlari.add(calisma.isci.ad);
         bugunYevmiye += gunDegeri(calisma.durum);
@@ -3527,12 +3702,14 @@ class _AnaPanelVerisi {
     final ayRaporGunleri = <DateTime>{};
     double ayToplamYevmiye = 0;
     double ayToplamMasraf = 0;
-    final ayRaporlari = raporlar
-        .where(
-          (rapor) =>
-              rapor.tarih.year == now.year && rapor.tarih.month == now.month,
-        )
-        .toList();
+    final ayRaporlari =
+        raporlar
+            .where(
+              (rapor) =>
+                  rapor.tarih.year == now.year &&
+                  rapor.tarih.month == now.month,
+            )
+            .toList();
 
     for (final rapor in ayRaporlari) {
       aySantiyeleri.add(rapor.santiyeAdi);
@@ -3547,21 +3724,23 @@ class _AnaPanelVerisi {
       }
     }
 
-    final bugunOdemeToplami = finansalErisim
-        ? odemeler
-            .where((odeme) => isSameDay(odeme.tarih, bugun))
-            .fold<double>(0, (toplam, odeme) => toplam + odeme.miktar)
-        : 0.0;
+    final bugunOdemeToplami =
+        finansalErisim
+            ? odemeler
+                .where((odeme) => isSameDay(odeme.tarih, bugun))
+                .fold<double>(0, (toplam, odeme) => toplam + odeme.miktar)
+            : 0.0;
 
-    final ayOdemeToplami = finansalErisim
-        ? odemeler
-            .where(
-              (odeme) =>
-                  odeme.tarih.year == now.year &&
-                  odeme.tarih.month == now.month,
-            )
-            .fold<double>(0, (toplam, odeme) => toplam + odeme.miktar)
-        : 0.0;
+    final ayOdemeToplami =
+        finansalErisim
+            ? odemeler
+                .where(
+                  (odeme) =>
+                      odeme.tarih.year == now.year &&
+                      odeme.tarih.month == now.month,
+                )
+                .fold<double>(0, (toplam, odeme) => toplam + odeme.miktar)
+            : 0.0;
 
     return _AnaPanelVerisi(
       tarih: now,
@@ -3572,16 +3751,18 @@ class _AnaPanelVerisi {
       bugunMasraf: bugunMasraf,
       bugunOdemeToplami: bugunOdemeToplami,
       bugunCalisanlari: bugunCalisanlari.toList(),
-      ayCalisanSayisi: ayCalisanlari.isEmpty
-          ? isciler.length
-          : ayCalisanlari.length,
-      aySantiyeSayisi: aySantiyeleri.isEmpty
-          ? santiyeler.length
-          : aySantiyeleri.length,
+      ayCalisanSayisi:
+          ayCalisanlari.isEmpty ? isciler.length : ayCalisanlari.length,
+      aySantiyeSayisi:
+          aySantiyeleri.isEmpty ? santiyeler.length : aySantiyeleri.length,
       ayRaporGirilenGun: ayRaporGunleri.length,
       ayToplamYevmiye: ayToplamYevmiye,
       ayToplamMasraf: ayToplamMasraf,
       ayOdemeToplami: ayOdemeToplami,
+      ayCalisanlari: ayCalisanlari.toList(),
+      aySantiyeleri: aySantiyeleri.toList(),
+      ayRaporGunleri: ayRaporGunleri.toList(),
+      bugunSantiyeleri: bugunSantiyeleri.toList(),
     );
   }
 }

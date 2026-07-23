@@ -40,6 +40,20 @@ class OperasyonelHarcamaOzeti {
   double get toplam => benzin + yemek + ekMasraf;
 }
 
+class OperasyonelHarcamaDetay {
+  final String santiyeAdi;
+  final DateTime tarih;
+  final String kalem;
+  final double tutar;
+
+  const OperasyonelHarcamaDetay({
+    required this.santiyeAdi,
+    required this.tarih,
+    required this.kalem,
+    required this.tutar,
+  });
+}
+
 class AySonuRaporEkrani extends StatefulWidget {
   final String teamId;
   const AySonuRaporEkrani({super.key, required this.teamId});
@@ -918,6 +932,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                                           topEk = 0;
                                       final Map<String, OperasyonelHarcamaOzeti>
                                       operasyonelHarcamaSahipleri = {};
+                                      final Map<String, List<OperasyonelHarcamaDetay>>
+                                      operasyonelHarcamaDetaylari = {};
 
                                       for (var r in raporlar) {
                                         topBenzin += r.benzinGideri;
@@ -937,6 +953,19 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                                                 OperasyonelHarcamaOzeti.new,
                                               )
                                               .benzin += r.benzinGideri;
+                                          operasyonelHarcamaDetaylari
+                                              .putIfAbsent(
+                                                r.benzinGideriIsciAdi!,
+                                                () => <OperasyonelHarcamaDetay>[],
+                                              )
+                                              .add(
+                                                OperasyonelHarcamaDetay(
+                                                  santiyeAdi: r.santiyeAdi,
+                                                  tarih: r.tarih,
+                                                  kalem: "Benzin",
+                                                  tutar: r.benzinGideri,
+                                                ),
+                                              );
                                         }
                                         if (r.yemekGideri > 0 &&
                                             r.yemekGideriIsciAdi != null &&
@@ -952,6 +981,19 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                                                 OperasyonelHarcamaOzeti.new,
                                               )
                                               .yemek += r.yemekGideri;
+                                          operasyonelHarcamaDetaylari
+                                              .putIfAbsent(
+                                                r.yemekGideriIsciAdi!,
+                                                () => <OperasyonelHarcamaDetay>[],
+                                              )
+                                              .add(
+                                                OperasyonelHarcamaDetay(
+                                                  santiyeAdi: r.santiyeAdi,
+                                                  tarih: r.tarih,
+                                                  kalem: "Yemek",
+                                                  tutar: r.yemekGideri,
+                                                ),
+                                              );
                                         }
                                         if (r.ekMasraflar > 0 &&
                                             r.ekMasraflarIsciAdi != null &&
@@ -967,6 +1009,19 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                                                 OperasyonelHarcamaOzeti.new,
                                               )
                                               .ekMasraf += r.ekMasraflar;
+                                          operasyonelHarcamaDetaylari
+                                              .putIfAbsent(
+                                                r.ekMasraflarIsciAdi!,
+                                                () => <OperasyonelHarcamaDetay>[],
+                                              )
+                                              .add(
+                                                OperasyonelHarcamaDetay(
+                                                  santiyeAdi: r.santiyeAdi,
+                                                  tarih: r.tarih,
+                                                  kalem: "Ek Masraf",
+                                                  tutar: r.ekMasraflar,
+                                                ),
+                                              );
                                         }
                                         for (var c in r.calisanlar) {
                                           if (hesaplar.containsKey(c.isci.ad)) {
@@ -1331,6 +1386,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                                                                 _buildOperasyonelHarcamaSatiri(
                                                                   entry.key,
                                                                   entry.value,
+                                                                  operasyonelHarcamaDetaylari[entry.key] ?? const <OperasyonelHarcamaDetay>[],
                                                                 ),
                                                           ),
                                                     ],
@@ -2059,8 +2115,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                           fontWeight: FontWeight.bold,
                           color:
                               isDark
-                                  ? const Color(0xFFFBBF24)
-                                  : Colors.orange,
+                                  ? const Color(0xFF5EEAD4)
+                                  : const Color(0xFF0F7C86),
                         ),
                       ),
                 ),
@@ -2102,6 +2158,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
   Widget _buildOperasyonelHarcamaSatiri(
     String ad,
     OperasyonelHarcamaOzeti ozet,
+    List<OperasyonelHarcamaDetay> detaylar,
   ) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Container(
@@ -2141,7 +2198,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
                         fontWeight: FontWeight.bold,
-                        color: isDark ? const Color(0xFFFBBF24) : Colors.orange,
+                        color:
+                            isDark
+                                ? const Color(0xFF5EEAD4)
+                                : const Color(0xFF0F7C86),
                       ),
                     ),
               ),
@@ -2172,8 +2232,227 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                   ],
                 ),
           ),
+          if (detaylar.isNotEmpty) ...[
+            const SizedBox(height: 8),
+            Align(
+              alignment: Alignment.centerRight,
+              child: TextButton.icon(
+                onPressed: () => _operasyonelDetayDallanmaGoster(ad, detaylar),
+                icon: const Icon(Icons.list_alt_rounded, size: 18),
+                label: const Text("Detaylandır"),
+              ),
+            ),
+          ],
         ],
       ),
+    );
+  }
+
+  void _operasyonelDetayBottomSheetGoster(
+    String kisiAdi,
+    List<OperasyonelHarcamaDetay> detaylar,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final siraliDetaylar = [...detaylar]
+      ..sort((a, b) => b.tarih.compareTo(a.tarih));
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor:
+          isDark ? const Color(0xFF0F1720) : const Color.fromARGB(255, 13, 22, 25),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: SizedBox(
+              height: MediaQuery.of(sheetContext).size.height * 0.62,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "$kisiAdi - Harcama Detayı",
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView.separated(
+                      itemCount: siraliDetaylar.length,
+                      separatorBuilder: (_, __) => const Divider(height: 1),
+                      itemBuilder: (context, index) {
+                        final d = siraliDetaylar[index];
+                        return ListTile(
+                          dense: true,
+                          contentPadding: EdgeInsets.zero,
+                          title: Text(
+                            "${d.kalem} • ${d.santiyeAdi}",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          subtitle: Text(
+                            DateFormat('d MMMM yyyy', 'tr_TR').format(d.tarih),
+                          ),
+                          trailing: Consumer<PrivacyProvider>(
+                            builder: (context, privacy, child) => Text(
+                              privacy.isHidden ? "**** TL" : Formatlayici.yap(d.tutar),
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  void _operasyonelDetayDallanmaGoster(
+    String kisiAdi,
+    List<OperasyonelHarcamaDetay> detaylar,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final Map<String, List<OperasyonelHarcamaDetay>> santiyeBazli = {};
+    for (final d in detaylar) {
+      santiyeBazli.putIfAbsent(d.santiyeAdi, () => <OperasyonelHarcamaDetay>[]).add(d);
+    }
+    final santiyeler = santiyeBazli.keys.toList()..sort();
+
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Theme.of(context).colorScheme.surface,
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+            child: SizedBox(
+              height: MediaQuery.of(sheetContext).size.height * 0.62,
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    "$kisiAdi - Harcama Detayi",
+                    style: const TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    "Şantiye satırına dokunarak gün bazlı harcamaları açın.",
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white70 : const Color(0xFF5B6B77),
+                    ),
+                  ),
+                  const SizedBox(height: 12),
+                  Expanded(
+                    child: ListView(
+                      children: santiyeler.map((santiyeAdi) {
+                        final kayitlar = [...(santiyeBazli[santiyeAdi] ?? const <OperasyonelHarcamaDetay>[])]
+                          ..sort((a, b) => b.tarih.compareTo(a.tarih));
+                        final toplam = kayitlar.fold<double>(0.0, (t, e) => t + e.tutar);
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 8),
+                          decoration: BoxDecoration(
+                            color:
+                                isDark
+                                    ? const Color(0xFF11212B)
+                                    : const Color(0xFFEAF5FA),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color:
+                                  isDark
+                                      ? const Color(0xFF1E3A47)
+                                      : const Color.fromARGB(255, 191, 219, 230),
+                            ),
+                          ),
+                          child: ExpansionTile(
+                            tilePadding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 2,
+                            ),
+                            childrenPadding: const EdgeInsets.only(
+                              left: 8,
+                              right: 8,
+                              bottom: 6,
+                            ),
+                            leading: const Icon(
+                              Icons.domain_rounded,
+                              color: Color(0xFF0F7C86),
+                            ),
+                            title: Text(
+                              santiyeAdi,
+                              style: const TextStyle(fontWeight: FontWeight.w700),
+                            ),
+                            subtitle: Text("${kayitlar.length} kayıt • Detayı aç"),
+                            trailing: Consumer<PrivacyProvider>(
+                              builder:
+                                  (context, privacy, child) => Row(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      Text(
+                                        privacy.isHidden
+                                            ? "**** TL"
+                                            : Formatlayici.yap(toplam),
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 6),
+                                      const Icon(Icons.expand_more_rounded),
+                                    ],
+                                  ),
+                            ),
+                            children: kayitlar.map((d) {
+                            return ListTile(
+                              dense: true,
+                              contentPadding: const EdgeInsets.only(
+                                left: 8,
+                                right: 6,
+                              ),
+                              leading: const Icon(
+                                Icons.receipt_long_rounded,
+                                size: 18,
+                                color: Color(0xFF0F7C86),
+                              ),
+                              title: Text(d.kalem),
+                              subtitle: Text(
+                                DateFormat('d MMMM yyyy', 'tr_TR').format(d.tarih),
+                              ),
+                              trailing: Consumer<PrivacyProvider>(
+                                builder: (context, privacy, child) => Text(
+                                  privacy.isHidden ? "**** TL" : Formatlayici.yap(d.tutar),
+                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                                ),
+                              ),
+                            );
+                            }).toList(),
+                          ),
+                        );
+                      }).toList(),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
     );
   }
 

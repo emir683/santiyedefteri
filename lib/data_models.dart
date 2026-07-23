@@ -9,17 +9,25 @@ DateTime _tarihCevir(dynamic val) {
 class Santiye {
   String? id;
   String ad;
+  String? il;
+  String? ilce;
 
-  Santiye({this.id, required this.ad});
+  Santiye({this.id, required this.ad, this.il, this.ilce});
 
   Map<String, dynamic> toMap() {
-    return {'ad': ad};
+    return {
+      'ad': ad,
+      if (il != null) 'il': il,
+      if (ilce != null) 'ilce': ilce,
+    };
   }
 
   factory Santiye.fromMap(Map<String, dynamic> map, String documentId) {
     return Santiye(
       id: documentId,
       ad: map['ad'] ?? '',
+      il: map['il'] as String?,
+      ilce: map['ilce'] as String?,
     );
   }
 }
@@ -28,11 +36,24 @@ class Isci {
   String? id;
   String ad;
   double gunlukMaas;
+  String? linkedUserId; // Bağlı Firebase kullanıcısının UID'si (admin tarafından atanır)
+  String isciTuru; // "Çekirdek Ekip" veya "Misafir"
 
-  Isci({this.id, required this.ad, required this.gunlukMaas});
+  Isci({
+    this.id,
+    required this.ad,
+    required this.gunlukMaas,
+    this.linkedUserId,
+    this.isciTuru = "Çekirdek Ekip",
+  });
 
   Map<String, dynamic> toMap() {
-    return {'ad': ad, 'gunlukMaas': gunlukMaas};
+    return {
+      'ad': ad,
+      'gunlukMaas': gunlukMaas,
+      'isciTuru': isciTuru,
+      if (linkedUserId != null) 'linkedUserId': linkedUserId,
+    };
   }
 
   factory Isci.fromMap(Map<String, dynamic> map, String documentId) {
@@ -40,6 +61,8 @@ class Isci {
       id: documentId,
       ad: map['ad'] ?? '',
       gunlukMaas: (map['gunlukMaas'] ?? 0).toDouble(),
+      linkedUserId: map['linkedUserId'] as String?,
+      isciTuru: map['isciTuru'] ?? "Çekirdek Ekip",
     );
   }
 

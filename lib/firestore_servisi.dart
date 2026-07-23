@@ -211,6 +211,36 @@ class FirestoreServisi {
     await _ekipRef(ekipId).collection('workers').doc(isciId).delete();
   }
 
+  Future<void> isciyiUidIleHesabaBagla(String ekipId, String isciId, String targetUserId, String email) async {
+    final ayniUyeSorgusu = await _ekipRef(ekipId)
+        .collection('workers')
+        .where('linkedUserId', isEqualTo: targetUserId)
+        .get();
+
+    if (ayniUyeSorgusu.docs.isNotEmpty) {
+      throw Exception("Bu ekip üyesi zaten başka bir işçiye bağlanmış.");
+    }
+
+    final doc = await _ekipRef(ekipId).collection('workers').doc(isciId).get();
+    final isciAdi = doc.data()?['ad'] ?? '';
+    await _ekipRef(ekipId).collection('workers').doc(isciId).update({'linkedUserId': targetUserId});
+    await logIslem(ekipId, 'ISCI_GUNCELLEME', {
+      'isciAdi': isciAdi,
+      'detay': 'Hesap bağlandı: $email',
+    });
+  }
+
+  Future<void> isciBaglantisiniKaldir(String ekipId, String isciId) async {
+    final doc = await _ekipRef(ekipId).collection('workers').doc(isciId).get();
+    final isciAdi = doc.data()?['ad'] ?? '';
+    await _ekipRef(ekipId).collection('workers').doc(isciId).update({'linkedUserId': FieldValue.delete()});
+    await logIslem(ekipId, 'ISCI_GUNCELLEME', {
+      'isciAdi': isciAdi,
+      'detay': 'Hesap bağlantısı kaldırıldı',
+    });
+  }
+
+
   // --- RAPORLAR ---
   Stream<List<GunlukSantiyeRaporu>> getRaporlarStream(
     String ekipId,
@@ -1431,5 +1461,100 @@ class FirestoreServisi {
       'detaylar': {'aciklama': 'Kullanıcı tüm verileri sıfırladı.'},
       'tarih': FieldValue.serverTimestamp(),
     });
+  }
+
+  // --- BİLDİRİM İŞLEMLERİ ---
+  String _buildNotificationMessageText(String islemTipi, Map<String, dynamic> detaylar, String username) {
+    switch (islemTipi) {
+      case 'ISCI_EKLEME':
+        return "$username, ${detaylar['isciAdi'] ?? 'bir işçiyi'} ekibe ekledi.";
+      case 'ISCI_GUNCELLEME':
+        return "$username, ${detaylar['isciAdi'] ?? 'bir işçinin'} bilgilerini güncelledi.";
+      case 'ISCI_SILME':
+        return "$username bir işçiyi ekipten çıkardı.";
+      case 'SANTIYE_EKLEME':
+        return "$username, ${detaylar['santiyeAdi'] ?? 'yeni bir'} şantiyesi ekledi.";
+      case 'SANTIYE_SILME':
+        return "$username, ${detaylar['santiyeAdi'] ?? 'bir'} şantiyesini sildi.";
+      case 'GUNLUK_RAPOR_EKLEME':
+        return "$username, ${detaylar['santiyeAdi'] ?? ''} şantiyesine rapor girdi.";
+      case 'GUNLUK_RAPOR_GUNCELLEME':
+        return "$username, ${detaylar['santiyeAdi'] ?? ''} raporunu güncelledi.";
+      case 'ODEME_EKLEME':
+        return "$username, ${detaylar['miktar']} TL ödeme kaydetti.";
+      case 'AVANS_EKLEME':
+        return "$username, ${detaylar['isci'] ?? 'bir işçiye'} ${detaylar['miktar']} TL avans verdi.";
+      case 'ROL_DEGISIMI':
+        return "$username ekipte rol değişikliği yaptı.";
+      default:
+        return "$username bir işlem gerçekleştirdi.";
+    }
+  }
+
+  Stream<List<Map<String, dynamic>>> getKullaniciBildirimleri(String teamId, String uid) {
+    return _ekipRef(teamId)
+        .collection('history')
+        .orderBy('tarih', descending: true)
+        .limit(50)
+        .snapshots()
+        .map((snapshot) {
+      return snapshot.docs
+          .map((doc) {
+            final data = doc.data();
+            final String islemYapanUid = data['kullaniciUid'] ?? '';
+            if (islemYapanUid == uid) return null; // Kendi işlemini bildirim olarak gösterme
+
+            final List<dynamic> okuyanlar = data['okuyanlar'] ?? [];
+            final String islemTipi = data['islemTipi'] ?? '';
+            final Map<String, dynamic> detaylar = data['detaylar'] != null 
+                ? Map<String, dynamic>.from(data['detaylar']) 
+                : {};
+            final String username = data['kullaniciUsername'] ?? 'Biri';
+
+            final String mesaj = _buildNotificationMessageText(islemTipi, detaylar, username);
+
+            return {
+              'id': doc.id,
+              ...data,
+              'mesaj': mesaj,
+              'okundu': okuyanlar.contains(uid),
+            };
+          })
+          .whereType<Map<String, dynamic>>()
+          .toList();
+    });
+  }
+
+  Future<void> bildirimiOkunduIsaretle(String teamId, String bildirimId) async {
+    await _ekipRef(teamId)
+        .collection('history')
+        .doc(bildirimId)
+        .update({
+      'okuyanlar': FieldValue.arrayUnion([kullaniciId]),
+    });
+  }
+
+  Future<void> tumBildirimleriOkunduYap(String teamId, String uid) async {
+    final query = await _ekipRef(teamId)
+        .collection('history')
+        .orderBy('tarih', descending: true)
+        .limit(100)
+        .get();
+
+    final batch = _db.batch();
+    bool hasUpdates = false;
+    for (var doc in query.docs) {
+      final List<dynamic> okuyanlar = doc.data()['okuyanlar'] ?? [];
+      final String islemYapanUid = doc.data()['kullaniciUid'] ?? '';
+      if (islemYapanUid != uid && !okuyanlar.contains(uid)) {
+        batch.update(doc.reference, {
+          'okuyanlar': FieldValue.arrayUnion([uid]),
+        });
+        hasUpdates = true;
+      }
+    }
+    if (hasUpdates) {
+      await batch.commit();
+    }
   }
 }

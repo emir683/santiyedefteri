@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:fl_chart/fl_chart.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'data_models.dart';
@@ -166,6 +167,7 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                     double toplamHakedis = 0;
                     double toplamAvans = 0;
                     double toplamKarsilananGider = 0;
+                    final Map<String, List<Map<String, dynamic>>> giderDetayGruplari = {};
 
                     bool isciEslesiyor({
                       required String? raporIsciId,
@@ -219,6 +221,16 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                           'detay': 'Benzin karşıladı',
                           'tutar': rapor.benzinGideri,
                         });
+                        giderDetayGruplari
+                            .putIfAbsent(
+                              rapor.santiyeAdi,
+                              () => <Map<String, dynamic>>[],
+                            )
+                            .add({
+                              'tarih': rapor.tarih,
+                              'kalem': 'Benzin',
+                              'tutar': rapor.benzinGideri,
+                            });
                       }
 
                       if (rapor.yemekGideri > 0 &&
@@ -235,6 +247,16 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                           'detay': 'Yemek karşıladı',
                           'tutar': rapor.yemekGideri,
                         });
+                        giderDetayGruplari
+                            .putIfAbsent(
+                              rapor.santiyeAdi,
+                              () => <Map<String, dynamic>>[],
+                            )
+                            .add({
+                              'tarih': rapor.tarih,
+                              'kalem': 'Yemek',
+                              'tutar': rapor.yemekGideri,
+                            });
                       }
 
                       if (rapor.ekMasraflar > 0 &&
@@ -251,6 +273,16 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                           'detay': 'Ek masraf karşıladı',
                           'tutar': rapor.ekMasraflar,
                         });
+                        giderDetayGruplari
+                            .putIfAbsent(
+                              rapor.santiyeAdi,
+                              () => <Map<String, dynamic>>[],
+                            )
+                            .add({
+                              'tarih': rapor.tarih,
+                              'kalem': 'Ek Masraf',
+                              'tutar': rapor.ekMasraflar,
+                            });
                       }
                     }
 
@@ -330,33 +362,55 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                             child: Column(
                               children: [
                                 Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceBetween,
                                   children: [
-                                    _buildSummaryItem(
-                                      "Çalışılan",
-                                      "${tamGun}T, ${yarimGun}Y",
-                                      isDark
-                                          ? Colors.white
-                                          : const Color(0xFF0F2A44),
+                                    SizedBox(
+                                      width: 80,
+                                      height: 80,
+                                      child: PieChart(
+                                        PieChartData(
+                                          sectionsSpace: 2,
+                                          centerSpaceRadius: 20,
+                                          sections: [
+                                            PieChartSectionData(
+                                              color: _kBrandTealDark,
+                                              value: tamGun.toDouble(),
+                                              title: tamGun > 0 ? '$tamGun' : '',
+                                              radius: 15,
+                                              titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                            ),
+                                            PieChartSectionData(
+                                              color: Colors.orangeAccent,
+                                              value: yarimGun.toDouble(),
+                                              title: yarimGun > 0 ? '$yarimGun' : '',
+                                              radius: 15,
+                                              titleStyle: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold, color: Colors.white),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
                                     ),
-                                    _buildSummaryItem(
-                                      "Hakediş",
-                                      isFinans
-                                          ? "${toplamHakedis.toStringAsFixed(0)} ₺"
-                                          : "--",
-                                      isDark
-                                          ? Colors.lightGreenAccent
-                                          : const Color(0xFF1B7F4D),
-                                    ),
-                                    _buildSummaryItem(
-                                      "Avans",
-                                      isFinans
-                                          ? "${toplamAvans.toStringAsFixed(0)} ₺"
-                                          : "--",
-                                      isDark
-                                          ? Colors.orangeAccent
-                                          : const Color(0xFFB46900),
+                                    const SizedBox(width: 16),
+                                    Expanded(
+                                      child: Row(
+                                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                        children: [
+                                          _buildSummaryItem(
+                                            "Çalışılan",
+                                            "${tamGun}T, ${yarimGun}Y",
+                                            isDark ? Colors.white : const Color(0xFF0F2A44),
+                                          ),
+                                          _buildSummaryItem(
+                                            "Hakediş",
+                                            isFinans ? "${toplamHakedis.toStringAsFixed(0)} ₺" : "--",
+                                            isDark ? Colors.lightGreenAccent : const Color(0xFF1B7F4D),
+                                          ),
+                                          _buildSummaryItem(
+                                            "Avans",
+                                            isFinans ? "${toplamAvans.toStringAsFixed(0)} ₺" : "--",
+                                            isDark ? Colors.orangeAccent : const Color(0xFFB46900),
+                                          ),
+                                        ],
+                                      ),
                                     ),
                                   ],
                                 ),
@@ -417,13 +471,21 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                                         style: TextStyle(
                                           color:
                                               isDark
-                                                  ? Colors.orangeAccent
-                                                  : const Color(0xFFB46900),
+                                                  ? const Color(0xFF5EEAD4)
+                                                  : const Color(0xFF0F7C86),
                                           fontWeight: FontWeight.bold,
                                         ),
                                       ),
                                     ],
                                   ),
+                                  if (giderDetayGruplari.isNotEmpty) ...[
+                                    const SizedBox(height: 6),
+                                    TextButton.icon(
+                                      onPressed: () => _giderDetayBottomSheetGoster(giderDetayGruplari),
+                                      icon: const Icon(Icons.list_alt, size: 18),
+                                      label: const Text("Giderleri detaylandir"),
+                                    ),
+                                  ],
                                 ],
                               ],
                             ),
@@ -588,6 +650,125 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
           ),
         ),
       ],
+    );
+  }
+
+  void _giderDetayBottomSheetGoster(
+    Map<String, List<Map<String, dynamic>>> gruplar,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final santiyeler = gruplar.keys.toList()..sort();
+    showModalBottomSheet<void>(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor:
+          isDark ? const Color(0xFF0F1720) : const Color(0xFFF2FAFD),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
+      ),
+      builder: (sheetContext) {
+        return SafeArea(
+          child: SizedBox(
+            height: MediaQuery.of(sheetContext).size.height * 0.7,
+            child: ListView(
+              padding: const EdgeInsets.fromLTRB(16, 16, 16, 20),
+              children: [
+                const Text(
+                  "Karsiladigi Gider Detayi",
+                  style: TextStyle(fontSize: 17, fontWeight: FontWeight.w700),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  "Şantiye satırına dokunarak gün bazlı kayıtları açabilirsiniz.",
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: isDark ? Colors.white70 : const Color(0xFF5B6B77),
+                  ),
+                ),
+                const SizedBox(height: 12),
+                ...santiyeler.map((santiye) {
+                  final detaylar = [...gruplar[santiye] ?? []]
+                    ..sort(
+                      (a, b) => (b['tarih'] as DateTime).compareTo(
+                        a['tarih'] as DateTime,
+                      ),
+                    );
+                  final toplam = detaylar.fold<double>(
+                    0.0,
+                    (t, e) => t + (e['tutar'] as double),
+                  );
+                  return Container(
+                    margin: const EdgeInsets.only(bottom: 8),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? const Color(0xFF11212B)
+                              : const Color(0xFFEAF5FA),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? const Color(0xFF1E3A47)
+                                : const Color(0xFFCCE3EC),
+                      ),
+                    ),
+                    child: ExpansionTile(
+                      tilePadding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 2,
+                      ),
+                      childrenPadding: const EdgeInsets.only(
+                        left: 8,
+                        right: 8,
+                        bottom: 6,
+                      ),
+                      leading: const Icon(
+                        Icons.domain_rounded,
+                        color: Color(0xFF0F7C86),
+                      ),
+                      title: Text(
+                        santiye,
+                        style: const TextStyle(fontWeight: FontWeight.w700),
+                      ),
+                      subtitle: Text("${detaylar.length} kayıt • Detayı aç"),
+                      trailing: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            "${toplam.toStringAsFixed(2)} TL",
+                            style: const TextStyle(fontWeight: FontWeight.w700),
+                          ),
+                          const SizedBox(width: 6),
+                          const Icon(Icons.expand_more_rounded),
+                        ],
+                      ),
+                      children: detaylar.map((d) {
+                      final tarih = d['tarih'] as DateTime;
+                      return ListTile(
+                        dense: true,
+                        contentPadding: const EdgeInsets.only(left: 8, right: 6),
+                        leading: const Icon(
+                          Icons.receipt_long_rounded,
+                          size: 18,
+                          color: Color(0xFF0F7C86),
+                        ),
+                        title: Text("${d['kalem']}"),
+                        subtitle: Text(
+                          DateFormat('d MMMM yyyy', 'tr_TR').format(tarih),
+                        ),
+                        trailing: Text(
+                          "${(d['tutar'] as double).toStringAsFixed(2)} TL",
+                        ),
+                      );
+                      }).toList(),
+                    ),
+                  );
+                }),
+              ],
+            ),
+          ),
+        );
+      },
     );
   }
 }
