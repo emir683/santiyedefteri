@@ -38,6 +38,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
   String? _secilenIlce;
   Map<String, dynamic>? _weatherData;
   bool _isLoadingWeather = false;
+  bool _isWeatherExpanded = false;
 
   @override
   void initState() {
@@ -484,344 +485,441 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: Container(
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 300),
+        curve: Curves.easeInOutCubic,
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
               (isDark ? const Color(0xFF141920) : const Color(0xFFF0FDF4))
-                  .withValues(alpha: isDark ? 0.95 : 0.90),
+                  .withValues(alpha: isDark ? 0.95 : 0.92),
               (isDark ? const Color(0xFF0F141B) : const Color(0xFFE6F4EA))
-                  .withValues(alpha: isDark ? 0.98 : 0.94),
+                  .withValues(alpha: isDark ? 0.98 : 0.96),
             ],
           ),
-          borderRadius: BorderRadius.circular(20),
+          borderRadius: BorderRadius.circular(_isWeatherExpanded ? 20 : 16),
           border: Border.all(
             color: isDark
-                ? Colors.white.withValues(alpha: 0.08)
-                : const Color(0xFF14B8A6).withValues(alpha: 0.25),
+                ? Colors.white.withValues(alpha: _isWeatherExpanded ? 0.12 : 0.07)
+                : const Color(0xFF14B8A6).withValues(alpha: _isWeatherExpanded ? 0.3 : 0.2),
           ),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-              blurRadius: 14,
-              offset: const Offset(0, 6),
+              blurRadius: _isWeatherExpanded ? 14 : 8,
+              offset: Offset(0, _isWeatherExpanded ? 6 : 3),
             ),
           ],
         ),
-        child: Padding(
-          padding: const EdgeInsets.all(16),
+        child: Material(
+          color: Colors.transparent,
           child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              // Üst Satır: Konum Başlığı ve Değiştir / Yenile Butonları
-              Row(
-                children: [
-                  Container(
-                    width: 32,
-                    height: 32,
-                    decoration: BoxDecoration(
-                      color: _kBrandTeal.withValues(alpha: 0.15),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.location_on_rounded, color: _kBrandTeal, size: 18),
+              // Başlık / Kapalı Özet Satırı (Tıklanabilir)
+              InkWell(
+                borderRadius: BorderRadius.circular(_isWeatherExpanded ? 20 : 16),
+                onTap: () {
+                  setState(() {
+                    _isWeatherExpanded = !_isWeatherExpanded;
+                  });
+                },
+                child: Padding(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: 14,
+                    vertical: _isWeatherExpanded ? 14 : 10,
                   ),
-                  const SizedBox(width: 8),
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          konumTitle,
-                          style: TextStyle(
-                            fontSize: 15,
-                            fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : const Color(0xFF0F172A),
-                          ),
+                  child: Row(
+                    children: [
+                      Container(
+                        width: 34,
+                        height: 34,
+                        decoration: BoxDecoration(
+                          color: _kBrandTeal.withValues(alpha: 0.15),
+                          shape: BoxShape.circle,
                         ),
-                        Text(
-                          "Şantiye Sahası Canlı Hava Durumu",
-                          style: TextStyle(
-                            fontSize: 11,
-                            color: isDark ? Colors.white54 : Colors.black45,
-                          ),
+                        child: Icon(
+                          _weatherData != null
+                              ? TurkiyeIlIlce.getWeatherIcon(_weatherData!['weathercode'] ?? 0)
+                              : Icons.location_on_rounded,
+                          color: _weatherData != null ? const Color(0xFFF59E0B) : _kBrandTeal,
+                          size: 19,
                         ),
-                      ],
-                    ),
-                  ),
-                  IconButton(
-                    tooltip: "İl / İlçe Değiştir",
-                    icon: const Icon(Icons.tune_rounded, size: 20, color: _kBrandTeal),
-                    visualDensity: VisualDensity.compact,
-                    onPressed: () async {
-                      final res = await IlIlceSeciciModal.goster(
-                        context,
-                        baslangicIl: _secilenIl,
-                        baslangicIlce: _secilenIlce,
-                      );
-                      if (res != null) {
-                        setState(() {
-                          _secilenIl = res.il;
-                          _secilenIlce = res.ilce;
-                        });
-                        _fetchWeather(res.il, res.ilce);
-                      }
-                    },
-                  ),
-                  if (hasLocation)
-                    IconButton(
-                      tooltip: "Yenile",
-                      icon: _isLoadingWeather
-                          ? const SizedBox(
-                              width: 16,
-                              height: 16,
-                              child: CircularProgressIndicator(strokeWidth: 2, color: _kBrandTeal),
-                            )
-                          : const Icon(Icons.refresh_rounded, size: 20, color: Colors.grey),
-                      visualDensity: VisualDensity.compact,
-                      onPressed: _isLoadingWeather
-                          ? null
-                          : () => _fetchWeather(_secilenIl!, _secilenIlce),
-                    ),
-                ],
-              ),
-
-              const SizedBox(height: 12),
-
-              // Konum seçilmediyse ekleme çağrısı
-              if (!hasLocation)
-                InkWell(
-                  borderRadius: BorderRadius.circular(14),
-                  onTap: () async {
-                    final res = await IlIlceSeciciModal.goster(context);
-                    if (res != null) {
-                      setState(() {
-                        _secilenIl = res.il;
-                        _secilenIlce = res.ilce;
-                      });
-                      _fetchWeather(res.il, res.ilce);
-                    }
-                  },
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
-                    decoration: BoxDecoration(
-                      color: _kBrandTeal.withValues(alpha: 0.1),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(color: _kBrandTeal.withValues(alpha: 0.3)),
-                    ),
-                    child: const Row(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Icon(Icons.add_location_alt_rounded, color: _kBrandTeal, size: 20),
-                        SizedBox(width: 8),
-                        Text(
-                          "İl ve İlçe Seçerek Hava Durumunu Aktifleştir",
-                          style: TextStyle(
-                            color: _kBrandTeal,
-                            fontWeight: FontWeight.w600,
-                            fontSize: 13,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_isLoadingWeather && _weatherData == null)
-                const Padding(
-                  padding: EdgeInsets.symmetric(vertical: 16),
-                  child: Center(
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        SizedBox(
-                          width: 18,
-                          height: 18,
-                          child: CircularProgressIndicator(strokeWidth: 2, color: _kBrandTeal),
-                        ),
-                        SizedBox(width: 12),
-                        Text(
-                          "Hava durumu verisi alınıyor...",
-                          style: TextStyle(fontSize: 13, color: Colors.grey),
-                        ),
-                      ],
-                    ),
-                  ),
-                )
-              else if (_weatherData != null) ...[
-                // Ana Hava Bilgisi Satırı
-                Row(
-                  crossAxisAlignment: CrossAxisAlignment.center,
-                  children: [
-                    Icon(
-                      TurkiyeIlIlce.getWeatherIcon(_weatherData!['weathercode'] ?? 0),
-                      size: 42,
-                      color: const Color(0xFFF59E0B),
-                    ),
-                    const SizedBox(width: 14),
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
+                      ),
+                      const SizedBox(width: 10),
+                      Expanded(
+                        child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
                           children: [
-                            Text(
-                              "${_weatherData!['temperature']?.round() ?? '--'}",
-                              style: TextStyle(
-                                fontSize: 32,
-                                fontWeight: FontWeight.w800,
-                                height: 1.0,
-                                color: isDark ? Colors.white : const Color(0xFF0F172A),
-                              ),
+                            Row(
+                              children: [
+                                Flexible(
+                                  child: Text(
+                                    konumTitle,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 14.5,
+                                      fontWeight: FontWeight.bold,
+                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                    ),
+                                  ),
+                                ),
+                                if (!_isWeatherExpanded && _weatherData != null) ...[
+                                  const SizedBox(width: 8),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    decoration: BoxDecoration(
+                                      color: _kBrandTeal.withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: Text(
+                                      "${_weatherData!['temperature']?.round() ?? '--'}°C",
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: _kBrandTeal,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ],
                             ),
-                            const Text(
-                              "°C",
+                            const SizedBox(height: 2),
+                            Text(
+                              !_isWeatherExpanded
+                                  ? (_weatherData != null
+                                      ? "${_weatherData!['description'] ?? 'Hava Durumu'} • 💨 ${_weatherData!['windspeed']} km/s"
+                                      : (_isLoadingWeather
+                                          ? "Hava durumu güncelleniyor..."
+                                          : (hasLocation ? "Detayları görmek için dokunun" : "İl/ilçe seçmek için dokunun")))
+                                  : "Şantiye Sahası Canlı Hava Durumu",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.bold,
-                                color: _kBrandTeal,
+                                fontSize: 11.5,
+                                color: isDark ? Colors.white54 : Colors.black54,
                               ),
                             ),
                           ],
                         ),
-                        Text(
-                          _weatherData!['description'] ?? "Hava Durumu",
-                          style: TextStyle(
-                            fontSize: 13,
-                            fontWeight: FontWeight.w500,
-                            color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                      if (_isLoadingWeather)
+                        const Padding(
+                          padding: EdgeInsets.only(right: 6),
+                          child: SizedBox(
+                            width: 16,
+                            height: 16,
+                            child: CircularProgressIndicator(strokeWidth: 2, color: _kBrandTeal),
                           ),
                         ),
+                      if (_isWeatherExpanded) ...[
+                        IconButton(
+                          tooltip: "İl / İlçe Değiştir",
+                          icon: const Icon(Icons.tune_rounded, size: 20, color: _kBrandTeal),
+                          visualDensity: VisualDensity.compact,
+                          padding: EdgeInsets.zero,
+                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          onPressed: () async {
+                            final res = await IlIlceSeciciModal.goster(
+                              context,
+                              baslangicIl: _secilenIl,
+                              baslangicIlce: _secilenIlce,
+                            );
+                            if (res != null) {
+                              setState(() {
+                                _secilenIl = res.il;
+                                _secilenIlce = res.ilce;
+                              });
+                              _fetchWeather(res.il, res.ilce);
+                            }
+                          },
+                        ),
+                        if (hasLocation)
+                          IconButton(
+                            tooltip: "Yenile",
+                            icon: const Icon(Icons.refresh_rounded, size: 20, color: Colors.grey),
+                            visualDensity: VisualDensity.compact,
+                            padding: EdgeInsets.zero,
+                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                            onPressed: _isLoadingWeather
+                                ? null
+                                : () => _fetchWeather(_secilenIl!, _secilenIlce),
+                          ),
                       ],
-                    ),
-                    const Spacer(),
-                    // Rüzgar ve Diğer Göstergeler
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                      decoration: BoxDecoration(
-                        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.black.withValues(alpha: 0.04),
-                        borderRadius: BorderRadius.circular(12),
+                      // Açma / Kapama Oku
+                      Padding(
+                        padding: const EdgeInsets.only(left: 4),
+                        child: AnimatedRotation(
+                          turns: _isWeatherExpanded ? 0.5 : 0.0,
+                          duration: const Duration(milliseconds: 250),
+                          child: Icon(
+                            Icons.keyboard_arrow_down_rounded,
+                            size: 24,
+                            color: isDark ? Colors.white70 : Colors.black54,
+                          ),
+                        ),
                       ),
-                      child: Row(
-                        children: [
-                          const Icon(Icons.air_rounded, size: 16, color: Colors.blueAccent),
-                          const SizedBox(width: 4),
-                          Text(
-                            "${_weatherData!['windspeed']} km/s",
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                              color: isDark ? Colors.white70 : Colors.black87,
+                    ],
+                  ),
+                ),
+              ),
+
+              // Açılır Gövde (Detaylı Bilgiler)
+              AnimatedCrossFade(
+                duration: const Duration(milliseconds: 280),
+                crossFadeState: _isWeatherExpanded
+                    ? CrossFadeState.showSecond
+                    : CrossFadeState.showFirst,
+                firstChild: const SizedBox(width: double.infinity, height: 0),
+                secondChild: Padding(
+                  padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Divider(height: 14, thickness: 0.8),
+                      // Konum seçilmediyse ekleme çağrısı
+                      if (!hasLocation)
+                        InkWell(
+                          borderRadius: BorderRadius.circular(14),
+                          onTap: () async {
+                            final res = await IlIlceSeciciModal.goster(context);
+                            if (res != null) {
+                              setState(() {
+                                _secilenIl = res.il;
+                                _secilenIlce = res.ilce;
+                              });
+                              _fetchWeather(res.il, res.ilce);
+                            }
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                            decoration: BoxDecoration(
+                              color: _kBrandTeal.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(14),
+                              border: Border.all(color: _kBrandTeal.withValues(alpha: 0.3)),
+                            ),
+                            child: const Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.add_location_alt_rounded, color: _kBrandTeal, size: 20),
+                                SizedBox(width: 8),
+                                Text(
+                                  "İl ve İlçe Seçerek Hava Durumunu Aktifleştir",
+                                  style: TextStyle(
+                                    color: _kBrandTeal,
+                                    fontWeight: FontWeight.w600,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (_isLoadingWeather && _weatherData == null)
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 16),
+                          child: Center(
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(strokeWidth: 2, color: _kBrandTeal),
+                                ),
+                                SizedBox(width: 12),
+                                Text(
+                                  "Hava durumu verisi alınıyor...",
+                                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                                ),
+                              ],
+                            ),
+                          ),
+                        )
+                      else if (_weatherData != null) ...[
+                        // Ana Hava Bilgisi Satırı
+                        Row(
+                          crossAxisAlignment: CrossAxisAlignment.center,
+                          children: [
+                            Icon(
+                              TurkiyeIlIlce.getWeatherIcon(_weatherData!['weathercode'] ?? 0),
+                              size: 42,
+                              color: const Color(0xFFF59E0B),
+                            ),
+                            const SizedBox(width: 14),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "${_weatherData!['temperature']?.round() ?? '--'}",
+                                      style: TextStyle(
+                                        fontSize: 32,
+                                        fontWeight: FontWeight.w800,
+                                        height: 1.0,
+                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                      ),
+                                    ),
+                                    const Text(
+                                      "°C",
+                                      style: TextStyle(
+                                        fontSize: 18,
+                                        fontWeight: FontWeight.bold,
+                                        color: _kBrandTeal,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                Text(
+                                  _weatherData!['description'] ?? "Hava Durumu",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w500,
+                                    color: isDark ? Colors.white70 : Colors.black87,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const Spacer(),
+                            // Rüzgar ve Diğer Göstergeler
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              decoration: BoxDecoration(
+                                color: isDark
+                                    ? Colors.white.withValues(alpha: 0.05)
+                                    : Colors.black.withValues(alpha: 0.04),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.air_rounded, size: 16, color: Colors.blueAccent),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    "${_weatherData!['windspeed']} km/s",
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w600,
+                                      color: isDark ? Colors.white70 : Colors.black87,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+
+                        const SizedBox(height: 12),
+
+                        // Şantiye Sahası Durumu / Emniyet Yorumu Kutusu
+                        if (_weatherData!['sahaYorumu'] != null)
+                          Container(
+                            width: double.infinity,
+                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                            decoration: BoxDecoration(
+                              color: isDark
+                                  ? const Color(0xFF064E3B).withValues(alpha: 0.3)
+                                  : const Color(0xFFDEF7EC),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: const Color(0xFF059669).withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Text(
+                              _weatherData!['sahaYorumu']!,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.4,
+                                fontWeight: FontWeight.w500,
+                                color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
+                              ),
+                            ),
+                          ),
+
+                        // 5 Günlük Tahmin Listesi (Varsa)
+                        if (_weatherData!['daily'] != null &&
+                            (_weatherData!['daily'] as List).isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          SizedBox(
+                            height: 72,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: (_weatherData!['daily'] as List).take(6).length,
+                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (context, index) {
+                                final gun = (_weatherData!['daily'] as List)[index];
+                                final rawTime = gun['time']?.toString() ?? '';
+                                String gunEtiketi = "Gün";
+                                try {
+                                  final parsedDate = DateTime.parse(rawTime);
+                                  final now = DateTime.now();
+                                  if (parsedDate.day == now.day && parsedDate.month == now.month) {
+                                    gunEtiketi = "Bugün";
+                                  } else {
+                                    const gunAdlari = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
+                                    gunEtiketi = gunAdlari[parsedDate.weekday - 1];
+                                  }
+                                } catch (_) {}
+
+                                return Container(
+                                  width: 58,
+                                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                  decoration: BoxDecoration(
+                                    color: isDark
+                                        ? Colors.white.withValues(alpha: 0.04)
+                                        : Colors.white.withValues(alpha: 0.7),
+                                    borderRadius: BorderRadius.circular(12),
+                                    border: Border.all(
+                                      color: isDark
+                                          ? Colors.white.withValues(alpha: 0.06)
+                                          : Colors.black.withValues(alpha: 0.05),
+                                    ),
+                                  ),
+                                  child: Column(
+                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    children: [
+                                      Text(
+                                        gunEtiketi,
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white60 : Colors.black54,
+                                        ),
+                                      ),
+                                      Icon(
+                                        TurkiyeIlIlce.getWeatherIcon(gun['code'] ?? 0),
+                                        size: 18,
+                                        color: const Color(0xFFF59E0B),
+                                      ),
+                                      Text(
+                                        "${gun['max']?.round() ?? '-'}°",
+                                        style: TextStyle(
+                                          fontSize: 11,
+                                          fontWeight: FontWeight.bold,
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                );
+                              },
                             ),
                           ),
                         ],
-                      ),
-                    ),
-                  ],
-                ),
-
-                const SizedBox(height: 12),
-
-                // Şantiye Sahası Durumu / Emniyet Yorumu Kutusu
-                if (_weatherData!['sahaYorumu'] != null)
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF064E3B).withValues(alpha: 0.3)
-                          : const Color(0xFFDEF7EC),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: const Color(0xFF059669).withValues(alpha: 0.3),
-                      ),
-                    ),
-                    child: Text(
-                      _weatherData!['sahaYorumu']!,
-                      style: TextStyle(
-                        fontSize: 12,
-                        height: 1.4,
-                        fontWeight: FontWeight.w500,
-                        color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
-                      ),
-                    ),
+                      ] else
+                        const Text(
+                          "Hava durumu verisi alınamadı. İnternet bağlantınızı kontrol edip yenileyin.",
+                          style: TextStyle(fontSize: 12, color: Colors.grey),
+                        ),
+                    ],
                   ),
-
-                // 5 Günlük Tahmin Listesi (Varsa)
-                if (_weatherData!['daily'] != null &&
-                    (_weatherData!['daily'] as List).isNotEmpty) ...[
-                  const SizedBox(height: 12),
-                  SizedBox(
-                    height: 72,
-                    child: ListView.separated(
-                      scrollDirection: Axis.horizontal,
-                      itemCount: (_weatherData!['daily'] as List).take(6).length,
-                      separatorBuilder: (_, __) => const SizedBox(width: 8),
-                      itemBuilder: (context, index) {
-                        final gun = (_weatherData!['daily'] as List)[index];
-                        final rawTime = gun['time']?.toString() ?? '';
-                        String gunEtiketi = "Gün";
-                        try {
-                          final parsedDate = DateTime.parse(rawTime);
-                          final now = DateTime.now();
-                          if (parsedDate.day == now.day && parsedDate.month == now.month) {
-                            gunEtiketi = "Bugün";
-                          } else {
-                            const gunAdlari = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
-                            gunEtiketi = gunAdlari[parsedDate.weekday - 1];
-                          }
-                        } catch (_) {}
-
-                        return Container(
-                          width: 58,
-                          padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
-                          decoration: BoxDecoration(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.04)
-                                : Colors.white.withValues(alpha: 0.7),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.06)
-                                  : Colors.black.withValues(alpha: 0.05),
-                            ),
-                          ),
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                            children: [
-                              Text(
-                                gunEtiketi,
-                                style: TextStyle(
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                  color: isDark ? Colors.white60 : Colors.black54,
-                                ),
-                              ),
-                              Icon(
-                                TurkiyeIlIlce.getWeatherIcon(gun['code'] ?? 0),
-                                size: 18,
-                                color: const Color(0xFFF59E0B),
-                              ),
-                              Text(
-                                "${gun['max']?.round() ?? '-'}°",
-                                style: TextStyle(
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.bold,
-                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
-                                ),
-                              ),
-                            ],
-                          ),
-                        );
-                      },
-                    ),
-                  ),
-                ],
-              ] else
-                const Text(
-                  "Hava durumu verisi alınamadı. İnternet bağlantınızı kontrol edip yenileyin.",
-                  style: TextStyle(fontSize: 12, color: Colors.grey),
                 ),
+              ),
             ],
           ),
         ),
