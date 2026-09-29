@@ -13,6 +13,7 @@ import 'santiye_ekrani.dart';
 import 'isci_ekrani.dart';
 import 'tur_servisi.dart';
 import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 class GunlukRaporEkrani extends StatefulWidget {
   final String teamId;
@@ -1980,15 +1981,11 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
     final genisBitis = DateTime(2026, 12, 31);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: AppBar(
-        title: const Text('Günlük Rapor'),
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF06080B).withOpacity(0.96)
-                : const Color(0xFFF8FCFE).withOpacity(0.92),
-        surfaceTintColor: Colors.transparent,
+      appBar: const FloatingLiquidAppBar(
+        title: 'Günlük Rapor',
+        showPrivacyButton: false,
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
@@ -2015,6 +2012,9 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
             top: false,
             child: Column(
             children: [
+              SizedBox(
+                height: FloatingLiquidAppBar.topPadding(context, extra: 4),
+              ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                 child: GlassSectionCard(

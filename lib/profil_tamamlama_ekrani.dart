@@ -3,6 +3,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:santiyeyonetim2/firestore_servisi.dart';
+import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 class ProfilTamamlamaEkrani extends StatefulWidget {
   const ProfilTamamlamaEkrani({super.key});
@@ -78,13 +80,22 @@ class _ProfilTamamlamaEkraniState extends State<ProfilTamamlamaEkrani> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Profilini Tamamla"),
-        automaticallyImplyLeading: false, // Geri butonu olmasın
+      extendBodyBehindAppBar: true,
+      appBar: const FloatingLiquidAppBar(
+        title: "Profilini Tamamla",
+        showPrivacyButton: false,
+        showHamburger: false,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.all(24.0),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              24.0,
+              FloatingLiquidAppBar.topPadding(context, extra: 4),
+              24.0,
+              24.0,
+            ),
           child: Form(
             key: _formKey,
             child: Column(
@@ -157,6 +168,7 @@ class _ProfilTamamlamaEkraniState extends State<ProfilTamamlamaEkrani> {
             ),
           ),
         ),
+      ),
       ),
     );
   }

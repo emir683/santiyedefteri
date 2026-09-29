@@ -12,6 +12,13 @@
 .swiftpm/
 migrate_working_dir/
 
+# Environment and Secrets (Madde 1 & 2)
+.env
+*.env
+*.env.*
+*.key
+firebase-debug.log*
+
 # IntelliJ related
 *.iml
 *.ipr
@@ -43,3 +50,7 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+
+# Temporary scratch and local test scripts
+scratch/
+test_*.dart

@@ -9,6 +9,8 @@ import 'data_models.dart';
 import 'firestore_servisi.dart';
 import 'format_yardimcisi.dart';
 import 'user_model.dart';
+import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -633,9 +635,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             16,
-            16,
+            FloatingLiquidAppBar.topPadding(context, hasBottom: true, extra: 4),
             16,
             _shellDockBodyPadding,
           ),
@@ -685,9 +687,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
         }
 
         return ListView.builder(
-          padding: const EdgeInsets.fromLTRB(
+          padding: EdgeInsets.fromLTRB(
             16,
-            16,
+            FloatingLiquidAppBar.topPadding(context, hasBottom: true, extra: 4),
             16,
             _shellDockBodyPadding,
           ),
@@ -852,16 +854,12 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF101317).withOpacity(0.92)
-                : Colors.white.withOpacity(0.88),
-        surfaceTintColor: Colors.transparent,
-        title: const Text('\u00D6demeler ve Avanslar'),
+      appBar: FloatingLiquidAppBar(
+        title: 'Ödemeler ve Avanslar',
+        showPrivacyButton: true,
         bottom: TabBar(
           controller: _tabController,
           labelColor: _kBrandTeal,
@@ -869,30 +867,13 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
           indicatorColor: _kBrandTeal,
           indicatorWeight: 2.8,
           tabs: const [
-            Tab(icon: Icon(Icons.download), text: 'Al\u0131nan'),
+            Tab(icon: Icon(Icons.download), text: 'Alınan'),
             Tab(icon: Icon(Icons.upload), text: 'Verilen'),
           ],
         ),
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors:
-                isDark
-                    ? const [
-                      Color(0xFF06090D),
-                      Color(0xFF0C1219),
-                      Color(0xFF111827),
-                    ]
-                    : const [
-                      Color(0xFFF6FBFD),
-                      Color(0xFFECF5F9),
-                      Color(0xFFE4EEF4),
-                    ],
-          ),
-        ),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
         child: TabBarView(
           controller: _tabController,
           children: [

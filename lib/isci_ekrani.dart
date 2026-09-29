@@ -10,6 +10,8 @@ import 'rol_provider.dart';
 import 'dart:ui';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
 import 'tur_servisi.dart';
+import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -520,8 +522,16 @@ class _IsciEkraniState extends State<IsciEkrani> {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () async {
-                                await servisi.isciSil(widget.teamId, isciId);
-                                if (mounted) Navigator.pop(ctx);
+                                Navigator.pop(ctx);
+                                try {
+                                  await servisi.isciSil(widget.teamId, isciId, isciAdi);
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Silme hatası: $e')),
+                                    );
+                                  }
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.redAccent,
@@ -900,6 +910,39 @@ class _IsciEkraniState extends State<IsciEkrani> {
     }
   }
 
+  Widget _buildSearchField(bool isDark) {
+    return TextField(
+      controller: _searchController,
+      onChanged: (value) {
+        setState(() {
+          _searchQuery = _turkceKucukHarf(value);
+        });
+      },
+      decoration: InputDecoration(
+        hintText: 'İşçi Ara...',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: _searchQuery.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+              )
+            : null,
+        filled: true,
+        fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel?>(context, listen: false);
@@ -909,134 +952,131 @@ class _IsciEkraniState extends State<IsciEkrani> {
     final bool isFinans = rolProvider.isFinansalErisim;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF101317).withOpacity(0.92)
-                : Colors.white.withOpacity(0.88),
-        surfaceTintColor: Colors.transparent,
-        title: const Text('İşçiler'),
+      appBar: const FloatingLiquidAppBar(
+        title: 'İşçiler',
+        showPrivacyButton: true,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors:
-                isDark
-                    ? const [
-                      Color(0xFF06090D),
-                      Color(0xFF0C1219),
-                      Color(0xFF111827),
-                    ]
-                    : const [
-                      Color(0xFFF6FBFD),
-                      Color(0xFFECF5F9),
-                      Color(0xFFE4EEF4),
-                    ],
-          ),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = _turkceKucukHarf(value);
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'İşçi Ara...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: StreamBuilder<List<Isci>>(
+          stream: servisi.getIscilerStream(widget.teamId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return ListView(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  FloatingLiquidAppBar.topPadding(context, extra: 4),
+                  16,
+                  _shellDockBodyPadding,
                 ),
-              ),
-            ),
-            Expanded(
-              child: StreamBuilder<List<Isci>>(
-                stream: servisi.getIscilerStream(widget.teamId),
-                builder: (context, snapshot) {
-                  if (snapshot.connectionState == ConnectionState.waiting)
-                    return const ShimmerYukleniyor(satirSayisi: 6);
-                  if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
-                          const SizedBox(height: 16),
-                          Text(
-                            "Henüz işçi eklenmemiş.",
-                            style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  final isciler = [...snapshot.data!]
-                    ..sort((a, b) => _turkceMetinKarsilastir(a.ad, b.ad));
-
-                  // Arama filtresi
-                  final searchFiltreli = isciler.where((i) {
-                    if (_searchQuery.isEmpty) return true;
-                    return _turkceKucukHarf(i.ad).contains(_searchQuery);
-                  }).toList();
-
-                  // Üye rolunde: sadece kendi bağlı işçisini göster
-                  final filtrelenmisIsciler = isFinans
-                      ? searchFiltreli
-                      : searchFiltreli
-                            .where((i) => i.linkedUserId == user?.uid)
-                            .toList();
-
-                  if (filtrelenmisIsciler.isEmpty && !isFinans) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.link_off_rounded,
-                            size: 64,
-                            color: Colors.grey[400],
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Hesabınıza bağlı işçi yok.',
-                            style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                          ),
-                          const SizedBox(height: 8),
-                          Text(
-                            'Yöneticinizden hesabınızı bir\nişçiye bağlamasini isteyin.',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(color: Colors.grey[500], fontSize: 13),
-                          ),
-                        ],
-                      ),
-                    );
-                  }
-
-                  return ListView.builder(
-                    padding: const EdgeInsets.fromLTRB(
-                      16,
-                      16,
-                      16,
-                      _shellDockBodyPadding,
+                children: [
+                  _buildSearchField(isDark),
+                  const SizedBox(height: 16),
+                  const ShimmerYukleniyor(satirSayisi: 6, shrinkWrap: true),
+                ],
+              );
+            }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return ListView(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  FloatingLiquidAppBar.topPadding(context, extra: 4),
+                  16,
+                  _shellDockBodyPadding,
+                ),
+                children: [
+                  _buildSearchField(isDark),
+                  const SizedBox(height: 32),
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(Icons.people_outline, size: 64, color: Colors.grey[400]),
+                        const SizedBox(height: 16),
+                        Text(
+                          "Henüz işçi eklenmemiş.",
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        ),
+                      ],
                     ),
-                    itemCount: filtrelenmisIsciler.length,
-                    itemBuilder: (context, index) {
-                      final isci = filtrelenmisIsciler[index];
+                  ),
+                ],
+              );
+            }
+
+            final isciler = [...snapshot.data!]
+              ..sort((a, b) => _turkceMetinKarsilastir(a.ad, b.ad));
+
+            // Arama filtresi
+            final searchFiltreli = isciler.where((i) {
+              if (_searchQuery.isEmpty) return true;
+              return _turkceKucukHarf(i.ad).contains(_searchQuery);
+            }).toList();
+
+            // Üye rolunde: sadece kendi bağlı işçisini göster
+            final filtrelenmisIsciler = isFinans
+                ? searchFiltreli
+                : searchFiltreli
+                      .where((i) => i.linkedUserId == user?.uid)
+                      .toList();
+
+            if (filtrelenmisIsciler.isEmpty && !isFinans) {
+              return ListView(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  FloatingLiquidAppBar.topPadding(context, extra: 4),
+                  16,
+                  _shellDockBodyPadding,
+                ),
+                children: [
+                  _buildSearchField(isDark),
+                  const SizedBox(height: 32),
+                  Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.link_off_rounded,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'Hesabınıza bağlı işçi yok.',
+                          style: TextStyle(color: Colors.grey[600], fontSize: 16),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Yöneticinizden hesabınızı bir\nişçiye bağlamasini isteyin.',
+                          textAlign: TextAlign.center,
+                          style: TextStyle(color: Colors.grey[500], fontSize: 13),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              );
+            }
+
+            return ListView.builder(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                FloatingLiquidAppBar.topPadding(context, extra: 4),
+                16,
+                _shellDockBodyPadding,
+              ),
+              itemCount: filtrelenmisIsciler.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: _buildSearchField(isDark),
+                  );
+                }
+                final isci = filtrelenmisIsciler[index - 1];
 
                       return AnimasyonluButon(
                         onPressed: () {
@@ -1072,13 +1112,13 @@ class _IsciEkraniState extends State<IsciEkrani> {
                             padding: const EdgeInsets.all(12.0),
                             child: Row(
                               children: [
-                                // Sol İkon Kutusu
+                                // Sol İkon Kutusu - Ad & Soyad Baş Harfleri Rozeti
                                 Stack(
                                   clipBehavior: Clip.none,
                                   children: [
-                                    _buildGlassIconBadge(
+                                    _buildGlassInitialsBadge(
                                       isDark: isDark,
-                                      icon: Icons.engineering,
+                                      adSoyad: isci.ad,
                                       color: _kBrandTealDark,
                                     ),
                                     // Bağlı hesap işareti
@@ -1146,49 +1186,141 @@ class _IsciEkraniState extends State<IsciEkrani> {
                                   ),
                                 ),
 
-                                // Sağ Butonlar - sadece yetkili kullanıcılar görür
+                                // Sağ Aksiyonlar - Üç Nokta Menüsü (sadece yetkili kullanıcılar görür)
                                 if (isFinans)
-                                  Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      // Hesap Bağla Butonu
-                                      IconButton(
-                                        icon: Icon(
-                                          isci.linkedUserId != null
-                                              ? Icons.link_off_rounded
-                                              : Icons.link_rounded,
-                                          color: isci.linkedUserId != null
-                                              ? const Color(0xFF3B82F6)
-                                              : Colors.grey,
-                                          size: 20,
+                                  Theme(
+                                    data: Theme.of(context).copyWith(
+                                      popupMenuTheme: PopupMenuThemeData(
+                                        color: isDark ? const Color(0xFF161B22) : Colors.white,
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(16),
+                                          side: BorderSide(
+                                            color: isDark
+                                                ? Colors.white.withOpacity(0.12)
+                                                : const Color(0xFFE2E8F0),
+                                            width: 1,
+                                          ),
                                         ),
-                                        tooltip: isci.linkedUserId != null
-                                            ? 'Bağlantıyı Kaldır'
-                                            : 'Hesaba Bağla',
-                                        onPressed: () => isci.linkedUserId != null
-                                            ? _baglantiKaldir(servisi, isci)
-                                            : _hesapBaglaDialog(servisi, isci, isciler),
+                                        elevation: 6,
                                       ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.edit,
-                                          color: _kBrandTealDark,
+                                    ),
+                                    child: PopupMenuButton<String>(
+                                      icon: Container(
+                                        width: 34,
+                                        height: 34,
+                                        decoration: BoxDecoration(
+                                          color: isDark
+                                              ? Colors.white.withOpacity(0.06)
+                                              : const Color(0xFFF1F5F9),
+                                          shape: BoxShape.circle,
                                         ),
-                                        onPressed: () => _isciEkleVeyaDuzenleDialog(
-                                          servisi,
-                                          mevcutIsci: isci,
+                                        child: Icon(
+                                          Icons.more_vert_rounded,
+                                          size: 19,
+                                          color: isDark ? Colors.white70 : const Color(0xFF475569),
                                         ),
                                       ),
-                                      IconButton(
-                                        icon: const Icon(
-                                          Icons.delete_outline,
-                                          color: Colors.redAccent,
+                                      tooltip: 'İşlemler',
+                                      elevation: 6,
+                                      padding: EdgeInsets.zero,
+                                      splashRadius: 20,
+                                      position: PopupMenuPosition.under,
+                                      onSelected: (value) {
+                                        switch (value) {
+                                          case 'duzenle':
+                                            _isciEkleVeyaDuzenleDialog(
+                                              servisi,
+                                              mevcutIsci: isci,
+                                            );
+                                            break;
+                                          case 'bagla':
+                                            if (isci.linkedUserId != null) {
+                                              _baglantiKaldir(servisi, isci);
+                                            } else {
+                                              _hesapBaglaDialog(
+                                                servisi,
+                                                isci,
+                                                isciler,
+                                              );
+                                            }
+                                            break;
+                                          case 'sil':
+                                            _silmeOnayi(servisi, isci.id!, isci.ad);
+                                            break;
+                                        }
+                                      },
+                                      itemBuilder: (context) => [
+                                        PopupMenuItem<String>(
+                                          value: 'duzenle',
+                                          height: 42,
+                                          child: Row(
+                                            children: [
+                                              const Icon(Icons.edit_rounded, size: 18, color: _kBrandTealDark),
+                                              const SizedBox(width: 12),
+                                              Text(
+                                                'Düzenle',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
                                         ),
-                                        onPressed: () =>
-                                            _silmeOnayi(servisi, isci.id!, isci.ad),
-                                      ),
-                                    ],
+                                        PopupMenuItem<String>(
+                                          value: 'bagla',
+                                          height: 42,
+                                          child: Row(
+                                            children: [
+                                              Icon(
+                                                isci.linkedUserId != null
+                                                    ? Icons.link_off_rounded
+                                                    : Icons.link_rounded,
+                                                size: 18,
+                                                color: isci.linkedUserId != null
+                                                    ? const Color(0xFFEF4444)
+                                                    : const Color(0xFF3B82F6),
+                                              ),
+                                              const SizedBox(width: 12),
+                                              Text(
+                                                isci.linkedUserId != null
+                                                    ? 'Bağlantıyı Kaldır'
+                                                    : 'Hesaba Bağla',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: isci.linkedUserId != null
+                                                      ? const Color(0xFFEF4444)
+                                                      : (isDark ? Colors.white : const Color(0xFF0F172A)),
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                        const PopupMenuDivider(height: 1),
+                                        const PopupMenuItem<String>(
+                                          value: 'sil',
+                                          height: 42,
+                                          child: Row(
+                                            children: [
+                                              Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                                              SizedBox(width: 12),
+                                              Text(
+                                                'İşçiyi Sil',
+                                                style: TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w600,
+                                                  color: Colors.redAccent,
+                                                ),
+                                              ),
+                                            ],
+                                          ),
+                                        ),
+                                      ],
+                                    ),
                                   ),
+                                const SizedBox(width: 4),
 
                                 // Her zaman gösterilen ok işareti
                                 Icon(
@@ -1206,9 +1338,6 @@ class _IsciEkraniState extends State<IsciEkrani> {
                 },
               ),
             ),
-          ],
-        ),
-      ),
       floatingActionButton:
           isFinans
               ? Padding(
@@ -1227,31 +1356,63 @@ class _IsciEkraniState extends State<IsciEkrani> {
     );
   }
 
-  Widget _buildGlassIconBadge({
+
+
+  String _adSoyadBasHarfleri(String adSoyad) {
+    final trimli = adSoyad.trim();
+    if (trimli.isEmpty) return '?';
+    final parcalar = trimli.split(RegExp(r'\s+')).where((p) => p.isNotEmpty).toList();
+    if (parcalar.isEmpty) return '?';
+    if (parcalar.length == 1) {
+      return parcalar[0][0].toUpperCase();
+    }
+    final ilk = parcalar.first[0].toUpperCase();
+    final son = parcalar.last[0].toUpperCase();
+    return '$ilk$son';
+  }
+
+  Widget _buildGlassInitialsBadge({
     required bool isDark,
-    required IconData icon,
+    required String adSoyad,
     required Color color,
   }) {
+    final harfler = _adSoyadBasHarfleri(adSoyad);
     return Container(
-      padding: const EdgeInsets.all(12),
+      width: 48,
+      height: 48,
+      alignment: Alignment.center,
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(isDark ? 0.18 : 0.14),
+            color.withOpacity(isDark ? 0.28 : 0.20),
             (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
-              isDark ? 0.82 : 0.92,
+              isDark ? 0.85 : 0.95,
             ),
           ],
         ),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(isDark ? 0.16 : 0.12)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: color.withOpacity(isDark ? 0.35 : 0.25),
+          width: 1.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: color.withOpacity(isDark ? 0.15 : 0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      child: Icon(
-        icon,
-        size: 30,
-        color: isDark ? Colors.white70 : color,
+      child: Text(
+        harfler,
+        style: TextStyle(
+          fontSize: harfler.length > 1 ? 16 : 18,
+          fontWeight: FontWeight.w800,
+          color: isDark ? Colors.white : color,
+          letterSpacing: 0.5,
+        ),
       ),
     );
   }

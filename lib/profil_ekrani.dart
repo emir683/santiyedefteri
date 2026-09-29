@@ -6,6 +6,7 @@ import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'auth_servisi.dart';
 import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
 
@@ -276,16 +277,12 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF101317).withOpacity(0.92)
-                : Colors.white.withOpacity(0.88),
-        surfaceTintColor: Colors.transparent,
-        title: const Text("Profilim"),
+      appBar: const FloatingLiquidAppBar(
+        title: "Profilim",
+        showPrivacyButton: false,
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
@@ -303,7 +300,12 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
           if (!_degisiklikYapildi) _usernameController.text = mevcutKullaniciAdi;
           
           return SingleChildScrollView(
-            padding: const EdgeInsets.all(24.0),
+            padding: EdgeInsets.fromLTRB(
+              24.0,
+              FloatingLiquidAppBar.topPadding(context, extra: 4),
+              24.0,
+              24.0,
+            ),
             child: Column(
               children: [
                 // PROFİL İKONU

@@ -5,6 +5,7 @@ import 'deep_link_service.dart';
 import 'firestore_servisi.dart';
 import 'user_model.dart';
 import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 class JoinTeamPage extends StatefulWidget {
   const JoinTeamPage({
@@ -95,9 +96,11 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
         return true;
       },
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         backgroundColor: Colors.transparent,
-        appBar: AppBar(
-          title: const Text("Ekibe Kat\u0131l"),
+        appBar: FloatingLiquidAppBar(
+          title: "Ekibe Katıl",
+          showPrivacyButton: false,
           leading: IconButton(
             icon: const Icon(Icons.arrow_back_ios_new_rounded),
             onPressed: _loading ? null : _vazgec,
@@ -106,9 +109,15 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
         body: GlassPageSurface(
           preferSoftLightBackground: true,
           child: SafeArea(
+            top: false,
             child: Center(
               child: SingleChildScrollView(
-                padding: const EdgeInsets.fromLTRB(24, 20, 24, 24),
+                padding: EdgeInsets.fromLTRB(
+                  24,
+                  FloatingLiquidAppBar.topPadding(context, extra: 4),
+                  24,
+                  24,
+                ),
                 child: ConstrainedBox(
                   constraints: const BoxConstraints(maxWidth: 460),
                   child: GlassSectionCard(

@@ -15,6 +15,8 @@ import 'data_models.dart';
 import 'privacy_provider.dart';
 import 'format_yardimcisi.dart';
 import 'animasyon_yardimcisi.dart';
+import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const double _shellDockBodyPadding = 132;
 const Color _kBrandTeal = Color(0xFF14B8A6);
@@ -119,8 +121,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
             )
             .toList()
           ..sort((a, b) => a.isci.ad.compareTo(b.isci.ad));
-    final harcamaSahipleri = operasyonelHarcamaSahipleri.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final harcamaSahipleri =
+        operasyonelHarcamaSahipleri.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
     sb.writeln('--- $donem GENEL RAPORU ---');
     sb.writeln('');
     sb.writeln('PERSONEL HAKED\u0130\u015e VE ALACAK \u00d6ZET\u0130:');
@@ -168,8 +171,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
             )
             .toList()
           ..sort((a, b) => a.isci.ad.compareTo(b.isci.ad));
-    final harcamaSahipleri = operasyonelHarcamaSahipleri.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final harcamaSahipleri =
+        operasyonelHarcamaSahipleri.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
 
     sb.writeln('--- $donem GENEL RAPORU ---');
     sb.writeln('');
@@ -195,7 +199,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
 
     if (harcamaSahipleri.isNotEmpty) {
       sb.writeln('');
-    sb.writeln('KARTTAN YAPILAN HARCAMALAR:');
+      sb.writeln('KARTTAN YAPILAN HARCAMALAR:');
       for (final entry in harcamaSahipleri) {
         final detaylar = <String>[];
         if (entry.value.benzin > 0) {
@@ -261,8 +265,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
             )
             .toList()
           ..sort((a, b) => a.isci.ad.compareTo(b.isci.ad));
-    final harcamaSahipleri = operasyonelHarcamaSahipleri.entries.toList()
-      ..sort((a, b) => a.key.compareTo(b.key));
+    final harcamaSahipleri =
+        operasyonelHarcamaSahipleri.entries.toList()
+          ..sort((a, b) => a.key.compareTo(b.key));
     final toplamGelir = kayitliGelir + manuelGelir;
     final toplamGider = maas + benzin + yemek + ek + manuelGider;
 
@@ -315,35 +320,99 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                 spacing: 10,
                 runSpacing: 10,
                 children: [
-                  _buildPdfInfoCard('Kayitli Gelir', Formatlayici.yap(kayitliGelir), '#DCFCE7', '#166534', ttf),
-                  _buildPdfInfoCard('Toplam Gider', Formatlayici.yap(toplamGider), '#FEE2E2', '#B91C1C', ttf),
-                  _buildPdfInfoCard('Net Durum', Formatlayici.yap(kar), kar >= 0 ? '#DCFCE7' : '#FEE2E2', kar >= 0 ? '#166534' : '#B91C1C', ttf),
-                  _buildPdfInfoCard('Personel Maliyeti', Formatlayici.yap(maas), '#F3E8FF', '#7E22CE', ttf),
+                  _buildPdfInfoCard(
+                    'Kayitli Gelir',
+                    Formatlayici.yap(kayitliGelir),
+                    '#DCFCE7',
+                    '#166534',
+                    ttf,
+                  ),
+                  _buildPdfInfoCard(
+                    'Toplam Gider',
+                    Formatlayici.yap(toplamGider),
+                    '#FEE2E2',
+                    '#B91C1C',
+                    ttf,
+                  ),
+                  _buildPdfInfoCard(
+                    'Net Durum',
+                    Formatlayici.yap(kar),
+                    kar >= 0 ? '#DCFCE7' : '#FEE2E2',
+                    kar >= 0 ? '#166534' : '#B91C1C',
+                    ttf,
+                  ),
+                  _buildPdfInfoCard(
+                    'Personel Maliyeti',
+                    Formatlayici.yap(maas),
+                    '#F3E8FF',
+                    '#7E22CE',
+                    ttf,
+                  ),
                 ],
               ),
               pw.SizedBox(height: 22),
               _buildPdfSectionTitle('Finans Ozeti', ttf),
               pw.SizedBox(height: 8),
-              _buildPdfValueRow('Kayitli Gelir', Formatlayici.yap(kayitliGelir), ttf),
-              _buildPdfValueRow('Ekstra Gelirler', Formatlayici.yap(manuelGelir), ttf),
-              _buildPdfValueRow('Toplam Gelir', Formatlayici.yap(toplamGelir), ttf),
-              _buildPdfValueRow('Ekstra Giderler', Formatlayici.yap(manuelGider), ttf),
+              _buildPdfValueRow(
+                'Kayitli Gelir',
+                Formatlayici.yap(kayitliGelir),
+                ttf,
+              ),
+              _buildPdfValueRow(
+                'Ekstra Gelirler',
+                Formatlayici.yap(manuelGelir),
+                ttf,
+              ),
+              _buildPdfValueRow(
+                'Toplam Gelir',
+                Formatlayici.yap(toplamGelir),
+                ttf,
+              ),
+              _buildPdfValueRow(
+                'Ekstra Giderler',
+                Formatlayici.yap(manuelGider),
+                ttf,
+              ),
               _buildPdfValueRow('Benzin', Formatlayici.yap(benzin), ttf),
               _buildPdfValueRow('Yemek', Formatlayici.yap(yemek), ttf),
               _buildPdfValueRow('Ek Operasyonel', Formatlayici.yap(ek), ttf),
-              _buildPdfValueRow('Net Durum', Formatlayici.yap(kar), ttf, emphasize: true),
+              _buildPdfValueRow(
+                'Net Durum',
+                Formatlayici.yap(kar),
+                ttf,
+                emphasize: true,
+              ),
               pw.SizedBox(height: 20),
               _buildPdfSectionTitle('Personel Hakedis ve Alacak Ozeti', ttf),
               pw.SizedBox(height: 8),
               personelSonuclari.isEmpty
-                  ? pw.Text('Kayit bulunmuyor.', style: pw.TextStyle(font: ttf, fontSize: 11))
+                  ? pw.Text(
+                    'Kayit bulunmuyor.',
+                    style: pw.TextStyle(font: ttf, fontSize: 11),
+                  )
                   : pw.TableHelper.fromTextArray(
-                    headerStyle: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.white),
-                    headerDecoration: pw.BoxDecoration(color: PdfColor.fromHex('#111827')),
+                    headerStyle: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 10,
+                      color: PdfColors.white,
+                    ),
+                    headerDecoration: pw.BoxDecoration(
+                      color: PdfColor.fromHex('#111827'),
+                    ),
                     cellStyle: pw.TextStyle(font: ttf, fontSize: 9),
                     cellAlignment: pw.Alignment.centerLeft,
-                    cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 8),
-                    headers: const ['Personel', 'Gun', 'Hakedis', 'Gider Masrafi', 'Avans', 'Net'],
+                    cellPadding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 8,
+                    ),
+                    headers: const [
+                      'Personel',
+                      'Gun',
+                      'Hakedis',
+                      'Gider Masrafi',
+                      'Avans',
+                      'Net',
+                    ],
                     data:
                         personelSonuclari
                             .map(
@@ -363,11 +432,20 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                 _buildPdfSectionTitle('Karttan Yapilan Harcamalar', ttf),
                 pw.SizedBox(height: 8),
                 pw.TableHelper.fromTextArray(
-                  headerStyle: pw.TextStyle(font: ttf, fontSize: 10, color: PdfColors.white),
-                  headerDecoration: pw.BoxDecoration(color: PdfColor.fromHex('#0F766E')),
+                  headerStyle: pw.TextStyle(
+                    font: ttf,
+                    fontSize: 10,
+                    color: PdfColors.white,
+                  ),
+                  headerDecoration: pw.BoxDecoration(
+                    color: PdfColor.fromHex('#0F766E'),
+                  ),
                   cellStyle: pw.TextStyle(font: ttf, fontSize: 9),
                   cellAlignment: pw.Alignment.centerLeft,
-                  cellPadding: const pw.EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+                  cellPadding: const pw.EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 8,
+                  ),
                   headers: const ['Kisi', 'Benzin', 'Yemek', 'Ek', 'Toplam'],
                   data:
                       harcamaSahipleri
@@ -400,7 +478,11 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
       ),
       child: pw.Text(
         title,
-        style: pw.TextStyle(font: font, fontSize: 13, color: PdfColor.fromHex('#0F766E')),
+        style: pw.TextStyle(
+          font: font,
+          fontSize: 13,
+          color: PdfColor.fromHex('#0F766E'),
+        ),
       ),
     );
   }
@@ -422,9 +504,23 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
       child: pw.Column(
         crossAxisAlignment: pw.CrossAxisAlignment.start,
         children: [
-          pw.Text(title, style: pw.TextStyle(font: font, fontSize: 9, color: PdfColor.fromHex(textHex))),
+          pw.Text(
+            title,
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 9,
+              color: PdfColor.fromHex(textHex),
+            ),
+          ),
           pw.SizedBox(height: 8),
-          pw.Text(value, style: pw.TextStyle(font: font, fontSize: 14, color: PdfColor.fromHex(textHex))),
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 14,
+              color: PdfColor.fromHex(textHex),
+            ),
+          ),
         ],
       ),
     );
@@ -436,7 +532,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
     pw.Font font, {
     bool emphasize = false,
   }) {
-    final color = emphasize ? PdfColor.fromHex('#0F766E') : PdfColor.fromHex('#334155');
+    final color =
+        emphasize ? PdfColor.fromHex('#0F766E') : PdfColor.fromHex('#334155');
     return pw.Container(
       margin: const pw.EdgeInsets.only(bottom: 6),
       padding: const pw.EdgeInsets.symmetric(horizontal: 10, vertical: 8),
@@ -447,8 +544,18 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
       child: pw.Row(
         mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
         children: [
-          pw.Text(label, style: pw.TextStyle(font: font, fontSize: 10, color: PdfColor.fromHex('#475569'))),
-          pw.Text(value, style: pw.TextStyle(font: font, fontSize: 10, color: color)),
+          pw.Text(
+            label,
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 10,
+              color: PdfColor.fromHex('#475569'),
+            ),
+          ),
+          pw.Text(
+            value,
+            style: pw.TextStyle(font: font, fontSize: 10, color: color),
+          ),
         ],
       ),
     );
@@ -755,16 +862,12 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        extendBodyBehindAppBar: true,
         backgroundColor:
             isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-        appBar: AppBar(
-          elevation: 0,
-          backgroundColor:
-              isDark
-                  ? const Color(0xFF101317).withOpacity(0.92)
-                  : Colors.white.withOpacity(0.88),
-          surfaceTintColor: Colors.transparent,
-          title: const Text("Ay Sonu Raporu"),
+        appBar: FloatingLiquidAppBar(
+          title: "Ay Sonu Raporu",
+          showPrivacyButton: true,
           bottom: TabBar(
             labelColor: _kBrandTeal,
             unselectedLabelColor: isDark ? Colors.white70 : Colors.black54,
@@ -776,971 +879,1052 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
             ],
           ),
         ),
-        body: Container(
-          decoration: BoxDecoration(
-            gradient: LinearGradient(
-              begin: Alignment.topCenter,
-              end: Alignment.bottomCenter,
-              colors:
-                  isDark
-                      ? const [Color(0xFF06090D), Color(0xFF0C1219), Color(0xFF111827)]
-                      : const [Color(0xFFF6FBFD), Color(0xFFECF5F9), Color(0xFFE4EEF4)],
-            ),
-          ),
+        body: GlassPageSurface(
+          preferSoftLightBackground: true,
           child: Column(
-          children: [
-            // ORTAK TARİH SEÇİCİ
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: Container(
-                decoration: BoxDecoration(
-                  color:
-                      isDark
-                          ? const Color(0xFF101317).withOpacity(0.94)
-                          : const Color(0xFFF7FBFD),
-                  borderRadius: BorderRadius.circular(16),
-                  border: Border.all(
+            children: [
+              SizedBox(
+                height: FloatingLiquidAppBar.topPadding(
+                  context,
+                  hasBottom: true,
+                  extra: 4,
+                ),
+              ),
+              // ORTAK TARİH SEÇİCİ
+              Padding(
+                padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 12.0),
+                child: Container(
+                  decoration: BoxDecoration(
                     color:
                         isDark
-                            ? Colors.white.withOpacity(0.08)
-                            : const Color(0xFFD8EAF0),
-                    width: 1.5,
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withOpacity(0.05),
-                      blurRadius: 10,
+                            ? const Color(0xFF101317).withOpacity(0.94)
+                            : const Color(0xFFF7FBFD),
+                    borderRadius: BorderRadius.circular(16),
+                    border: Border.all(
+                      color:
+                          isDark
+                              ? Colors.white.withOpacity(0.08)
+                              : const Color(0xFFD8EAF0),
+                      width: 1.5,
                     ),
-                  ],
-                ),
-                child: ListTile(
-                  leading: Container(
-                    padding: const EdgeInsets.all(8),
-                    decoration: BoxDecoration(
-                      color: _kBrandTeal.withOpacity(0.12),
-                      borderRadius: BorderRadius.circular(8),
-                    ),
-                    child: const Icon(
-                      Icons.calendar_month,
-                      color: _kBrandTealDark,
-                    ),
-                  ),
-                  title: Text(
-                    _donemBaslikMetni,
-                    style: const TextStyle(
-                      fontWeight: FontWeight.bold,
-                      fontSize: 18,
-                    ),
-                  ),
-                  subtitle:
-                      _ozelAralikAktif
-                          ? const Text("Seçili gün aralığı")
-                          : const Text("Aylık görünüm"),
-                  trailing: Wrap(
-                    spacing: 6,
-                    children: [
-                      IconButton(
-                        tooltip: "Ay Seç",
-                        onPressed: () => _aySeciciGoster(context),
-                        icon: const Icon(Icons.date_range_outlined),
-                      ),
-                      IconButton(
-                        tooltip: "Gün Aralığı Seç",
-                        onPressed: () => _tarihAraligiSeciciGoster(context),
-                        icon: const Icon(Icons.tune_rounded),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withOpacity(0.05),
+                        blurRadius: 10,
                       ),
                     ],
                   ),
+                  child: ListTile(
+                    leading: Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: _kBrandTeal.withOpacity(0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Icon(
+                        Icons.calendar_month,
+                        color: _kBrandTealDark,
+                      ),
+                    ),
+                    title: Text(
+                      _donemBaslikMetni,
+                      style: const TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 18,
+                      ),
+                    ),
+                    subtitle:
+                        _ozelAralikAktif
+                            ? const Text("Seçili gün aralığı")
+                            : const Text("Aylık görünüm"),
+                    trailing: Wrap(
+                      spacing: 6,
+                      children: [
+                        IconButton(
+                          tooltip: "Ay Seç",
+                          onPressed: () => _aySeciciGoster(context),
+                          icon: const Icon(Icons.date_range_outlined),
+                        ),
+                        IconButton(
+                          tooltip: "Gün Aralığı Seç",
+                          onPressed: () => _tarihAraligiSeciciGoster(context),
+                          icon: const Icon(Icons.tune_rounded),
+                        ),
+                      ],
+                    ),
+                  ),
                 ),
               ),
-            ),
 
-            // VERİ ZİNCİRİ
-            Expanded(
-              child: StreamBuilder<List<Santiye>>(
-                stream: servisi.getSantiyelerStream(widget.teamId),
-                builder: (context, snapSantiyeler) {
-                  final santiyeler = snapSantiyeler.data ?? [];
+              // VERİ ZİNCİRİ
+              Expanded(
+                child: StreamBuilder<List<Santiye>>(
+                  stream: servisi.getSantiyelerStream(widget.teamId),
+                  builder: (context, snapSantiyeler) {
+                    final santiyeler = snapSantiyeler.data ?? [];
 
-                  return StreamBuilder<List<Isci>>(
-                    stream: servisi.getIscilerStream(widget.teamId),
-                    builder: (context, snapIsciler) {
-                      final isciler = snapIsciler.data ?? [];
+                    return StreamBuilder<List<Isci>>(
+                      stream: servisi.getIscilerStream(widget.teamId),
+                      builder: (context, snapIsciler) {
+                        final isciler = snapIsciler.data ?? [];
 
-                      return StreamBuilder<List<GunlukSantiyeRaporu>>(
-                        stream: servisi.getRaporlarStream(
-                          widget.teamId,
-                          baslangic,
-                          bitis,
-                        ),
-                        builder: (context, snapRaporlar) {
-                          final raporlar = snapRaporlar.data ?? [];
+                        return StreamBuilder<List<GunlukSantiyeRaporu>>(
+                          stream: servisi.getRaporlarStream(
+                            widget.teamId,
+                            baslangic,
+                            bitis,
+                          ),
+                          builder: (context, snapRaporlar) {
+                            final raporlar = snapRaporlar.data ?? [];
 
-                          return StreamBuilder<List<VerilenAvans>>(
-                            stream: servisi.getAvanslarStream(widget.teamId),
-                            builder: (context, snapAvans) {
-                              final avanslar = snapAvans.data ?? [];
+                            return StreamBuilder<List<VerilenAvans>>(
+                              stream: servisi.getAvanslarStream(widget.teamId),
+                              builder: (context, snapAvans) {
+                                final avanslar = snapAvans.data ?? [];
 
-                              return StreamBuilder<List<AlinanOdeme>>(
-                                stream: servisi.getOdemelerStream(
-                                  widget.teamId,
-                                ),
-                                builder: (context, snapOdemeler) {
-                                  final odemeler = snapOdemeler.data ?? [];
+                                return StreamBuilder<List<AlinanOdeme>>(
+                                  stream: servisi.getOdemelerStream(
+                                    widget.teamId,
+                                  ),
+                                  builder: (context, snapOdemeler) {
+                                    final odemeler = snapOdemeler.data ?? [];
 
-                                  return StreamBuilder<List<AylikFinans>>(
-                                    stream: servisi.getTumAylikFinanslarStream(
-                                      widget.teamId,
-                                    ),
-                                    builder: (context, snapFinans) {
-                                      final tumAylikFinanslar =
-                                          snapFinans.data ?? const <AylikFinans>[];
-                                      final aylikFinans =
-                                          tumAylikFinanslar
-                                              .where(
-                                                (finans) =>
-                                                    finans.yil == _seciliAy.year &&
-                                                    finans.ay == _seciliAy.month,
-                                              )
-                                              .firstOrNull ??
-                                          AylikFinans(
-                                            yil: _seciliAy.year,
-                                            ay: _seciliAy.month,
-                                          );
-                                      final araliktakiFinanslar =
-                                          tumAylikFinanslar
-                                              .where(
-                                                (finans) => _aylikFinansAralikta(
-                                                  finans,
-                                                  baslangic,
-                                                  bitis,
-                                                ),
-                                              )
-                                              .toList();
+                                    return StreamBuilder<List<AylikFinans>>(
+                                      stream: servisi
+                                          .getTumAylikFinanslarStream(
+                                            widget.teamId,
+                                          ),
+                                      builder: (context, snapFinans) {
+                                        final tumAylikFinanslar =
+                                            snapFinans.data ??
+                                            const <AylikFinans>[];
+                                        final aylikFinans =
+                                            tumAylikFinanslar
+                                                .where(
+                                                  (finans) =>
+                                                      finans.yil ==
+                                                          _seciliAy.year &&
+                                                      finans.ay ==
+                                                          _seciliAy.month,
+                                                )
+                                                .firstOrNull ??
+                                            AylikFinans(
+                                              yil: _seciliAy.year,
+                                              ay: _seciliAy.month,
+                                            );
+                                        final araliktakiFinanslar =
+                                            tumAylikFinanslar
+                                                .where(
+                                                  (finans) =>
+                                                      _aylikFinansAralikta(
+                                                        finans,
+                                                        baslangic,
+                                                        bitis,
+                                                      ),
+                                                )
+                                                .toList();
 
-                                      // --- HESAPLAMA SIFIRLAMA ---
-                                      // Her build işleminde sıfırdan hesaplamak için map'i burada oluşturuyoruz.
-                                      final Map<String, MaasHesaplamaSonucu>
-                                      hesaplar = {
-                                        for (var i in isciler)
-                                          i.ad: MaasHesaplamaSonucu(i),
-                                      };
+                                        // --- HESAPLAMA SIFIRLAMA ---
+                                        // Her build işleminde sıfırdan hesaplamak için map'i burada oluşturuyoruz.
+                                        final Map<String, MaasHesaplamaSonucu>
+                                        hesaplar = {
+                                          for (var i in isciler)
+                                            i.ad: MaasHesaplamaSonucu(i),
+                                        };
 
-                                      // --- GENEL HESAPLAMALAR ---
-                                      double topBenzin = 0,
-                                          topYemek = 0,
-                                          topEk = 0;
-                                      final Map<String, OperasyonelHarcamaOzeti>
-                                      operasyonelHarcamaSahipleri = {};
-                                      final Map<String, List<OperasyonelHarcamaDetay>>
-                                      operasyonelHarcamaDetaylari = {};
+                                        // --- GENEL HESAPLAMALAR ---
+                                        double topBenzin = 0,
+                                            topYemek = 0,
+                                            topEk = 0;
+                                        final Map<
+                                          String,
+                                          OperasyonelHarcamaOzeti
+                                        >
+                                        operasyonelHarcamaSahipleri = {};
+                                        final Map<
+                                          String,
+                                          List<OperasyonelHarcamaDetay>
+                                        >
+                                        operasyonelHarcamaDetaylari = {};
 
-                                      for (var r in raporlar) {
-                                        topBenzin += r.benzinGideri;
-                                        topYemek += r.yemekGideri;
-                                        topEk += r.ekMasraflar;
-                                        if (r.benzinGideri > 0 &&
-                                            r.benzinGideriIsciAdi != null &&
-                                            hesaplar.containsKey(
-                                              r.benzinGideriIsciAdi,
+                                        for (var r in raporlar) {
+                                          topBenzin += r.benzinGideri;
+                                          topYemek += r.yemekGideri;
+                                          topEk += r.ekMasraflar;
+                                          if (r.benzinGideri > 0 &&
+                                              r.benzinGideriIsciAdi != null &&
+                                              hesaplar.containsKey(
+                                                r.benzinGideriIsciAdi,
+                                              )) {
+                                            hesaplar[r.benzinGideriIsciAdi]!
+                                                    .toplamGiderMasrafi +=
+                                                r.benzinGideri;
+                                            operasyonelHarcamaSahipleri
+                                                .putIfAbsent(
+                                                  r.benzinGideriIsciAdi!,
+                                                  OperasyonelHarcamaOzeti.new,
+                                                )
+                                                .benzin += r.benzinGideri;
+                                            operasyonelHarcamaDetaylari
+                                                .putIfAbsent(
+                                                  r.benzinGideriIsciAdi!,
+                                                  () =>
+                                                      <
+                                                        OperasyonelHarcamaDetay
+                                                      >[],
+                                                )
+                                                .add(
+                                                  OperasyonelHarcamaDetay(
+                                                    santiyeAdi: r.santiyeAdi,
+                                                    tarih: r.tarih,
+                                                    kalem: "Benzin",
+                                                    tutar: r.benzinGideri,
+                                                  ),
+                                                );
+                                          }
+                                          if (r.yemekGideri > 0 &&
+                                              r.yemekGideriIsciAdi != null &&
+                                              hesaplar.containsKey(
+                                                r.yemekGideriIsciAdi,
+                                              )) {
+                                            hesaplar[r.yemekGideriIsciAdi]!
+                                                    .toplamGiderMasrafi +=
+                                                r.yemekGideri;
+                                            operasyonelHarcamaSahipleri
+                                                .putIfAbsent(
+                                                  r.yemekGideriIsciAdi!,
+                                                  OperasyonelHarcamaOzeti.new,
+                                                )
+                                                .yemek += r.yemekGideri;
+                                            operasyonelHarcamaDetaylari
+                                                .putIfAbsent(
+                                                  r.yemekGideriIsciAdi!,
+                                                  () =>
+                                                      <
+                                                        OperasyonelHarcamaDetay
+                                                      >[],
+                                                )
+                                                .add(
+                                                  OperasyonelHarcamaDetay(
+                                                    santiyeAdi: r.santiyeAdi,
+                                                    tarih: r.tarih,
+                                                    kalem: "Yemek",
+                                                    tutar: r.yemekGideri,
+                                                  ),
+                                                );
+                                          }
+                                          if (r.ekMasraflar > 0 &&
+                                              r.ekMasraflarIsciAdi != null &&
+                                              hesaplar.containsKey(
+                                                r.ekMasraflarIsciAdi,
+                                              )) {
+                                            hesaplar[r.ekMasraflarIsciAdi]!
+                                                    .toplamGiderMasrafi +=
+                                                r.ekMasraflar;
+                                            operasyonelHarcamaSahipleri
+                                                .putIfAbsent(
+                                                  r.ekMasraflarIsciAdi!,
+                                                  OperasyonelHarcamaOzeti.new,
+                                                )
+                                                .ekMasraf += r.ekMasraflar;
+                                            operasyonelHarcamaDetaylari
+                                                .putIfAbsent(
+                                                  r.ekMasraflarIsciAdi!,
+                                                  () =>
+                                                      <
+                                                        OperasyonelHarcamaDetay
+                                                      >[],
+                                                )
+                                                .add(
+                                                  OperasyonelHarcamaDetay(
+                                                    santiyeAdi: r.santiyeAdi,
+                                                    tarih: r.tarih,
+                                                    kalem: "Ek Masraf",
+                                                    tutar: r.ekMasraflar,
+                                                  ),
+                                                );
+                                          }
+                                          for (var c in r.calisanlar) {
+                                            if (hesaplar.containsKey(
+                                              c.isci.ad,
                                             )) {
-                                          hesaplar[r.benzinGideriIsciAdi]!
-                                                  .toplamGiderMasrafi +=
-                                              r.benzinGideri;
-                                          operasyonelHarcamaSahipleri
-                                              .putIfAbsent(
-                                                r.benzinGideriIsciAdi!,
-                                                OperasyonelHarcamaOzeti.new,
-                                              )
-                                              .benzin += r.benzinGideri;
-                                          operasyonelHarcamaDetaylari
-                                              .putIfAbsent(
-                                                r.benzinGideriIsciAdi!,
-                                                () => <OperasyonelHarcamaDetay>[],
-                                              )
-                                              .add(
-                                                OperasyonelHarcamaDetay(
-                                                  santiyeAdi: r.santiyeAdi,
-                                                  tarih: r.tarih,
-                                                  kalem: "Benzin",
-                                                  tutar: r.benzinGideri,
-                                                ),
-                                              );
-                                        }
-                                        if (r.yemekGideri > 0 &&
-                                            r.yemekGideriIsciAdi != null &&
-                                            hesaplar.containsKey(
-                                              r.yemekGideriIsciAdi,
-                                            )) {
-                                          hesaplar[r.yemekGideriIsciAdi]!
-                                                  .toplamGiderMasrafi +=
-                                              r.yemekGideri;
-                                          operasyonelHarcamaSahipleri
-                                              .putIfAbsent(
-                                                r.yemekGideriIsciAdi!,
-                                                OperasyonelHarcamaOzeti.new,
-                                              )
-                                              .yemek += r.yemekGideri;
-                                          operasyonelHarcamaDetaylari
-                                              .putIfAbsent(
-                                                r.yemekGideriIsciAdi!,
-                                                () => <OperasyonelHarcamaDetay>[],
-                                              )
-                                              .add(
-                                                OperasyonelHarcamaDetay(
-                                                  santiyeAdi: r.santiyeAdi,
-                                                  tarih: r.tarih,
-                                                  kalem: "Yemek",
-                                                  tutar: r.yemekGideri,
-                                                ),
-                                              );
-                                        }
-                                        if (r.ekMasraflar > 0 &&
-                                            r.ekMasraflarIsciAdi != null &&
-                                            hesaplar.containsKey(
-                                              r.ekMasraflarIsciAdi,
-                                            )) {
-                                          hesaplar[r.ekMasraflarIsciAdi]!
-                                                  .toplamGiderMasrafi +=
-                                              r.ekMasraflar;
-                                          operasyonelHarcamaSahipleri
-                                              .putIfAbsent(
-                                                r.ekMasraflarIsciAdi!,
-                                                OperasyonelHarcamaOzeti.new,
-                                              )
-                                              .ekMasraf += r.ekMasraflar;
-                                          operasyonelHarcamaDetaylari
-                                              .putIfAbsent(
-                                                r.ekMasraflarIsciAdi!,
-                                                () => <OperasyonelHarcamaDetay>[],
-                                              )
-                                              .add(
-                                                OperasyonelHarcamaDetay(
-                                                  santiyeAdi: r.santiyeAdi,
-                                                  tarih: r.tarih,
-                                                  kalem: "Ek Masraf",
-                                                  tutar: r.ekMasraflar,
-                                                ),
-                                              );
-                                        }
-                                        for (var c in r.calisanlar) {
-                                          if (hesaplar.containsKey(c.isci.ad)) {
-                                            if (c.durum == "Tam Gün") {
-                                              hesaplar[c.isci.ad]!.tamGun++;
-                                              hesaplar[c.isci.ad]!
-                                                      .toplamHakedis +=
-                                                  c.isci.gunlukMaas;
-                                            }
-                                            if (c.durum == "Yarım Gün") {
-                                              hesaplar[c.isci.ad]!.yarimGun++;
-                                              hesaplar[c.isci.ad]!
-                                                      .toplamHakedis +=
-                                                  (c.isci.gunlukMaas / 2);
+                                              if (c.durum == "Tam Gün") {
+                                                hesaplar[c.isci.ad]!.tamGun++;
+                                                hesaplar[c.isci.ad]!
+                                                        .toplamHakedis +=
+                                                    c.isci.gunlukMaas;
+                                              }
+                                              if (c.durum == "Yarım Gün") {
+                                                hesaplar[c.isci.ad]!.yarimGun++;
+                                                hesaplar[c.isci.ad]!
+                                                        .toplamHakedis +=
+                                                    (c.isci.gunlukMaas / 2);
+                                              }
                                             }
                                           }
                                         }
-                                      }
 
-                                      for (var a in avanslar) {
-                                        if (_tarihAralikta(
-                                          a.tarih,
-                                          baslangic,
-                                          bitis,
-                                        )) {
-                                          if (hesaplar.containsKey(a.isci.ad))
-                                            hesaplar[a.isci.ad]!.toplamAvans +=
-                                                a.miktar;
+                                        for (var a in avanslar) {
+                                          if (_tarihAralikta(
+                                            a.tarih,
+                                            baslangic,
+                                            bitis,
+                                          )) {
+                                            if (hesaplar.containsKey(a.isci.ad))
+                                              hesaplar[a.isci.ad]!
+                                                  .toplamAvans += a.miktar;
+                                          }
                                         }
-                                      }
 
-                                      double toplamMaas = 0;
-                                      hesaplar.forEach((_, h) {
-                                        h.odenecekTutar =
-                                            h.toplamHakedis +
-                                            h.toplamGiderMasrafi -
-                                            h.toplamAvans;
-                                        toplamMaas += h.toplamHakedis;
-                                      });
+                                        double toplamMaas = 0;
+                                        hesaplar.forEach((_, h) {
+                                          h.odenecekTutar =
+                                              h.toplamHakedis +
+                                              h.toplamGiderMasrafi -
+                                              h.toplamAvans;
+                                          toplamMaas += h.toplamHakedis;
+                                        });
 
-                                      double kayitliGelir = 0;
-                                      for (var o in odemeler) {
-                                        if (_tarihAralikta(
-                                          o.tarih,
-                                          baslangic,
-                                          bitis,
-                                        )) {
-                                          kayitliGelir += o.miktar;
+                                        double kayitliGelir = 0;
+                                        for (var o in odemeler) {
+                                          if (_tarihAralikta(
+                                            o.tarih,
+                                            baslangic,
+                                            bitis,
+                                          )) {
+                                            kayitliGelir += o.miktar;
+                                          }
                                         }
-                                      }
 
-                                      // Ek Gelir/Gider Toplamları
-                                      double toplamEkstraGelir =
-                                          araliktakiFinanslar
-                                          .expand((finans) => finans.ekstraGelirler)
-                                          .fold(
-                                            0.0,
-                                            (sum, item) => sum + item.miktar,
-                                          );
-                                      double toplamEkstraGider =
-                                          araliktakiFinanslar
-                                          .expand((finans) => finans.ekstraGiderler)
-                                          .fold(
-                                            0.0,
-                                            (sum, item) => sum + item.miktar,
-                                          );
+                                        // Ek Gelir/Gider Toplamları
+                                        double
+                                        toplamEkstraGelir = araliktakiFinanslar
+                                            .expand(
+                                              (finans) => finans.ekstraGelirler,
+                                            )
+                                            .fold(
+                                              0.0,
+                                              (sum, item) => sum + item.miktar,
+                                            );
+                                        double
+                                        toplamEkstraGider = araliktakiFinanslar
+                                            .expand(
+                                              (finans) => finans.ekstraGiderler,
+                                            )
+                                            .fold(
+                                              0.0,
+                                              (sum, item) => sum + item.miktar,
+                                            );
 
-                                      double toplamGelir =
-                                          kayitliGelir + toplamEkstraGelir;
+                                        double toplamGelir =
+                                            kayitliGelir + toplamEkstraGelir;
 
-                                      // Gider Hesabı: User requested "WORKER TOTAL COST" (Hakediş) to be included in total expense,
-                                      // not just paid amount.
-                                      // "toplamGidere dahil edilmiyor" -> Fixed by using toplamMaas.
-                                      double toplamGider =
-                                          toplamMaas + // HAKEDİŞ ESASLI: Toplam hak edilen maaş gider sayılır
-                                          topBenzin +
-                                          topYemek +
-                                          topEk +
-                                          toplamEkstraGider;
-                                      double netDurum =
-                                          toplamGelir - toplamGider;
+                                        // Gider Hesabı: User requested "WORKER TOTAL COST" (Hakediş) to be included in total expense,
+                                        // not just paid amount.
+                                        // "toplamGidere dahil edilmiyor" -> Fixed by using toplamMaas.
+                                        double toplamGider =
+                                            toplamMaas + // HAKEDİŞ ESASLI: Toplam hak edilen maaş gider sayılır
+                                            topBenzin +
+                                            topYemek +
+                                            topEk +
+                                            toplamEkstraGider;
+                                        double netDurum =
+                                            toplamGelir - toplamGider;
 
-                                      return TabBarView(
-                                        children: [
-                                          // --- SEKME 1: GENEL ÖZET ---
-                                          SingleChildScrollView(
-                                            padding: const EdgeInsets.fromLTRB(
-                                              16,
-                                              16,
-                                              16,
-                                              _shellDockBodyPadding,
-                                            ),
-                                            child: Column(
-                                              children: [
-                                                _buildExpansionCard(
-                                                  context,
-                                                  "PERSONEL HAKEDİŞ GİDERİ", // Renamed from Odenen
-                                                  toplamMaas, // Showing Accrued amount
-                                                  Icons.people_alt_outlined,
-                                                  Colors.purple,
-                                                  [
-                                                    if (false) SingleChildScrollView(
-                                                      scrollDirection:
-                                                          Axis.horizontal,
-                                                      child: DataTable(
-                                                        columnSpacing: 16,
-                                                        headingRowHeight: 40,
-                                                        columns: const [
-                                                          DataColumn(
-                                                            label: Text('İşçi'),
-                                                          ),
-                                                          DataColumn(
-                                                            label: Text(
-                                                              'Hakediş',
-                                                            ),
-                                                            numeric: true,
-                                                          ),
-                                                          DataColumn(
-                                                            label: Text(
-                                                              'Avans',
-                                                            ),
-                                                            numeric: true,
-                                                          ),
-                                                          DataColumn(
-                                                            label: Text(
-                                                              'Gider Masrafı',
-                                                            ),
-                                                            numeric: true,
-                                                          ),
-                                                          DataColumn(
-                                                            label: Text('Net'),
-                                                            numeric: true,
-                                                          ),
-                                                        ],
-                                                        rows:
-                                                            hesaplar.values
-                                                                .where(
-                                                                  (s) =>
-                                                                      s.toplamHakedis >
-                                                                          0 ||
-                                                                      s.toplamAvans >
-                                                                          0,
-                                                                )
-                                                                .map(
-                                                                  (
-                                                                    s,
-                                                                  ) => DataRow(
-                                                                    cells: [
-                                                                      DataCell(
-                                                                        Text(
-                                                                          s.isci.ad,
-                                                                          style: const TextStyle(
-                                                                            fontWeight:
-                                                                                FontWeight.w500,
+                                        return TabBarView(
+                                          children: [
+                                            // --- SEKME 1: GENEL ÖZET ---
+                                            SingleChildScrollView(
+                                              padding:
+                                                  const EdgeInsets.fromLTRB(
+                                                    16,
+                                                    16,
+                                                    16,
+                                                    _shellDockBodyPadding,
+                                                  ),
+                                              child: Column(
+                                                children: [
+                                                  _buildExpansionCard(
+                                                    context,
+                                                    "PERSONEL HAKEDİŞ GİDERİ", // Renamed from Odenen
+                                                    toplamMaas, // Showing Accrued amount
+                                                    Icons.people_alt_outlined,
+                                                    Colors.purple,
+                                                    [
+                                                      if (false)
+                                                        SingleChildScrollView(
+                                                          scrollDirection:
+                                                              Axis.horizontal,
+                                                          child: DataTable(
+                                                            columnSpacing: 16,
+                                                            headingRowHeight:
+                                                                40,
+                                                            columns: const [
+                                                              DataColumn(
+                                                                label: Text(
+                                                                  'İşçi',
+                                                                ),
+                                                              ),
+                                                              DataColumn(
+                                                                label: Text(
+                                                                  'Hakediş',
+                                                                ),
+                                                                numeric: true,
+                                                              ),
+                                                              DataColumn(
+                                                                label: Text(
+                                                                  'Avans',
+                                                                ),
+                                                                numeric: true,
+                                                              ),
+                                                              DataColumn(
+                                                                label: Text(
+                                                                  'Gider Masrafı',
+                                                                ),
+                                                                numeric: true,
+                                                              ),
+                                                              DataColumn(
+                                                                label: Text(
+                                                                  'Net',
+                                                                ),
+                                                                numeric: true,
+                                                              ),
+                                                            ],
+                                                            rows:
+                                                                hesaplar.values
+                                                                    .where(
+                                                                      (s) =>
+                                                                          s.toplamHakedis >
+                                                                              0 ||
+                                                                          s.toplamAvans >
+                                                                              0,
+                                                                    )
+                                                                    .map(
+                                                                      (
+                                                                        s,
+                                                                      ) => DataRow(
+                                                                        cells: [
+                                                                          DataCell(
+                                                                            Text(
+                                                                              s.isci.ad,
+                                                                              style: const TextStyle(
+                                                                                fontWeight:
+                                                                                    FontWeight.w500,
+                                                                              ),
+                                                                            ),
                                                                           ),
-                                                                        ),
+                                                                          DataCell(
+                                                                            Text(
+                                                                              Formatlayici.yap(
+                                                                                s.toplamHakedis,
+                                                                              ),
+                                                                            ),
+                                                                          ),
+                                                                          DataCell(
+                                                                            Text(
+                                                                              Formatlayici.yap(
+                                                                                s.toplamAvans,
+                                                                              ),
+                                                                            ),
+                                                                          ),
+                                                                          DataCell(
+                                                                            Text(
+                                                                              Formatlayici.yap(
+                                                                                s.toplamGiderMasrafi,
+                                                                              ),
+                                                                            ),
+                                                                          ),
+                                                                          DataCell(
+                                                                            Text(
+                                                                              Formatlayici.yap(
+                                                                                s.odenecekTutar,
+                                                                              ),
+                                                                              style: const TextStyle(
+                                                                                fontWeight:
+                                                                                    FontWeight.bold,
+                                                                                color:
+                                                                                    Colors.green,
+                                                                              ),
+                                                                            ),
+                                                                          ),
+                                                                        ],
                                                                       ),
-                                                                      DataCell(
-                                                                        Text(
-                                                                          Formatlayici.yap(
-                                                                            s.toplamHakedis,
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                      DataCell(
-                                                                        Text(
-                                                                          Formatlayici.yap(
-                                                                            s.toplamAvans,
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                      DataCell(
-                                                                        Text(
-                                                                          Formatlayici.yap(
-                                                                            s.toplamGiderMasrafi,
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                      DataCell(
-                                                                        Text(
-                                                                          Formatlayici.yap(
-                                                                            s.odenecekTutar,
-                                                                          ),
-                                                                          style: const TextStyle(
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            color:
-                                                                                Colors.green,
-                                                                          ),
-                                                                        ),
-                                                                      ),
-                                                                    ],
+                                                                    )
+                                                                    .toList(),
+                                                          ),
+                                                        ),
+                                                      ...hesaplar.values
+                                                          .where(
+                                                            (s) =>
+                                                                s.toplamHakedis >
+                                                                    0 ||
+                                                                s.toplamAvans >
+                                                                    0 ||
+                                                                s.toplamGiderMasrafi >
+                                                                    0,
+                                                          )
+                                                          .map(
+                                                            (s) => Container(
+                                                              margin:
+                                                                  const EdgeInsets.only(
+                                                                    bottom: 10,
                                                                   ),
-                                                                )
-                                                                .toList(),
-                                                      ),
-                                                    ),
-                                                    ...hesaplar.values
-                                                        .where(
-                                                          (s) =>
-                                                              s.toplamHakedis > 0 ||
-                                                              s.toplamAvans > 0 ||
-                                                              s.toplamGiderMasrafi > 0,
-                                                        )
-                                                        .map(
-                                                          (s) => Container(
-                                                            margin: const EdgeInsets.only(
-                                                              bottom: 10,
-                                                            ),
-                                                            padding: const EdgeInsets.all(12),
-                                                            decoration: BoxDecoration(
-                                                              color: Theme.of(context)
-                                                                  .colorScheme
-                                                                  .surfaceContainerHighest
-                                                                  .withOpacity(
-                                                                    Theme.of(context).brightness ==
-                                                                            Brightness.dark
-                                                                        ? 0.18
-                                                                        : 0.18,
+                                                              padding:
+                                                                  const EdgeInsets.all(
+                                                                    12,
                                                                   ),
-                                                              borderRadius:
-                                                                  BorderRadius.circular(12),
-                                                              border: Border.all(
-                                                                color: Theme.of(context)
-                                                                    .dividerColor
+                                                              decoration: BoxDecoration(
+                                                                color: Theme.of(
+                                                                      context,
+                                                                    )
+                                                                    .colorScheme
+                                                                    .surfaceContainerHighest
                                                                     .withOpacity(
                                                                       Theme.of(context).brightness ==
                                                                               Brightness.dark
-                                                                          ? 0.45
-                                                                          : 0.28,
+                                                                          ? 0.18
+                                                                          : 0.18,
                                                                     ),
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      12,
+                                                                    ),
+                                                                border: Border.all(
+                                                                  color: Theme.of(
+                                                                    context,
+                                                                  ).dividerColor.withOpacity(
+                                                                    Theme.of(
+                                                                              context,
+                                                                            ).brightness ==
+                                                                            Brightness.dark
+                                                                        ? 0.45
+                                                                        : 0.28,
+                                                                  ),
+                                                                ),
                                                               ),
-                                                            ),
-                                                            child: Column(
-                                                              crossAxisAlignment:
-                                                                  CrossAxisAlignment.start,
-                                                              children: [
-                                                                Container(
-                                                                  padding: const EdgeInsets.symmetric(
-                                                                    horizontal: 10,
-                                                                    vertical: 8,
-                                                                  ),
-                                                                  decoration: BoxDecoration(
-                                                                    color:
-                                                                        Theme.of(context).brightness ==
-                                                                                Brightness.dark
-                                                                            ? Colors.white.withOpacity(
-                                                                              0.08,
-                                                                            )
-                                                                            : Colors.black.withOpacity(
-                                                                              0.08,
+                                                              child: Column(
+                                                                crossAxisAlignment:
+                                                                    CrossAxisAlignment
+                                                                        .start,
+                                                                children: [
+                                                                  Container(
+                                                                    padding: const EdgeInsets.symmetric(
+                                                                      horizontal:
+                                                                          10,
+                                                                      vertical:
+                                                                          8,
+                                                                    ),
+                                                                    decoration: BoxDecoration(
+                                                                      color:
+                                                                          Theme.of(context).brightness ==
+                                                                                  Brightness.dark
+                                                                              ? Colors.white.withOpacity(
+                                                                                0.08,
+                                                                              )
+                                                                              : Colors.black.withOpacity(0.08),
+                                                                      borderRadius:
+                                                                          BorderRadius.circular(
+                                                                            10,
+                                                                          ),
+                                                                    ),
+                                                                    child: Row(
+                                                                      children: [
+                                                                        Expanded(
+                                                                          child: Text(
+                                                                            s.isci.ad,
+                                                                            maxLines:
+                                                                                1,
+                                                                            overflow:
+                                                                                TextOverflow.ellipsis,
+                                                                            style: TextStyle(
+                                                                              fontWeight:
+                                                                                  FontWeight.w800,
+                                                                              color:
+                                                                                  Theme.of(
+                                                                                    context,
+                                                                                  ).colorScheme.onSurface,
                                                                             ),
-                                                                    borderRadius:
-                                                                        BorderRadius.circular(10),
-                                                                  ),
-                                                                  child: Row(
-                                                                    children: [
-                                                                      Expanded(
-                                                                        child: Text(
-                                                                          s.isci.ad,
-                                                                          maxLines: 1,
-                                                                          overflow: TextOverflow.ellipsis,
-                                                                          style: TextStyle(
-                                                                            fontWeight:
-                                                                                FontWeight.w800,
-                                                                            color: Theme.of(context)
-                                                                                .colorScheme
-                                                                                .onSurface,
                                                                           ),
                                                                         ),
+                                                                        const SizedBox(
+                                                                          width:
+                                                                              10,
+                                                                        ),
+                                                                        Text(
+                                                                          'Net: ${Formatlayici.yap(s.odenecekTutar)}',
+                                                                          maxLines:
+                                                                              1,
+                                                                          overflow:
+                                                                              TextOverflow.ellipsis,
+                                                                          style: TextStyle(
+                                                                            fontWeight:
+                                                                                FontWeight.bold,
+                                                                            color:
+                                                                                Theme.of(
+                                                                                          context,
+                                                                                        ).brightness ==
+                                                                                        Brightness.dark
+                                                                                    ? const Color(
+                                                                                      0xFF6EE7B7,
+                                                                                    )
+                                                                                    : Colors.green,
+                                                                          ),
+                                                                        ),
+                                                                      ],
+                                                                    ),
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 8,
+                                                                  ),
+                                                                  Divider(
+                                                                    color: Theme.of(
+                                                                      context,
+                                                                    ).dividerColor.withOpacity(
+                                                                      Theme.of(context).brightness ==
+                                                                              Brightness.dark
+                                                                          ? 0.5
+                                                                          : 0.35,
+                                                                    ),
+                                                                    height: 1,
+                                                                  ),
+                                                                  const SizedBox(
+                                                                    height: 8,
+                                                                  ),
+                                                                  Wrap(
+                                                                    spacing: 8,
+                                                                    runSpacing:
+                                                                        8,
+                                                                    children: [
+                                                                      _buildMiniList(
+                                                                        'Hakediş',
+                                                                        Formatlayici.yap(
+                                                                          s.toplamHakedis,
+                                                                        ),
                                                                       ),
-                                                                      const SizedBox(width: 10),
-                                                                      Text(
-                                                                        'Net: ${Formatlayici.yap(s.odenecekTutar)}',
-                                                                        maxLines: 1,
-                                                                        overflow: TextOverflow.ellipsis,
-                                                                        style: TextStyle(
-                                                                          fontWeight:
-                                                                              FontWeight.bold,
-                                                                          color:
-                                                                              Theme.of(context).brightness ==
-                                                                                      Brightness.dark
-                                                                                  ? const Color(
-                                                                                    0xFF6EE7B7,
-                                                                                  )
-                                                                                  : Colors.green,
+                                                                      _buildMiniList(
+                                                                        'Gider Masrafı',
+                                                                        Formatlayici.yap(
+                                                                          s.toplamGiderMasrafi,
+                                                                        ),
+                                                                      ),
+                                                                      _buildMiniList(
+                                                                        'Yevmiye',
+                                                                        '${s.tamGun} tam / ${s.yarimGun} yarim',
+                                                                      ),
+                                                                      _buildMiniList(
+                                                                        'Avans',
+                                                                        Formatlayici.yap(
+                                                                          s.toplamAvans,
                                                                         ),
                                                                       ),
                                                                     ],
                                                                   ),
-                                                                ),
-                                                                const SizedBox(height: 8),
-                                                                Divider(
-                                                                  color: Theme.of(context)
-                                                                      .dividerColor
-                                                                      .withOpacity(
-                                                                        Theme.of(context).brightness ==
-                                                                                Brightness.dark
-                                                                            ? 0.5
-                                                                            : 0.35,
-                                                                      ),
-                                                                  height: 1,
-                                                                ),
-                                                                const SizedBox(height: 8),
-                                                                Wrap(
-                                                                  spacing: 8,
-                                                                  runSpacing: 8,
-                                                                  children: [
-                                                                    _buildMiniList(
-                                                                      'Hakediş',
-                                                                      Formatlayici.yap(
-                                                                        s.toplamHakedis,
-                                                                      ),
-                                                                    ),
-                                                                    _buildMiniList(
-                                                                      'Gider Masrafı',
-                                                                      Formatlayici.yap(
-                                                                        s.toplamGiderMasrafi,
-                                                                      ),
-                                                                    ),
-                                                                    _buildMiniList(
-                                                                      'Yevmiye',
-                                                                      '${s.tamGun} tam / ${s.yarimGun} yarim',
-                                                                    ),
-                                                                    _buildMiniList(
-                                                                      'Avans',
-                                                                      Formatlayici.yap(
-                                                                        s.toplamAvans,
-                                                                      ),
-                                                                    ),
-                                                                  ],
-                                                                ),
-                                                              ],
+                                                                ],
+                                                              ),
                                                             ),
                                                           ),
-                                                        ),
-                                                    const SizedBox(height: 10),
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildExpansionCard(
-                                                  context,
-                                                  "OPERASYONEL GİDERLER",
-                                                  topBenzin + topYemek + topEk,
-                                                  Icons.pie_chart_outline,
-                                                  Colors.orange,
-                                                  [
-                                                    _buildOperasyonelToplamKart(
-                                                      topBenzin: topBenzin,
-                                                      topYemek: topYemek,
-                                                      topEk: topEk,
-                                                    ),
-                                                    if (operasyonelHarcamaSahipleri
-                                                        .isNotEmpty) ...[
-                                                      const SizedBox(height: 12),
-                                                      const Divider(),
-                                                      const SizedBox(height: 8),
-                                                      ...operasyonelHarcamaSahipleri
-                                                          .entries
-                                                          .map(
-                                                            (entry) =>
-                                                                _buildOperasyonelHarcamaSatiri(
-                                                                  entry.key,
-                                                                  entry.value,
-                                                                  operasyonelHarcamaDetaylari[entry.key] ?? const <OperasyonelHarcamaDetay>[],
-                                                                ),
-                                                          ),
+                                                      const SizedBox(
+                                                        height: 10,
+                                                      ),
                                                     ],
-                                                  ],
-                                                ),
-                                                const SizedBox(height: 12),
-                                                _buildFinansCard(
-                                                  context,
-                                                  kayitliGelir,
-                                                  toplamGelir,
-                                                  toplamGider,
-                                                  netDurum,
-                                                  aylikFinans,
-                                                  isDark,
-                                                  servisi,
-                                                  toplamMaas, // Passing Accrued (Hakediş) instead of Paid
-                                                  topBenzin,
-                                                  topYemek,
-                                                  topEk,
-                                                ),
-                                                const SizedBox(height: 24),
-
-                                                ElevatedButton.icon(
-                                                  icon: const Icon(Icons.share),
-                                                  label: const Text(
-                                                    "Genel Raporu Paylaş",
                                                   ),
-                                                  style: ElevatedButton.styleFrom(
-                                                    backgroundColor:
-                                                        _kBrandTeal,
-                                                    foregroundColor:
-                                                        Colors.white,
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          vertical: 16,
+                                                  const SizedBox(height: 12),
+                                                  _buildExpansionCard(
+                                                    context,
+                                                    "OPERASYONEL GİDERLER",
+                                                    topBenzin +
+                                                        topYemek +
+                                                        topEk,
+                                                    Icons.pie_chart_outline,
+                                                    Colors.orange,
+                                                    [
+                                                      _buildOperasyonelToplamKart(
+                                                        topBenzin: topBenzin,
+                                                        topYemek: topYemek,
+                                                        topEk: topEk,
+                                                      ),
+                                                      if (operasyonelHarcamaSahipleri
+                                                          .isNotEmpty) ...[
+                                                        const SizedBox(
+                                                          height: 12,
                                                         ),
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            12,
-                                                          ),
-                                                    ),
-                                                    minimumSize: const Size(
-                                                      double.infinity,
-                                                      50,
-                                                    ),
-                                                  ),
-                                                  onPressed:
-                                                      () =>
-                                                          _paylasimMenusunuGoster(
-                                                            _raporuMetneDonusturDetayli(
-                                                              _donemBaslikMetni,
-                                                              hesaplar,
-                                                              operasyonelHarcamaSahipleri,
-                                                              toplamMaas,
-                                                              topBenzin,
-                                                              topYemek,
-                                                              topEk,
-                                                              kayitliGelir,
-                                                              toplamEkstraGelir,
-                                                              toplamEkstraGider,
-                                                              netDurum,
+                                                        const Divider(),
+                                                        const SizedBox(
+                                                          height: 8,
+                                                        ),
+                                                        ...operasyonelHarcamaSahipleri
+                                                            .entries
+                                                            .map(
+                                                              (
+                                                                entry,
+                                                              ) => _buildOperasyonelHarcamaSatiri(
+                                                                entry.key,
+                                                                entry.value,
+                                                                operasyonelHarcamaDetaylari[entry
+                                                                        .key] ??
+                                                                    const <
+                                                                      OperasyonelHarcamaDetay
+                                                                    >[],
+                                                              ),
                                                             ),
-                                                            pdfOlusturucu:
-                                                                () => _raporuPdfOlusturDetayli(
-                                                                  _donemBaslikMetni,
-                                                                  hesaplar,
-                                                                  operasyonelHarcamaSahipleri,
-                                                                  toplamMaas,
-                                                                  topBenzin,
-                                                                  topYemek,
-                                                                  topEk,
-                                                                  kayitliGelir,
-                                                                  toplamEkstraGelir,
-                                                                  toplamEkstraGider,
-                                                                  netDurum,
-                                                                ),
+                                                      ],
+                                                    ],
+                                                  ),
+                                                  const SizedBox(height: 12),
+                                                  _buildFinansCard(
+                                                    context,
+                                                    kayitliGelir,
+                                                    toplamGelir,
+                                                    toplamGider,
+                                                    netDurum,
+                                                    aylikFinans,
+                                                    isDark,
+                                                    servisi,
+                                                    toplamMaas, // Passing Accrued (Hakediş) instead of Paid
+                                                    topBenzin,
+                                                    topYemek,
+                                                    topEk,
+                                                  ),
+                                                  const SizedBox(height: 24),
+
+                                                  ElevatedButton.icon(
+                                                    icon: const Icon(
+                                                      Icons.share,
+                                                    ),
+                                                    label: const Text(
+                                                      "Genel Raporu Paylaş",
+                                                    ),
+                                                    style: ElevatedButton.styleFrom(
+                                                      backgroundColor:
+                                                          _kBrandTeal,
+                                                      foregroundColor:
+                                                          Colors.white,
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            vertical: 16,
                                                           ),
-                                                ),
-                                                const SizedBox(
-                                                  height: _shellDockBodyPadding,
-                                                ),
-                                              ],
-                                            ),
-                                          ),
-
-                                          // --- SEKME 2: ŞANTİYE BAZLI DETAY ---
-                                          santiyeler.isEmpty
-                                              ? const Center(
-                                                child: Text(
-                                                  "Şantiye bulunamadı.",
-                                                ),
-                                              )
-                                              : ListView.builder(
-                                                padding: const EdgeInsets.fromLTRB(
-                                                  16,
-                                                  16,
-                                                  16,
-                                                  _shellDockBodyPadding,
-                                                ),
-                                                itemCount: santiyeler.length,
-                                                itemBuilder: (ctx, index) {
-                                                  final sAdi =
-                                                      santiyeler[index].ad;
-                                                  final sRaporlar =
-                                                      raporlar
-                                                          .where(
-                                                            (r) =>
-                                                                r.santiyeAdi ==
-                                                                sAdi,
-                                                          )
-                                                          .toList();
-                                                  final sOdemeler =
-                                                      odemeler
-                                                          .where(
-                                                            (o) =>
-                                                                o.santiyeAdi ==
-                                                                    sAdi &&
-                                                                _tarihAralikta(
-                                                                  o.tarih,
-                                                                  baslangic,
-                                                                  bitis,
-                                                                ),
-                                                          )
-                                                          .toList();
-
-                                                  double sBenzin = 0,
-                                                      sYemek = 0,
-                                                      sEk = 0,
-                                                      sMaas = 0,
-                                                      sGelir = 0;
-                                                  for (var o in sOdemeler)
-                                                    sGelir += o.miktar;
-
-                                                  for (var r in sRaporlar) {
-                                                    sBenzin += r.benzinGideri;
-                                                    sYemek += r.yemekGideri;
-                                                    sEk += r.ekMasraflar;
-                                                    for (var c
-                                                        in r.calisanlar) {
-                                                      sMaas +=
-                                                          (c.durum == "Tam Gün"
-                                                              ? c
-                                                                  .isci
-                                                                  .gunlukMaas
-                                                              : (c
-                                                                      .isci
-                                                                      .gunlukMaas /
-                                                                  2));
-                                                    }
-                                                  }
-
-                                                  double sToplamGider =
-                                                      sBenzin +
-                                                      sYemek +
-                                                      sEk +
-                                                      sMaas;
-                                                  double sKar =
-                                                      sGelir - sToplamGider;
-
-                                                  return Card(
-                                                    margin:
-                                                        const EdgeInsets.only(
-                                                          bottom: 12,
-                                                        ),
-                                                    elevation: 4,
-                                                    shape: RoundedRectangleBorder(
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            16,
-                                                          ),
-                                                      side: BorderSide(
-                                                        color:
-                                                            isDark
-                                                                ? Colors.white
-                                                                    .withOpacity(
-                                                                      0.08,
-                                                                    )
-                                                                : const Color(
-                                                                  0xFFD8EAF0,
-                                                                ),
-                                                        width: 1.5,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                      minimumSize: const Size(
+                                                        double.infinity,
+                                                        50,
                                                       ),
                                                     ),
-                                                    color:
-                                                        isDark
-                                                            ? const Color(
-                                                              0xFF101317,
-                                                            )
-                                                            : const Color(
-                                                              0xFFF7FBFD,
-                                                            ),
-                                                    child: ExpansionTile(
-                                                      leading: Container(
-                                                        padding:
-                                                            const EdgeInsets.all(
-                                                              8,
-                                                            ),
-                                                        decoration: BoxDecoration(
-                                                          gradient: LinearGradient(
-                                                            begin:
-                                                                Alignment
-                                                                    .topLeft,
-                                                            end:
-                                                                Alignment
-                                                                    .bottomRight,
-                                                            colors: [
-                                                              Colors.teal
-                                                                  .withOpacity(
-                                                                    isDark
-                                                                        ? 0.18
-                                                                        : 0.14,
-                                                                  ),
-                                                              (isDark
-                                                                      ? const Color(
-                                                                        0xFF171B20,
-                                                                      )
-                                                                      : Colors
-                                                                          .white)
-                                                                  .withOpacity(
-                                                                    isDark
-                                                                        ? 0.82
-                                                                        : 0.92,
-                                                                  ),
-                                                            ],
+                                                    onPressed:
+                                                        () => _paylasimMenusunuGoster(
+                                                          _raporuMetneDonusturDetayli(
+                                                            _donemBaslikMetni,
+                                                            hesaplar,
+                                                            operasyonelHarcamaSahipleri,
+                                                            toplamMaas,
+                                                            topBenzin,
+                                                            topYemek,
+                                                            topEk,
+                                                            kayitliGelir,
+                                                            toplamEkstraGelir,
+                                                            toplamEkstraGider,
+                                                            netDurum,
                                                           ),
-                                                          borderRadius:
-                                                              BorderRadius.circular(
+                                                          pdfOlusturucu:
+                                                              () => _raporuPdfOlusturDetayli(
+                                                                _donemBaslikMetni,
+                                                                hesaplar,
+                                                                operasyonelHarcamaSahipleri,
+                                                                toplamMaas,
+                                                                topBenzin,
+                                                                topYemek,
+                                                                topEk,
+                                                                kayitliGelir,
+                                                                toplamEkstraGelir,
+                                                                toplamEkstraGider,
+                                                                netDurum,
+                                                              ),
+                                                        ),
+                                                  ),
+                                                  const SizedBox(
+                                                    height:
+                                                        _shellDockBodyPadding,
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+
+                                            // --- SEKME 2: ŞANTİYE BAZLI DETAY ---
+                                            santiyeler.isEmpty
+                                                ? const Center(
+                                                  child: Text(
+                                                    "Şantiye bulunamadı.",
+                                                  ),
+                                                )
+                                                : ListView.builder(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        16,
+                                                        16,
+                                                        16,
+                                                        _shellDockBodyPadding,
+                                                      ),
+                                                  itemCount: santiyeler.length,
+                                                  itemBuilder: (ctx, index) {
+                                                    final sAdi =
+                                                        santiyeler[index].ad;
+                                                    final sRaporlar =
+                                                        raporlar
+                                                            .where(
+                                                              (r) =>
+                                                                  r.santiyeAdi ==
+                                                                  sAdi,
+                                                            )
+                                                            .toList();
+                                                    final sOdemeler =
+                                                        odemeler
+                                                            .where(
+                                                              (o) =>
+                                                                  o.santiyeAdi ==
+                                                                      sAdi &&
+                                                                  _tarihAralikta(
+                                                                    o.tarih,
+                                                                    baslangic,
+                                                                    bitis,
+                                                                  ),
+                                                            )
+                                                            .toList();
+
+                                                    double sBenzin = 0,
+                                                        sYemek = 0,
+                                                        sEk = 0,
+                                                        sMaas = 0,
+                                                        sGelir = 0;
+                                                    for (var o in sOdemeler)
+                                                      sGelir += o.miktar;
+
+                                                    for (var r in sRaporlar) {
+                                                      sBenzin += r.benzinGideri;
+                                                      sYemek += r.yemekGideri;
+                                                      sEk += r.ekMasraflar;
+                                                      for (var c
+                                                          in r.calisanlar) {
+                                                        sMaas +=
+                                                            (c.durum ==
+                                                                    "Tam Gün"
+                                                                ? c
+                                                                    .isci
+                                                                    .gunlukMaas
+                                                                : (c
+                                                                        .isci
+                                                                        .gunlukMaas /
+                                                                    2));
+                                                      }
+                                                    }
+
+                                                    double sToplamGider =
+                                                        sBenzin +
+                                                        sYemek +
+                                                        sEk +
+                                                        sMaas;
+                                                    double sKar =
+                                                        sGelir - sToplamGider;
+
+                                                    return Card(
+                                                      margin:
+                                                          const EdgeInsets.only(
+                                                            bottom: 12,
+                                                          ),
+                                                      elevation: 4,
+                                                      shape: RoundedRectangleBorder(
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              16,
+                                                            ),
+                                                        side: BorderSide(
+                                                          color:
+                                                              isDark
+                                                                  ? Colors.white
+                                                                      .withOpacity(
+                                                                        0.08,
+                                                                      )
+                                                                  : const Color(
+                                                                    0xFFD8EAF0,
+                                                                  ),
+                                                          width: 1.5,
+                                                        ),
+                                                      ),
+                                                      color:
+                                                          isDark
+                                                              ? const Color(
+                                                                0xFF101317,
+                                                              )
+                                                              : const Color(
+                                                                0xFFF7FBFD,
+                                                              ),
+                                                      child: ExpansionTile(
+                                                        leading: Container(
+                                                          padding:
+                                                              const EdgeInsets.all(
                                                                 8,
                                                               ),
-                                                          border: Border.all(
-                                                            color: Colors.teal
-                                                                .withOpacity(
-                                                                  isDark
-                                                                      ? 0.16
-                                                                      : 0.12,
+                                                          decoration: BoxDecoration(
+                                                            gradient: LinearGradient(
+                                                              begin:
+                                                                  Alignment
+                                                                      .topLeft,
+                                                              end:
+                                                                  Alignment
+                                                                      .bottomRight,
+                                                              colors: [
+                                                                Colors.teal
+                                                                    .withOpacity(
+                                                                      isDark
+                                                                          ? 0.18
+                                                                          : 0.14,
+                                                                    ),
+                                                                (isDark
+                                                                        ? const Color(
+                                                                          0xFF171B20,
+                                                                        )
+                                                                        : Colors
+                                                                            .white)
+                                                                    .withOpacity(
+                                                                      isDark
+                                                                          ? 0.82
+                                                                          : 0.92,
+                                                                    ),
+                                                              ],
+                                                            ),
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  8,
                                                                 ),
+                                                            border: Border.all(
+                                                              color: Colors.teal
+                                                                  .withOpacity(
+                                                                    isDark
+                                                                        ? 0.16
+                                                                        : 0.12,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          child: const Icon(
+                                                            Icons.location_city,
+                                                            color: Colors.teal,
                                                           ),
                                                         ),
-                                                        child: const Icon(
-                                                          Icons.location_city,
-                                                          color: Colors.teal,
+                                                        title: Text(
+                                                          sAdi,
+                                                          style:
+                                                              const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                                fontSize: 16,
+                                                              ),
                                                         ),
-                                                      ),
-                                                      title: Text(
-                                                        sAdi,
-                                                        style: const TextStyle(
-                                                          fontWeight:
-                                                              FontWeight.bold,
-                                                          fontSize: 16,
+                                                        subtitle: Consumer<
+                                                          PrivacyProvider
+                                                        >(
+                                                          builder: (
+                                                            context,
+                                                            privacy,
+                                                            child,
+                                                          ) {
+                                                            return Text(
+                                                              privacy.isHidden
+                                                                  ? "**** TL"
+                                                                  : "${sKar >= 0 ? '+' : ''}${Formatlayici.yap(sKar)}",
+                                                              style: TextStyle(
+                                                                color:
+                                                                    sKar >= 0
+                                                                        ? Colors
+                                                                            .green
+                                                                        : Colors
+                                                                            .red,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            );
+                                                          },
                                                         ),
-                                                      ),
-                                                      subtitle: Consumer<
-                                                        PrivacyProvider
-                                                      >(
-                                                        builder: (
-                                                          context,
-                                                          privacy,
-                                                          child,
-                                                        ) {
-                                                          return Text(
-                                                            privacy.isHidden
-                                                                ? "**** TL"
-                                                                : "${sKar >= 0 ? '+' : ''}${Formatlayici.yap(sKar)}",
-                                                            style: TextStyle(
-                                                              color:
+                                                        children: [
+                                                          const Divider(
+                                                            height: 1,
+                                                          ),
+                                                          Padding(
+                                                            padding:
+                                                                const EdgeInsets.all(
+                                                                  16.0,
+                                                                ),
+                                                            child: Column(
+                                                              children: [
+                                                                _buildListRow(
+                                                                  "Toplam Gelir",
+                                                                  sGelir,
+                                                                  Colors.green,
+                                                                ),
+                                                                const Divider(),
+                                                                _buildListRow(
+                                                                  "Personel Maliyeti",
+                                                                  sMaas,
+                                                                  Colors.purple,
+                                                                ),
+                                                                _buildListRow(
+                                                                  "Benzin",
+                                                                  sBenzin,
+                                                                  Colors
+                                                                      .redAccent,
+                                                                ),
+                                                                _buildListRow(
+                                                                  "Yemek",
+                                                                  sYemek,
+                                                                  Colors
+                                                                      .orangeAccent,
+                                                                ),
+                                                                _buildListRow(
+                                                                  "Ek Masraflar",
+                                                                  sEk,
+                                                                  Colors
+                                                                      .blueAccent,
+                                                                ),
+                                                                const Divider(),
+                                                                _buildSummaryRow(
+                                                                  "NET DURUM",
+                                                                  sKar,
                                                                   sKar >= 0
                                                                       ? Colors
                                                                           .green
                                                                       : Colors
                                                                           .red,
-                                                              fontWeight:
-                                                                  FontWeight
-                                                                      .bold,
+                                                                  isLarge: true,
+                                                                ),
+                                                              ],
                                                             ),
-                                                          );
-                                                        },
-                                                      ),
-                                                      children: [
-                                                        const Divider(
-                                                          height: 1,
-                                                        ),
-                                                        Padding(
-                                                          padding:
-                                                              const EdgeInsets.all(
-                                                                16.0,
-                                                              ),
-                                                          child: Column(
-                                                            children: [
-                                                              _buildListRow(
-                                                                "Toplam Gelir",
-                                                                sGelir,
-                                                                Colors.green,
-                                                              ),
-                                                              const Divider(),
-                                                              _buildListRow(
-                                                                "Personel Maliyeti",
-                                                                sMaas,
-                                                                Colors.purple,
-                                                              ),
-                                                              _buildListRow(
-                                                                "Benzin",
-                                                                sBenzin,
-                                                                Colors
-                                                                    .redAccent,
-                                                              ),
-                                                              _buildListRow(
-                                                                "Yemek",
-                                                                sYemek,
-                                                                Colors
-                                                                    .orangeAccent,
-                                                              ),
-                                                              _buildListRow(
-                                                                "Ek Masraflar",
-                                                                sEk,
-                                                                Colors
-                                                                    .blueAccent,
-                                                              ),
-                                                              const Divider(),
-                                                              _buildSummaryRow(
-                                                                "NET DURUM",
-                                                                sKar,
-                                                                sKar >= 0
-                                                                    ? Colors
-                                                                        .green
-                                                                    : Colors
-                                                                        .red,
-                                                                isLarge: true,
-                                                              ),
-                                                            ],
                                                           ),
-                                                        ),
-                                                      ],
-                                                    ),
-                                                  );
-                                                },
-                                              ),
-                                        ],
-                                      );
-                                    },
-                                  );
-                                },
-                              );
-                            },
-                          );
-                        },
-                      );
-                    },
-                  );
-                },
+                                                        ],
+                                                      ),
+                                                    );
+                                                  },
+                                                ),
+                                          ],
+                                        );
+                                      },
+                                    );
+                                  },
+                                );
+                              },
+                            );
+                          },
+                        );
+                      },
+                    );
+                  },
+                ),
               ),
-            ),
-          ],
-        ),
+            ],
+          ),
         ),
       ),
     );
@@ -1762,14 +1946,11 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color:
-              isDark
-                  ? Colors.white.withOpacity(0.08)
-                  : const Color(0xFFD8EAF0),
+              isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD8EAF0),
           width: 1.5,
         ),
       ),
-      color:
-          isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
+      color: isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
       child: ExpansionTile(
         leading: Container(
           padding: const EdgeInsets.all(10),
@@ -1858,8 +2039,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
           width: 1,
         ),
       ),
-      color:
-          isDark ? const Color(0xFF10141A) : const Color(0xFFF7FBFD),
+      color: isDark ? const Color(0xFF10141A) : const Color(0xFFF7FBFD),
       child: Theme(
         data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
         child: ExpansionTile(
@@ -2074,7 +2254,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
         ).colorScheme.surfaceContainerHighest.withOpacity(isDark ? 0.18 : 0.18),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withOpacity(isDark ? 0.45 : 0.28),
+          color: Theme.of(
+            context,
+          ).dividerColor.withOpacity(isDark ? 0.45 : 0.28),
         ),
       ),
       child: Column(
@@ -2125,7 +2307,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
           ),
           const SizedBox(height: 8),
           Divider(
-            color: Theme.of(context).dividerColor.withOpacity(isDark ? 0.5 : 0.35),
+            color: Theme.of(
+              context,
+            ).dividerColor.withOpacity(isDark ? 0.5 : 0.35),
             height: 1,
           ),
           const SizedBox(height: 8),
@@ -2137,7 +2321,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                   children: [
                     _buildMiniList(
                       'Benzin',
-                      privacy.isHidden ? "**** TL" : Formatlayici.yap(topBenzin),
+                      privacy.isHidden
+                          ? "**** TL"
+                          : Formatlayici.yap(topBenzin),
                     ),
                     _buildMiniList(
                       'Yemek',
@@ -2170,7 +2356,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
         ).colorScheme.surfaceContainerHighest.withOpacity(isDark ? 0.14 : 0.16),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: Theme.of(context).dividerColor.withOpacity(isDark ? 0.4 : 0.26),
+          color: Theme.of(
+            context,
+          ).dividerColor.withOpacity(isDark ? 0.4 : 0.26),
         ),
       ),
       child: Column(
@@ -2193,7 +2381,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
               Consumer<PrivacyProvider>(
                 builder:
                     (context, privacy, child) => Text(
-                      privacy.isHidden ? "**** TL" : Formatlayici.yap(ozet.toplam),
+                      privacy.isHidden
+                          ? "**** TL"
+                          : Formatlayici.yap(ozet.toplam),
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
                       style: TextStyle(
@@ -2217,17 +2407,23 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                     if (ozet.benzin > 0)
                       _buildMiniList(
                         'Benzin',
-                        privacy.isHidden ? "**** TL" : Formatlayici.yap(ozet.benzin),
+                        privacy.isHidden
+                            ? "**** TL"
+                            : Formatlayici.yap(ozet.benzin),
                       ),
                     if (ozet.yemek > 0)
                       _buildMiniList(
                         'Yemek',
-                        privacy.isHidden ? "**** TL" : Formatlayici.yap(ozet.yemek),
+                        privacy.isHidden
+                            ? "**** TL"
+                            : Formatlayici.yap(ozet.yemek),
                       ),
                     if (ozet.ekMasraf > 0)
                       _buildMiniList(
                         'Ek',
-                        privacy.isHidden ? "**** TL" : Formatlayici.yap(ozet.ekMasraf),
+                        privacy.isHidden
+                            ? "**** TL"
+                            : Formatlayici.yap(ozet.ekMasraf),
                       ),
                   ],
                 ),
@@ -2260,7 +2456,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
       context: context,
       isScrollControlled: true,
       backgroundColor:
-          isDark ? const Color(0xFF0F1720) : const Color.fromARGB(255, 13, 22, 25),
+          isDark
+              ? const Color(0xFF0F1720)
+              : const Color.fromARGB(255, 13, 22, 25),
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
       ),
@@ -2299,10 +2497,15 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                             DateFormat('d MMMM yyyy', 'tr_TR').format(d.tarih),
                           ),
                           trailing: Consumer<PrivacyProvider>(
-                            builder: (context, privacy, child) => Text(
-                              privacy.isHidden ? "**** TL" : Formatlayici.yap(d.tutar),
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                            ),
+                            builder:
+                                (context, privacy, child) => Text(
+                                  privacy.isHidden
+                                      ? "**** TL"
+                                      : Formatlayici.yap(d.tutar),
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
                           ),
                         );
                       },
@@ -2324,7 +2527,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final Map<String, List<OperasyonelHarcamaDetay>> santiyeBazli = {};
     for (final d in detaylar) {
-      santiyeBazli.putIfAbsent(d.santiyeAdi, () => <OperasyonelHarcamaDetay>[]).add(d);
+      santiyeBazli
+          .putIfAbsent(d.santiyeAdi, () => <OperasyonelHarcamaDetay>[])
+          .add(d);
     }
     final santiyeler = santiyeBazli.keys.toList()..sort();
 
@@ -2362,89 +2567,113 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                   const SizedBox(height: 12),
                   Expanded(
                     child: ListView(
-                      children: santiyeler.map((santiyeAdi) {
-                        final kayitlar = [...(santiyeBazli[santiyeAdi] ?? const <OperasyonelHarcamaDetay>[])]
-                          ..sort((a, b) => b.tarih.compareTo(a.tarih));
-                        final toplam = kayitlar.fold<double>(0.0, (t, e) => t + e.tutar);
-                        return Container(
-                          margin: const EdgeInsets.only(bottom: 8),
-                          decoration: BoxDecoration(
-                            color:
-                                isDark
-                                    ? const Color(0xFF11212B)
-                                    : const Color(0xFFEAF5FA),
-                            borderRadius: BorderRadius.circular(12),
-                            border: Border.all(
-                              color:
-                                  isDark
-                                      ? const Color(0xFF1E3A47)
-                                      : const Color.fromARGB(255, 191, 219, 230),
-                            ),
-                          ),
-                          child: ExpansionTile(
-                            tilePadding: const EdgeInsets.symmetric(
-                              horizontal: 12,
-                              vertical: 2,
-                            ),
-                            childrenPadding: const EdgeInsets.only(
-                              left: 8,
-                              right: 8,
-                              bottom: 6,
-                            ),
-                            leading: const Icon(
-                              Icons.domain_rounded,
-                              color: Color(0xFF0F7C86),
-                            ),
-                            title: Text(
-                              santiyeAdi,
-                              style: const TextStyle(fontWeight: FontWeight.w700),
-                            ),
-                            subtitle: Text("${kayitlar.length} kayıt • Detayı aç"),
-                            trailing: Consumer<PrivacyProvider>(
-                              builder:
-                                  (context, privacy, child) => Row(
-                                    mainAxisSize: MainAxisSize.min,
-                                    children: [
-                                      Text(
-                                        privacy.isHidden
-                                            ? "**** TL"
-                                            : Formatlayici.yap(toplam),
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.w700,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      const Icon(Icons.expand_more_rounded),
-                                    ],
-                                  ),
-                            ),
-                            children: kayitlar.map((d) {
-                            return ListTile(
-                              dense: true,
-                              contentPadding: const EdgeInsets.only(
-                                left: 8,
-                                right: 6,
-                              ),
-                              leading: const Icon(
-                                Icons.receipt_long_rounded,
-                                size: 18,
-                                color: Color(0xFF0F7C86),
-                              ),
-                              title: Text(d.kalem),
-                              subtitle: Text(
-                                DateFormat('d MMMM yyyy', 'tr_TR').format(d.tarih),
-                              ),
-                              trailing: Consumer<PrivacyProvider>(
-                                builder: (context, privacy, child) => Text(
-                                  privacy.isHidden ? "**** TL" : Formatlayici.yap(d.tutar),
-                                  style: const TextStyle(fontWeight: FontWeight.w700),
+                      children:
+                          santiyeler.map((santiyeAdi) {
+                            final kayitlar = [
+                              ...(santiyeBazli[santiyeAdi] ??
+                                  const <OperasyonelHarcamaDetay>[]),
+                            ]..sort((a, b) => b.tarih.compareTo(a.tarih));
+                            final toplam = kayitlar.fold<double>(
+                              0.0,
+                              (t, e) => t + e.tutar,
+                            );
+                            return Container(
+                              margin: const EdgeInsets.only(bottom: 8),
+                              decoration: BoxDecoration(
+                                color:
+                                    isDark
+                                        ? const Color(0xFF11212B)
+                                        : const Color(0xFFEAF5FA),
+                                borderRadius: BorderRadius.circular(12),
+                                border: Border.all(
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF1E3A47)
+                                          : const Color.fromARGB(
+                                            255,
+                                            191,
+                                            219,
+                                            230,
+                                          ),
                                 ),
                               ),
+                              child: ExpansionTile(
+                                tilePadding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 2,
+                                ),
+                                childrenPadding: const EdgeInsets.only(
+                                  left: 8,
+                                  right: 8,
+                                  bottom: 6,
+                                ),
+                                leading: const Icon(
+                                  Icons.domain_rounded,
+                                  color: Color(0xFF0F7C86),
+                                ),
+                                title: Text(
+                                  santiyeAdi,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.w700,
+                                  ),
+                                ),
+                                subtitle: Text(
+                                  "${kayitlar.length} kayıt • Detayı aç",
+                                ),
+                                trailing: Consumer<PrivacyProvider>(
+                                  builder:
+                                      (context, privacy, child) => Row(
+                                        mainAxisSize: MainAxisSize.min,
+                                        children: [
+                                          Text(
+                                            privacy.isHidden
+                                                ? "**** TL"
+                                                : Formatlayici.yap(toplam),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.w700,
+                                            ),
+                                          ),
+                                          const SizedBox(width: 6),
+                                          const Icon(Icons.expand_more_rounded),
+                                        ],
+                                      ),
+                                ),
+                                children:
+                                    kayitlar.map((d) {
+                                      return ListTile(
+                                        dense: true,
+                                        contentPadding: const EdgeInsets.only(
+                                          left: 8,
+                                          right: 6,
+                                        ),
+                                        leading: const Icon(
+                                          Icons.receipt_long_rounded,
+                                          size: 18,
+                                          color: Color(0xFF0F7C86),
+                                        ),
+                                        title: Text(d.kalem),
+                                        subtitle: Text(
+                                          DateFormat(
+                                            'd MMMM yyyy',
+                                            'tr_TR',
+                                          ).format(d.tarih),
+                                        ),
+                                        trailing: Consumer<PrivacyProvider>(
+                                          builder:
+                                              (context, privacy, child) => Text(
+                                                privacy.isHidden
+                                                    ? "**** TL"
+                                                    : Formatlayici.yap(d.tutar),
+                                                style: const TextStyle(
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                        ),
+                                      );
+                                    }).toList(),
+                              ),
                             );
-                            }).toList(),
-                          ),
-                        );
-                      }).toList(),
+                          }).toList(),
                     ),
                   ),
                 ],
@@ -2456,11 +2685,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
     );
   }
 
-  Widget _buildMiniList(
-    dynamic first,
-    dynamic second, [
-    Function(int)? onSil,
-  ]) {
+  Widget _buildMiniList(dynamic first, dynamic second, [Function(int)? onSil]) {
     // New usage: _buildMiniList('Label', 'Value')
     if (first is String && second is String) {
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -2581,7 +2806,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
         color: isDark ? Colors.white.withOpacity(0.06) : Colors.white,
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
+          color:
+              isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
         ),
       ),
       child: Row(
@@ -2633,23 +2859,26 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
     required double ekstraGider,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final dilimler = <_PastaDilim>[
-      _PastaDilim("Personel", odenenMaas, const Color(0xFF8B5CF6)),
-      _PastaDilim("Benzin", benzin, const Color(0xFFEF4444)),
-      _PastaDilim("Yemek", yemek, const Color(0xFFF59E0B)),
-      _PastaDilim("Ek Operasyonel", ek, const Color(0xFF3B82F6)),
-      _PastaDilim("Ekstra Gider", ekstraGider, const Color(0xFFEC4899)),
-    ].where((d) => d.tutar > 0).toList();
+    final dilimler =
+        <_PastaDilim>[
+          _PastaDilim("Personel", odenenMaas, const Color(0xFF8B5CF6)),
+          _PastaDilim("Benzin", benzin, const Color(0xFFEF4444)),
+          _PastaDilim("Yemek", yemek, const Color(0xFFF59E0B)),
+          _PastaDilim("Ek Operasyonel", ek, const Color(0xFF3B82F6)),
+          _PastaDilim("Ekstra Gider", ekstraGider, const Color(0xFFEC4899)),
+        ].where((d) => d.tutar > 0).toList();
 
     final toplamGider = dilimler.fold<double>(0.0, (t, d) => t + d.tutar);
 
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FCFE),
+        color:
+            isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FCFE),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
+          color:
+              isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
         ),
       ),
       child: Column(
@@ -2692,7 +2921,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                                 style: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                                  color:
+                                      isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF334155),
                                 ),
                               ),
                         ),
@@ -2707,9 +2939,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                   runSpacing: 6,
                   children:
                       dilimler.map((d) {
-                        final oran = toplamGider <= 0
-                            ? 0.0
-                            : (d.tutar / toplamGider) * 100;
+                        final oran =
+                            toplamGider <= 0
+                                ? 0.0
+                                : (d.tutar / toplamGider) * 100;
                         return Row(
                           children: [
                             Container(
@@ -2726,7 +2959,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                                 d.ad,
                                 maxLines: 1,
                                 overflow: TextOverflow.ellipsis,
-                                style: const TextStyle(fontSize: 12, fontWeight: FontWeight.w600),
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
                               ),
                             ),
                             const SizedBox(width: 6),
@@ -2735,7 +2971,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                               style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: isDark ? Colors.white70 : const Color(0xFF64748B),
+                                color:
+                                    isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF64748B),
                               ),
                             ),
                           ],
@@ -2762,10 +3001,12 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
     return Container(
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FCFE),
+        color:
+            isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FCFE),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
+          color:
+              isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
         ),
       ),
       child: Column(
@@ -2787,7 +3028,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                 icon: Icons.add_rounded,
                 onTap: () {
                   _kalemEkleDialog(context, "Ekstra Gelir Ekle", (ad, miktar) {
-                    aylikFinans.ekstraGelirler.add(FinansalKalem(ad: ad, miktar: miktar));
+                    aylikFinans.ekstraGelirler.add(
+                      FinansalKalem(ad: ad, miktar: miktar),
+                    );
                     servisi.aylikFinansGuncelle(widget.teamId, aylikFinans);
                   });
                 },
@@ -2798,7 +3041,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                 icon: Icons.remove_rounded,
                 onTap: () {
                   _kalemEkleDialog(context, "Ekstra Gider Ekle", (ad, miktar) {
-                    aylikFinans.ekstraGiderler.add(FinansalKalem(ad: ad, miktar: miktar));
+                    aylikFinans.ekstraGiderler.add(
+                      FinansalKalem(ad: ad, miktar: miktar),
+                    );
                     servisi.aylikFinansGuncelle(widget.teamId, aylikFinans);
                   });
                 },
@@ -2810,31 +3055,33 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
             spacing: 8,
             runSpacing: 8,
             children: [
-              _buildMiniList("Ekstra Gelir", Formatlayici.yap(ekstraGelirToplam)),
-              _buildMiniList("Ekstra Gider", Formatlayici.yap(ekstraGiderToplam)),
+              _buildMiniList(
+                "Ekstra Gelir",
+                Formatlayici.yap(ekstraGelirToplam),
+              ),
+              _buildMiniList(
+                "Ekstra Gider",
+                Formatlayici.yap(ekstraGiderToplam),
+              ),
             ],
           ),
           if (aylikFinans.ekstraGelirler.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _buildMiniList(
-              aylikFinans.ekstraGelirler,
-              Colors.green[700]!,
-              (index) {
-                aylikFinans.ekstraGelirler.removeAt(index);
-                servisi.aylikFinansGuncelle(widget.teamId, aylikFinans);
-              },
-            ),
+            _buildMiniList(aylikFinans.ekstraGelirler, Colors.green[700]!, (
+              index,
+            ) {
+              aylikFinans.ekstraGelirler.removeAt(index);
+              servisi.aylikFinansGuncelle(widget.teamId, aylikFinans);
+            }),
           ],
           if (aylikFinans.ekstraGiderler.isNotEmpty) ...[
             const SizedBox(height: 8),
-            _buildMiniList(
-              aylikFinans.ekstraGiderler,
-              Colors.red[700]!,
-              (index) {
-                aylikFinans.ekstraGiderler.removeAt(index);
-                servisi.aylikFinansGuncelle(widget.teamId, aylikFinans);
-              },
-            ),
+            _buildMiniList(aylikFinans.ekstraGiderler, Colors.red[700]!, (
+              index,
+            ) {
+              aylikFinans.ekstraGiderler.removeAt(index);
+              servisi.aylikFinansGuncelle(widget.teamId, aylikFinans);
+            }),
           ],
         ],
       ),
@@ -2910,18 +3157,16 @@ class _PastaGrafikPainter extends CustomPainter {
   final List<_PastaDilim> dilimler;
   final double progress;
 
-  const _PastaGrafikPainter({
-    required this.dilimler,
-    required this.progress,
-  });
+  const _PastaGrafikPainter({required this.dilimler, required this.progress});
 
   @override
   void paint(Canvas canvas, Size size) {
     if (dilimler.isEmpty) {
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeWidth = 16
-        ..color = const Color(0xFF94A3B8).withOpacity(0.25);
+      final paint =
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeWidth = 16
+            ..color = const Color(0xFF94A3B8).withOpacity(0.25);
       final rect = Rect.fromCircle(
         center: Offset(size.width / 2, size.height / 2),
         radius: (math.min(size.width, size.height) / 2) - 10,
@@ -2944,11 +3189,12 @@ class _PastaGrafikPainter extends CustomPainter {
     for (final dilim in dilimler) {
       final oran = dilim.tutar / toplam;
       final sweep = (math.pi * 2 * oran) * progress;
-      final paint = Paint()
-        ..style = PaintingStyle.stroke
-        ..strokeCap = StrokeCap.round
-        ..strokeWidth = strokeWidth
-        ..color = dilim.renk;
+      final paint =
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = strokeWidth
+            ..color = dilim.renk;
       canvas.drawArc(rect, startAngle, sweep, false, paint);
       startAngle += math.pi * 2 * oran;
     }

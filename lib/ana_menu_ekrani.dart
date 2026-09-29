@@ -1,5 +1,7 @@
 import 'dart:ui';
 import 'dart:async';
+import 'package:flutter/services.dart';
+
 import 'animasyon_yardimcisi.dart';
 import 'package:flutter/material.dart';
 import 'package:table_calendar/table_calendar.dart';
@@ -34,6 +36,8 @@ import 'format_yardimcisi.dart';
 import 'data_models.dart';
 import 'home_widget_service.dart';
 import 'widgets/floating_liquid_bottom_bar.dart';
+import 'widgets/floating_liquid_app_bar.dart';
+import 'ai_chat_screen.dart';
 
 class AnaMenuEkrani extends StatefulWidget {
   final String teamId;
@@ -858,6 +862,57 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     );
   }
 
+  Widget _buildAiFloatingButton(BuildContext context) {
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.mediumImpact();
+          Navigator.push(
+            context,
+            MaterialPageRoute(
+              builder:
+                  (_) => AIChatScreen(
+                    teamId: widget.teamId,
+                    isciler: _panelIsciler ?? const [],
+                    santiyeler: _panelSantiyeler ?? const [],
+                  ),
+            ),
+          );
+        },
+        borderRadius: BorderRadius.circular(28),
+        child: Container(
+          width: 56,
+          height: 56,
+          decoration: BoxDecoration(
+            gradient: const LinearGradient(
+              colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+            ),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: const Color(0xFF10B981).withValues(alpha: 0.45),
+                blurRadius: 14,
+                offset: const Offset(0, 4),
+              ),
+            ],
+            border: Border.all(
+              color: Colors.white.withValues(alpha: 0.3),
+              width: 1.5,
+            ),
+          ),
+          child: const Icon(
+            Icons.auto_awesome_rounded,
+            color: Colors.white,
+            size: 26,
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget _buildPrimaryShell(bool finansalErisim, String ekipAdi) {
     final pages = <Widget>[
       _buildAnaPanel(ekipAdi: ekipAdi, finansalErisim: finansalErisim),
@@ -880,8 +935,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         Positioned.fill(
           child: IndexedStack(index: _selectedIndex, children: pages),
         ),
-        _buildMenuButton(context),
-        _buildPrivacyButton(context),
+        if (_selectedIndex == 0) ...[
+          _buildMenuButton(context),
+          _buildPrivacyButton(context),
+        ],
         Align(
           alignment: Alignment.bottomCenter,
           child: KeyedSubtree(
@@ -890,6 +947,31 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               selectedIndex: _selectedIndex,
               finansalErisim: finansalErisim,
               onSelected: (index) => _hizliErisimAc(index, finansalErisim),
+            ),
+          ),
+        ),
+        AnimatedPositioned(
+          duration: const Duration(milliseconds: 320),
+          curve: Curves.easeInOutCubic,
+          right: 16,
+          bottom:
+              (_selectedIndex == 0 &&
+                      MediaQuery.viewInsetsOf(context).bottom == 0)
+                  ? 105
+                  : -120,
+          child: AnimatedOpacity(
+            duration: const Duration(milliseconds: 260),
+            curve: Curves.easeInOut,
+            opacity:
+                (_selectedIndex == 0 &&
+                        MediaQuery.viewInsetsOf(context).bottom == 0)
+                    ? 1.0
+                    : 0.0,
+            child: IgnorePointer(
+              ignoring:
+                  _selectedIndex != 0 ||
+                  MediaQuery.viewInsetsOf(context).bottom > 0,
+              child: _buildAiFloatingButton(context),
             ),
           ),
         ),
@@ -1062,7 +1144,12 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      appBar: AppBar(title: Text(baslik)),
+      extendBodyBehindAppBar: true,
+      appBar: FloatingLiquidAppBar(
+        title: baslik,
+        showHamburger: true,
+        showPrivacyButton: true,
+      ),
       body: Center(
         child: Padding(
           padding: const EdgeInsets.all(24),
@@ -2960,6 +3047,26 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                   child: ListView(
                     padding: const EdgeInsets.symmetric(horizontal: 12),
                     children: [
+                      _buildGlassDrawerItem(
+                        context,
+                        icon: Icons.auto_awesome_rounded,
+                        title: 'ŞPD AI Asistanı',
+                        color: const Color(0xFF10B981),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder:
+                                  (_) => AIChatScreen(
+                                    teamId: teamId,
+                                    isciler: _panelIsciler ?? const [],
+                                    santiyeler: _panelSantiyeler ?? const [],
+                                  ),
+                            ),
+                          );
+                        },
+                      ),
                       _buildGlassDrawerItem(
                         context,
                         icon: Icons.person_outline,

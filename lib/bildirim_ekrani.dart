@@ -12,6 +12,7 @@ import 'package:provider/provider.dart';
 
 import 'firestore_servisi.dart';
 import 'user_model.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_surface.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
@@ -28,32 +29,22 @@ class BildirimEkrani extends StatelessWidget {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF101317).withOpacity(0.92)
-                : Colors.white.withOpacity(0.88),
-        surfaceTintColor: Colors.transparent,
-        title: const Text('Bildirimler'),
+      appBar: FloatingLiquidAppBar(
+        title: 'Bildirimler',
+        showPrivacyButton: false,
         actions: [
-          TextButton.icon(
+          IconButton(
+            tooltip: 'Tümünü Okundu Yap',
             onPressed: () async {
               await servisi.tumBildirimleriOkunduYap(teamId, uid);
             },
             icon: Icon(
               Icons.done_all_rounded,
-              size: 18,
+              size: 20,
               color: isDark ? Colors.white70 : _kBrandTeal,
-            ),
-            label: Text(
-              'Tümünü Okundu',
-              style: TextStyle(
-                color: isDark ? Colors.white70 : _kBrandTeal,
-                fontSize: 13,
-              ),
             ),
           ),
         ],
@@ -111,7 +102,12 @@ class BildirimEkrani extends StatelessWidget {
             }
 
             return ListView.builder(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.fromLTRB(
+                12,
+                FloatingLiquidAppBar.topPadding(context, extra: 4),
+                12,
+                16,
+              ),
               itemCount: bildirimler.length,
               itemBuilder: (context, index) {
                 final bildirim = bildirimler[index];

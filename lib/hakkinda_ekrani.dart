@@ -4,6 +4,7 @@ import 'package:package_info_plus/package_info_plus.dart';
 
 import 'app_links.dart';
 import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
 
@@ -48,20 +49,21 @@ class _HakkindaEkraniState extends State<HakkindaEkrani> {
     final subTextColor = isDark ? Colors.white70 : const Color(0xFF526772);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        title: const Text('Hakkında'),
-        backgroundColor:
-            isDark ? const Color(0xFF101317).withOpacity(0.92) : Colors.white,
-        foregroundColor: textColor,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: const FloatingLiquidAppBar(
+        title: 'Hakkında',
+        showPrivacyButton: false,
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            FloatingLiquidAppBar.topPadding(context, extra: 4),
+            20,
+            20,
+          ),
           children: [
             GlassSectionCard(
               padding: const EdgeInsets.all(22),

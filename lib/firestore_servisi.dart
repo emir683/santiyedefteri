@@ -175,9 +175,77 @@ class FirestoreServisi {
     await logIslem(ekipId, 'SANTIYE_GUNCELLEME', {'santiyeAdi': santiye.ad});
   }
 
+  Future<void> _batchDeleteList(List<DocumentReference> refs) async {
+    const int chunkSize = 400;
+    for (var i = 0; i < refs.length; i += chunkSize) {
+      final batch = _db.batch();
+      final end = (i + chunkSize < refs.length) ? i + chunkSize : refs.length;
+      for (var j = i; j < end; j++) {
+        batch.delete(refs[j]);
+      }
+      await batch.commit();
+    }
+  }
+
   Future<void> santiyeSil(String ekipId, String santiyeId, String santiyeAdi) async {
-    await _ekipRef(ekipId).collection('santiyeler').doc(santiyeId).delete();
-    await logIslem(ekipId, 'SANTIYE_SILME', {'santiyeAdi': santiyeAdi});
+    final santiyeDoc = await _ekipRef(ekipId).collection('santiyeler').doc(santiyeId).get();
+    final santiyeData = santiyeDoc.data() ?? {'ad': santiyeAdi};
+    final normalized = santiyeAdi.trim().toLowerCase();
+
+    // Bu şantiyeye bağlı tüm raporları bul
+    final reportsSnap = await _ekipRef(ekipId).collection('reports').get();
+    final matchedReports = reportsSnap.docs.where((doc) {
+      final docSantiye = (doc.data()['santiyeAdi'] ?? '').toString().trim().toLowerCase();
+      return docSantiye == normalized;
+    }).toList();
+
+    // Bu şantiyeye bağlı tüm ödemeleri bul
+    final paymentsSnap = await _ekipRef(ekipId).collection('payments').get();
+    final matchedPayments = paymentsSnap.docs.where((doc) {
+      final docSantiye = (doc.data()['santiyeAdi'] ?? '').toString().trim().toLowerCase();
+      return docSantiye == normalized;
+    }).toList();
+
+    final List<Map<String, dynamic>> raporlar = matchedReports.map((d) {
+      return {'id': d.id, 'data': d.data()};
+    }).toList();
+
+    final List<Map<String, dynamic>> odemeler = matchedPayments.map((d) {
+      return {'id': d.id, 'data': d.data()};
+    }).toList();
+
+    // Yedek belgesini kaydet
+    final backupRef = _ekipRef(ekipId).collection('deleted_backups').doc();
+    await backupRef.set({
+      'tip': 'SANTIYE',
+      'santiyeId': santiyeId,
+      'santiyeAdi': santiyeAdi,
+      'santiyeData': santiyeData,
+      'raporlar': raporlar,
+      'odemeler': odemeler,
+      'silinmeTarihi': FieldValue.serverTimestamp(),
+    });
+
+    // Şantiyeyi ve ilişkili kayıtları sil
+    final List<DocumentReference> toDelete = [
+      _ekipRef(ekipId).collection('santiyeler').doc(santiyeId),
+    ];
+    for (var doc in matchedReports) {
+      toDelete.add(doc.reference);
+    }
+    for (var doc in matchedPayments) {
+      toDelete.add(doc.reference);
+    }
+    await _batchDeleteList(toDelete);
+
+    await logIslem(ekipId, 'SANTIYE_SILME', {
+      'santiyeId': santiyeId,
+      'santiyeAdi': santiyeAdi,
+      'backupId': backupRef.id,
+      'silinenRaporSayisi': raporlar.length,
+      'silinenOdemeSayisi': odemeler.length,
+      'geriAlinabilir': true,
+    });
   }
 
   // --- İŞÇİLER ---
@@ -207,8 +275,54 @@ class FirestoreServisi {
     });
   }
 
-  Future<void> isciSil(String ekipId, String isciId) async {
-    await _ekipRef(ekipId).collection('workers').doc(isciId).delete();
+  Future<void> isciSil(String ekipId, String isciId, [String? isciAdi]) async {
+    final isciDoc = await _ekipRef(ekipId).collection('workers').doc(isciId).get();
+    final isciData = isciDoc.data() ?? {};
+    final String resolvedName = (isciAdi ?? isciData['ad'] ?? '').toString().trim();
+    final normalizedWorker = resolvedName.toLowerCase();
+
+    // Bu işçiye ait avansları bul
+    final advancesSnap = await _ekipRef(ekipId).collection('advances').get();
+    final matchedAdvances = advancesSnap.docs.where((doc) {
+      final data = doc.data();
+      final isciMap = data['isci'] as Map<String, dynamic>?;
+      if (isciMap == null) return false;
+      final advIsciName = (isciMap['ad'] ?? '').toString().trim().toLowerCase();
+      final advIsciId = isciMap['id']?.toString() ?? '';
+      return (normalizedWorker.isNotEmpty && advIsciName == normalizedWorker) ||
+          (isciId.isNotEmpty && advIsciId == isciId);
+    }).toList();
+
+    final List<Map<String, dynamic>> avanslar = matchedAdvances.map((d) {
+      return {'id': d.id, 'data': d.data()};
+    }).toList();
+
+    // Yedek kaydet
+    final backupRef = _ekipRef(ekipId).collection('deleted_backups').doc();
+    await backupRef.set({
+      'tip': 'ISCI',
+      'isciId': isciId,
+      'isciAdi': resolvedName,
+      'isciData': isciData,
+      'avanslar': avanslar,
+      'silinmeTarihi': FieldValue.serverTimestamp(),
+    });
+
+    final List<DocumentReference> toDelete = [
+      _ekipRef(ekipId).collection('workers').doc(isciId),
+    ];
+    for (var doc in matchedAdvances) {
+      toDelete.add(doc.reference);
+    }
+    await _batchDeleteList(toDelete);
+
+    await logIslem(ekipId, 'ISCI_SILME', {
+      'isciId': isciId,
+      'isciAdi': resolvedName,
+      'backupId': backupRef.id,
+      'silinenAvansSayisi': avanslar.length,
+      'geriAlinabilir': true,
+    });
   }
 
   Future<void> isciyiUidIleHesabaBagla(String ekipId, String isciId, String targetUserId, String email) async {
@@ -258,6 +372,66 @@ class FirestoreServisi {
                   .map((doc) => GunlukSantiyeRaporu.fromMap(doc.data(), doc.id))
                   .toList(),
         );
+  }
+
+  Future<List<GunlukSantiyeRaporu>> getAylikRaporlarOnce(
+    String ekipId,
+    DateTime ay,
+  ) async {
+    final baslangic = DateTime(ay.year, ay.month, 1);
+    final bitis = DateTime(ay.year, ay.month + 1, 0, 23, 59, 59);
+    try {
+      final snap = await _ekipRef(ekipId)
+          .collection('reports')
+          .where('tarih', isGreaterThanOrEqualTo: Timestamp.fromDate(baslangic))
+          .where('tarih', isLessThanOrEqualTo: Timestamp.fromDate(bitis))
+          .get();
+      return snap.docs
+          .map((doc) => GunlukSantiyeRaporu.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<VerilenAvans>> getAylikAvanslarOnce(
+    String ekipId,
+    DateTime ay,
+  ) async {
+    final baslangic = DateTime(ay.year, ay.month, 1);
+    final bitis = DateTime(ay.year, ay.month + 1, 0, 23, 59, 59);
+    try {
+      final snap = await _ekipRef(ekipId)
+          .collection('advances')
+          .where('tarih', isGreaterThanOrEqualTo: Timestamp.fromDate(baslangic))
+          .where('tarih', isLessThanOrEqualTo: Timestamp.fromDate(bitis))
+          .get();
+      return snap.docs
+          .map((doc) => VerilenAvans.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (_) {
+      return [];
+    }
+  }
+
+  Future<List<AlinanOdeme>> getAylikOdemelerOnce(
+    String ekipId,
+    DateTime ay,
+  ) async {
+    final baslangic = DateTime(ay.year, ay.month, 1);
+    final bitis = DateTime(ay.year, ay.month + 1, 0, 23, 59, 59);
+    try {
+      final snap = await _ekipRef(ekipId)
+          .collection('payments')
+          .where('tarih', isGreaterThanOrEqualTo: Timestamp.fromDate(baslangic))
+          .where('tarih', isLessThanOrEqualTo: Timestamp.fromDate(bitis))
+          .get();
+      return snap.docs
+          .map((doc) => AlinanOdeme.fromMap(doc.data(), doc.id))
+          .toList();
+    } catch (_) {
+      return [];
+    }
   }
 
   Future<void> raporKaydet(String ekipId, GunlukSantiyeRaporu rapor) async {
@@ -555,7 +729,26 @@ class FirestoreServisi {
   }
 
   Future<void> odemeSil(String ekipId, String odemeId) async {
+    final doc = await _ekipRef(ekipId).collection('payments').doc(odemeId).get();
+    final data = doc.data() ?? {};
+    final backupRef = _ekipRef(ekipId).collection('deleted_backups').doc();
+    await backupRef.set({
+      'tip': 'ODEME',
+      'odemeId': odemeId,
+      'odemeData': data,
+      'silinmeTarihi': FieldValue.serverTimestamp(),
+    });
     await _ekipRef(ekipId).collection('payments').doc(odemeId).delete();
+    try {
+      await logIslem(ekipId, 'ODEME_SILME', {
+        'odemeId': odemeId,
+        'miktar': data['miktar'] ?? 0,
+        'santiyeAdi': data['santiyeAdi'] ?? '',
+        'alanKisi': data['alanKisi'] ?? '',
+        'backupId': backupRef.id,
+        'geriAlinabilir': true,
+      });
+    } catch (_) {}
   }
 
   Future<void> avansEkle(String ekipId, VerilenAvans avans) async {
@@ -569,7 +762,243 @@ class FirestoreServisi {
   }
 
   Future<void> avansSil(String ekipId, String avansId) async {
+    final doc = await _ekipRef(ekipId).collection('advances').doc(avansId).get();
+    final data = doc.data() ?? {};
+    final backupRef = _ekipRef(ekipId).collection('deleted_backups').doc();
+    await backupRef.set({
+      'tip': 'AVANS',
+      'avansId': avansId,
+      'avansData': data,
+      'silinmeTarihi': FieldValue.serverTimestamp(),
+    });
     await _ekipRef(ekipId).collection('advances').doc(avansId).delete();
+    try {
+      await logIslem(ekipId, 'AVANS_SILME', {
+        'avansId': avansId,
+        'miktar': data['miktar'] ?? 0,
+        'isci': data['isci']?['ad'] ?? '',
+        'backupId': backupRef.id,
+        'geriAlinabilir': true,
+      });
+    } catch (_) {}
+  }
+
+  // --- 30 GÜNDEN ESKİ YEDEKLERİ OTOMATİK TEMİZLEME ---
+  Future<void> eskiYedekleriTemizle(String ekipId) async {
+    try {
+      final limitTarihi = DateTime.now().subtract(const Duration(days: 30));
+      final snap = await _ekipRef(ekipId)
+          .collection('deleted_backups')
+          .where('silinmeTarihi', isLessThan: Timestamp.fromDate(limitTarihi))
+          .get();
+      if (snap.docs.isEmpty) return;
+      final List<DocumentReference> toDelete =
+          snap.docs.map((d) => d.reference).toList();
+      await _batchDeleteList(toDelete);
+    } catch (_) {}
+  }
+
+  // --- İŞLEMİ GERİ AL (UNDO RESTORATION) ---
+  Future<String> islemGeriAl(
+    String ekipId,
+    String historyDocId,
+    Map<String, dynamic> historyData,
+  ) async {
+    if (historyData['geriAlindi'] == true) {
+      throw Exception('Bu işlem zaten daha önce geri alınmış.');
+    }
+
+    final timestamp = historyData['tarih'] as Timestamp?;
+    if (timestamp != null) {
+      final gecenGun = DateTime.now().difference(timestamp.toDate()).inDays;
+      if (gecenGun >= 30) {
+        throw Exception('30 günlük geri alma süresi dolduğu için bu işlem geri alınamaz.');
+      }
+    }
+
+    final String islemTipi = historyData['islemTipi'] ?? '';
+    final Map<String, dynamic> detaylar =
+        historyData['detaylar'] != null
+            ? Map<String, dynamic>.from(historyData['detaylar'])
+            : {};
+    final String? backupId = detaylar['backupId'] as String?;
+
+    String sonucMesaji = 'İşlem başarıyla geri alındı.';
+
+    if (islemTipi == 'SANTIYE_SILME') {
+      int restoredRapor = 0;
+      int restoredOdeme = 0;
+      final santiyeAdi = detaylar['santiyeAdi'] ?? 'Şantiye';
+
+      if (backupId != null) {
+        final backupDoc =
+            await _ekipRef(ekipId).collection('deleted_backups').doc(backupId).get();
+        if (backupDoc.exists) {
+          final bData = backupDoc.data()!;
+          final String sId = bData['santiyeId'] ?? detaylar['santiyeId'] ?? '';
+          final sMap =
+              bData['santiyeData'] as Map<String, dynamic>? ?? {'ad': santiyeAdi};
+
+          if (sId.isNotEmpty) {
+            await _ekipRef(ekipId).collection('santiyeler').doc(sId).set(sMap);
+          } else {
+            await _ekipRef(ekipId).collection('santiyeler').add(sMap);
+          }
+
+          final List<dynamic> raporlar = bData['raporlar'] ?? [];
+          final List<dynamic> odemeler = bData['odemeler'] ?? [];
+
+          const int chunkSize = 400;
+          for (var i = 0; i < raporlar.length; i += chunkSize) {
+            final batch = _db.batch();
+            final end =
+                (i + chunkSize < raporlar.length) ? i + chunkSize : raporlar.length;
+            for (var j = i; j < end; j++) {
+              final r = raporlar[j];
+              final ref = _ekipRef(ekipId).collection('reports').doc(r['id']);
+              batch.set(ref, Map<String, dynamic>.from(r['data']));
+            }
+            await batch.commit();
+          }
+          restoredRapor = raporlar.length;
+
+          for (var i = 0; i < odemeler.length; i += chunkSize) {
+            final batch = _db.batch();
+            final end =
+                (i + chunkSize < odemeler.length) ? i + chunkSize : odemeler.length;
+            for (var j = i; j < end; j++) {
+              final o = odemeler[j];
+              final ref = _ekipRef(ekipId).collection('payments').doc(o['id']);
+              batch.set(ref, Map<String, dynamic>.from(o['data']));
+            }
+            await batch.commit();
+          }
+          restoredOdeme = odemeler.length;
+
+          await backupDoc.reference.update({
+            'geriYuklendi': true,
+            'geriYuklenmeTarihi': FieldValue.serverTimestamp(),
+          });
+        } else {
+          await _ekipRef(ekipId).collection('santiyeler').add({'ad': santiyeAdi});
+        }
+      } else {
+        await _ekipRef(ekipId).collection('santiyeler').add({'ad': santiyeAdi});
+      }
+
+      sonucMesaji =
+          "'$santiyeAdi' şantiyesi ve bağlı $restoredRapor rapor, $restoredOdeme ödeme geri yüklendi.";
+      await logIslem(ekipId, 'SANTIYE_GERI_YUKLEME', {
+        'santiyeAdi': santiyeAdi,
+        'geriYuklenenRaporSayisi': restoredRapor,
+        'geriYuklenenOdemeSayisi': restoredOdeme,
+      });
+    } else if (islemTipi == 'ISCI_SILME') {
+      int restoredAvans = 0;
+      final isciAdi = detaylar['isciAdi'] ?? 'İşçi';
+
+      if (backupId != null) {
+        final backupDoc =
+            await _ekipRef(ekipId).collection('deleted_backups').doc(backupId).get();
+        if (backupDoc.exists) {
+          final bData = backupDoc.data()!;
+          final String wId = bData['isciId'] ?? detaylar['isciId'] ?? '';
+          final wMap =
+              bData['isciData'] as Map<String, dynamic>? ?? {
+                'ad': isciAdi,
+                'gunlukMaas': 0,
+                'isciTuru': 'Çekirdek Ekip',
+              };
+
+          if (wId.isNotEmpty) {
+            await _ekipRef(ekipId).collection('workers').doc(wId).set(wMap);
+          } else {
+            await _ekipRef(ekipId).collection('workers').add(wMap);
+          }
+
+          final List<dynamic> avanslar = bData['avanslar'] ?? [];
+          const int chunkSize = 400;
+          for (var i = 0; i < avanslar.length; i += chunkSize) {
+            final batch = _db.batch();
+            final end =
+                (i + chunkSize < avanslar.length) ? i + chunkSize : avanslar.length;
+            for (var j = i; j < end; j++) {
+              final a = avanslar[j];
+              final ref = _ekipRef(ekipId).collection('advances').doc(a['id']);
+              batch.set(ref, Map<String, dynamic>.from(a['data']));
+            }
+            await batch.commit();
+          }
+          restoredAvans = avanslar.length;
+
+          await backupDoc.reference.update({
+            'geriYuklendi': true,
+            'geriYuklenmeTarihi': FieldValue.serverTimestamp(),
+          });
+        } else {
+          await _ekipRef(ekipId).collection('workers').add({
+            'ad': isciAdi,
+            'gunlukMaas': 0,
+            'isciTuru': 'Çekirdek Ekip',
+          });
+        }
+      } else {
+        await _ekipRef(ekipId).collection('workers').add({
+          'ad': isciAdi,
+          'gunlukMaas': 0,
+          'isciTuru': 'Çekirdek Ekip',
+        });
+      }
+
+      sonucMesaji = "'$isciAdi' işçisi ve bağlı $restoredAvans avans kaydı geri yüklendi.";
+      await logIslem(ekipId, 'ISCI_GERI_YUKLEME', {
+        'isciAdi': isciAdi,
+        'geriYuklenenAvansSayisi': restoredAvans,
+      });
+    } else if (islemTipi == 'ODEME_SILME') {
+      if (backupId != null) {
+        final backupDoc =
+            await _ekipRef(ekipId).collection('deleted_backups').doc(backupId).get();
+        if (backupDoc.exists) {
+          final bData = backupDoc.data()!;
+          final String oId = bData['odemeId'] ?? '';
+          final oMap = bData['odemeData'] as Map<String, dynamic>? ?? {};
+          if (oId.isNotEmpty && oMap.isNotEmpty) {
+            await _ekipRef(ekipId).collection('payments').doc(oId).set(oMap);
+          }
+          await backupDoc.reference.update({'geriYuklendi': true});
+        }
+      }
+      sonucMesaji = 'Ödeme kaydı geri yüklendi.';
+      await logIslem(ekipId, 'ODEME_GERI_YUKLEME', {'miktar': detaylar['miktar']});
+    } else if (islemTipi == 'AVANS_SILME') {
+      if (backupId != null) {
+        final backupDoc =
+            await _ekipRef(ekipId).collection('deleted_backups').doc(backupId).get();
+        if (backupDoc.exists) {
+          final bData = backupDoc.data()!;
+          final String aId = bData['avansId'] ?? '';
+          final aMap = bData['avansData'] as Map<String, dynamic>? ?? {};
+          if (aId.isNotEmpty && aMap.isNotEmpty) {
+            await _ekipRef(ekipId).collection('advances').doc(aId).set(aMap);
+          }
+          await backupDoc.reference.update({'geriYuklendi': true});
+        }
+      }
+      sonucMesaji = 'Avans kaydı geri yüklendi.';
+      await logIslem(ekipId, 'AVANS_GERI_YUKLEME', {
+        'miktar': detaylar['miktar'],
+        'isci': detaylar['isci'],
+      });
+    }
+
+    // İşlem geçmişi belgesini geri alındı olarak işaretle
+    await _ekipRef(ekipId).collection('history').doc(historyDocId).update({
+      'geriAlindi': true,
+      'geriAlmaTarihi': FieldValue.serverTimestamp(),
+    });
+
+    return sonucMesaji;
   }
 
   // --- LOGLAMA (DÜZELTİLEN KISIM) ---
@@ -1471,19 +1900,31 @@ class FirestoreServisi {
       case 'ISCI_GUNCELLEME':
         return "$username, ${detaylar['isciAdi'] ?? 'bir işçinin'} bilgilerini güncelledi.";
       case 'ISCI_SILME':
-        return "$username bir işçiyi ekipten çıkardı.";
+        return "$username, ${detaylar['isciAdi'] ?? 'bir'} işçisini sildi.";
+      case 'ISCI_GERI_YUKLEME':
+        return "$username, ${detaylar['isciAdi'] ?? 'bir'} işçisini ve bağlı verilerini geri yükledi.";
       case 'SANTIYE_EKLEME':
         return "$username, ${detaylar['santiyeAdi'] ?? 'yeni bir'} şantiyesi ekledi.";
       case 'SANTIYE_SILME':
         return "$username, ${detaylar['santiyeAdi'] ?? 'bir'} şantiyesini sildi.";
+      case 'SANTIYE_GERI_YUKLEME':
+        return "$username, ${detaylar['santiyeAdi'] ?? 'bir'} şantiyesini ve bağlı verilerini geri yükledi.";
       case 'GUNLUK_RAPOR_EKLEME':
         return "$username, ${detaylar['santiyeAdi'] ?? ''} şantiyesine rapor girdi.";
       case 'GUNLUK_RAPOR_GUNCELLEME':
         return "$username, ${detaylar['santiyeAdi'] ?? ''} raporunu güncelledi.";
       case 'ODEME_EKLEME':
         return "$username, ${detaylar['miktar']} TL ödeme kaydetti.";
+      case 'ODEME_SILME':
+        return "$username, ${detaylar['miktar'] ?? ''} TL tutarındaki ödemeyi sildi.";
+      case 'ODEME_GERI_YUKLEME':
+        return "$username silinen ödemeyi geri yükledi.";
       case 'AVANS_EKLEME':
         return "$username, ${detaylar['isci'] ?? 'bir işçiye'} ${detaylar['miktar']} TL avans verdi.";
+      case 'AVANS_SILME':
+        return "$username, ${detaylar['isci'] ?? 'bir işçinin'} ${detaylar['miktar'] ?? ''} TL avansını sildi.";
+      case 'AVANS_GERI_YUKLEME':
+        return "$username silinen avansı geri yükledi.";
       case 'ROL_DEGISIMI':
         return "$username ekipte rol değişikliği yaptı.";
       default:

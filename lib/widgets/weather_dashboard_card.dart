@@ -499,6 +499,7 @@ class _LocationSearchDialogState extends State<_LocationSearchDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AlertDialog(
+      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
       title: const Text("Konum Ara"),
       content: SizedBox(
         width: double.maxFinite,

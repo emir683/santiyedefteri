@@ -8,6 +8,8 @@ import 'data_models.dart';
 import 'dart:ui';
 import 'tur_servisi.dart';
 import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -368,8 +370,16 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
                           Expanded(
                             child: ElevatedButton(
                               onPressed: () async {
-                                await servisi.santiyeSil(widget.teamId, santiyeId, santiyeAdi);
-                                if (mounted) Navigator.pop(ctx);
+                                Navigator.pop(ctx);
+                                try {
+                                  await servisi.santiyeSil(widget.teamId, santiyeId, santiyeAdi);
+                                } catch (e) {
+                                  if (mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(content: Text('Silme hatası: $e')),
+                                    );
+                                  }
+                                }
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.redAccent,
@@ -392,6 +402,39 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
     );
   }
 
+  Widget _buildSearchField(bool isDark) {
+    return TextField(
+      controller: _searchController,
+      onChanged: (value) {
+        setState(() {
+          _searchQuery = _turkceKucukHarf(value);
+        });
+      },
+      decoration: InputDecoration(
+        hintText: 'Şantiye Ara...',
+        prefixIcon: const Icon(Icons.search),
+        suffixIcon: _searchQuery.isNotEmpty
+            ? IconButton(
+                icon: const Icon(Icons.close_rounded, size: 18),
+                onPressed: () {
+                  _searchController.clear();
+                  setState(() {
+                    _searchQuery = '';
+                  });
+                },
+              )
+            : null,
+        filled: true,
+        fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide.none,
+        ),
+        contentPadding: const EdgeInsets.symmetric(vertical: 0),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel?>(context, listen: false);
@@ -399,69 +442,45 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF101317).withOpacity(0.92)
-                : Colors.white.withOpacity(0.88),
-        surfaceTintColor: Colors.transparent,
-        title: const Text('Şantiyeler'),
+      appBar: const FloatingLiquidAppBar(
+        title: 'Şantiyeler',
+        showPrivacyButton: true,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors:
-                isDark
-                    ? const [
-                      Color(0xFF06090D),
-                      Color(0xFF0C1219),
-                      Color(0xFF111827),
-                    ]
-                    : const [
-                      Color(0xFFF6FBFD),
-                      Color(0xFFECF5F9),
-                      Color(0xFFE4EEF4),
-                    ],
-          ),
-        ),
-        child: Column(
-          children: [
-            Padding(
-              padding: const EdgeInsets.all(16.0),
-              child: TextField(
-                controller: _searchController,
-                onChanged: (value) {
-                  setState(() {
-                    _searchQuery = _turkceKucukHarf(value);
-                  });
-                },
-                decoration: InputDecoration(
-                  hintText: 'Şantiye Ara...',
-                  prefixIcon: const Icon(Icons.search),
-                  filled: true,
-                  fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
-                  border: OutlineInputBorder(
-                    borderRadius: BorderRadius.circular(12),
-                    borderSide: BorderSide.none,
-                  ),
-                  contentPadding: const EdgeInsets.symmetric(vertical: 0),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: StreamBuilder<List<Santiye>>(
+          stream: servisi.getSantiyelerStream(widget.teamId),
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return ListView(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  FloatingLiquidAppBar.topPadding(context, extra: 4),
+                  16,
+                  _shellDockBodyPadding,
                 ),
-              ),
-            ),
-            Expanded(
-              child: StreamBuilder<List<Santiye>>(
-              stream: servisi.getSantiyelerStream(widget.teamId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return const ShimmerYukleniyor(satirSayisi: 5);
-                }
-                if (!snapshot.hasData || snapshot.data!.isEmpty) {
-                  return Center(
+                children: [
+                  _buildSearchField(isDark),
+                  const SizedBox(height: 16),
+                  const ShimmerYukleniyor(satirSayisi: 5, shrinkWrap: true),
+                ],
+              );
+            }
+            if (!snapshot.hasData || snapshot.data!.isEmpty) {
+              return ListView(
+                padding: EdgeInsets.fromLTRB(
+                  16,
+                  FloatingLiquidAppBar.topPadding(context, extra: 4),
+                  16,
+                  _shellDockBodyPadding,
+                ),
+                children: [
+                  _buildSearchField(isDark),
+                  const SizedBox(height: 32),
+                  Center(
                     child: Column(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
@@ -473,118 +492,205 @@ class _SantiyeEkraniState extends State<SantiyeEkrani> {
                         ),
                       ],
                     ),
+                  ),
+                ],
+              );
+            }
+            final tumSantiyeler = snapshot.data!;
+            final santiyeler = tumSantiyeler.where((s) {
+              if (_searchQuery.isEmpty) return true;
+              final adUygun = _turkceKucukHarf(s.ad).contains(_searchQuery);
+              final ilUygun = s.il != null && _turkceKucukHarf(s.il!).contains(_searchQuery);
+              return adUygun || ilUygun;
+            }).toList();
+
+            return ListView.builder(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                FloatingLiquidAppBar.topPadding(context, extra: 4),
+                16,
+                _shellDockBodyPadding,
+              ),
+              itemCount: santiyeler.length + 1,
+              itemBuilder: (context, index) {
+                if (index == 0) {
+                  return Padding(
+                    padding: const EdgeInsets.only(bottom: 12.0),
+                    child: _buildSearchField(isDark),
                   );
                 }
-                final tumSantiyeler = snapshot.data!;
-                final santiyeler = tumSantiyeler.where((s) {
-                  if (_searchQuery.isEmpty) return true;
-                  final adUygun = _turkceKucukHarf(s.ad).contains(_searchQuery);
-                  final ilUygun = s.il != null && _turkceKucukHarf(s.il!).contains(_searchQuery);
-                  return adUygun || ilUygun;
-                }).toList();
+                final santiye = santiyeler[index - 1];
 
-          return ListView.builder(
-            padding: const EdgeInsets.fromLTRB(
-              16,
-              16,
-              16,
-              _shellDockBodyPadding,
-            ),
-            itemCount: santiyeler.length,
-            itemBuilder: (context, index) {
-              final santiye = santiyeler[index];
-
-              return AnimasyonluButon(
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    SayfaGecisi(
-                      sayfa: SantiyeDetayEkrani(
-                        santiyeAdi: santiye.ad,
-                        teamId: widget.teamId,
-                        il: santiye.il,
+                return AnimasyonluButon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(
+                        sayfa: SantiyeDetayEkrani(
+                          santiyeAdi: santiye.ad,
+                          teamId: widget.teamId,
+                          il: santiye.il,
+                        ),
+                      ),
+                    );
+                  },
+                  child: Card(
+                    elevation: 2,
+                    margin: const EdgeInsets.only(bottom: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                      side: BorderSide(
+                        color:
+                            isDark
+                                ? Colors.white.withOpacity(0.08)
+                                : const Color(0xFFD8EAF0),
+                        width: 1,
                       ),
                     ),
-                  );
-                },
-                child: Card(
-                  elevation: 2,
-                  margin: const EdgeInsets.only(bottom: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(16),
-                    side: BorderSide(
-                      color:
-                          isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : const Color(0xFFD8EAF0),
-                      width: 1,
-                    ),
-                  ),
-                  color:
-                      isDark
-                          ? const Color(0xFF101317)
-                          : const Color(0xFFF7FBFD),
-                  child: Padding(
-                    padding: const EdgeInsets.all(12.0),
-                    child: Row(
-                      children: [
-                        _buildGlassIconBadge(
-                          isDark: isDark,
-                          icon: Icons.domain,
-                          color: _kBrandTealDark,
-                        ),
-                        const SizedBox(width: 16),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                santiye.ad,
-                                style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
-                              ),
-                              if (santiye.il != null && santiye.il!.isNotEmpty) ...[
-                                const SizedBox(height: 4),
-                                Row(
-                                  children: [
-                                    Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                                    const SizedBox(width: 4),
-                                    Text(
-                                      santiye.il!,
-                                      style: TextStyle(
-                                        fontSize: 13,
-                                        color: Colors.grey[500],
+                    color:
+                        isDark
+                            ? const Color(0xFF101317)
+                            : const Color(0xFFF7FBFD),
+                    child: Padding(
+                      padding: const EdgeInsets.all(12.0),
+                      child: Row(
+                        children: [
+                          _buildGlassIconBadge(
+                            isDark: isDark,
+                            icon: Icons.domain,
+                            color: _kBrandTealDark,
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  santiye.ad,
+                                  style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                                ),
+                                if (santiye.il != null && santiye.il!.isNotEmpty) ...[
+                                  const SizedBox(height: 4),
+                                  Row(
+                                    children: [
+                                      Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
+                                      const SizedBox(width: 4),
+                                      Text(
+                                        santiye.il!,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: Colors.grey[500],
+                                        ),
                                       ),
-                                    ),
-                                  ],
+                                    ],
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                          // Sağ Aksiyonlar - Üç Nokta Menüsü
+                          Theme(
+                            data: Theme.of(context).copyWith(
+                              popupMenuTheme: PopupMenuThemeData(
+                                color: isDark ? const Color(0xFF161B22) : Colors.white,
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(16),
+                                  side: BorderSide(
+                                    color: isDark
+                                        ? Colors.white.withOpacity(0.12)
+                                        : const Color(0xFFE2E8F0),
+                                    width: 1,
+                                  ),
+                                ),
+                                elevation: 6,
+                              ),
+                            ),
+                            child: PopupMenuButton<String>(
+                              icon: Container(
+                                width: 34,
+                                height: 34,
+                                decoration: BoxDecoration(
+                                  color: isDark
+                                      ? Colors.white.withOpacity(0.06)
+                                      : const Color(0xFFF1F5F9),
+                                  shape: BoxShape.circle,
+                                ),
+                                child: Icon(
+                                  Icons.more_vert_rounded,
+                                  size: 19,
+                                  color: isDark ? Colors.white70 : const Color(0xFF475569),
+                                ),
+                              ),
+                              tooltip: 'İşlemler',
+                              elevation: 6,
+                              padding: EdgeInsets.zero,
+                              splashRadius: 20,
+                              position: PopupMenuPosition.under,
+                              onSelected: (value) {
+                                switch (value) {
+                                  case 'duzenle':
+                                    _santiyeEkleVeyaDuzenleDialog(servisi, mevcutSantiye: santiye);
+                                    break;
+                                  case 'sil':
+                                    _silmeOnayi(servisi, santiye.id!, santiye.ad);
+                                    break;
+                                }
+                              },
+                              itemBuilder: (context) => [
+                                PopupMenuItem<String>(
+                                  value: 'duzenle',
+                                  height: 42,
+                                  child: Row(
+                                    children: [
+                                      const Icon(Icons.edit_rounded, size: 18, color: _kBrandTealDark),
+                                      const SizedBox(width: 12),
+                                      Text(
+                                        'Düzenle',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuDivider(height: 1),
+                                const PopupMenuItem<String>(
+                                  value: 'sil',
+                                  height: 42,
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.delete_outline_rounded, size: 18, color: Colors.redAccent),
+                                      SizedBox(width: 12),
+                                      Text(
+                                        'Şantiyeyi Sil',
+                                        style: TextStyle(
+                                          fontSize: 14,
+                                          fontWeight: FontWeight.w600,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ],
+                                  ),
                                 ),
                               ],
-                            ],
+                            ),
                           ),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.edit, color: _kBrandTealDark),
-                          onPressed: () => _santiyeEkleVeyaDuzenleDialog(servisi, mevcutSantiye: santiye),
-                        ),
-                        IconButton(
-                          icon: const Icon(Icons.delete_outline, color: Colors.redAccent),
-                          onPressed: () => _silmeOnayi(servisi, santiye.id!, santiye.ad),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios,
-                          size: 14,
-                          color: Colors.grey.withOpacity(0.5),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Icon(
+                            Icons.arrow_forward_ios,
+                            size: 14,
+                            color: Colors.grey.withOpacity(0.5),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
-                ),
-              );
-            },
-          );
-        },
-        ),
-            ),
-          ],
+                );
+              },
+            );
+          },
         ),
       ),
       floatingActionButton: Padding(

@@ -26,6 +26,10 @@
 	<true/>
 	<key>UILaunchStoryboardName</key>
 	<string>LaunchScreen</string>
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Şantiye puantajı ve masrafları sesli olarak kaydetmek için mikrofona erişim gereklidir.</string>
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Sesinizi metne dönüştürerek işçi yoklamasını ve masrafları otomatik doldurmak için ses tanıma kullanılır.</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
 	<key>UISupportedInterfaceOrientations</key>

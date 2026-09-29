@@ -9,6 +9,7 @@ import 'auth_servisi.dart';
 import 'firestore_servisi.dart';
 import 'team_gate.dart';
 import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
 
@@ -475,16 +476,12 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
         isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD8EAF0);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF101317).withOpacity(0.92)
-                : Colors.white.withOpacity(0.88),
-        surfaceTintColor: Colors.transparent,
-        title: const Text("Ekip Yönetimi"),
+      appBar: const FloatingLiquidAppBar(
+        title: "Ekip Yönetimi",
+        showPrivacyButton: false,
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
@@ -510,7 +507,12 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
           final bool isKurucu = user?.uid == kurucuUid;
 
           return ListView(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.fromLTRB(
+              16.0,
+              FloatingLiquidAppBar.topPadding(context, extra: 4),
+              16.0,
+              16.0,
+            ),
             children: [
               // 1. EKİP BİLGİLERİ KARTI
               Card(

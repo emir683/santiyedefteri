@@ -239,11 +239,15 @@ class _SayiSayiciState extends State<SayiSayici>
 class ShimmerYukleniyor extends StatefulWidget {
   final int satirSayisi;
   final bool kartGorunumu;
+  final bool shrinkWrap;
+  final EdgeInsetsGeometry? padding;
 
   const ShimmerYukleniyor({
     super.key,
     this.satirSayisi = 5,
     this.kartGorunumu = false,
+    this.shrinkWrap = false,
+    this.padding,
   });
 
   @override
@@ -273,33 +277,32 @@ class _ShimmerYukleniyorState extends State<ShimmerYukleniyor>
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    if (widget.kartGorunumu) {
+    final children = List.generate(
+      widget.kartGorunumu ? 3 : widget.satirSayisi,
+      (i) => Padding(
+        padding: EdgeInsets.only(bottom: widget.kartGorunumu ? 16 : 12),
+        child: widget.kartGorunumu
+            ? _buildShimmerKart(isDark)
+            : _buildShimmerSatir(isDark),
+      ),
+    );
+
+    if (widget.shrinkWrap) {
       return Padding(
-        padding: const EdgeInsets.all(16),
-        child: ListView(
-          physics: const BouncingScrollPhysics(),
-          children: List.generate(
-            3,
-            (i) => Padding(
-              padding: const EdgeInsets.only(bottom: 16),
-              child: _buildShimmerKart(isDark),
-            ),
-          ),
+        padding: widget.padding ?? EdgeInsets.zero,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: children,
         ),
       );
     }
 
     return Padding(
-      padding: const EdgeInsets.all(16),
+      padding: widget.padding ?? const EdgeInsets.all(16),
       child: ListView(
         physics: const BouncingScrollPhysics(),
-        children: List.generate(
-          widget.satirSayisi,
-          (i) => Padding(
-            padding: const EdgeInsets.only(bottom: 12),
-            child: _buildShimmerSatir(isDark),
-          ),
-        ),
+        children: children,
       ),
     );
   }

@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_links.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_surface.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
@@ -21,24 +22,25 @@ class DestekEkrani extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final titleColor = isDark ? Colors.white : const Color(0xFF102A43);
-    final bodyColor = isDark ? Colors.white70 : const Color(0xFF526772);
+    final titleColor = isDark ? Colors.white : const Color(0xFF1E293B);
+    final bodyColor = isDark ? Colors.white70 : const Color(0xFF64748B);
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor: isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        title: const Text('Destek'),
-        backgroundColor:
-            isDark ? const Color(0xFF101317).withOpacity(0.92) : Colors.white,
-        foregroundColor: titleColor,
-        elevation: 0,
-        scrolledUnderElevation: 0,
-        surfaceTintColor: Colors.transparent,
+      appBar: const FloatingLiquidAppBar(
+        title: 'Destek',
+        showPrivacyButton: false,
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
         child: ListView(
-          padding: const EdgeInsets.all(20),
+          padding: EdgeInsets.fromLTRB(
+            20,
+            FloatingLiquidAppBar.topPadding(context, extra: 4),
+            20,
+            20,
+          ),
           children: [
             GlassSectionCard(
               padding: const EdgeInsets.all(22),

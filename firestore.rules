@@ -2,30 +2,81 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Kullanıcılar kendi dokümanlarını okuyup yazabilir.
-    match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+    // --- GÜVENLİK YARDIMCI FONKSİYONLARI ---
+    function isAuthenticated() {
+      return request.auth != null;
     }
     
-    // Ekipler (Teams) ve altındaki tüm koleksiyonlar
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+    
+    function getTeamData(teamId) {
+      return get(/databases/$(database)/documents/teams/$(teamId)).data;
+    }
+    
+    function isTeamMember(teamId) {
+      let teamData = getTeamData(teamId);
+      return isAuthenticated() && teamData != null && (
+        request.auth.uid == teamData.kurucu ||
+        ('uyeler' in teamData && request.auth.uid in teamData.uyeler)
+      );
+    }
+
+    // 1. KULLANICI PROFİLLERİ (USERS)
+    match /users/{userId} {
+      // Kullanıcı adı kontrolü, profil görüntüleme ve ekip üyesi listeleme için
+      allow read: if true;
+      
+      // Kullanıcı sadece kendi profilini oluşturabilir ve silebilir
+      allow create, delete: if isOwner(userId);
+      
+      // Güncelleme:
+      // - Kullanıcı kendi profilini güncelleyebilir
+      // - Ekipten çıkarılma gibi durumlarda yöneticiler sadece 'teamId' alanını güncelleyebilir
+      allow update: if isAuthenticated() && (
+        request.auth.uid == userId ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['teamId'])
+      );
+      
+      // Kullanıcıya özel yapay zeka kullanım sayaçları (başkası asla erişemez)
+      match /ai_usage/{usageId} {
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // 2. UYGULAMA YAPILANDIRMASI (APP CONFIG)
+    match /app_config/{configId} {
+      allow read: if true;
+      allow write: if false; // Sadece Firebase Console üzerinden yönetilir
+    }
+
+    // 3. EKİP YÖNETİMİ (TEAMS)
     match /teams/{teamId} {
-      // Herkes ekip detaylarını okuyabilir
-      allow read: if request.auth != null;
+      // Ekip arama, şifre ile katılma veya davet bağlantısı doğrulama için
+      allow read: if isAuthenticated();
       
-      // Sadece kurucu ekip dokümanını güncelleyebilir
-      allow update, delete: if request.auth != null && resource.data.kurucu == request.auth.uid;
-      allow create: if request.auth != null;
+      // Yeni ekip oluşturma: oluşturan kişi kurucu olmalıdır
+      allow create: if isAuthenticated() && request.resource.data.kurucu == request.auth.uid;
       
-      // Ekip altındaki koleksiyonlar (santiyeler, raporlar, isciler vb.)
-      match /{document=**} {
-        // Ekip üyeleri okuyabilir
-        allow read: if request.auth != null;
-        
-        // Sadece kurucu veya yöneticiler yazabilir/silebilir
-        allow write: if request.auth != null && (
-          get(/databases/$(database)/documents/teams/$(teamId)).data.kurucu == request.auth.uid ||
-          request.auth.uid in get(/databases/$(database)/documents/teams/$(teamId)).data.yoneticiler
-        );
+      // Ekip güncelleme:
+      // - Kurucu veya ekip yöneticisi güncelleyebilir
+      // - VEYA bir kullanıcı ekibe katılırken/ayrılırken sadece 'uyeler' ya da 'yoneticiler' dizilerini değiştirebilir
+      allow update: if isAuthenticated() && (
+        resource.data.kurucu == request.auth.uid ||
+        (resource.data.yoneticiler != null && request.auth.uid in resource.data.yoneticiler) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uyeler']) ||
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['uyeler', 'yoneticiler'])
+      );
+      
+      // Sadece kurucu ekibi tamamen silebilir
+      allow delete: if isAuthenticated() && resource.data.kurucu == request.auth.uid;
+      
+      // 4. EKİP ALT VERİLERİ (Şantiyeler, İşçiler, Günlük Raporlar, Finans, Avanslar, Ödemeler, Geçmiş)
+      // KRİTİK GÜVENLİK BARİYERİ: Yabancı ekipler veya yabancı kullanıcılar bu verilere ASLA ERİŞEMEZ!
+      match /{subcollection}/{document=**} {
+        allow read: if isTeamMember(teamId);
+        allow write: if isTeamMember(teamId);
       }
     }
   }

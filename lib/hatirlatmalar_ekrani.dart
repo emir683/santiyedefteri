@@ -5,6 +5,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 
 import 'bildirim_servisi.dart';
 import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
 
@@ -237,16 +238,12 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF101317).withOpacity(0.92)
-                : Colors.white.withOpacity(0.88),
-        surfaceTintColor: Colors.transparent,
-        title: const Text('Hatırlatmalar'),
+      appBar: const FloatingLiquidAppBar(
+        title: 'Hatırlatmalar',
+        showPrivacyButton: false,
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
@@ -259,7 +256,12 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                   top: false,
                   minimum: const EdgeInsets.only(bottom: 12),
                   child: Padding(
-                    padding: const EdgeInsets.all(16),
+                    padding: EdgeInsets.fromLTRB(
+                      16,
+                      FloatingLiquidAppBar.topPadding(context, extra: 4),
+                      16,
+                      16,
+                    ),
                     child: Column(
                     children: [
                       GlassSectionCard(

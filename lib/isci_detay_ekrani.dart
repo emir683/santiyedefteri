@@ -6,6 +6,8 @@ import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'data_models.dart';
 import 'rol_provider.dart';
+import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 const double _shellDockBodyPadding = 132;
 const Color _kBrandTealDark = Color(0xFF0F7C86);
@@ -48,38 +50,18 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
     );
 
     return Scaffold(
+      extendBodyBehindAppBar: true,
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
-      appBar: AppBar(
-        elevation: 0,
-        backgroundColor:
-            isDark
-                ? const Color(0xFF101317).withOpacity(0.92)
-                : Colors.white.withOpacity(0.88),
-        surfaceTintColor: Colors.transparent,
-        title: Text(widget.isci.ad),
+      appBar: FloatingLiquidAppBar(
+        title: widget.isci.ad,
+        showPrivacyButton: true,
       ),
-      body: Container(
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors:
-                isDark
-                    ? const [
-                      Color(0xFF06090D),
-                      Color(0xFF0C1219),
-                      Color(0xFF111827),
-                    ]
-                    : const [
-                      Color(0xFFF6FBFD),
-                      Color(0xFFECF5F9),
-                      Color(0xFFE4EEF4),
-                    ],
-          ),
-        ),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
         child: Column(
         children: [
+          SizedBox(height: FloatingLiquidAppBar.topPadding(context, extra: 0)),
           // 1. TARİH SEÇİCİ (Modern)
           Padding(
             padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),

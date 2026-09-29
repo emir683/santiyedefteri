@@ -3,6 +3,8 @@ import 'package:provider/provider.dart';
 
 import 'firestore_servisi.dart';
 import 'user_model.dart';
+import 'widgets/glass_surface.dart';
+import 'widgets/floating_liquid_app_bar.dart';
 
 enum _KullanimTipi { ekipli, kisisel }
 
@@ -116,13 +118,21 @@ class _TeamGateState extends State<TeamGate> {
     final accent = const Color(0xFF0F7C86);
 
     return Scaffold(
-      appBar: AppBar(
-        title: const Text("Nasil kullanacaksin?"),
-        centerTitle: true,
+      extendBodyBehindAppBar: true,
+      appBar: const FloatingLiquidAppBar(
+        title: "Nasıl kullanacaksın?",
+        showPrivacyButton: false,
       ),
-      body: Center(
-        child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: Center(
+          child: SingleChildScrollView(
+            padding: EdgeInsets.fromLTRB(
+              20,
+              FloatingLiquidAppBar.topPadding(context, extra: 4),
+              20,
+              32,
+            ),
           child: ConstrainedBox(
             constraints: const BoxConstraints(maxWidth: 640),
             child: Column(
@@ -206,6 +216,7 @@ class _TeamGateState extends State<TeamGate> {
             ),
           ),
         ),
+      ),
       ),
     );
   }
