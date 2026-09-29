@@ -91,6 +91,10 @@ class TurServisi {
     return prefs.getBool(_adim3Key) ?? false;
   }
 
+  static Future<bool> adim3TamamlandiMi() async {
+    return adim3Tamamlandi();
+  }
+
   static Future<void> adim3Isaretle() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_adim3Key, true);

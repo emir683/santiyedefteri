@@ -88,8 +88,8 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
   }
 
   Future<void> _turKontrol() async {
-    final tamamlandi = await TurServisi.adim3TamamlandiMi();
-    if (!tamamlandi && mounted) {
+    final gosterildi = await TurServisi.raporTurGosterildiMi();
+    if (!gosterildi && mounted) {
       await Future.delayed(const Duration(milliseconds: 550));
       if (mounted) _turBaslat();
     }
@@ -110,6 +110,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
         _isTourActive = false;
       });
     }
+    await TurServisi.raporTurGosterildiOlarakIsaretle();
     await TurServisi.adim3Isaretle();
   }
 

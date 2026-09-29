@@ -141,7 +141,7 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
         _AppBarIconButton(
           icon: Icons.help_outline_rounded,
           tooltip: 'Sayfa Rehberi',
-          onPressed: onTourPressed,
+          onPressed: onTourPressed!,
         ),
       if (showPrivacyButton)
         Consumer<PrivacyProvider>(
