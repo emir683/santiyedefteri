@@ -31,6 +31,8 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
     this.leading,
     this.showHamburger,
     this.showPrivacyButton = true,
+    this.showTourButton = false,
+    this.onTourPressed,
     this.actions,
     this.bottom,
     this.centerTitle = true,
@@ -43,6 +45,8 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
   final Widget? leading;
   final bool? showHamburger;
   final bool showPrivacyButton;
+  final bool showTourButton;
+  final VoidCallback? onTourPressed;
   final List<Widget>? actions;
   final PreferredSizeWidget? bottom;
   final bool centerTitle;
@@ -133,6 +137,12 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
 
     final effectiveActions = <Widget>[
       if (actions != null) ...actions!,
+      if (showTourButton && onTourPressed != null)
+        _AppBarIconButton(
+          icon: Icons.help_outline_rounded,
+          tooltip: 'Sayfa Rehberi',
+          onPressed: onTourPressed,
+        ),
       if (showPrivacyButton)
         Consumer<PrivacyProvider>(
           builder: (context, privacy, _) {

@@ -6,6 +6,7 @@ class TurServisi {
   static const String _raporTurKey = 'tur_rapor_gosterildi';
   static const String _isciTurKey = 'tur_isci_gosterildi';
   static const String _santiyeTurKey = 'tur_santiye_gosterildi';
+  static const String _aySonuTurKey = 'tur_ay_sonu_gosterildi';
 
   static Future<bool> anaMenuTurGosterildiMi() async {
     final prefs = await SharedPreferences.getInstance();
@@ -45,6 +46,16 @@ class TurServisi {
   static Future<void> santiyeTurGosterildiOlarakIsaretle() async {
     final prefs = await SharedPreferences.getInstance();
     await prefs.setBool(_santiyeTurKey, true);
+  }
+
+  static Future<bool> aySonuTurGosterildiMi() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getBool(_aySonuTurKey) ?? false;
+  }
+
+  static Future<void> aySonuTurGosterildiOlarakIsaretle() async {
+    final prefs = await SharedPreferences.getInstance();
+    await prefs.setBool(_aySonuTurKey, true);
   }
 
   // ——————————————————————————————————————————
@@ -107,6 +118,7 @@ class TurServisi {
     await prefs.remove(_raporTurKey);
     await prefs.remove(_isciTurKey);
     await prefs.remove(_santiyeTurKey);
+    await prefs.remove(_aySonuTurKey);
     await prefs.remove(_adim1Key);
     await prefs.remove(_adim2Key);
     await prefs.remove(_adim3Key);

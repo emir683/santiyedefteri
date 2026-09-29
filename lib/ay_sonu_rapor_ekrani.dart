@@ -17,6 +17,9 @@ import 'format_yardimcisi.dart';
 import 'animasyon_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
+import 'tur_servisi.dart';
+import 'widgets/interactive_tour/interactive_tour_model.dart';
+import 'widgets/interactive_tour/interactive_tour_overlay.dart';
 
 const double _shellDockBodyPadding = 132;
 const Color _kBrandTeal = Color(0xFF14B8A6);
@@ -64,9 +67,211 @@ class AySonuRaporEkrani extends StatefulWidget {
   State<AySonuRaporEkrani> createState() => _AySonuRaporEkraniState();
 }
 
-class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
+class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
+    with SingleTickerProviderStateMixin {
   DateTime _seciliAy = DateTime.now();
   DateTimeRange? _seciliTarihAraligi;
+
+  // Rehber Tur Anahtarları
+  final GlobalKey _dateSelectorKey = GlobalKey();
+  final GlobalKey _summaryCardsKey = GlobalKey();
+  final GlobalKey _tabsKey = GlobalKey();
+
+  // İnteraktif Tur & Örnek Demo Veri Durumu
+  bool _isTourActive = false;
+  late AnimationController _demoAnimController;
+  late Animation<double> _demoFadeAnimation;
+  late Animation<Offset> _demoSlideAnimation;
+
+  @override
+  void initState() {
+    super.initState();
+    _demoAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+    _demoFadeAnimation = CurvedAnimation(
+      parent: _demoAnimController,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _demoSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, -0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _demoAnimController,
+      curve: Curves.easeOutBack,
+      reverseCurve: Curves.easeInCubic,
+    ));
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _turKontrol();
+    });
+  }
+
+  @override
+  void dispose() {
+    _demoAnimController.dispose();
+    super.dispose();
+  }
+
+  Future<void> _turKontrol() async {
+    final gosterildi = await TurServisi.aySonuTurGosterildiMi();
+    if (!gosterildi && mounted) {
+      await Future.delayed(const Duration(milliseconds: 550));
+      if (mounted) _turBaslat();
+    }
+  }
+
+  void _turBaslat({bool manual = false}) async {
+    if (_isTourActive) return;
+    setState(() {
+      _isTourActive = true;
+    });
+    await _demoAnimController.forward();
+  }
+
+  Future<void> _turSonlandir() async {
+    await _demoAnimController.reverse();
+    if (mounted) {
+      setState(() {
+        _isTourActive = false;
+      });
+    }
+    await TurServisi.aySonuTurGosterildiOlarakIsaretle();
+  }
+
+  List<TourStep> _buildTourSteps() {
+    return [
+      TourStep(
+        id: 'ay_sonu_genel_tanitim',
+        title: 'Ay Sonu ve Hakediş Raporları',
+        description:
+            'Tüm şantiye ve çalışanlarınızın aylık hakediş hesaplarını, toplam masrafları ve genel maliyet tablosunu buradan takip edin.',
+        icon: Icons.analytics_rounded,
+        targetKey: null,
+      ),
+      TourStep(
+        id: 'donem_secici',
+        title: 'Dönem ve Tarih Seçimi',
+        description:
+            'Dilediğiniz ayı seçebilir veya özel bir başlangıç ve bitiş aralığı belirleyerek o dönemin hesaplamalarını getirebilirsiniz.',
+        icon: Icons.calendar_month_rounded,
+        targetKey: _dateSelectorKey,
+        targetPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        targetBorderRadius: 16.0,
+      ),
+      TourStep(
+        id: 'finansal_ozet',
+        title: 'Finansal Genel Toplamlar',
+        description:
+            'Toplam işçilik hakedişi, saha operasyon masrafları ve net durumu özet kartlar üzerinden anlık analiz edin.',
+        icon: Icons.account_balance_wallet_rounded,
+        targetKey: _summaryCardsKey,
+        targetPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        targetBorderRadius: 18.0,
+      ),
+      TourStep(
+        id: 'rapor_sekmeleri',
+        title: 'Genel Özet & Şantiye Dağılımı',
+        description:
+            'Genel Özet sekmesinde usta bazında hakedişleri, Şantiye Bazlı sekmesinde ise her projenin ayrı ayrı gider dağılımını inceleyebilirsiniz.',
+        icon: Icons.tab_rounded,
+        targetKey: _tabsKey,
+        targetPadding: const EdgeInsets.all(4),
+        targetBorderRadius: 14.0,
+      ),
+    ];
+  }
+
+  Widget _buildDemoSummaryCards(bool isDark) {
+    return AnimatedBuilder(
+      animation: _demoAnimController,
+      builder: (context, child) {
+        if (_demoAnimController.value <= 0.001) return const SizedBox.shrink();
+        return FadeTransition(
+          opacity: _demoFadeAnimation,
+          child: SlideTransition(
+            position: _demoSlideAnimation,
+            child: Container(
+              key: _summaryCardsKey,
+              margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(
+                  color: const Color(0xFF14B8A6).withValues(alpha: 0.3),
+                  width: 1.5,
+                ),
+              ),
+              child: Column(
+                children: [
+                  Row(
+                    children: [
+                      Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF14B8A6).withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: const Icon(Icons.auto_graph_rounded, color: Color(0xFF14B8A6), size: 20),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        "Örnek Dönem Özeti",
+                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Toplam Hakediş", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                              const SizedBox(height: 4),
+                              const Text("84.500,00 TL", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        child: Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text("Saha Giderleri", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                              const SizedBox(height: 4),
+                              const Text("12.300,00 TL", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ],
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
 
   bool get _ozelAralikAktif => _seciliTarihAraligi != null;
 
@@ -868,7 +1073,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
         appBar: FloatingLiquidAppBar(
           title: "Ay Sonu Raporu",
           showPrivacyButton: true,
+          showTourButton: true,
+          onTourPressed: () => _turBaslat(manual: true),
           bottom: TabBar(
+            key: _tabsKey,
             labelColor: _kBrandTeal,
             unselectedLabelColor: isDark ? Colors.white70 : Colors.black54,
             indicatorColor: _kBrandTeal,
@@ -879,8 +1087,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
             ],
           ),
         ),
-        body: GlassPageSurface(
-          preferSoftLightBackground: true,
+        body: Stack(
+          children: [
+            GlassPageSurface(
+              preferSoftLightBackground: true,
           child: Column(
             children: [
               SizedBox(
@@ -893,7 +1103,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
               // ORTAK TARİH SEÇİCİ
               Padding(
                 padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 12.0),
-                child: Container(
+                child: KeyedSubtree(
+                  key: _dateSelectorKey,
+                  child: Container(
                   decoration: BoxDecoration(
                     color:
                         isDark
@@ -955,6 +1167,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
                   ),
                 ),
               ),
+            ),
+            _buildDemoSummaryCards(isDark),
 
               // VERİ ZİNCİRİ
               Expanded(
@@ -1926,8 +2140,16 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani> {
             ],
           ),
         ),
-      ),
-    );
+        if (_isTourActive)
+          InteractiveTourOverlay(
+            steps: _buildTourSteps(),
+            onFinish: _turSonlandir,
+            onSkip: _turSonlandir,
+          ),
+      ],
+    ),
+  ),
+);
   }
 
   // --- YARDIMCI WIDGETLAR ---

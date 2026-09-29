@@ -10,7 +10,8 @@ import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+import 'widgets/interactive_tour/interactive_tour_model.dart';
+import 'widgets/interactive_tour/interactive_tour_overlay.dart';
 import 'package:connectivity_plus/connectivity_plus.dart';
 import 'main.dart';
 import 'user_model.dart';
@@ -78,7 +79,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _isOffline = false;
 
-  late TutorialCoachMark _tutorialCoachMark;
 
   void _hizliErisimAc(int index, bool finansalErisim) {
     final finansSekmesi = index == 3 || index == 4;
@@ -292,486 +292,141 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     if (turGosterildi) return;
 
     _turDenendiBuAcilis = true;
-    await Future.delayed(const Duration(milliseconds: 450));
+    await Future.delayed(const Duration(milliseconds: 650));
     if (!mounted) return;
     if (ModalRoute.of(context)?.isCurrent != true) return;
 
-    final turBaslasin = await _showTurBaslangicDialog();
-    if (!mounted) return;
-    if (!turBaslasin) {
-      await TurServisi.anaMenuTurGosterildiOlarakIsaretle();
-      return;
-    }
-
-    _turAktif = true;
     _turBaslat();
   }
 
-  Future<bool> _showTurBaslangicDialog() async {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final sonuc = await showDialog<bool>(
-      context: context,
-      barrierDismissible: false,
-      barrierColor: Colors.black.withOpacity(0.82),
-      builder: (ctx) {
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: Container(
-            padding: const EdgeInsets.all(22),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(22),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors:
-                    isDark
-                        ? const [Color(0xFF171B22), Color(0xFF10141B)]
-                        : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
-              ),
-              border: Border.all(
-                color:
-                    isDark
-                        ? Colors.white.withOpacity(0.08)
-                        : const Color(0xFFD6E1EE),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.explore_rounded,
-                  size: 42,
-                  color:
-                      isDark
-                          ? const Color(0xFF34D399)
-                          : const Color(0xFF10B981),
-                ),
-                const SizedBox(height: 12),
-                Text(
-                  'Birlikte K\u0131sa Bir Geziye \u00C7\u0131kal\u0131m m\u0131?',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 21,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF102A43),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Panel verileri, men\u00FC i\u015Flemleri, h\u0131zl\u0131 eri\u015Fim sekmeleri ve g\u00F6z butonunu 1 dakikada tan\u0131tal\u0131m.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 14,
-                    height: 1.42,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 18),
-                Row(
-                  children: [
-                    Expanded(
-                      child: TextButton(
-                        onPressed: () => Navigator.pop(ctx, false),
-                        child: Text(
-                          '\u015Eimdilik Atla',
-                          style: TextStyle(
-                            color: isDark ? Colors.white60 : Colors.black54,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: ElevatedButton(
-                        onPressed: () => Navigator.pop(ctx, true),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF14B8A6),
-                          foregroundColor: Colors.white,
-                          elevation: 0,
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(12),
-                          ),
-                        ),
-                        child: const Text(
-                          'Ba\u015Flayal\u0131m',
-                          style: TextStyle(fontWeight: FontWeight.w700),
-                        ),
-                      ),
-                    ),
-                  ],
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-
-    return sonuc ?? false;
-  }
-
-  void _turBitti() {
-    _turAktif = false;
-    TurServisi.anaMenuTurGosterildiOlarakIsaretle();
-    if (mounted) _showHaydiBaslayalimDialog();
-  }
-
-  void _turAtlandi() {
-    _turAktif = false;
-    TurServisi.anaMenuTurGosterildiOlarakIsaretle();
-  }
-
   void _turBaslat() {
-    final targets = <TargetFocus>[
+    if (_turAktif) return;
+    setState(() {
+      _turAktif = true;
+    });
+  }
+
+  void _turBitti() async {
+    if (mounted) {
+      setState(() {
+        _turAktif = false;
+      });
+    }
+    await TurServisi.anaMenuTurGosterildiOlarakIsaretle();
+  }
+
+  void _turAtlandi() async {
+    if (mounted) {
+      setState(() {
+        _turAktif = false;
+      });
+    }
+    await TurServisi.anaMenuTurGosterildiOlarakIsaretle();
+  }
+
+  List<TourStep> _buildTourSteps() {
+    return [
+      TourStep(
+        id: 'ana_menu_genel',
+        title: 'Şantiye Defterim Paneli',
+        description:
+            'Tüm şantiye projelerinizi, çalışanlarınızı, günlük puantaj ve aylık raporlarınızı tek bir ekrandan kolayca yönetin.',
+        icon: Icons.space_dashboard_rounded,
+        targetKey: null,
+      ),
       if (_panelVeriKey.currentContext != null)
-        TargetFocus(
-          identify: 'panel_veri',
-          keyTarget: _panelVeriKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 18,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top,
-              builder:
-                  (context, controller) => _buildTooltip(
-                    icon: Icons.dashboard_rounded,
-                    baslik: 'Panel \u00D6zeti',
-                    aciklama:
-                        'Bug\u00FCnl\u00FCk ve ayl\u0131k takip verilerini buradan h\u0131zl\u0131ca g\u00F6r\u00FCrs\u00FCn\u00FCz.',
-                    controller: controller,
-                  ),
-            ),
-          ],
-        ),
-      if (_menuButtonKey.currentContext != null)
-        TargetFocus(
-          identify: 'menu',
-          keyTarget: _menuButtonKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 16,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              builder:
-                  (context, controller) => _buildTooltip(
-                    icon: Icons.menu_rounded,
-                    baslik: 'Hamburger Men\u00FC',
-                    aciklama:
-                        'Ekip y\u00F6netimi, profil, hat\u0131rlatmalar ve di\u011Fer ekranlara bu men\u00FCden ge\u00E7ersiniz.',
-                    controller: controller,
-                  ),
-            ),
-          ],
+        TourStep(
+          id: 'panel_veri',
+          title: 'Panel Özeti & Saha Verileri',
+          description:
+              'Aktif şantiye ve personel istatistiklerini, günlük durumları ve şantiye hava durumunu buradan hızlıca takip edin.',
+          icon: Icons.dashboard_rounded,
+          targetKey: _panelVeriKey,
+          targetPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          targetBorderRadius: 18.0,
         ),
       if (_hizliErisimBarKey.currentContext != null)
-        TargetFocus(
-          identify: 'hizli_erisim',
-          keyTarget: _hizliErisimBarKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 24,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top,
-              builder:
-                  (context, controller) => _buildTooltip(
-                    icon: Icons.space_dashboard_rounded,
-                    baslik: 'H\u0131zl\u0131 Eri\u015Fim \u00C7ubu\u011Fu',
-                    aciklama:
-                        '\u015Eantiye, \u0130\u015F\u00E7i, Merkez, Ay Sonu ve \u00D6deme sekmelerine buradan ge\u00E7i\u015F yapars\u0131n\u0131z.',
-                    controller: controller,
-                  ),
-            ),
-          ],
-        ),
-      if (_privacyButtonKey.currentContext != null)
-        TargetFocus(
-          identify: 'goz',
-          keyTarget: _privacyButtonKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 16,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              builder:
-                  (context, controller) => _buildTooltip(
-                    icon: Icons.visibility_rounded,
-                    baslik: 'Gizlilik G\u00F6z\u00FC',
-                    aciklama:
-                        'Tutar ve hassas alanlar\u0131 tek dokunu\u015Fla gizleyip g\u00F6sterebilirsiniz.',
-                    controller: controller,
-                  ),
-            ),
-          ],
+        TourStep(
+          id: 'hizli_erisim',
+          title: 'Hızlı Erişim Çubuğu',
+          description:
+              'Şantiye, İşçi, Günlük Rapor, Ay Sonu ve Ödeme ekranlarına tek dokunuşla buradan geçiş yapın.',
+          icon: Icons.navigation_rounded,
+          targetKey: _hizliErisimBarKey,
+          targetPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+          targetBorderRadius: 24.0,
         ),
       if (_raporKey.currentContext != null)
-        TargetFocus(
-          identify: 'rapor',
-          keyTarget: _raporKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 16,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              builder:
-                  (context, controller) => _buildTooltip(
-                    icon: Icons.edit_calendar_outlined,
-                    baslik: 'H\u0131zl\u0131 Rapor Giri\u015Fi',
-                    aciklama:
-                        'S\u0131radaki ad\u0131mda bu karta ge\u00E7ip \u015Fantiye ekleme, i\u015F\u00E7i ekleme, h\u0131zl\u0131 yoklama ve kaydet ad\u0131mlar\u0131n\u0131 birlikte tamamlayaca\u011F\u0131z.',
-                    controller: controller,
-                  ),
-            ),
-          ],
+        TourStep(
+          id: 'hizli_rapor',
+          title: 'Hızlı Rapor & Puantaj Girişi',
+          description:
+              'Günün yoklamasını almak veya şantiyedeki günlük masrafları kaydetmek için doğrudan bu kısayola dokunun.',
+          icon: Icons.edit_calendar_rounded,
+          targetKey: _raporKey,
+          targetPadding: const EdgeInsets.all(4),
+          targetBorderRadius: 18.0,
+        ),
+      if (_privacyButtonKey.currentContext != null)
+        TourStep(
+          id: 'gizlilik_modu',
+          title: 'Gizlilik Modu',
+          description:
+              'Saha ortamındayken hassas parasal tutarları ve maaşları gizlemek veya açmak için bu göz butonuna dokunun.',
+          icon: Icons.visibility_rounded,
+          targetKey: _privacyButtonKey,
+          targetPadding: const EdgeInsets.all(4),
+          targetBorderRadius: 18.0,
+        ),
+      if (_menuButtonKey.currentContext != null)
+        TourStep(
+          id: 'ana_menu_cekmecesi',
+          title: 'Yan Menü & Ayarlar',
+          description:
+              'Ekip yönetimi, AI asistanı, veri yedekleme, hatırlatmalar ve profil ayarlarınıza buradan ulaşın.',
+          icon: Icons.menu_rounded,
+          targetKey: _menuButtonKey,
+          targetPadding: const EdgeInsets.all(4),
+          targetBorderRadius: 18.0,
         ),
     ];
-
-    if (targets.isEmpty) {
-      _turAtlandi();
-      return;
-    }
-
-    _tutorialCoachMark = TutorialCoachMark(
-      targets: targets,
-      colorShadow: Colors.black,
-      opacityShadow: 0.84,
-      textSkip: 'TURU ATLA',
-      alignSkip: Alignment.topRight,
-      paddingFocus: 12,
-      onFinish: _turBitti,
-      onSkip: () {
-        _turAtlandi();
-        return true;
-      },
-    )..show(context: context);
   }
 
-  void _showHaydiBaslayalimDialog() {
-    showDialog(
-      context: context,
-      barrierDismissible: true,
-      barrierColor: Colors.black.withOpacity(0.82),
-      builder: (ctx) {
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        return Dialog(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          child: Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(24),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors:
-                    isDark
-                        ? const [Color(0xFF171B22), Color(0xFF10141B)]
-                        : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
-              ),
-              border: Border.all(
-                color:
-                    isDark
-                        ? Colors.white.withOpacity(0.08)
-                        : const Color(0xFFD6E1EE),
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.28 : 0.09),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Icon(
-                  Icons.check_circle_rounded,
-                  size: 44,
-                  color:
-                      isDark
-                          ? const Color(0xFF34D399)
-                          : const Color(0xFF10B981),
-                ),
-                const SizedBox(height: 14),
-                Text(
-                  'Rapor Ad\u0131m\u0131na Ge\u00E7elim',
-                  style: TextStyle(
-                    fontSize: 24,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF102A43),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  '\u015Eimdi h\u0131zl\u0131 rapor giri\u015Fi ad\u0131mlar\u0131na ge\u00E7ip s\u0131rayla \u015Fantiye ekleme, i\u015F\u00E7i ekleme, h\u0131zl\u0131 yoklama ve kaydet i\u015Flemini tamamlayabiliriz.',
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.45,
-                    color: isDark ? Colors.white70 : Colors.black54,
-                  ),
-                ),
-                const SizedBox(height: 20),
-                SizedBox(
-                  width: double.infinity,
-                  child: ElevatedButton(
-                    style: ElevatedButton.styleFrom(
-                      padding: const EdgeInsets.symmetric(vertical: 15),
-                      backgroundColor: const Color(0xFF14B8A6),
-                      foregroundColor: Colors.white,
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(14),
-                      ),
-                    ),
-                    onPressed: () {
-                      Navigator.pop(ctx);
-                      Navigator.push(
-                        context,
-                        SayfaGecisi(
-                          sayfa: GunlukRaporEkrani(
-                            teamId: widget.teamId,
-                            baslatRehber: true,
-                          ),
-                        ),
-                      );
-                    },
-                    child: const Text(
-                      'Ba\u015Flayal\u0131m',
-                      style: TextStyle(
-                        fontSize: 15,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 10),
-                TextButton(
-                  onPressed: () => Navigator.pop(ctx),
-                  child: Text(
-                    '\u015Eimdilik Atla',
-                    style: TextStyle(
-                      color: isDark ? Colors.white54 : Colors.black45,
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  Widget _buildTooltip({
-    required IconData icon,
-    required String baslik,
-    required String aciklama,
-    required TutorialCoachMarkController controller,
-  }) {
+  Widget _buildTourButton(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    return Container(
-      margin: const EdgeInsets.fromLTRB(16, 16, 16, 104),
-      padding: const EdgeInsets.all(18),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors:
-              isDark
-                  ? const [Color(0xFF171B22), Color(0xFF0F131A)]
-                  : const [Color(0xFFFFFFFF), Color(0xFFF4F8FC)],
-        ),
-        border: Border.all(
-          color:
-              isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD6E1EE),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.30 : 0.10),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
-      ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                width: 40,
-                height: 40,
-                decoration: BoxDecoration(
-                  color: const Color(
-                    0xFF14B8A6,
-                  ).withOpacity(isDark ? 0.24 : 0.14),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: const Color(0xFF14B8A6), size: 20),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  baslik,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF102A43),
+    return SafeArea(
+      minimum: const EdgeInsets.only(top: 8, right: 68),
+      child: Align(
+        alignment: Alignment.topRight,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(18),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Material(
+              color: isDark
+                  ? Colors.black.withValues(alpha: 0.26)
+                  : Colors.white.withValues(alpha: 0.56),
+              child: InkWell(
+                onTap: () => _turBaslat(),
+                child: Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
+                    borderRadius: BorderRadius.circular(18),
+                  ),
+                  child: Icon(
+                    Icons.help_outline_rounded,
+                    color: isDark ? Colors.white : Colors.black87,
+                    size: 22,
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Text(
-            aciklama,
-            style: TextStyle(
-              fontSize: 14,
-              height: 1.45,
-              color: isDark ? Colors.white70 : const Color(0xFF1F2937),
             ),
           ),
-          const SizedBox(height: 14),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.end,
-            children: [
-              TextButton(
-                onPressed: () => controller.previous(),
-                child: Text(
-                  'Geri',
-                  style: TextStyle(
-                    color: isDark ? Colors.white54 : Colors.black45,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 6),
-              ElevatedButton(
-                onPressed: () => controller.next(),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color(0xFF14B8A6),
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 10,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-                child: const Text(
-                  'İleri',
-                  style: TextStyle(fontWeight: FontWeight.w700),
-                ),
-              ),
-            ],
-          ),
-        ],
+        ),
       ),
     );
   }
@@ -938,6 +593,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         if (_selectedIndex == 0) ...[
           _buildMenuButton(context),
           _buildPrivacyButton(context),
+          _buildTourButton(context),
         ],
         Align(
           alignment: Alignment.bottomCenter,
@@ -2917,7 +2573,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             widget.teamId,
             tamBaslik,
           ),
-          body: Consumer<RolProvider>(
+          body: Stack(
+            children: [
+              Consumer<RolProvider>(
             builder: (context, rolProvider, _) {
               return Column(
                 children: [
@@ -2945,6 +2603,14 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 ],
               );
             },
+          ),
+              if (_turAktif)
+                InteractiveTourOverlay(
+                  steps: _buildTourSteps(),
+                  onFinish: _turBitti,
+                  onSkip: _turAtlandi,
+                ),
+            ],
           ),
         );
       },

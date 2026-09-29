@@ -4,7 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:table_calendar/table_calendar.dart';
-import 'package:tutorial_coach_mark/tutorial_coach_mark.dart';
+import 'widgets/interactive_tour/interactive_tour_model.dart';
+import 'widgets/interactive_tour/interactive_tour_overlay.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'data_models.dart';
@@ -28,265 +29,225 @@ class GunlukRaporEkrani extends StatefulWidget {
   State<GunlukRaporEkrani> createState() => _GunlukRaporEkraniState();
 }
 
-class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
+class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
+    with SingleTickerProviderStateMixin {
   DateTime _seciliGun = DateTime.now();
   DateTime _odaklanilanGun = DateTime.now();
   bool _calendarVisible = false;
 
-  // GlobalKeys for guided onboarding tour
+  // Rehber Tur Anahtarları
+  final GlobalKey _dateBarKey = GlobalKey();
+  final GlobalKey _demoSantiyeCardKey = GlobalKey();
+  final GlobalKey _demoGiderKey = GlobalKey();
+
+  // Uyumluluk için eski buton anahtarları
   final GlobalKey _santiyeEkleKey = GlobalKey();
   final GlobalKey _isciEkleKey = GlobalKey();
   final GlobalKey _santiyeKartiKey = GlobalKey();
   final GlobalKey _hizliYoklamaKey = GlobalKey();
   final GlobalKey _kaydetKapatKey = GlobalKey();
 
-  // Onboarding flow control flags
-  bool _santiyeTuruGosterildi = false;
-  bool _isciTuruGosterildi = false;
-  bool _santiyeKartiTuruGosterildi = false;
-  bool _bottomSheetTuruGosterildi = false;
+  // İnteraktif Tur & Örnek Demo Veri Durumu
+  bool _isTourActive = false;
+  late AnimationController _demoAnimController;
+  late Animation<double> _demoFadeAnimation;
+  late Animation<Offset> _demoSlideAnimation;
 
   @override
   void initState() {
     super.initState();
+    _demoAnimController = AnimationController(
+      vsync: this,
+      duration: const Duration(milliseconds: 450),
+    );
+    _demoFadeAnimation = CurvedAnimation(
+      parent: _demoAnimController,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    _demoSlideAnimation = Tween<Offset>(
+      begin: const Offset(0, -0.15),
+      end: Offset.zero,
+    ).animate(CurvedAnimation(
+      parent: _demoAnimController,
+      curve: Curves.easeOutBack,
+      reverseCurve: Curves.easeInCubic,
+    ));
+
+    if (widget.baslatRehber) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _turKontrol();
+      });
+    }
   }
 
-  // ===================================================
-  // REHBER TURU (MODÜLER)
-  // ===================================================
-
-  void _santiyeEkleTuruBaslat() {
-    if (_santiyeEkleKey.currentContext == null) return;
-    TutorialCoachMark(
-      targets: [
-        TargetFocus(
-          identify: 'santiye_ekle_btn',
-          keyTarget: _santiyeEkleKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 14,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top, // Değiştirildi: Ekrandan taşmaması için
-              builder:
-                  (ctx, ctrl) => _rehberTooltip(
-                    emoji: '🏗️',
-                    baslik: '1. Adım: Şantiye Ekle',
-                    aciklama:
-                        'Şimdi ilk şantiyenizi ekleyin.\nŞantiyeyi kaydettikten sonra geri dönme tuşuna basarak tekrar bu ekrana gelin.',
-                    controller: ctrl,
-                    renk: Colors.green,
-                  ),
-            ),
-          ],
-        ),
-      ],
-      colorShadow: Colors.black,
-      opacityShadow: 0.85,
-      textSkip: 'TURU ATLA',
-      alignSkip: Alignment.topRight,
-      paddingFocus: 12,
-      onClickTarget: (target) {
-        Navigator.push(
-          context,
-          SayfaGecisi(sayfa: SantiyeEkrani(teamId: widget.teamId)),
-        ).then((_) {
-          if (mounted) setState(() {});
-        });
-      },
-    ).show(context: context);
+  @override
+  void dispose() {
+    _demoAnimController.dispose();
+    super.dispose();
   }
 
-  void _isciEkleTuruBaslat() {
-    if (_isciEkleKey.currentContext == null) return;
-    TutorialCoachMark(
-      targets: [
-        TargetFocus(
-          identify: 'isci_ekle_btn',
-          keyTarget: _isciEkleKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 14,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top,
-              builder:
-                  (ctx, ctrl) => _rehberTooltip(
-                    emoji: '👨\u200d🚧',
-                    baslik: '2. Adım: İşçi Ekle',
-                    aciklama:
-                        'Harika, şantiyeni ekledin!\nŞimdi çalışan kişileri ekle, sonra tekrar arka plandaki geri tuşuna basarak buraya dön.',
-                    controller: ctrl,
-                    renk: Colors.blue,
-                  ),
-            ),
-          ],
-        ),
-      ],
-      colorShadow: Colors.black,
-      opacityShadow: 0.85,
-      textSkip: 'TURU ATLA',
-      alignSkip: Alignment.topRight,
-      paddingFocus: 12,
-      onClickTarget: (target) {
-        Navigator.push(
-          context,
-          SayfaGecisi(sayfa: IsciEkrani(teamId: widget.teamId)),
-        ).then((_) {
-          if (mounted) setState(() {});
-        });
-      },
-    ).show(context: context);
+  Future<void> _turKontrol() async {
+    final tamamlandi = await TurServisi.adim3TamamlandiMi();
+    if (!tamamlandi && mounted) {
+      await Future.delayed(const Duration(milliseconds: 550));
+      if (mounted) _turBaslat();
+    }
   }
 
-  void _santiyeKartiTurBaslat() {
-    if (_santiyeKartiKey.currentContext == null) return;
-    TutorialCoachMark(
-      targets: [
-        TargetFocus(
-          identify: 'santiye_karti',
-          keyTarget: _santiyeKartiKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 18,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              builder:
-                  (ctx, ctrl) => _rehberTooltip(
-                    emoji: '📊',
-                    baslik: '3. Adım: Rapor Girişi',
-                    aciklama:
-                        'Her şey hazır!\nGünlük yoklamayı alıp kaydetmek için oluşturduğunuz bu şantiye kartına tıklayın.',
-                    controller: ctrl,
-                    renk: Colors.teal,
-                  ),
-            ),
-          ],
-        ),
-      ],
-      colorShadow: Colors.black,
-      opacityShadow: 0.85,
-      textSkip: 'TURU ATLA',
-      alignSkip: Alignment.topRight,
-      paddingFocus: 10,
-    ).show(context: context);
+  void _turBaslat({bool manual = false}) async {
+    if (_isTourActive) return;
+    setState(() {
+      _isTourActive = true;
+    });
+    await _demoAnimController.forward();
   }
 
-  void _bottomSheetTuruBaslat() {
-    TutorialCoachMark(
-      targets: [
-        TargetFocus(
-          identify: 'hizli_yoklama',
-          keyTarget: _hizliYoklamaKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 10,
-          contents: [
-            TargetContent(
-              align: ContentAlign.bottom,
-              builder:
-                  (ctx, ctrl) => _rehberTooltip(
-                    emoji: '⚡',
-                    baslik: 'Hızlı Yoklama',
-                    aciklama:
-                        'Bu butona basarak tüm işçileri tek seferde "Tam Gün", "Yarım Gün" veya "Yok" olarak topluca işaretleyebilirsiniz.',
-                    controller: ctrl,
-                    renk: Colors.orange.shade800,
-                  ),
-            ),
-          ],
-        ),
-        TargetFocus(
-          identify: 'kaydet_kapat',
-          keyTarget: _kaydetKapatKey,
-          shape: ShapeLightFocus.RRect,
-          radius: 14,
-          contents: [
-            TargetContent(
-              align: ContentAlign.top,
-              builder:
-                  (ctx, ctrl) => _rehberTooltip(
-                    emoji: '💾',
-                    baslik: 'Son Adım: Kaydet',
-                    aciklama:
-                        'Puantaj işlemini bitirdiğinizde kaydetmeyi unutmayın!\nHadi kaydedelim.',
-                    controller: ctrl,
-                    renk: Colors.green,
-                  ),
-            ),
-          ],
-        ),
-      ],
-      colorShadow: Colors.black,
-      opacityShadow: 0.85,
-      textSkip: 'TURU ATLA',
-      alignSkip: Alignment.topRight,
-      paddingFocus: 8,
-      onClickTarget: (target) {
-        if (target.identify == 'hizli_yoklama') {
-          // Scroll to the bottom so that Kaydet button becomes visible and position calculation is correct
-          Scrollable.ensureVisible(
-            _kaydetKapatKey.currentContext!,
-            duration: const Duration(milliseconds: 300),
-            curve: Curves.easeInOut,
-          );
-        }
-      },
-    ).show(context: context);
+  Future<void> _turSonlandir() async {
+    await _demoAnimController.reverse();
+    if (mounted) {
+      setState(() {
+        _isTourActive = false;
+      });
+    }
+    await TurServisi.adim3Isaretle();
   }
 
-  Widget _rehberTooltip({
-    required String emoji,
-    required String baslik,
-    required String aciklama,
-    required TutorialCoachMarkController controller,
-    required Color renk,
-  }) {
-    return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1A1A2E).withOpacity(0.97),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: renk.withOpacity(0.35)),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.4),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
-          ),
-        ],
+  List<TourStep> _buildTourSteps() {
+    return [
+      TourStep(
+        id: 'gunluk_genel_tanitim',
+        title: 'Günlük Puantaj ve Raporlama',
+        description:
+            'Şantiye sahalarınızın günlük yoklamalarını, usta ve işçilerin mesai durumlarını ve o gün yapılan harcamaları bu ekrandan yönetirsiniz.',
+        icon: Icons.assignment_turned_in_rounded,
+        targetKey: null,
       ),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Text(emoji, style: const TextStyle(fontSize: 28)),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  baslik,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 17,
-                    fontWeight: FontWeight.bold,
+      TourStep(
+        id: 'tarih_secici',
+        title: 'Tarih & Takvim Gezintisi',
+        description:
+            'Tarih alanına dokunarak takvimi açabilir, dilediğiniz güne gidip geçmiş veya gelecek günlerin puantajlarını inceleyebilirsiniz.',
+        icon: Icons.calendar_month_rounded,
+        targetKey: _dateBarKey,
+        targetPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        targetBorderRadius: 22.0,
+      ),
+      TourStep(
+        id: 'santiye_puantaj_karti',
+        title: 'Şantiye Puantaj Kartı',
+        description:
+            'Şantiye kartına dokunarak o projenin günlük yoklama sayfasına ulaşırsınız. Orada işçilerinize tek tıkla Tam Gün, Yarım Gün veya Yok verebilirsiniz.',
+        icon: Icons.apartment_rounded,
+        targetKey: _demoSantiyeCardKey,
+        targetPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+        targetBorderRadius: 24.0,
+      ),
+      TourStep(
+        id: 'gunluk_harcamalar',
+        title: 'Günlük Giderler & Açıklama',
+        description:
+            'Sahada yapılan benzin, yemek veya malzeme harcamalarını ve günün notlarını şantiye kartı üzerinde anlık görürsünüz.',
+        icon: Icons.receipt_long_rounded,
+        targetKey: _demoGiderKey,
+        targetPadding: const EdgeInsets.all(6),
+        targetBorderRadius: 16.0,
+      ),
+    ];
+  }
+
+  Widget _buildDemoDailyReportCard(bool isDark) {
+    return AnimatedBuilder(
+      animation: _demoAnimController,
+      builder: (context, child) {
+        if (_demoAnimController.value <= 0.001) return const SizedBox.shrink();
+        return FadeTransition(
+          opacity: _demoFadeAnimation,
+          child: SlideTransition(
+            position: _demoSlideAnimation,
+            child: Container(
+              key: _demoSantiyeCardKey,
+              margin: const EdgeInsets.symmetric(vertical: 8, horizontal: 16),
+              child: GlassSectionCard(
+                borderRadius: 24,
+                padding: EdgeInsets.zero,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16, horizontal: 20),
+                  child: Column(
+                    children: [
+                      Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(10),
+                            decoration: BoxDecoration(
+                              color: const Color(0xFF14B8A6).withValues(alpha: 0.18),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.apartment_rounded,
+                              color: Color(0xFF14B8A6),
+                              size: 24,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Koru Konutları Projesi (Örnek)",
+                                  style: TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 18,
+                                  ),
+                                ),
+                                const SizedBox(height: 6),
+                                Column(
+                                  key: _demoGiderKey,
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      "5 çalışan yoklamada",
+                                      style: TextStyle(
+                                        color: isDark ? Colors.white70 : Colors.black87,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                    Text(
+                                      "Toplam: 1.450,00 TL",
+                                      style: TextStyle(
+                                        fontWeight: FontWeight.bold,
+                                        color: isDark ? const Color(0xFF5EEAD4) : const Color(0xFF0F766E),
+                                      ),
+                                    ),
+                                    Text(
+                                      "📝 1. Kat döşeme betonu döküldü",
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.grey[600],
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ],
+                            ),
+                          ),
+                          Icon(
+                            Icons.chevron_right,
+                            color: Colors.grey.withValues(alpha: 0.5),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Text(
-            aciklama,
-            style: TextStyle(
-              color: Colors.grey[300],
-              fontSize: 14,
-              height: 1.5,
             ),
           ),
-          const SizedBox(height: 16),
-          // Sadece hedef butona tıklamaya zorlamak için İleri/Geri butonları kaldırıldı
-        ],
-      ),
+        );
+      },
     );
   }
 
@@ -842,17 +803,6 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
       builder:
           (ctx) => StatefulBuilder(
             builder: (ctx, setModalState) {
-              if (widget.baslatRehber && !_bottomSheetTuruGosterildi) {
-                WidgetsBinding.instance.addPostFrameCallback((_) {
-                  if (!mounted) return;
-                  if (!_bottomSheetTuruGosterildi) {
-                    setState(() => _bottomSheetTuruGosterildi = true);
-                    Future.delayed(const Duration(milliseconds: 450), () {
-                      if (mounted) _bottomSheetTuruBaslat();
-                    });
-                  }
-                });
-              }
               final bool isDark =
                   Theme.of(ctx).brightness == Brightness.dark;
 
@@ -1983,12 +1933,16 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor: Colors.transparent,
-      appBar: const FloatingLiquidAppBar(
+      appBar: FloatingLiquidAppBar(
         title: 'Günlük Rapor',
         showPrivacyButton: false,
+        showTourButton: true,
+        onTourPressed: () => _turBaslat(manual: true),
       ),
-      body: GlassPageSurface(
-        preferSoftLightBackground: true,
+      body: Stack(
+        children: [
+          GlassPageSurface(
+            preferSoftLightBackground: true,
         child: StreamBuilder<List<GunlukSantiyeRaporu>>(
         stream: servisi.getRaporlarStream(
           widget.teamId,
@@ -2017,34 +1971,37 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
               ),
               Padding(
                 padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
-                child: GlassSectionCard(
-                  padding: EdgeInsets.zero,
-                  borderRadius: 22,
-                  child: ListTile(
-                    contentPadding: const EdgeInsets.symmetric(horizontal: 16),
-                    title: Text(
-                      DateFormat.yMMMMEEEEd('tr_TR').format(_seciliGun),
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 16,
+                child: KeyedSubtree(
+                  key: _dateBarKey,
+                  child: GlassSectionCard(
+                    padding: EdgeInsets.zero,
+                    borderRadius: 22,
+                    child: ListTile(
+                      contentPadding: const EdgeInsets.symmetric(horizontal: 16),
+                      title: Text(
+                        DateFormat.yMMMMEEEEd('tr_TR').format(_seciliGun),
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 16,
+                        ),
                       ),
-                    ),
-                    trailing: IconButton(
-                      icon: Icon(
-                        _calendarVisible
-                            ? Icons.expand_less
-                            : Icons.expand_more,
+                      trailing: IconButton(
+                        icon: Icon(
+                          _calendarVisible
+                              ? Icons.expand_less
+                              : Icons.expand_more,
+                        ),
+                        onPressed:
+                            () => setState(
+                              () => _calendarVisible = !_calendarVisible,
+                            ),
                       ),
-                      onPressed:
+                      onTap:
                           () => setState(
                             () => _calendarVisible = !_calendarVisible,
                           ),
                     ),
-                    onTap:
-                        () => setState(
-                          () => _calendarVisible = !_calendarVisible,
-                        ),
                   ),
                 ),
               ),
@@ -2127,6 +2084,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                   ),
                 ),
               const SizedBox(height: 10),
+              _buildDemoDailyReportCard(isDark),
               Expanded(
                 child: StreamBuilder<List<Santiye>>(
                   stream: servisi.getSantiyelerStream(widget.teamId),
@@ -2147,41 +2105,13 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
                             ModalRoute.of(context)?.isCurrent == true;
 
                         // Yeni kullanıcı için onboarding kontrolü
-                        if (santiyeler.isEmpty || tumIsciler.isEmpty) {
-                          if (widget.baslatRehber && isTopRoute) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (!mounted) return;
-                              if (santiyeler.isEmpty &&
-                                  !_santiyeTuruGosterildi) {
-                                setState(() => _santiyeTuruGosterildi = true);
-                                _santiyeEkleTuruBaslat();
-                              } else if (santiyeler.isNotEmpty &&
-                                  tumIsciler.isEmpty &&
-                                  !_isciTuruGosterildi) {
-                                setState(() => _isciTuruGosterildi = true);
-                                _isciEkleTuruBaslat();
-                              }
-                            });
-                          }
+                        if (!_isTourActive && (santiyeler.isEmpty || tumIsciler.isEmpty)) {
                           return _buildOnboardingWidget(
                             context: context,
                             isDark: isDark,
                             santiyelerBos: santiyeler.isEmpty,
                             iscilerBos: tumIsciler.isEmpty,
                           );
-                        } else {
-                          // İkisi de dolu, kart bazlı tutorial kontrolü
-                          if (widget.baslatRehber &&
-                              isTopRoute &&
-                              !_santiyeKartiTuruGosterildi) {
-                            WidgetsBinding.instance.addPostFrameCallback((_) {
-                              if (!mounted) return;
-                              setState(
-                                () => _santiyeKartiTuruGosterildi = true,
-                              );
-                              _santiyeKartiTurBaslat();
-                            });
-                          }
                         }
 
                         return ListView.builder(
@@ -2380,6 +2310,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani> {
           );
         },
       ),
+          ),
+          if (_isTourActive)
+            InteractiveTourOverlay(
+              steps: _buildTourSteps(),
+              onFinish: _turSonlandir,
+              onSkip: _turSonlandir,
+            ),
+        ],
       ),
     );
   }
