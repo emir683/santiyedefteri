@@ -81,7 +81,7 @@ class _AuthGateState extends State<AuthGate> {
                 initialData:
                     initialSnapshot.data ?? FirebaseAuth.instance.currentUser,
                 builder: (context, snapshot) {
-                  final user = snapshot.data ?? FirebaseAuth.instance.currentUser;
+                  final user = snapshot.data;
                   if (user != null) {
                     if (_lastInviteHandledUserId != user.uid) {
                       _lastInviteHandledUserId = user.uid;

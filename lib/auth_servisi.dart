@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'fcm_servisi.dart';
 import 'user_model.dart';
 
 class AuthServisi {
@@ -145,12 +146,17 @@ class AuthServisi {
 
   Future<void> signOut() async {
     try {
+      try {
+        await FcmServisi().kullaniciAyril();
+      } catch (e) {
+        debugPrint("FCM token temizleme hatası: $e");
+      }
       if (!kIsWeb && await _googleSignIn.isSignedIn()) {
         await _googleSignIn.signOut();
       }
       await _auth.signOut();
     } catch (e) {
-      print("Çıkış yaparken hata: ${e.toString()}");
+      debugPrint("Çıkış yaparken hata: ${e.toString()}");
     }
   }
 

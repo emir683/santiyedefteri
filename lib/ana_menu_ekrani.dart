@@ -2977,6 +2977,19 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                             ),
                       );
                       if (onayla == true && mounted) {
+                        // Çekmeceyi kapat ve navigation stack'i kök sayfaya getir
+                        Navigator.of(context, rootNavigator: true)
+                            .popUntil((route) => route.isFirst);
+
+                        // Aktif panel veri dinleyicilerini durdur
+                        _disposePanelStream();
+
+                        // RolProvider'ın Firestore dinleyicisini iptal et ve sıfırla
+                        if (mounted) {
+                          Provider.of<RolProvider>(context, listen: false).sifirla();
+                        }
+
+                        // Hesaptan güvenle çıkış yap
                         await authServisi.signOut();
                       }
                     },
