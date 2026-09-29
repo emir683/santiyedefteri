@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'il_ilce_secici_modal.dart';
 
 class WeatherDashboardCard extends StatefulWidget {
   const WeatherDashboardCard({super.key});
@@ -143,20 +144,20 @@ class _WeatherDashboardCardState extends State<WeatherDashboardCard> {
   }
 
   Future<void> _showLocationDialog() async {
-    final result = await showDialog<Map<String, dynamic>>(
-      context: context,
-      builder: (context) => const _LocationSearchDialog(),
-    );
+    final result = await IlIlceSeciciModal.goster(context);
 
     if (result != null) {
+      final locName = result.tamKonum;
+      final lat = result.lat ?? 39.9334;
+      final lon = result.lon ?? 32.8597;
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString('weather_location_name', result['name']);
-      await prefs.setDouble('weather_lat', result['lat']);
-      await prefs.setDouble('weather_lon', result['lon']);
+      await prefs.setString('weather_location_name', locName);
+      await prefs.setDouble('weather_lat', lat);
+      await prefs.setDouble('weather_lon', lon);
       setState(() {
-        _locationName = result['name'];
+        _locationName = locName;
       });
-      _fetchWeatherDirectly(result['lat'], result['lon']);
+      _fetchWeatherDirectly(lat, lon);
     }
   }
 

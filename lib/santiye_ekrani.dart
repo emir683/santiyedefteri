@@ -11,6 +11,7 @@ import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/interactive_tour/interactive_tour_model.dart';
 import 'widgets/interactive_tour/interactive_tour_overlay.dart';
+import 'widgets/il_ilce_secici_modal.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -192,13 +193,9 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
   }
 
   void _santiyeEkleVeyaDuzenleDialog(FirestoreServisi servisi, {Santiye? mevcutSantiye}) {
-    if (mevcutSantiye != null) {
-      _controller.text = mevcutSantiye.ad;
-      _ilController.text = mevcutSantiye.il ?? '';
-    } else {
-      _controller.clear();
-      _ilController.clear();
-    }
+    _controller.text = mevcutSantiye?.ad ?? '';
+    String? secilenIl = mevcutSantiye?.il;
+    String? secilenIlce = mevcutSantiye?.ilce;
 
     showGeneralDialog(
       context: context,
@@ -207,112 +204,247 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
       barrierColor: Colors.black.withOpacity(0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
-        return Stack(
-          children: [
-            BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
-              child: Container(color: Colors.transparent),
-            ),
-            Center(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 24),
-                padding: const EdgeInsets.all(24),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withOpacity(0.95),
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20)],
+        return StatefulBuilder(
+          builder: (ctx, setDialogState) {
+            final hasLocation = secilenIl != null && secilenIl!.isNotEmpty;
+            final konumMetni = hasLocation
+                ? ((secilenIlce != null && secilenIlce!.isNotEmpty)
+                    ? '$secilenIlce, $secilenIl'
+                    : '$secilenIl (Merkez)')
+                : null;
+
+            return Stack(
+              children: [
+                BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                  child: Container(color: Colors.transparent),
                 ),
-                child: Material(
-                  color: Colors.transparent,
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        mevcutSantiye != null ? "Şantiyeyi Düzenle" : "Yeni Şantiye",
-                        style: const TextStyle(color: Colors.white, fontSize: 20, fontWeight: FontWeight.bold),
-                      ),
-                      const SizedBox(height: 24),
-                      TextField(
-                        controller: _controller,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: "Şantiye Adı",
-                          labelStyle: TextStyle(color: Colors.grey[400]),
-                          prefixIcon: const Icon(Icons.location_city, color: _kBrandTeal),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.05),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _kBrandTeal)),
-                        ),
-                      ),
-                      const SizedBox(height: 16),
-                      TextField(
-                        controller: _ilController,
-                        style: const TextStyle(color: Colors.white),
-                        decoration: InputDecoration(
-                          labelText: "İl / Konum (Opsiyonel)",
-                          labelStyle: TextStyle(color: Colors.grey[400]),
-                          prefixIcon: const Icon(Icons.map, color: _kBrandTeal),
-                          filled: true,
-                          fillColor: Colors.white.withOpacity(0.05),
-                          border: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: BorderSide.none),
-                          focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(16), borderSide: const BorderSide(color: _kBrandTeal)),
-                        ),
-                      ),
-                      const SizedBox(height: 24),
-                      Row(
+                Center(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      boxShadow: [
+                        BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20),
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
-                            child: TextButton(
-                              onPressed: () => Navigator.pop(ctx),
-                              child: const Text("İptal", style: TextStyle(color: Colors.grey)),
+                          Text(
+                            mevcutSantiye != null ? "Şantiyeyi Düzenle" : "Yeni Şantiye Ekle",
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
+                              fontWeight: FontWeight.bold,
                             ),
                           ),
-                          const SizedBox(width: 12),
-                          Expanded(
-                            child: ElevatedButton(
-                              onPressed: () async {
-                                final ad = _controller.text.trim();
-                                final il = _ilController.text.trim();
-                                if (ad.isNotEmpty) {
-                                  Navigator.pop(ctx);
-                                  if (mevcutSantiye != null) {
-                                    await servisi.santiyeGuncelle(
-                                      widget.teamId,
-                                      Santiye(
-                                        id: mevcutSantiye.id,
-                                        ad: ad,
-                                        il: il.isNotEmpty ? il : null,
-                                      ),
-                                    );
-                                  } else {
-                                    await servisi.santiyeEkle(
-                                      widget.teamId,
-                                      Santiye(
-                                        ad: ad,
-                                        il: il.isNotEmpty ? il : null,
-                                      ),
-                                    );
-                                  }
+                          const SizedBox(height: 20),
+                          TextField(
+                            controller: _controller,
+                            style: const TextStyle(color: Colors.white),
+                            decoration: InputDecoration(
+                              labelText: "Şantiye Adı",
+                              labelStyle: TextStyle(color: Colors.grey[400]),
+                              prefixIcon: const Icon(Icons.location_city, color: _kBrandTeal),
+                              filled: true,
+                              fillColor: Colors.white.withOpacity(0.05),
+                              border: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: BorderSide.none,
+                              ),
+                              focusedBorder: OutlineInputBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                borderSide: const BorderSide(color: _kBrandTeal),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(height: 16),
+                          
+                          // İl ve İlçe Seçici Butonu
+                          const Text(
+                            "Şantiye Konumu (Hava Durumu İçin)",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+
+                          if (!hasLocation)
+                            InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () async {
+                                final res = await IlIlceSeciciModal.goster(
+                                  ctx,
+                                  baslangicIl: secilenIl,
+                                  baslangicIlce: secilenIlce,
+                                );
+                                if (res != null) {
+                                  setDialogState(() {
+                                    secilenIl = res.il;
+                                    secilenIlce = res.ilce;
+                                  });
                                 }
                               },
-                              style: ElevatedButton.styleFrom(
-                                backgroundColor: _kBrandTeal,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
-                                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                              child: Container(
+                                width: double.infinity,
+                                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+                                decoration: BoxDecoration(
+                                  color: Colors.white.withOpacity(0.05),
+                                  borderRadius: BorderRadius.circular(16),
+                                  border: Border.all(
+                                    color: _kBrandTeal.withOpacity(0.4),
+                                    style: BorderStyle.solid,
+                                  ),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(Icons.add_location_alt_rounded, color: _kBrandTeal, size: 22),
+                                    SizedBox(width: 12),
+                                    Expanded(
+                                      child: Text(
+                                        "İl ve İlçe Seçin (81 İl / Tüm İlçeler)",
+                                        style: TextStyle(color: Colors.white70, fontSize: 13.5),
+                                      ),
+                                    ),
+                                    Icon(Icons.chevron_right_rounded, color: Colors.white38),
+                                  ],
+                                ),
                               ),
-                              child: Text(mevcutSantiye != null ? "Kaydet" : "Ekle", style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold)),
+                            )
+                          else
+                            Container(
+                              width: double.infinity,
+                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+                              decoration: BoxDecoration(
+                                color: _kBrandTeal.withOpacity(0.12),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: _kBrandTeal.withOpacity(0.4),
+                                ),
+                              ),
+                              child: Row(
+                                children: [
+                                  const Icon(Icons.location_on_rounded, color: _kBrandTeal, size: 24),
+                                  const SizedBox(width: 10),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          konumMetni!,
+                                          style: const TextStyle(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.bold,
+                                            fontSize: 14.5,
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        const Text(
+                                          "Hava durumu şantiye detayına otomatik yansır",
+                                          style: TextStyle(color: Colors.white60, fontSize: 11),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  IconButton(
+                                    tooltip: "Değiştir",
+                                    icon: const Icon(Icons.edit_location_alt_rounded, color: _kBrandTeal, size: 20),
+                                    onPressed: () async {
+                                      final res = await IlIlceSeciciModal.goster(
+                                        ctx,
+                                        baslangicIl: secilenIl,
+                                        baslangicIlce: secilenIlce,
+                                      );
+                                      if (res != null) {
+                                        setDialogState(() {
+                                          secilenIl = res.il;
+                                          secilenIlce = res.ilce;
+                                        });
+                                      }
+                                    },
+                                  ),
+                                  IconButton(
+                                    tooltip: "Kaldır",
+                                    icon: const Icon(Icons.close_rounded, color: Colors.white38, size: 18),
+                                    onPressed: () {
+                                      setDialogState(() {
+                                        secilenIl = null;
+                                        secilenIlce = null;
+                                      });
+                                    },
+                                  ),
+                                ],
+                              ),
                             ),
+
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: () => Navigator.pop(ctx),
+                                  child: const Text("İptal", style: TextStyle(color: Colors.grey)),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: ElevatedButton(
+                                  onPressed: () async {
+                                    final ad = _controller.text.trim();
+                                    if (ad.isNotEmpty) {
+                                      Navigator.pop(ctx);
+                                      if (mevcutSantiye != null) {
+                                        await servisi.santiyeGuncelle(
+                                          widget.teamId,
+                                          Santiye(
+                                            id: mevcutSantiye.id,
+                                            ad: ad,
+                                            il: secilenIl,
+                                            ilce: secilenIlce,
+                                          ),
+                                        );
+                                      } else {
+                                        await servisi.santiyeEkle(
+                                          widget.teamId,
+                                          Santiye(
+                                            ad: ad,
+                                            il: secilenIl,
+                                            ilce: secilenIlce,
+                                          ),
+                                        );
+                                      }
+                                    }
+                                  },
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _kBrandTeal,
+                                    padding: const EdgeInsets.symmetric(vertical: 14),
+                                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                                  ),
+                                  child: Text(
+                                    mevcutSantiye != null ? "Kaydet" : "Ekle",
+                                    style: const TextStyle(color: Colors.white, fontWeight: FontWeight.bold),
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
                         ],
                       ),
-                    ],
+                    ),
                   ),
                 ),
-              ),
-            ),
-          ],
+              ],
+            );
+          },
         );
       },
     );
@@ -458,6 +590,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
               santiyeAdi: santiye.ad,
               teamId: widget.teamId,
               il: santiye.il,
+              ilce: santiye.ilce,
             ),
           ),
         );
@@ -492,22 +625,37 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                       santiye.ad,
                       style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                     ),
-                    if (santiye.il != null && santiye.il!.isNotEmpty) ...[
-                      const SizedBox(height: 4),
-                      Row(
-                        children: [
-                          Icon(Icons.location_on, size: 14, color: Colors.grey[500]),
-                          const SizedBox(width: 4),
-                          Text(
-                            santiye.il!,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: Colors.grey[500],
-                            ),
+                    Builder(
+                      builder: (context) {
+                        final hasLocation = (santiye.il != null && santiye.il!.isNotEmpty) ||
+                            (santiye.ilce != null && santiye.ilce!.isNotEmpty);
+                        if (!hasLocation) return const SizedBox.shrink();
+                        final konumText = (santiye.ilce != null && santiye.ilce!.isNotEmpty)
+                            ? '${santiye.ilce}, ${santiye.il ?? ""}'
+                            : (santiye.il ?? "");
+                        return Padding(
+                          padding: const EdgeInsets.only(top: 4),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.location_on_rounded, size: 14, color: _kBrandTeal),
+                              const SizedBox(width: 4),
+                              Expanded(
+                                child: Text(
+                                  konumText,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: isDark ? Colors.white70 : Colors.black54,
+                                    fontWeight: FontWeight.w500,
+                                  ),
+                                ),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                    ],
+                        );
+                      },
+                    ),
                   ],
                 ),
               ),

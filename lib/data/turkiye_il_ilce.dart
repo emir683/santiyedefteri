@@ -1,6 +1,10 @@
 // Türkiye'nin 81 İli ve Tüm İlçeleri (Koordinatlarıyla)
 // Hava durumu ve konum seçimi için offline, hızlı ve kapsamlı veri tabanı.
 
+import 'dart:convert';
+import 'package:flutter/material.dart';
+import 'package:http/http.dart' as http;
+
 class IlIlceItem {
   final String il;
   final String? ilce;
@@ -934,5 +938,181 @@ class TurkiyeIlIlce {
     }
 
     return sonuclar.take(limit).toList();
+  }
+
+  /// Türkiye'nin alfabetik sıralı 81 İl listesi
+  static List<String> get tumIller {
+    final list = iller.map((m) => m['il'] as String).toList();
+    list.sort((a, b) => a.compareTo(b));
+    return list;
+  }
+
+  /// Seçilen İlin tüm ilçelerini döner (alfabetik sıralı)
+  static List<String> getIlceler(String ilAdi) {
+    final item = iller.firstWhere(
+      (m) => _normalize(m['il'] as String) == _normalize(ilAdi),
+      orElse: () => const {},
+    );
+    if (item.isEmpty) return const [];
+    final ilceler = List<String>.from(item['ilceler'] as List<dynamic>? ?? []);
+    ilceler.sort((a, b) => a.compareTo(b));
+    return ilceler;
+  }
+
+  /// Belirtilen il ve ilçenin yaklaşık enlem/boylam koordinatlarını döner
+  static IlIlceItem? getKonum({required String il, String? ilce}) {
+    final item = iller.firstWhere(
+      (m) => _normalize(m['il'] as String) == _normalize(il),
+      orElse: () => const {},
+    );
+    if (item.isEmpty) return null;
+    return IlIlceItem(
+      il: item['il'] as String,
+      ilce: ilce,
+      lat: (item['lat'] as num).toDouble(),
+      lon: (item['lon'] as num).toDouble(),
+    );
+  }
+
+  /// WMO Hava Durumu Kodunu Türkçe açıklamaya çevirir
+  static String getWeatherDesc(int code) {
+    if (code == 0) return "Açık ve Güneşli";
+    if (code == 1 || code == 2) return "Az / Parçalı Bulutlu";
+    if (code == 3) return "Çok Bulutlu / Kapalı";
+    if (code <= 48) return "Sisli ve Puslu";
+    if (code <= 55) return "Hafif Çisenti";
+    if (code <= 65) return "Yağmurlu";
+    if (code <= 75) return "Kar Yağışlı";
+    if (code <= 82) return "Kuvvetli Sağanak Yağış";
+    if (code <= 86) return "Yoğun Kar Sağanağı";
+    if (code <= 99) return "Gök Gürültülü Fırtına";
+    return "Bulutlu";
+  }
+
+  /// WMO Hava Durumu Koduna uygun ikon döner
+  static IconData getWeatherIcon(int code) {
+    if (code == 0) return Icons.wb_sunny_rounded;
+    if (code == 1 || code == 2) return Icons.wb_cloudy_rounded;
+    if (code == 3) return Icons.cloud_rounded;
+    if (code <= 48) return Icons.foggy;
+    if (code <= 55) return Icons.water_drop_outlined;
+    if (code <= 65) return Icons.water_drop_rounded;
+    if (code <= 75) return Icons.ac_unit_rounded;
+    if (code <= 82) return Icons.grain_rounded;
+    if (code <= 86) return Icons.snowing;
+    if (code <= 99) return Icons.thunderstorm_rounded;
+    return Icons.wb_cloudy_rounded;
+  }
+
+  /// Şantiye sahasına özel hava durumu değerlendirmesi
+  static String getSantiyeHavaYorumu(num temp, num windSpeed, int code) {
+    if (temp <= 0) {
+      return "⚠️ Don Riski: Sıcaklık sıfırın altında. Beton dökümünde antifriz ve sıcak tutma önlemleri zorunludur.";
+    }
+    if (code >= 80 || code >= 95) {
+      return "⛈️ Fırtına / Şiddetli Yağış: Açık alanda çalışma, iskele ve vinç operasyonlarında azami dikkat gerekir.";
+    }
+    if (code >= 51 && code <= 77) {
+      return "🌧️ Yağışlı / Karlı: Zemin kayganlaşabilir. Dış cephe, çatı ve hafriyat işlerini planlayarak yürütün.";
+    }
+    if (windSpeed >= 35) {
+      return "💨 Şiddetli Rüzgar ($windSpeed km/s): Kule vinç ve yüksekte çalışma emniyet tedbirlerini gözden geçirin.";
+    }
+    if (temp >= 35) {
+      return "☀️ Aşırı Sıcak: Taze betonda hızlı su kaybına karşı sulama (kür) sıklığını artırın ve işçi molalarını düzenleyin.";
+    }
+    return "✅ Saha Şartları Uygun: Açık hava inşaat ve montaj işleri için elverişli hava koşulları.";
+  }
+
+  /// Verilen il ve ilçe için Open-Meteo'dan anlık ve 7 günlük hava durumu çeker
+  static Future<Map<String, dynamic>?> fetchWeather({
+    required String il,
+    String? ilce,
+  }) async {
+    try {
+      double? lat;
+      double? lon;
+
+      // 1. Eğer ilçe varsa geocoding ile ilçenin tam koordinatını bulmayı dene
+      if (ilce != null && ilce.trim().isNotEmpty && ilce != 'Merkez') {
+        try {
+          final query = Uri.encodeComponent('$ilce $il');
+          final geoUrl = Uri.parse(
+            'https://geocoding-api.open-meteo.com/v1/search?name=$query&count=1&language=tr&format=json',
+          );
+          final geoRes = await http.get(geoUrl).timeout(const Duration(seconds: 4));
+          if (geoRes.statusCode == 200) {
+            final geoData = jsonDecode(geoRes.body);
+            if (geoData['results'] != null && (geoData['results'] as List).isNotEmpty) {
+              lat = (geoData['results'][0]['latitude'] as num).toDouble();
+              lon = (geoData['results'][0]['longitude'] as num).toDouble();
+            }
+          }
+        } catch (_) {}
+      }
+
+      // 2. İlçe bulunamadıysa veya merkez ise ilin yerel koordinatlarını al
+      if (lat == null || lon == null) {
+        final konum = getKonum(il: il, ilce: ilce);
+        if (konum != null) {
+          lat = konum.lat;
+          lon = konum.lon;
+        }
+      }
+
+      if (lat == null || lon == null) return null;
+
+      final weatherUrl = Uri.parse(
+        'https://api.open-meteo.com/v1/forecast?latitude=$lat&longitude=$lon&current_weather=true&daily=temperature_2m_max,temperature_2m_min,weathercode,windspeed_10m_max&timezone=auto',
+      );
+      final weatherRes = await http.get(weatherUrl).timeout(const Duration(seconds: 5));
+
+      if (weatherRes.statusCode == 200) {
+        final wData = jsonDecode(weatherRes.body) as Map<String, dynamic>;
+        final current = wData['current_weather'] as Map<String, dynamic>?;
+        final daily = wData['daily'] as Map<String, dynamic>?;
+
+        List<Map<String, dynamic>> gunlukList = [];
+        if (daily != null && daily['time'] != null) {
+          final times = daily['time'] as List;
+          final maxes = daily['temperature_2m_max'] as List? ?? [];
+          final mines = daily['temperature_2m_min'] as List? ?? [];
+          final codes = daily['weathercode'] as List? ?? [];
+          final winds = daily['windspeed_10m_max'] as List? ?? [];
+
+          for (int i = 0; i < times.length; i++) {
+            gunlukList.add({
+              'time': times[i],
+              'max': i < maxes.length ? maxes[i] : null,
+              'min': i < mines.length ? mines[i] : null,
+              'code': i < codes.length ? codes[i] : 0,
+              'wind': i < winds.length ? winds[i] : 0,
+            });
+          }
+        }
+
+        return {
+          'lat': lat,
+          'lon': lon,
+          'il': il,
+          'ilce': ilce,
+          'locationTitle': (ilce != null && ilce.isNotEmpty) ? '$ilce, $il' : il,
+          'current': current,
+          'daily': gunlukList,
+          'temperature': current?['temperature'],
+          'windspeed': current?['windspeed'],
+          'weathercode': current?['weathercode'] ?? 0,
+          'description': getWeatherDesc(current?['weathercode'] ?? 0),
+          'sahaYorumu': getSantiyeHavaYorumu(
+            current?['temperature'] ?? 20,
+            current?['windspeed'] ?? 0,
+            current?['weathercode'] ?? 0,
+          ),
+        };
+      }
+    } catch (e) {
+      debugPrint("fetchWeather hatası: $e");
+    }
+    return null;
   }
 }

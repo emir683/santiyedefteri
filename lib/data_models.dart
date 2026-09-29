@@ -17,8 +17,8 @@ class Santiye {
   Map<String, dynamic> toMap() {
     return {
       'ad': ad,
-      if (il != null) 'il': il,
-      if (ilce != null) 'ilce': ilce,
+      'il': il,
+      'ilce': ilce,
     };
   }
 
