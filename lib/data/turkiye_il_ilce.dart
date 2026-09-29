@@ -1004,6 +1004,29 @@ class TurkiyeIlIlce {
     return Icons.wb_cloudy_rounded;
   }
 
+  /// WMO Hava Durumu Koduna uygun renk döner (Güneşli sarı/amber, yağmurlu ve bulutlu mavi)
+  static Color getWeatherColor(int code) {
+    if (code == 0) {
+      return const Color(0xFFF59E0B); // Güneşli için sarı/amber
+    }
+    if (code >= 1 && code <= 3) {
+      return const Color(0xFF0284C7); // Bulutlu için canlı gök mavisi
+    }
+    if (code <= 48) {
+      return const Color(0xFF38BDF8); // Sisli / puslu için açık mavi
+    }
+    if (code <= 67 || (code >= 80 && code <= 82)) {
+      return const Color(0xFF2563EB); // Yağmurlu için tok mavi
+    }
+    if (code <= 77 || (code >= 85 && code <= 86)) {
+      return const Color(0xFF0EA5E9); // Karlı için buz mavisi
+    }
+    if (code >= 95) {
+      return const Color(0xFF1D4ED8); // Fırtınalı için koyu mavi
+    }
+    return const Color(0xFF2563EB); // Varsayılan mavi
+  }
+
   /// Şantiye sahasına özel hava durumu değerlendirmesi
   static String getSantiyeHavaYorumu(num temp, num windSpeed, int code) {
     if (temp <= 0) {

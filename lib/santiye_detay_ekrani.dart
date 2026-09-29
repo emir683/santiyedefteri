@@ -544,7 +544,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           _weatherData != null
                               ? TurkiyeIlIlce.getWeatherIcon(_weatherData!['weathercode'] ?? 0)
                               : Icons.location_on_rounded,
-                          color: _weatherData != null ? const Color(0xFFF59E0B) : _kBrandTeal,
+                          color: _weatherData != null
+                              ? TurkiyeIlIlce.getWeatherColor(_weatherData!['weathercode'] ?? 0)
+                              : _kBrandTeal,
                           size: 19,
                         ),
                       ),
@@ -748,7 +750,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                             Icon(
                               TurkiyeIlIlce.getWeatherIcon(_weatherData!['weathercode'] ?? 0),
                               size: 42,
-                              color: const Color(0xFFF59E0B),
+                              color: TurkiyeIlIlce.getWeatherColor(_weatherData!['weathercode'] ?? 0),
                             ),
                             const SizedBox(width: 14),
                             Column(
@@ -894,7 +896,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                       Icon(
                                         TurkiyeIlIlce.getWeatherIcon(gun['code'] ?? 0),
                                         size: 18,
-                                        color: const Color(0xFFF59E0B),
+                                        color: TurkiyeIlIlce.getWeatherColor(gun['code'] ?? 0),
                                       ),
                                       Text(
                                         "${gun['max']?.round() ?? '-'}°",

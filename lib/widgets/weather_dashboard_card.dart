@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import '../data/turkiye_il_ilce.dart';
 import 'il_ilce_secici_modal.dart';
 
 class WeatherDashboardCard extends StatefulWidget {
@@ -305,7 +306,7 @@ class _WeatherDashboardCardState extends State<WeatherDashboardCard> {
                                           ),
                                           Row(
                                             children: [
-                                              Icon(_getWeatherIcon(code), size: 18, color: isDark ? Colors.white70 : const Color(0xFF0F7C86)),
+                                              Icon(_getWeatherIcon(code), size: 18, color: TurkiyeIlIlce.getWeatherColor(code)),
                                               const SizedBox(width: 8),
                                               Text(_getWeatherDesc(code), style: TextStyle(color: isDark ? Colors.white70 : Colors.black54, fontSize: 12)),
                                             ],
@@ -394,7 +395,7 @@ class _WeatherDashboardCardState extends State<WeatherDashboardCard> {
           const SizedBox(height: 8),
           Row(
             children: [
-              Icon(_getWeatherIcon(code), size: 48, color: isDark ? Colors.white : const Color(0xFF0F7C86)),
+              Icon(_getWeatherIcon(code), size: 48, color: TurkiyeIlIlce.getWeatherColor(code)),
               const SizedBox(width: 16),
               Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
