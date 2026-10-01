@@ -14,6 +14,7 @@ import 'firestore_servisi.dart';
 import 'user_model.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_surface.dart';
+import 'widgets/glass_empty_state.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
 
@@ -63,41 +64,11 @@ class BildirimEkrani extends StatelessWidget {
             final bildirimler = snapshot.data ?? [];
 
             if (bildirimler.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(24),
-                      decoration: BoxDecoration(
-                        color: _kBrandTeal.withOpacity(0.1),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.notifications_none_rounded,
-                        size: 56,
-                        color: _kBrandTeal.withOpacity(0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Henüz bildirim yok',
-                      style: TextStyle(
-                        fontSize: 18,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white70 : const Color(0xFF334E68),
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Ekip işlemleri burada görünecek.',
-                      style: TextStyle(
-                        color: isDark ? Colors.white38 : Colors.black38,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
+              return const GlassEmptyState(
+                icon: Icons.notifications_none_rounded,
+                title: 'Henüz Bildirim Yok',
+                description:
+                    'Ekip içi güncellemeler, duyurular ve sistem bildirimleri burada görüntülenecektir.',
               );
             }
 

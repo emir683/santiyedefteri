@@ -12,6 +12,7 @@ import 'widgets/interactive_tour/interactive_tour_overlay.dart';
 import 'tur_servisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
+import 'widgets/glass_empty_state.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -1047,44 +1048,15 @@ class _IsciEkraniState extends State<IsciEkrani>
 
                         // Veri Yok Uyarısı (Sadece demo aktif değilken ve liste boşken gösterilir)
                         if (!demoAktif && filtrelenmisIsciler.isEmpty)
-                          Padding(
-                            padding: const EdgeInsets.only(top: 40.0),
-                            child: Center(
-                              child: Column(
-                                mainAxisAlignment: MainAxisAlignment.center,
-                                children: [
-                                  Icon(
-                                    isFinans
-                                        ? Icons.people_outline
-                                        : Icons.link_off_rounded,
-                                    size: 64,
-                                    color: Colors.grey[400],
-                                  ),
-                                  const SizedBox(height: 16),
-                                  Text(
-                                    isFinans
-                                        ? "Henüz işçi eklenmemiş."
-                                        : "Hesabınıza bağlı işçi yok.",
-                                    style: TextStyle(
-                                      color: Colors.grey[600],
-                                      fontSize: 16,
-                                      fontWeight: FontWeight.w600,
-                                    ),
-                                  ),
-                                  if (!isFinans) ...[
-                                    const SizedBox(height: 8),
-                                    Text(
-                                      'Yöneticinizden hesabınızı bir\nişçiye bağlamasını isteyin.',
-                                      textAlign: TextAlign.center,
-                                      style: TextStyle(
-                                        color: Colors.grey[500],
-                                        fontSize: 13,
-                                      ),
-                                    ),
-                                  ],
-                                ],
-                              ),
-                            ),
+                          GlassEmptyState(
+                            icon: isFinans ? Icons.badge_outlined : Icons.link_off_rounded,
+                            title: isFinans ? "Kayıtlı Çalışan Bulunmuyor" : "Bağlı Çalışan Bulunamadı",
+                            description: isFinans
+                                ? "Ekibinizdeki ustaları ve personeli ekleyerek puantaj ve hakediş takiplerini gerçekleştirebilirsiniz."
+                                : "Hesabınız henüz bir çalışan profili ile eşleştirilmemiş. Lütfen yöneticiniz ile iletişime geçiniz.",
+                            actionLabel: isFinans ? "Yeni Çalışan Ekle" : null,
+                            actionIcon: isFinans ? Icons.person_add_alt_1_rounded : null,
+                            onAction: isFinans ? () => _isciEkleVeyaDuzenleDialog(servisi) : null,
                           ),
                       ],
                     );

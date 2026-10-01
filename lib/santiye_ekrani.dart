@@ -12,6 +12,7 @@ import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/interactive_tour/interactive_tour_model.dart';
 import 'widgets/interactive_tour/interactive_tour_overlay.dart';
 import 'widgets/il_ilce_secici_modal.dart';
+import 'widgets/glass_empty_state.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -865,19 +866,14 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                           servisi: servisi,
                         ),
                     ] else if (!_isTourActive) ...[
-                      const SizedBox(height: 32),
-                      Center(
-                        child: Column(
-                          mainAxisAlignment: MainAxisAlignment.center,
-                          children: [
-                            Icon(Icons.location_city, size: 64, color: Colors.grey[400]),
-                            const SizedBox(height: 16),
-                            Text(
-                              "Henüz şantiye eklenmemiş.",
-                              style: TextStyle(color: Colors.grey[600], fontSize: 16),
-                            ),
-                          ],
-                        ),
+                      GlassEmptyState(
+                        icon: Icons.apartment_rounded,
+                        title: "Kayıtlı Şantiye Bulunmuyor",
+                        description:
+                            "Projelerinizi, günlük puantaj ve raporlarınızı yönetmek için ilk şantiyenizi ekleyerek başlayabilirsiniz.",
+                        actionLabel: "Yeni Şantiye Ekle",
+                        actionIcon: Icons.add_business_rounded,
+                        onAction: () => _santiyeEkleVeyaDuzenleDialog(servisi),
                       ),
                     ],
                   ],

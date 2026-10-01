@@ -726,13 +726,26 @@ class MysticalWavesState extends State<MysticalWaves>
   bool _isLockedActive = false;
   double _surgeOffset = 0.0;
 
-  List<Color> get _waveColors =>
-      widget.waveColors ??
-      [
-        const Color(0xFF10B981).withValues(alpha: 0.5), // Emerald
-        const Color(0xFF06B6D4).withValues(alpha: 0.4), // Cyan
-        const Color(0xFF34D399).withValues(alpha: 0.3), // Soft mint
+  // Ses Etkileşimli Aura Mesh Durumu
+  bool _isVoiceActive = false;
+  double _voiceLevel = 0.0;
+
+  List<Color> get _waveColors {
+    if (_isVoiceActive) {
+      return [
+        const Color(0xFF10B981).withValues(alpha: 0.70), // Emerald
+        const Color(0xFF06B6D4).withValues(alpha: 0.65), // Cyan
+        const Color(0xFF8B5CF6).withValues(alpha: 0.45), // Electric Violet Aura
+        const Color(0xFF34D399).withValues(alpha: 0.50), // Mint
       ];
+    }
+    return widget.waveColors ??
+        [
+          const Color(0xFF10B981).withValues(alpha: 0.5), // Emerald
+          const Color(0xFF06B6D4).withValues(alpha: 0.4), // Cyan
+          const Color(0xFF34D399).withValues(alpha: 0.3), // Soft mint
+        ];
+  }
 
   @override
   void initState() {
@@ -776,6 +789,40 @@ class MysticalWavesState extends State<MysticalWaves>
     super.dispose();
   }
 
+  /// Sesli etkileşim aktif veya pasif olduğunda dalgayı yumuşakça açıp kapatır
+  void setVoiceActive(bool active) {
+    if (!mounted) return;
+    _isVoiceActive = active;
+    _typingIdleTimer?.cancel();
+    if (active) {
+      _visibilityController.animateTo(
+        0.92,
+        duration: const Duration(milliseconds: 320),
+        curve: Curves.easeOutCubic,
+      );
+    } else {
+      _voiceLevel = 0.0;
+      if (!_isLockedActive) {
+        _visibilityController.animateTo(
+          0.0,
+          duration: const Duration(milliseconds: 550),
+          curve: Curves.easeOut,
+        );
+      }
+    }
+    setState(() {});
+  }
+
+  /// Mikrofon ses genliğine (0.0 - 1.0) bağlı olarak dalgayı gerçek zamanlı canlandırır
+  void updateVoiceLevel(double normalizedLevel) {
+    if (!mounted || !_isVoiceActive) return;
+    final clamped = normalizedLevel.clamp(0.0, 1.0);
+    // Yumuşatılmış ses dalgası interpolasyonu
+    _voiceLevel = (_voiceLevel * 0.40) + (clamped * 0.60);
+    _surgeOffset += 0.08 + (_voiceLevel * 0.22);
+    setState(() {});
+  }
+
   /// Klavyede her karakter basıldığında dalgayı yukarı fırlatan ve dalgalandıran metot
   void pulse() {
     if (!mounted) return;
@@ -786,8 +833,8 @@ class MysticalWavesState extends State<MysticalWaves>
     // Zirveye vurup sönümlenen nabız animasyonu
     _pulseController.forward(from: 0.0);
 
-    // Eğer mesaj gönderimi gibi kilitli aktiflik yoksa, yazma esnasında dalgayı görünür kıl
-    if (!_isLockedActive) {
+    // Eğer mesaj gönderimi gibi kilitli aktiflik veya ses kaydı yoksa, yazma esnasında dalgayı görünür kıl
+    if (!_isLockedActive && !_isVoiceActive) {
       if (_visibilityController.value < 0.70) {
         _visibilityController.animateTo(
           0.70,
@@ -799,7 +846,7 @@ class MysticalWavesState extends State<MysticalWaves>
       // Kullanıcı yazmayı bıraktıktan 1.3 saniye sonra dalgayı sakince aşağı çek
       _typingIdleTimer?.cancel();
       _typingIdleTimer = Timer(const Duration(milliseconds: 1300), () {
-        if (mounted && !_isLockedActive) {
+        if (mounted && !_isLockedActive && !_isVoiceActive) {
           _visibilityController.animateTo(
             0.0,
             duration: const Duration(milliseconds: 650),
@@ -837,33 +884,71 @@ class MysticalWavesState extends State<MysticalWaves>
         if (vis <= 0.01) return const SizedBox.shrink();
 
         final pulseVal = _pulseAnimation.value;
-        final currentHeight = widget.height * vis * (1.0 + 0.22 * pulseVal);
+        // Dinamik yükseklik: Hem klavye nabzı hem de gerçek zamanlı ses desibeli
+        final dynamicBoost = (0.22 * pulseVal) + (0.55 * _voiceLevel);
+        final currentHeight = widget.height * vis * (1.0 + dynamicBoost);
 
         return ClipRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(
-              sigmaX: (30 + 12 * pulseVal) * vis,
-              sigmaY: (30 + 12 * pulseVal) * vis,
+              sigmaX: (30 + 12 * pulseVal + 16 * _voiceLevel) * vis,
+              sigmaY: (30 + 12 * pulseVal + 16 * _voiceLevel) * vis,
             ),
             child: SizedBox(
               height: currentHeight,
               width: MediaQuery.of(context).size.width,
               child: Stack(
-                children: List.generate(
-                  _waveColors.length,
-                  (index) => CustomPaint(
-                    size: Size.infinite,
-                    painter: _WavePainter(
-                      waveColor: _waveColors[index],
-                      animation: _waveController,
-                      waveOffset: index * 0.4 + _surgeOffset,
-                      amplitude: (25 - (index * 5)) * (1.0 + 1.15 * pulseVal),
-                      frequency: 1.5 + (index * 0.5) + (0.35 * pulseVal),
-                      blur: (30 + 10 * pulseVal) * vis,
-                      opacity: ((0.5 + 0.3 * pulseVal) * vis).clamp(0.0, 1.0),
+                children: [
+                  // Ses etkileşimli arka plan Aura Mesh parıltısı
+                  if (_isVoiceActive || _voiceLevel > 0.02)
+                    Positioned.fill(
+                      child: IgnorePointer(
+                        child: DecoratedBox(
+                          decoration: BoxDecoration(
+                            gradient: RadialGradient(
+                              center: const Alignment(0.0, 1.0),
+                              radius: 1.25,
+                              colors: [
+                                const Color(0xFF10B981).withValues(
+                                  alpha: (0.30 + 0.35 * _voiceLevel) * vis,
+                                ),
+                                const Color(0xFF06B6D4).withValues(
+                                  alpha: (0.20 + 0.28 * _voiceLevel) * vis,
+                                ),
+                                const Color(0xFF8B5CF6).withValues(
+                                  alpha: (0.10 + 0.20 * _voiceLevel) * vis,
+                                ),
+                                Colors.transparent,
+                              ],
+                              stops: const [0.0, 0.40, 0.70, 1.0],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+
+                  // Canlı Sıvı Dalgalar
+                  ...List.generate(
+                    _waveColors.length,
+                    (index) => CustomPaint(
+                      size: Size.infinite,
+                      painter: _WavePainter(
+                        waveColor: _waveColors[index],
+                        animation: _waveController,
+                        waveOffset: index * 0.35 + _surgeOffset,
+                        amplitude: (25 - (index * 4.5)) *
+                            (1.0 + 1.15 * pulseVal + 2.2 * _voiceLevel),
+                        frequency: 1.5 +
+                            (index * 0.45) +
+                            (0.35 * pulseVal) +
+                            (0.85 * _voiceLevel),
+                        blur: (30 + 10 * pulseVal + 14 * _voiceLevel) * vis,
+                        opacity: ((0.50 + 0.30 * pulseVal + 0.35 * _voiceLevel) * vis)
+                            .clamp(0.0, 1.0),
+                      ),
                     ),
                   ),
-                ),
+                ],
               ),
             ),
           ),

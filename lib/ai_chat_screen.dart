@@ -105,11 +105,13 @@ class _AIChatScreenState extends State<AIChatScreen>
           if (!mounted) return;
           if (status == 'notListening' || status == 'done') {
             setState(() => _isListening = false);
+            _bottomWavesKey.currentState?.setVoiceActive(false);
           }
         },
         onError: (_) {
           if (!mounted) return;
           setState(() => _isListening = false);
+          _bottomWavesKey.currentState?.setVoiceActive(false);
         },
       );
     } catch (_) {}
@@ -122,7 +124,10 @@ class _AIChatScreenState extends State<AIChatScreen>
       }
       await _speech.cancel();
     } catch (_) {}
-    if (mounted) setState(() => _isListening = false);
+    if (mounted) {
+      setState(() => _isListening = false);
+      _bottomWavesKey.currentState?.setVoiceActive(false);
+    }
   }
 
   Future<void> _toggleListening() async {
@@ -148,6 +153,7 @@ class _AIChatScreenState extends State<AIChatScreen>
     }
 
     setState(() => _isListening = true);
+    _bottomWavesKey.currentState?.setVoiceActive(true);
 
     try {
       await _speech.listen(
@@ -156,6 +162,13 @@ class _AIChatScreenState extends State<AIChatScreen>
           partialResults: true,
           cancelOnError: false,
         ),
+        onSoundLevelChange: (level) {
+          if (!mounted || !_isListening) return;
+          // Android/iOS STT seviyesi: dB (-30..10) veya standart 0..10
+          final raw = level.isNegative ? (level + 24).clamp(0.0, 30.0) : level;
+          final normalized = (raw / 10.0).clamp(0.0, 1.0);
+          _bottomWavesKey.currentState?.updateVoiceLevel(normalized);
+        },
         onResult: (result) {
           if (!mounted) return;
           setState(() {
@@ -171,7 +184,10 @@ class _AIChatScreenState extends State<AIChatScreen>
         },
       );
     } catch (_) {
-      if (mounted) setState(() => _isListening = false);
+      if (mounted) {
+        setState(() => _isListening = false);
+        _bottomWavesKey.currentState?.setVoiceActive(false);
+      }
     }
   }
 
@@ -1695,7 +1711,36 @@ class _AIChatScreenState extends State<AIChatScreen>
             ),
           ),
 
-          // 2. Klavyenin Tam Üstünden "Bir Şeyler Yaz" ve Baloncuklara Doğru Yukarı Atan Mistik Dalgalar
+          // 2. Alt Ambiyans Aura Parıltısı (Mikrofonla konuşurken ve klavyede canlanan ışıma)
+          Positioned(
+            bottom: -30,
+            left: 0,
+            right: 0,
+            height: _isListening ? 310 : 210,
+            child: IgnorePointer(
+              child: AnimatedContainer(
+                duration: const Duration(milliseconds: 400),
+                curve: Curves.easeOutCubic,
+                decoration: BoxDecoration(
+                  gradient: RadialGradient(
+                    center: const Alignment(0.0, 1.0),
+                    radius: _isListening ? 1.2 : 0.8,
+                    colors: [
+                      const Color(0xFF10B981).withValues(
+                        alpha: isDark ? (_isListening ? 0.28 : 0.10) : (_isListening ? 0.32 : 0.14),
+                      ),
+                      const Color(0xFF06B6D4).withValues(
+                        alpha: isDark ? (_isListening ? 0.18 : 0.05) : (_isListening ? 0.20 : 0.08),
+                      ),
+                      Colors.transparent,
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ),
+
+          // 3. Klavyenin Tam Üstünden "Bir Şeyler Yaz" ve Baloncuklara Doğru Yukarı Atan Mistik Dalgalar (Aura Mesh)
           Positioned(
             bottom: 0,
             left: 0,
@@ -1703,8 +1748,8 @@ class _AIChatScreenState extends State<AIChatScreen>
             child: IgnorePointer(
               child: MysticalWaves(
                 key: _bottomWavesKey,
-                height: 145,
-                animationDuration: const Duration(milliseconds: 400),
+                height: 150,
+                animationDuration: const Duration(milliseconds: 350),
                 waveDuration: const Duration(seconds: 3),
                 waveColors: [
                   const Color(0xFF10B981).withValues(alpha: 0.65), // Emerald

@@ -11,6 +11,7 @@ import 'format_yardimcisi.dart';
 import 'user_model.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
+import 'widgets/glass_empty_state.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -626,11 +627,14 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
 
         final odemeler = snapshot.data ?? [];
         if (odemeler.isEmpty) {
-          return Center(
-            child: Text(
-              'Kay\u0131tl\u0131 \u00F6deme yok.',
-              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
-            ),
+          return GlassEmptyState(
+            icon: Icons.payments_outlined,
+            title: 'Kayıtlı Ödeme Bulunmuyor',
+            description:
+                'Şantiyelerinizden tahsil edilen hakediş ve kasa girişlerini buradan takip edebilirsiniz.',
+            actionLabel: 'Yeni Ödeme Ekle',
+            actionIcon: Icons.add,
+            onAction: () => _odemeEkleDialog(context, servisi),
           );
         }
 
@@ -678,11 +682,14 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
 
         final avanslar = snapshot.data ?? [];
         if (avanslar.isEmpty) {
-          return Center(
-            child: Text(
-              'Kay\u0131tl\u0131 avans yok.',
-              style: TextStyle(color: isDark ? Colors.white70 : Colors.black54),
-            ),
+          return GlassEmptyState(
+            icon: Icons.account_balance_wallet_outlined,
+            title: 'Kayıtlı Avans Bulunmuyor',
+            description:
+                'Çalışanlarınıza verilen avans ve ara ödemeler burada listelenir.',
+            actionLabel: 'Yeni Avans Ekle',
+            actionIcon: Icons.add,
+            onAction: () => _avansEkleDialog(context, servisi),
           );
         }
 

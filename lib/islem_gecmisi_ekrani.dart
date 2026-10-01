@@ -7,6 +7,7 @@ import 'package:intl/intl.dart';
 import 'firestore_servisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
+import 'widgets/glass_empty_state.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
 
@@ -754,24 +755,11 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                   }
 
                   if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-                    return Center(
-                      child: Column(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          Icon(
-                            Icons.history_toggle_off,
-                            size: 80,
-                            color: isDark ? Colors.white24 : Colors.black26,
-                          ),
-                          const SizedBox(height: 16),
-                          Text(
-                            'Henüz işlem geçmişi yok.',
-                            style: TextStyle(
-                              color: isDark ? Colors.white60 : Colors.black54,
-                            ),
-                          ),
-                        ],
-                      ),
+                    return const GlassEmptyState(
+                      icon: Icons.history_toggle_off_rounded,
+                      title: 'İşlem Geçmişi Boş',
+                      description:
+                          'Şantiye, çalışan veya puantaj kayıtları üzerinde gerçekleştirilen tüm işlemler burada kronolojik olarak listelenir.',
                     );
                   }
 
