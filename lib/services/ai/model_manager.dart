@@ -1,8 +1,3 @@
-import 'dart:convert';
-
-import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:shared_preferences/shared_preferences.dart';
-
 class ModelManager {
   static Future<void> initialize() async {}
 }

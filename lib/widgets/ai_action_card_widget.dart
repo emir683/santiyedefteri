@@ -42,6 +42,8 @@ class _AIActionCardWidgetState extends State<AIActionCardWidget> {
         return Icons.analytics_rounded;
       case AIActionType.workerMonthlySummary:
         return Icons.account_balance_wallet_rounded;
+      case AIActionType.materialCalculation:
+        return Icons.calculate_rounded;
     }
   }
 
@@ -59,6 +61,8 @@ class _AIActionCardWidgetState extends State<AIActionCardWidget> {
         return const Color(0xFF06B6D4);
       case AIActionType.workerMonthlySummary:
         return const Color(0xFF0D9488);
+      case AIActionType.materialCalculation:
+        return const Color(0xFFF59E0B);
     }
   }
 
@@ -431,6 +435,15 @@ class _AIActionCardWidgetState extends State<AIActionCardWidget> {
         rows.add(_buildInfoRow('💸 Verilen Avans:', '${d['total_advance'] ?? 0} ₺'));
         final net = (d['net_balance'] ?? 0) as num;
         rows.add(_buildInfoRow('⚖️ Kalan Alacak:', '$net ₺', isHighlight: true, highlightColor: net >= 0 ? const Color(0xFF10B981) : Colors.redAccent));
+        break;
+      case AIActionType.materialCalculation:
+        rows.add(_buildInfoRow('📐 Ölçüt:', '${d['primaryLabel'] ?? 'Alan'}: ${d['primaryValue'] ?? 0} ${d['primaryUnit'] ?? 'm²'}'));
+        if (d['secondaryValue'] != null) {
+          rows.add(_buildInfoRow('📏 Boyut:', '${d['secondaryLabel'] ?? 'Kalınlık'}: ${d['secondaryValue']} ${d['secondaryUnit'] ?? 'cm'}'));
+        }
+        rows.add(_buildInfoRow('📦 Sipariş Miktarı:', '${d['anaMiktar'] ?? '—'}', isHighlight: true));
+        rows.add(_buildInfoRow('🚚 Lojistik & Ambalaj:', '${d['lojistik'] ?? '—'}'));
+        rows.add(_buildInfoRow('💰 Tahmini Maliyet:', '${d['toplamMaliyet'] ?? 0} ₺', isHighlight: true));
         break;
     }
 

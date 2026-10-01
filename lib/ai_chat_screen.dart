@@ -9,10 +9,12 @@ import 'models/ai_action_model.dart';
 import 'services/ai/ai_service.dart';
 import 'services/ai/ai_rate_limiter.dart';
 import 'widgets/ai_action_card_widget.dart';
+import 'widgets/material_calculation_card_widget.dart';
 import 'widgets/gemini_splash_effect.dart';
 import 'firestore_servisi.dart';
 import 'data_models.dart';
 import 'user_model.dart';
+import 'services/ai/tts_service.dart';
 
 class AIChatScreen extends StatefulWidget {
   final String teamId;
@@ -40,13 +42,17 @@ class _AIChatScreenState extends State<AIChatScreen>
 
   final List<AIChatMessage> _messages = [];
   bool _isProcessing = false;
-  int _remainingAiQuota = 10;
+  int _remainingAiQuota = AiRateLimiter.dailyLimit;
   final GlobalKey<MysticalWavesState> _bottomWavesKey = GlobalKey();
 
   // Ses Motoru
   late stt.SpeechToText _speech;
   bool _isListening = false;
   bool _speechInitialized = false;
+
+  // TTS Seslendirme Servisi
+  final TtsService _ttsService = TtsService();
+  bool _autoVoicePlayback = true; // Akıllı Mod: Sesle konuşunca otomatik okur
 
   // Animasyon
   late AnimationController _waveAnimController;
@@ -66,13 +72,18 @@ class _AIChatScreenState extends State<AIChatScreen>
     _loadQuota();
     AIService.setRateLimitChecker(() => AiRateLimiter.checkAndIncrement());
 
+    _ttsService.init();
+    _ttsService.onStateChanged = () {
+      if (mounted) setState(() {});
+    };
+
     _textController.addListener(() {
       if (mounted) setState(() {});
     });
 
     if (widget.initialPrompt != null && widget.initialPrompt!.trim().isNotEmpty) {
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        _handleSendText(widget.initialPrompt!);
+        _handleSendText(widget.initialPrompt!, isVoice: false);
       });
     }
   }
@@ -91,6 +102,7 @@ class _AIChatScreenState extends State<AIChatScreen>
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
     _stopListening();
+    _ttsService.stop();
     _waveAnimController.dispose();
     _textController.dispose();
     _scrollController.dispose();
@@ -132,10 +144,13 @@ class _AIChatScreenState extends State<AIChatScreen>
 
   Future<void> _toggleListening() async {
     HapticFeedback.lightImpact();
+    if (_ttsService.isPlaying) {
+      await _ttsService.stop();
+    }
     if (_isListening) {
       await _stopListening();
       if (_textController.text.trim().isNotEmpty) {
-        _handleSendText(_textController.text);
+        _handleSendText(_textController.text, isVoice: true);
       }
       return;
     }
@@ -164,9 +179,19 @@ class _AIChatScreenState extends State<AIChatScreen>
         ),
         onSoundLevelChange: (level) {
           if (!mounted || !_isListening) return;
-          // Android/iOS STT seviyesi: dB (-30..10) veya standart 0..10
-          final raw = level.isNegative ? (level + 24).clamp(0.0, 30.0) : level;
-          final normalized = (raw / 10.0).clamp(0.0, 1.0);
+          // Android/iOS STT seviyesi: dB (-60..10) veya lineer (0..10)
+          double normalized = 0.0;
+          if (level.isNegative) {
+            // dB ölçeği: Ortam gürültüsünü (-18 dB altı) filtrele
+            if (level > -18.0) {
+              normalized = ((level + 18.0) / 16.0).clamp(0.0, 1.0);
+            }
+          } else {
+            // Lineer (0..10) ölçeği: Düşük dip gürültüsünü filtrele
+            if (level > 1.2) {
+              normalized = ((level - 1.2) / 7.0).clamp(0.0, 1.0);
+            }
+          }
           _bottomWavesKey.currentState?.updateVoiceLevel(normalized);
         },
         onResult: (result) {
@@ -178,7 +203,7 @@ class _AIChatScreenState extends State<AIChatScreen>
           if (result.finalResult) {
             _stopListening();
             if (_textController.text.trim().isNotEmpty) {
-              _handleSendText(_textController.text);
+              _handleSendText(_textController.text, isVoice: true);
             }
           }
         },
@@ -212,9 +237,13 @@ class _AIChatScreenState extends State<AIChatScreen>
     });
   }
 
-  Future<void> _handleSendText(String text) async {
+  Future<void> _handleSendText(String text, {bool isVoice = false}) async {
     final trimmed = text.trim();
     if (trimmed.isEmpty || _isProcessing) return;
+
+    if (_ttsService.isPlaying) {
+      _ttsService.stop();
+    }
 
     // Kullanıcı mesajı gönderdiği anda klavyeyi anında kapat
     FocusManager.instance.primaryFocus?.unfocus();
@@ -266,6 +295,11 @@ class _AIChatScreenState extends State<AIChatScreen>
         _bottomWavesKey.currentState?.stopAnimation();
         _loadQuota();
         _scrollToBottom();
+
+        // Akıllı Mod: Kullanıcı sesle sorduysa ve sesli yanıt açıksa otomatik seslendir
+        if (_autoVoicePlayback && isVoice) {
+          _ttsService.speak(aiMsg.id, aiMsg.text);
+        }
       }
     } catch (e) {
       if (mounted) {
@@ -448,6 +482,9 @@ class _AIChatScreenState extends State<AIChatScreen>
 
       case AIActionType.siteMonthlySummary:
       case AIActionType.workerMonthlySummary:
+      case AIActionType.materialCalculation:
+        // Malzeme hesaplama kartları kendi widget'ı üzerinden interaktif çalışır;
+        // onConfirm ile veritabanı aksiyonu gerektirmez.
         return;
     }
 
@@ -1320,7 +1357,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                     ),
                   ),
                   Text(
-                    'Kalan kullanım hakkı: $_remainingAiQuota',
+                    'Kalan kullanım hakkı: $_remainingAiQuota / ${AiRateLimiter.dailyLimit}',
                     style: GoogleFonts.poppins(
                       fontSize: 11,
                       color: const Color(0xFF10B981),
@@ -1405,10 +1442,11 @@ class _AIChatScreenState extends State<AIChatScreen>
   // ─────────────────────────────────────────────────────────────
   void _showQuotaInfoDialog(bool isDark) {
     _loadQuota();
+    final limit = AiRateLimiter.dailyLimit;
     showDialog(
       context: context,
       builder: (ctx) {
-        final percent = (_remainingAiQuota / 10.0).clamp(0.0, 1.0);
+        final percent = (_remainingAiQuota / limit).clamp(0.0, 1.0);
         final isLow = _remainingAiQuota <= 2;
         final statusColor = isLow ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
 
@@ -1503,7 +1541,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                             ),
                           ),
                           TextSpan(
-                            text: ' / 10 ',
+                            text: ' / $limit ',
                             style: GoogleFonts.poppins(
                               fontSize: 20,
                               fontWeight: FontWeight.w600,
@@ -1540,7 +1578,7 @@ class _AIChatScreenState extends State<AIChatScreen>
               _quotaInfoItem(
                 Icons.restore_rounded,
                 'Her Gece Sıfırlanır',
-                'Günlük 10 soru hakkınız her gece saat 00:00\'da otomatik olarak yenilenir.',
+                'Günlük $limit soru hakkınız her gece saat 00:00\'da otomatik olarak yenilenir.',
                 isDark,
               ),
               const SizedBox(height: 10),
@@ -1624,6 +1662,7 @@ class _AIChatScreenState extends State<AIChatScreen>
   // TOP BAR KALAN HAK ROZETİ (TIKLANABİLİR)
   // ─────────────────────────────────────────────────────────────
   Widget _buildQuotaBadge(bool isDark) {
+    final limit = AiRateLimiter.dailyLimit;
     final isLow = _remainingAiQuota <= 2;
     final color = isLow ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
 
@@ -1633,7 +1672,7 @@ class _AIChatScreenState extends State<AIChatScreen>
         onTap: () => _showQuotaInfoDialog(isDark),
         borderRadius: BorderRadius.circular(20),
         child: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 6),
+          padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
           decoration: BoxDecoration(
             color: isDark ? const Color(0xFF161A22) : Colors.white,
             borderRadius: BorderRadius.circular(20),
@@ -1644,7 +1683,7 @@ class _AIChatScreenState extends State<AIChatScreen>
             boxShadow: [
               BoxShadow(
                 color: color.withValues(alpha: isDark ? 0.2 : 0.08),
-                blurRadius: 8,
+                blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -1654,14 +1693,14 @@ class _AIChatScreenState extends State<AIChatScreen>
             children: [
               Icon(
                 Icons.bolt_rounded,
-                size: 15,
+                size: 14,
                 color: color,
               ),
-              const SizedBox(width: 3),
+              const SizedBox(width: 2),
               Text(
-                '$_remainingAiQuota/10',
+                '$_remainingAiQuota/$limit',
                 style: GoogleFonts.poppins(
-                  fontSize: 11.5,
+                  fontSize: 11,
                   fontWeight: FontWeight.w700,
                   color: isDark ? Colors.white : const Color(0xFF0F172A),
                   letterSpacing: -0.2,
@@ -1790,28 +1829,61 @@ class _AIChatScreenState extends State<AIChatScreen>
   // ─────────────────────────────────────────────────────────────
   Widget _buildTopBar(bool isDark) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 8, 16, 4),
+      padding: const EdgeInsets.fromLTRB(12, 6, 12, 4),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          // Sol Kısım: Eski Ekrandaki Gibi Geri Tuşu + "ŞPD Aİ" Kapsülü
-          Row(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              // Geri Butonu
-              Material(
-                color: Colors.transparent,
-                child: InkWell(
-                  onTap: () => Navigator.pop(context),
-                  borderRadius: BorderRadius.circular(20),
+          // Sol Kısım: Geri Tuşu + "ŞPD Aİ" Kapsülü
+          Flexible(
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                // Geri Butonu
+                Material(
+                  color: Colors.transparent,
+                  child: InkWell(
+                    onTap: () => Navigator.pop(context),
+                    borderRadius: BorderRadius.circular(20),
+                    child: Container(
+                      width: 36,
+                      height: 36,
+                      decoration: BoxDecoration(
+                        color: isDark
+                            ? const Color(0xFF161A22)
+                            : Colors.white,
+                        shape: BoxShape.circle,
+                        border: Border.all(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : const Color(0xFFE2E8F0),
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.arrow_back_ios_new_rounded,
+                        size: 15,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 6),
+
+                // "ŞPD Aİ" Kapsülü
+                Flexible(
                   child: Container(
-                    width: 40,
-                    height: 40,
+                    padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
                     decoration: BoxDecoration(
                       color: isDark
                           ? const Color(0xFF161A22)
                           : Colors.white,
-                      shape: BoxShape.circle,
+                      borderRadius: BorderRadius.circular(20),
                       border: Border.all(
                         color: isDark
                             ? Colors.white.withValues(alpha: 0.12)
@@ -1819,98 +1891,74 @@ class _AIChatScreenState extends State<AIChatScreen>
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
-                    child: Icon(
-                      Icons.arrow_back_ios_new_rounded,
-                      size: 16,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        // Uygulama Renklerinde Zümrüt/Teal Rozet
+                        Container(
+                          width: 20,
+                          height: 20,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          child: const Center(
+                            child: GeminiLogo(
+                              size: 12,
+                              color: Colors.white,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'ŞPD Aİ',
+                          style: GoogleFonts.poppins(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                      ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 8),
-
-              // "ŞPD Aİ" Kapsülü
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF161A22)
-                      : Colors.white,
-                  borderRadius: BorderRadius.circular(24),
-                  border: Border.all(
-                    color: isDark
-                        ? Colors.white.withValues(alpha: 0.12)
-                        : const Color(0xFFE2E8F0),
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 3),
-                    ),
-                  ],
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    // Uygulama Renklerinde Zümrüt/Teal Rozet
-                    Container(
-                      width: 24,
-                      height: 24,
-                      decoration: const BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: const Center(
-                        child: GeminiLogo(
-                          size: 14,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ),
-                    const SizedBox(width: 8),
-                    Text(
-                      'ŞPD Aİ',
-                      style: GoogleFonts.poppins(
-                        fontSize: 14,
-                        fontWeight: FontWeight.w700,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
-                        letterSpacing: -0.2,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
+              ],
+            ),
           ),
+          const SizedBox(width: 4),
 
-          // Sağ Kısım: Kalan Hak Rozeti + Yeni Sohbet (Varsa) + Dairesel Ayar/Rehber Butonu
+          // Sağ Kısım: Sesli Yanıt Açık/Kapalı + Kalan Hak Rozeti + Yeni Sohbet (Varsa) + Dairesel Ayar/Rehber Butonu
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
+              // Sesli Okuma Toggle Butonu
+              _buildTtsHeaderToggle(isDark),
+              const SizedBox(width: 4),
+
               // Kalan AI Soru Hakkı Kapsülü (Tıklanabilir)
               _buildQuotaBadge(isDark),
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
 
               if (_messages.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(right: 6),
+                  padding: const EdgeInsets.only(right: 4),
                   child: InkWell(
                     onTap: () => setState(() => _messages.clear()),
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(18),
                     child: Container(
-                      width: 38,
-                      height: 38,
+                      width: 35,
+                      height: 35,
                       decoration: BoxDecoration(
                         color: isDark
                             ? const Color(0xFF161A22)
@@ -1924,14 +1972,14 @@ class _AIChatScreenState extends State<AIChatScreen>
                         boxShadow: [
                           BoxShadow(
                             color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                            blurRadius: 10,
-                            offset: const Offset(0, 3),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
                           ),
                         ],
                       ),
                       child: Icon(
                         Icons.refresh_rounded,
-                        size: 18,
+                        size: 17,
                         color: isDark ? Colors.white70 : const Color(0xFF475569),
                       ),
                     ),
@@ -1943,10 +1991,10 @@ class _AIChatScreenState extends State<AIChatScreen>
                 color: Colors.transparent,
                 child: InkWell(
                   onTap: _openHelpGuide,
-                  borderRadius: BorderRadius.circular(22),
+                  borderRadius: BorderRadius.circular(18),
                   child: Container(
-                    width: 38,
-                    height: 38,
+                    width: 35,
+                    height: 35,
                     decoration: BoxDecoration(
                       color: isDark
                           ? const Color(0xFF161A22)
@@ -1960,14 +2008,14 @@ class _AIChatScreenState extends State<AIChatScreen>
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                          blurRadius: 10,
-                          offset: const Offset(0, 3),
+                          blurRadius: 8,
+                          offset: const Offset(0, 2),
                         ),
                       ],
                     ),
                     child: Icon(
                       Icons.settings_outlined,
-                      size: 19,
+                      size: 17,
                       color: isDark ? Colors.white : const Color(0xFF0F172A),
                     ),
                   ),
@@ -1976,6 +2024,161 @@ class _AIChatScreenState extends State<AIChatScreen>
             ],
           ),
         ],
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // TTS (SESLİ YANIT) ÜST BAR BUTONU
+  // ─────────────────────────────────────────────────────────────
+  Widget _buildTtsHeaderToggle(bool isDark) {
+    return InkWell(
+      onTap: () {
+        HapticFeedback.selectionClick();
+        setState(() {
+          _autoVoicePlayback = !_autoVoicePlayback;
+        });
+        if (!_autoVoicePlayback && _ttsService.isPlaying) {
+          _ttsService.stop();
+        }
+        ScaffoldMessenger.of(context).hideCurrentSnackBar();
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            duration: const Duration(seconds: 2),
+            backgroundColor:
+                isDark ? const Color(0xFF1E293B) : const Color(0xFF0F172A),
+            behavior: SnackBarBehavior.floating,
+            shape:
+                RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            content: Row(
+              children: [
+                Icon(
+                  _autoVoicePlayback
+                      ? Icons.volume_up_rounded
+                      : Icons.volume_off_rounded,
+                  color: _autoVoicePlayback
+                      ? const Color(0xFF10B981)
+                      : Colors.orangeAccent,
+                  size: 20,
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    _autoVoicePlayback
+                        ? 'Sesli Yanıt Açık (Sesle sorduğunuzda okunur)'
+                        : 'Sesli Yanıt Kapalı (Yalnızca Dinle butonuyla okunur)',
+                    style: GoogleFonts.poppins(
+                        fontSize: 12.5, color: Colors.white),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        );
+      },
+      borderRadius: BorderRadius.circular(18),
+      child: Container(
+        width: 35,
+        height: 35,
+        decoration: BoxDecoration(
+          color: _autoVoicePlayback
+              ? (isDark
+                  ? const Color(0xFF10B981).withValues(alpha: 0.16)
+                  : const Color(0xFFE6FBF5))
+              : (isDark ? const Color(0xFF161A22) : Colors.white),
+          shape: BoxShape.circle,
+          border: Border.all(
+            color: _autoVoicePlayback
+                ? const Color(0xFF10B981).withValues(alpha: 0.45)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.12)
+                    : const Color(0xFFE2E8F0)),
+            width: _autoVoicePlayback ? 1.4 : 1.0,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: _autoVoicePlayback
+                  ? const Color(0xFF10B981).withValues(alpha: 0.20)
+                  : Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+              blurRadius: 10,
+              offset: const Offset(0, 3),
+            ),
+          ],
+        ),
+        child: Icon(
+          _autoVoicePlayback
+              ? Icons.volume_up_rounded
+              : Icons.volume_off_rounded,
+          size: 17,
+          color: _autoVoicePlayback
+              ? const Color(0xFF10B981)
+              : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+        ),
+      ),
+    );
+  }
+
+  // ─────────────────────────────────────────────────────────────
+  // TTS (SESLİ YANIT) MESAJ KUTUCUĞU DİNLE/DURDUR BUTONU
+  // ─────────────────────────────────────────────────────────────
+  Widget _buildTtsMessageButton(AIChatMessage msg, bool isDark) {
+    final isSpeakingThis =
+        _ttsService.isPlaying && _ttsService.currentlySpeakingId == msg.id;
+
+    return Material(
+      color: Colors.transparent,
+      child: InkWell(
+        onTap: () {
+          HapticFeedback.lightImpact();
+          _ttsService.toggleSpeak(msg.id, msg.text);
+        },
+        borderRadius: BorderRadius.circular(14),
+        child: AnimatedContainer(
+          duration: const Duration(milliseconds: 200),
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+          decoration: BoxDecoration(
+            color: isSpeakingThis
+                ? const Color(0xFF10B981).withValues(alpha: 0.18)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.06)
+                    : const Color(0xFFF1F5F9)),
+            borderRadius: BorderRadius.circular(14),
+            border: Border.all(
+              color: isSpeakingThis
+                  ? const Color(0xFF10B981).withValues(alpha: 0.45)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : const Color(0xFFE2E8F0)),
+              width: isSpeakingThis ? 1.2 : 0.8,
+            ),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(
+                isSpeakingThis
+                    ? Icons.stop_circle_rounded
+                    : Icons.volume_up_rounded,
+                size: 14,
+                color: isSpeakingThis
+                    ? const Color(0xFF10B981)
+                    : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+              ),
+              const SizedBox(width: 4),
+              Text(
+                isSpeakingThis ? 'Durdur' : 'Dinle',
+                style: GoogleFonts.poppins(
+                  fontSize: 10.5,
+                  fontWeight:
+                      isSpeakingThis ? FontWeight.w600 : FontWeight.w500,
+                  color: isSpeakingThis
+                      ? const Color(0xFF10B981)
+                      : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -2637,29 +2840,36 @@ class _AIChatScreenState extends State<AIChatScreen>
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisSize: MainAxisSize.min,
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
-                  Container(
-                    width: 16,
-                    height: 16,
-                    decoration: const BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Container(
+                        width: 16,
+                        height: 16,
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                          ),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const Icon(Icons.auto_awesome_rounded,
+                            color: Colors.white, size: 10),
                       ),
-                      shape: BoxShape.circle,
-                    ),
-                    child: const Icon(Icons.auto_awesome_rounded,
-                        color: Colors.white, size: 10),
+                      const SizedBox(width: 6),
+                      Text(
+                        'ŞPD Aİ',
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF10B981),
+                        ),
+                      ),
+                    ],
                   ),
-                  const SizedBox(width: 6),
-                  Text(
-                    'ŞPD Aİ',
-                    style: GoogleFonts.poppins(
-                      fontSize: 11,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF10B981),
-                    ),
-                  ),
+                  // Sesli Dinle / Durdur Butonu
+                  _buildTtsMessageButton(msg, isDark),
                 ],
               ),
               const SizedBox(height: 6),
@@ -2673,12 +2883,32 @@ class _AIChatScreenState extends State<AIChatScreen>
                 ),
               ),
               if (msg.actionCard != null)
-                AIActionCardWidget(
-                  cardData: msg.actionCard!,
-                  onConfirm: _handleCardConfirm,
-                  onEdit: () => _openEditModal(msg.actionCard!),
-                  isDark: isDark,
-                ),
+                msg.actionCard!.type == AIActionType.materialCalculation
+                    ? MaterialCalculationCardWidget(
+                        key: ValueKey(msg.actionCard!.id),
+                        cardData: msg.actionCard!,
+                        isDark: isDark,
+                        onUpdate: (updatedCard) {
+                          setState(() {
+                            final idx = _messages.indexWhere((m) => m.id == msg.id);
+                            if (idx != -1) {
+                              _messages[idx] = AIChatMessage(
+                                id: msg.id,
+                                text: msg.text,
+                                isUser: msg.isUser,
+                                timestamp: msg.timestamp,
+                                actionCard: updatedCard,
+                              );
+                            }
+                          });
+                        },
+                      )
+                    : AIActionCardWidget(
+                        cardData: msg.actionCard!,
+                        onConfirm: _handleCardConfirm,
+                        onEdit: () => _openEditModal(msg.actionCard!),
+                        isDark: isDark,
+                      ),
             ],
           ),
         ),
@@ -2794,7 +3024,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                       border: InputBorder.none,
                       contentPadding: const EdgeInsets.symmetric(vertical: 12),
                     ),
-                    onSubmitted: _handleSendText,
+                    onSubmitted: (t) => _handleSendText(t, isVoice: false),
                   ),
                 ),
                 const SizedBox(width: 6),
@@ -2803,7 +3033,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                 InkWell(
                   onTap: () {
                     if (hasText) {
-                      _handleSendText(_textController.text);
+                      _handleSendText(_textController.text, isVoice: false);
                     } else {
                       _toggleListening();
                     }

@@ -14,11 +14,11 @@ class AiRateLimiter {
     try {
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid == null) {
-        // Giriş yapılmamışsa izin verme
-        return RateLimitResult(
-          allowed: false,
-          remaining: 0,
-          reason: 'login_required',
+        // Oturum açılmamışsa dahi misafir olarak geçici izin ver (kullanıcıyı engelleme)
+        return const RateLimitResult(
+          allowed: true,
+          remaining: 5,
+          reason: 'guest',
         );
       }
 
@@ -88,6 +88,8 @@ class AiRateLimiter {
     }
   }
 
+  static int get dailyLimit => _dailyLimit;
+
   static String _todayKey() {
     final now = DateTime.now();
     return '${now.year}-${now.month.toString().padLeft(2, '0')}-${now.day.toString().padLeft(2, '0')}';
@@ -100,10 +102,12 @@ class RateLimitResult {
   final bool allowed;
   final int remaining;
   final String reason;
+  final int limit;
 
   const RateLimitResult({
     required this.allowed,
     required this.remaining,
     required this.reason,
+    this.limit = AiRateLimiter._dailyLimit,
   });
 }

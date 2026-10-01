@@ -3,6 +3,7 @@ import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
 import 'package:pdf/pdf.dart';
@@ -71,6 +72,11 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
     with SingleTickerProviderStateMixin {
   DateTime _seciliAy = DateTime.now();
   DateTimeRange? _seciliTarihAraligi;
+  bool _finansDetayAcik = false;
+  bool _personelKartAcik = true;
+  String _personelFiltre = 'Tümü';
+  bool _operasyonelKartAcik = true;
+  int _operasyonelSekme = 0; // 0: Kategoriye Göre, 1: Harcayan Kişiye Göre
 
   // Rehber Tur Anahtarları
   final GlobalKey _dateSelectorKey = GlobalKey();
@@ -98,11 +104,13 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
     _demoSlideAnimation = Tween<Offset>(
       begin: const Offset(0, -0.15),
       end: Offset.zero,
-    ).animate(CurvedAnimation(
-      parent: _demoAnimController,
-      curve: Curves.easeOutBack,
-      reverseCurve: Curves.easeInCubic,
-    ));
+    ).animate(
+      CurvedAnimation(
+        parent: _demoAnimController,
+        curve: Curves.easeOutBack,
+        reverseCurve: Curves.easeInCubic,
+      ),
+    );
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _turKontrol();
@@ -198,7 +206,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
               margin: const EdgeInsets.fromLTRB(16, 0, 16, 12),
               padding: const EdgeInsets.all(16),
               decoration: BoxDecoration(
-                color: isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
+                color:
+                    isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
                 borderRadius: BorderRadius.circular(18),
                 border: Border.all(
                   color: const Color(0xFF14B8A6).withValues(alpha: 0.3),
@@ -212,15 +221,24 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                       Container(
                         padding: const EdgeInsets.all(8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFF14B8A6).withValues(alpha: 0.15),
+                          color: const Color(
+                            0xFF14B8A6,
+                          ).withValues(alpha: 0.15),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.auto_graph_rounded, color: Color(0xFF14B8A6), size: 20),
+                        child: const Icon(
+                          Icons.auto_graph_rounded,
+                          color: Color(0xFF14B8A6),
+                          size: 20,
+                        ),
                       ),
                       const SizedBox(width: 10),
                       const Text(
                         "Örnek Dönem Özeti",
-                        style: TextStyle(fontWeight: FontWeight.bold, fontSize: 15),
+                        style: TextStyle(
+                          fontWeight: FontWeight.bold,
+                          fontSize: 15,
+                        ),
                       ),
                     ],
                   ),
@@ -231,15 +249,30 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
+                            color:
+                                isDark
+                                    ? Colors.white.withValues(alpha: 0.04)
+                                    : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Toplam Hakediş", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                              Text(
+                                "Toplam Hakediş",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              const Text("84.500,00 TL", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              const Text(
+                                "84.500,00 TL",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -249,15 +282,30 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         child: Container(
                           padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
+                            color:
+                                isDark
+                                    ? Colors.white.withValues(alpha: 0.04)
+                                    : Colors.white,
                             borderRadius: BorderRadius.circular(12),
                           ),
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text("Saha Giderleri", style: TextStyle(fontSize: 12, color: Colors.grey[500])),
+                              Text(
+                                "Saha Giderleri",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                ),
+                              ),
                               const SizedBox(height: 4),
-                              const Text("12.300,00 TL", style: TextStyle(fontWeight: FontWeight.bold, fontSize: 14)),
+                              const Text(
+                                "12.300,00 TL",
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
                             ],
                           ),
                         ),
@@ -326,9 +374,6 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
             )
             .toList()
           ..sort((a, b) => a.isci.ad.compareTo(b.isci.ad));
-    final harcamaSahipleri =
-        operasyonelHarcamaSahipleri.entries.toList()
-          ..sort((a, b) => a.key.compareTo(b.key));
     sb.writeln('--- $donem GENEL RAPORU ---');
     sb.writeln('');
     sb.writeln('PERSONEL HAKED\u0130\u015e VE ALACAK \u00d6ZET\u0130:');
@@ -1091,760 +1136,455 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
           children: [
             GlassPageSurface(
               preferSoftLightBackground: true,
-          child: Column(
-            children: [
-              SizedBox(
-                height: FloatingLiquidAppBar.topPadding(
-                  context,
-                  hasBottom: true,
-                  extra: 4,
-                ),
-              ),
-              // ORTAK TARİH SEÇİCİ
-              Padding(
-                padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 12.0),
-                child: KeyedSubtree(
-                  key: _dateSelectorKey,
-                  child: Container(
-                  decoration: BoxDecoration(
-                    color:
-                        isDark
-                            ? const Color(0xFF101317).withOpacity(0.94)
-                            : const Color(0xFFF7FBFD),
-                    borderRadius: BorderRadius.circular(16),
-                    border: Border.all(
-                      color:
-                          isDark
-                              ? Colors.white.withOpacity(0.08)
-                              : const Color(0xFFD8EAF0),
-                      width: 1.5,
-                    ),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.black.withOpacity(0.05),
-                        blurRadius: 10,
-                      ),
-                    ],
-                  ),
-                  child: ListTile(
-                    leading: Container(
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: _kBrandTeal.withOpacity(0.12),
-                        borderRadius: BorderRadius.circular(8),
-                      ),
-                      child: const Icon(
-                        Icons.calendar_month,
-                        color: _kBrandTealDark,
-                      ),
-                    ),
-                    title: Text(
-                      _donemBaslikMetni,
-                      style: const TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 18,
-                      ),
-                    ),
-                    subtitle:
-                        _ozelAralikAktif
-                            ? const Text("Seçili gün aralığı")
-                            : const Text("Aylık görünüm"),
-                    trailing: Wrap(
-                      spacing: 6,
-                      children: [
-                        IconButton(
-                          tooltip: "Ay Seç",
-                          onPressed: () => _aySeciciGoster(context),
-                          icon: const Icon(Icons.date_range_outlined),
-                        ),
-                        IconButton(
-                          tooltip: "Gün Aralığı Seç",
-                          onPressed: () => _tarihAraligiSeciciGoster(context),
-                          icon: const Icon(Icons.tune_rounded),
-                        ),
-                      ],
+              child: Column(
+                children: [
+                  SizedBox(
+                    height: FloatingLiquidAppBar.topPadding(
+                      context,
+                      hasBottom: true,
+                      extra: 4,
                     ),
                   ),
-                ),
-              ),
-            ),
-            _buildDemoSummaryCards(isDark),
-
-              // VERİ ZİNCİRİ
-              Expanded(
-                child: StreamBuilder<List<Santiye>>(
-                  stream: servisi.getSantiyelerStream(widget.teamId),
-                  builder: (context, snapSantiyeler) {
-                    final santiyeler = snapSantiyeler.data ?? [];
-
-                    return StreamBuilder<List<Isci>>(
-                      stream: servisi.getIscilerStream(widget.teamId),
-                      builder: (context, snapIsciler) {
-                        final isciler = snapIsciler.data ?? [];
-
-                        return StreamBuilder<List<GunlukSantiyeRaporu>>(
-                          stream: servisi.getRaporlarStream(
-                            widget.teamId,
-                            baslangic,
-                            bitis,
+                  // ORTAK TARİH SEÇİCİ
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 12.0),
+                    child: KeyedSubtree(
+                      key: _dateSelectorKey,
+                      child: Container(
+                        decoration: _buildPanelGlassCardDecoration(
+                          isDark,
+                          borderRadius: BorderRadius.circular(16),
+                        ),
+                        child: ListTile(
+                          leading: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: _kBrandTeal.withOpacity(0.12),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.calendar_month,
+                              color: _kBrandTealDark,
+                            ),
                           ),
-                          builder: (context, snapRaporlar) {
-                            final raporlar = snapRaporlar.data ?? [];
+                          title: Text(
+                            _donemBaslikMetni,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 18,
+                            ),
+                          ),
+                          subtitle:
+                              _ozelAralikAktif
+                                  ? const Text("Seçili gün aralığı")
+                                  : const Text("Aylık görünüm"),
+                          trailing: Wrap(
+                            spacing: 6,
+                            children: [
+                              IconButton(
+                                tooltip: "Ay Seç",
+                                onPressed: () => _aySeciciGoster(context),
+                                icon: const Icon(Icons.date_range_outlined),
+                              ),
+                              IconButton(
+                                tooltip: "Gün Aralığı Seç",
+                                onPressed:
+                                    () => _tarihAraligiSeciciGoster(context),
+                                icon: const Icon(Icons.tune_rounded),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                  _buildDemoSummaryCards(isDark),
 
-                            return StreamBuilder<List<VerilenAvans>>(
-                              stream: servisi.getAvanslarStream(widget.teamId),
-                              builder: (context, snapAvans) {
-                                final avanslar = snapAvans.data ?? [];
+                  // VERİ ZİNCİRİ
+                  Expanded(
+                    child: StreamBuilder<List<Santiye>>(
+                      stream: servisi.getSantiyelerStream(widget.teamId),
+                      builder: (context, snapSantiyeler) {
+                        final santiyeler = snapSantiyeler.data ?? [];
 
-                                return StreamBuilder<List<AlinanOdeme>>(
-                                  stream: servisi.getOdemelerStream(
+                        return StreamBuilder<List<Isci>>(
+                          stream: servisi.getIscilerStream(widget.teamId),
+                          builder: (context, snapIsciler) {
+                            final isciler = snapIsciler.data ?? [];
+
+                            return StreamBuilder<List<GunlukSantiyeRaporu>>(
+                              stream: servisi.getRaporlarStream(
+                                widget.teamId,
+                                baslangic,
+                                bitis,
+                              ),
+                              builder: (context, snapRaporlar) {
+                                final raporlar = snapRaporlar.data ?? [];
+
+                                return StreamBuilder<List<VerilenAvans>>(
+                                  stream: servisi.getAvanslarStream(
                                     widget.teamId,
                                   ),
-                                  builder: (context, snapOdemeler) {
-                                    final odemeler = snapOdemeler.data ?? [];
+                                  builder: (context, snapAvans) {
+                                    final avanslar = snapAvans.data ?? [];
 
-                                    return StreamBuilder<List<AylikFinans>>(
-                                      stream: servisi
-                                          .getTumAylikFinanslarStream(
-                                            widget.teamId,
-                                          ),
-                                      builder: (context, snapFinans) {
-                                        final tumAylikFinanslar =
-                                            snapFinans.data ??
-                                            const <AylikFinans>[];
-                                        final aylikFinans =
-                                            tumAylikFinanslar
-                                                .where(
-                                                  (finans) =>
-                                                      finans.yil ==
-                                                          _seciliAy.year &&
-                                                      finans.ay ==
-                                                          _seciliAy.month,
-                                                )
-                                                .firstOrNull ??
-                                            AylikFinans(
-                                              yil: _seciliAy.year,
-                                              ay: _seciliAy.month,
-                                            );
-                                        final araliktakiFinanslar =
-                                            tumAylikFinanslar
-                                                .where(
-                                                  (finans) =>
-                                                      _aylikFinansAralikta(
-                                                        finans,
-                                                        baslangic,
-                                                        bitis,
+                                    return StreamBuilder<List<AlinanOdeme>>(
+                                      stream: servisi.getOdemelerStream(
+                                        widget.teamId,
+                                      ),
+                                      builder: (context, snapOdemeler) {
+                                        final odemeler =
+                                            snapOdemeler.data ?? [];
+
+                                        return StreamBuilder<List<AylikFinans>>(
+                                          stream: servisi
+                                              .getTumAylikFinanslarStream(
+                                                widget.teamId,
+                                              ),
+                                          builder: (context, snapFinans) {
+                                            final tumAylikFinanslar =
+                                                snapFinans.data ??
+                                                const <AylikFinans>[];
+                                            final aylikFinans =
+                                                tumAylikFinanslar
+                                                    .where(
+                                                      (finans) =>
+                                                          finans.yil ==
+                                                              _seciliAy.year &&
+                                                          finans.ay ==
+                                                              _seciliAy.month,
+                                                    )
+                                                    .firstOrNull ??
+                                                AylikFinans(
+                                                  yil: _seciliAy.year,
+                                                  ay: _seciliAy.month,
+                                                );
+                                            final araliktakiFinanslar =
+                                                tumAylikFinanslar
+                                                    .where(
+                                                      (finans) =>
+                                                          _aylikFinansAralikta(
+                                                            finans,
+                                                            baslangic,
+                                                            bitis,
+                                                          ),
+                                                    )
+                                                    .toList();
+
+                                            // --- HESAPLAMA SIFIRLAMA ---
+                                            // Her build işleminde sıfırdan hesaplamak için map'i burada oluşturuyoruz.
+                                            final Map<
+                                              String,
+                                              MaasHesaplamaSonucu
+                                            >
+                                            hesaplar = {
+                                              for (var i in isciler)
+                                                i.ad: MaasHesaplamaSonucu(i),
+                                            };
+
+                                            // --- GENEL HESAPLAMALAR ---
+                                            double topBenzin = 0,
+                                                topYemek = 0,
+                                                topEk = 0;
+                                            final Map<
+                                              String,
+                                              OperasyonelHarcamaOzeti
+                                            >
+                                            operasyonelHarcamaSahipleri = {};
+                                            final Map<
+                                              String,
+                                              List<OperasyonelHarcamaDetay>
+                                            >
+                                            operasyonelHarcamaDetaylari = {};
+
+                                            for (var r in raporlar) {
+                                              topBenzin += r.benzinGideri;
+                                              topYemek += r.yemekGideri;
+                                              topEk += r.ekMasraflar;
+                                              if (r.benzinGideri > 0 &&
+                                                  r.benzinGideriIsciAdi !=
+                                                      null &&
+                                                  hesaplar.containsKey(
+                                                    r.benzinGideriIsciAdi,
+                                                  )) {
+                                                hesaplar[r.benzinGideriIsciAdi]!
+                                                        .toplamGiderMasrafi +=
+                                                    r.benzinGideri;
+                                                operasyonelHarcamaSahipleri
+                                                    .putIfAbsent(
+                                                      r.benzinGideriIsciAdi!,
+                                                      OperasyonelHarcamaOzeti
+                                                          .new,
+                                                    )
+                                                    .benzin += r.benzinGideri;
+                                                operasyonelHarcamaDetaylari
+                                                    .putIfAbsent(
+                                                      r.benzinGideriIsciAdi!,
+                                                      () =>
+                                                          <
+                                                            OperasyonelHarcamaDetay
+                                                          >[],
+                                                    )
+                                                    .add(
+                                                      OperasyonelHarcamaDetay(
+                                                        santiyeAdi:
+                                                            r.santiyeAdi,
+                                                        tarih: r.tarih,
+                                                        kalem: "Benzin",
+                                                        tutar: r.benzinGideri,
                                                       ),
-                                                )
-                                                .toList();
-
-                                        // --- HESAPLAMA SIFIRLAMA ---
-                                        // Her build işleminde sıfırdan hesaplamak için map'i burada oluşturuyoruz.
-                                        final Map<String, MaasHesaplamaSonucu>
-                                        hesaplar = {
-                                          for (var i in isciler)
-                                            i.ad: MaasHesaplamaSonucu(i),
-                                        };
-
-                                        // --- GENEL HESAPLAMALAR ---
-                                        double topBenzin = 0,
-                                            topYemek = 0,
-                                            topEk = 0;
-                                        final Map<
-                                          String,
-                                          OperasyonelHarcamaOzeti
-                                        >
-                                        operasyonelHarcamaSahipleri = {};
-                                        final Map<
-                                          String,
-                                          List<OperasyonelHarcamaDetay>
-                                        >
-                                        operasyonelHarcamaDetaylari = {};
-
-                                        for (var r in raporlar) {
-                                          topBenzin += r.benzinGideri;
-                                          topYemek += r.yemekGideri;
-                                          topEk += r.ekMasraflar;
-                                          if (r.benzinGideri > 0 &&
-                                              r.benzinGideriIsciAdi != null &&
-                                              hesaplar.containsKey(
-                                                r.benzinGideriIsciAdi,
-                                              )) {
-                                            hesaplar[r.benzinGideriIsciAdi]!
-                                                    .toplamGiderMasrafi +=
-                                                r.benzinGideri;
-                                            operasyonelHarcamaSahipleri
-                                                .putIfAbsent(
-                                                  r.benzinGideriIsciAdi!,
-                                                  OperasyonelHarcamaOzeti.new,
-                                                )
-                                                .benzin += r.benzinGideri;
-                                            operasyonelHarcamaDetaylari
-                                                .putIfAbsent(
-                                                  r.benzinGideriIsciAdi!,
-                                                  () =>
-                                                      <
-                                                        OperasyonelHarcamaDetay
-                                                      >[],
-                                                )
-                                                .add(
-                                                  OperasyonelHarcamaDetay(
-                                                    santiyeAdi: r.santiyeAdi,
-                                                    tarih: r.tarih,
-                                                    kalem: "Benzin",
-                                                    tutar: r.benzinGideri,
-                                                  ),
-                                                );
-                                          }
-                                          if (r.yemekGideri > 0 &&
-                                              r.yemekGideriIsciAdi != null &&
-                                              hesaplar.containsKey(
-                                                r.yemekGideriIsciAdi,
-                                              )) {
-                                            hesaplar[r.yemekGideriIsciAdi]!
-                                                    .toplamGiderMasrafi +=
-                                                r.yemekGideri;
-                                            operasyonelHarcamaSahipleri
-                                                .putIfAbsent(
-                                                  r.yemekGideriIsciAdi!,
-                                                  OperasyonelHarcamaOzeti.new,
-                                                )
-                                                .yemek += r.yemekGideri;
-                                            operasyonelHarcamaDetaylari
-                                                .putIfAbsent(
-                                                  r.yemekGideriIsciAdi!,
-                                                  () =>
-                                                      <
-                                                        OperasyonelHarcamaDetay
-                                                      >[],
-                                                )
-                                                .add(
-                                                  OperasyonelHarcamaDetay(
-                                                    santiyeAdi: r.santiyeAdi,
-                                                    tarih: r.tarih,
-                                                    kalem: "Yemek",
-                                                    tutar: r.yemekGideri,
-                                                  ),
-                                                );
-                                          }
-                                          if (r.ekMasraflar > 0 &&
-                                              r.ekMasraflarIsciAdi != null &&
-                                              hesaplar.containsKey(
-                                                r.ekMasraflarIsciAdi,
-                                              )) {
-                                            hesaplar[r.ekMasraflarIsciAdi]!
-                                                    .toplamGiderMasrafi +=
-                                                r.ekMasraflar;
-                                            operasyonelHarcamaSahipleri
-                                                .putIfAbsent(
-                                                  r.ekMasraflarIsciAdi!,
-                                                  OperasyonelHarcamaOzeti.new,
-                                                )
-                                                .ekMasraf += r.ekMasraflar;
-                                            operasyonelHarcamaDetaylari
-                                                .putIfAbsent(
-                                                  r.ekMasraflarIsciAdi!,
-                                                  () =>
-                                                      <
-                                                        OperasyonelHarcamaDetay
-                                                      >[],
-                                                )
-                                                .add(
-                                                  OperasyonelHarcamaDetay(
-                                                    santiyeAdi: r.santiyeAdi,
-                                                    tarih: r.tarih,
-                                                    kalem: "Ek Masraf",
-                                                    tutar: r.ekMasraflar,
-                                                  ),
-                                                );
-                                          }
-                                          for (var c in r.calisanlar) {
-                                            if (hesaplar.containsKey(
-                                              c.isci.ad,
-                                            )) {
-                                              if (c.durum == "Tam Gün") {
-                                                hesaplar[c.isci.ad]!.tamGun++;
-                                                hesaplar[c.isci.ad]!
-                                                        .toplamHakedis +=
-                                                    c.isci.gunlukMaas;
+                                                    );
                                               }
-                                              if (c.durum == "Yarım Gün") {
-                                                hesaplar[c.isci.ad]!.yarimGun++;
-                                                hesaplar[c.isci.ad]!
-                                                        .toplamHakedis +=
-                                                    (c.isci.gunlukMaas / 2);
+                                              if (r.yemekGideri > 0 &&
+                                                  r.yemekGideriIsciAdi !=
+                                                      null &&
+                                                  hesaplar.containsKey(
+                                                    r.yemekGideriIsciAdi,
+                                                  )) {
+                                                hesaplar[r.yemekGideriIsciAdi]!
+                                                        .toplamGiderMasrafi +=
+                                                    r.yemekGideri;
+                                                operasyonelHarcamaSahipleri
+                                                    .putIfAbsent(
+                                                      r.yemekGideriIsciAdi!,
+                                                      OperasyonelHarcamaOzeti
+                                                          .new,
+                                                    )
+                                                    .yemek += r.yemekGideri;
+                                                operasyonelHarcamaDetaylari
+                                                    .putIfAbsent(
+                                                      r.yemekGideriIsciAdi!,
+                                                      () =>
+                                                          <
+                                                            OperasyonelHarcamaDetay
+                                                          >[],
+                                                    )
+                                                    .add(
+                                                      OperasyonelHarcamaDetay(
+                                                        santiyeAdi:
+                                                            r.santiyeAdi,
+                                                        tarih: r.tarih,
+                                                        kalem: "Yemek",
+                                                        tutar: r.yemekGideri,
+                                                      ),
+                                                    );
+                                              }
+                                              if (r.ekMasraflar > 0 &&
+                                                  r.ekMasraflarIsciAdi !=
+                                                      null &&
+                                                  hesaplar.containsKey(
+                                                    r.ekMasraflarIsciAdi,
+                                                  )) {
+                                                hesaplar[r.ekMasraflarIsciAdi]!
+                                                        .toplamGiderMasrafi +=
+                                                    r.ekMasraflar;
+                                                operasyonelHarcamaSahipleri
+                                                    .putIfAbsent(
+                                                      r.ekMasraflarIsciAdi!,
+                                                      OperasyonelHarcamaOzeti
+                                                          .new,
+                                                    )
+                                                    .ekMasraf += r.ekMasraflar;
+                                                operasyonelHarcamaDetaylari
+                                                    .putIfAbsent(
+                                                      r.ekMasraflarIsciAdi!,
+                                                      () =>
+                                                          <
+                                                            OperasyonelHarcamaDetay
+                                                          >[],
+                                                    )
+                                                    .add(
+                                                      OperasyonelHarcamaDetay(
+                                                        santiyeAdi:
+                                                            r.santiyeAdi,
+                                                        tarih: r.tarih,
+                                                        kalem: "Ek Masraf",
+                                                        tutar: r.ekMasraflar,
+                                                      ),
+                                                    );
+                                              }
+                                              for (var c in r.calisanlar) {
+                                                if (hesaplar.containsKey(
+                                                  c.isci.ad,
+                                                )) {
+                                                  if (c.durum == "Tam Gün") {
+                                                    hesaplar[c.isci.ad]!
+                                                        .tamGun++;
+                                                    hesaplar[c.isci.ad]!
+                                                            .toplamHakedis +=
+                                                        c.isci.gunlukMaas;
+                                                  }
+                                                  if (c.durum == "Yarım Gün") {
+                                                    hesaplar[c.isci.ad]!
+                                                        .yarimGun++;
+                                                    hesaplar[c.isci.ad]!
+                                                            .toplamHakedis +=
+                                                        (c.isci.gunlukMaas / 2);
+                                                  }
+                                                }
                                               }
                                             }
-                                          }
-                                        }
 
-                                        for (var a in avanslar) {
-                                          if (_tarihAralikta(
-                                            a.tarih,
-                                            baslangic,
-                                            bitis,
-                                          )) {
-                                            if (hesaplar.containsKey(a.isci.ad))
-                                              hesaplar[a.isci.ad]!
-                                                  .toplamAvans += a.miktar;
-                                          }
-                                        }
+                                            for (var a in avanslar) {
+                                              if (_tarihAralikta(
+                                                a.tarih,
+                                                baslangic,
+                                                bitis,
+                                              )) {
+                                                if (hesaplar.containsKey(
+                                                  a.isci.ad,
+                                                ))
+                                                  hesaplar[a.isci.ad]!
+                                                      .toplamAvans += a.miktar;
+                                              }
+                                            }
 
-                                        double toplamMaas = 0;
-                                        hesaplar.forEach((_, h) {
-                                          h.odenecekTutar =
-                                              h.toplamHakedis +
-                                              h.toplamGiderMasrafi -
-                                              h.toplamAvans;
-                                          toplamMaas += h.toplamHakedis;
-                                        });
+                                            double toplamMaas = 0;
+                                            hesaplar.forEach((_, h) {
+                                              h.odenecekTutar =
+                                                  h.toplamHakedis +
+                                                  h.toplamGiderMasrafi -
+                                                  h.toplamAvans;
+                                              toplamMaas += h.toplamHakedis;
+                                            });
 
-                                        double kayitliGelir = 0;
-                                        for (var o in odemeler) {
-                                          if (_tarihAralikta(
-                                            o.tarih,
-                                            baslangic,
-                                            bitis,
-                                          )) {
-                                            kayitliGelir += o.miktar;
-                                          }
-                                        }
+                                            double kayitliGelir = 0;
+                                            for (var o in odemeler) {
+                                              if (_tarihAralikta(
+                                                o.tarih,
+                                                baslangic,
+                                                bitis,
+                                              )) {
+                                                kayitliGelir += o.miktar;
+                                              }
+                                            }
 
-                                        // Ek Gelir/Gider Toplamları
-                                        double
-                                        toplamEkstraGelir = araliktakiFinanslar
-                                            .expand(
-                                              (finans) => finans.ekstraGelirler,
-                                            )
-                                            .fold(
-                                              0.0,
-                                              (sum, item) => sum + item.miktar,
-                                            );
-                                        double
-                                        toplamEkstraGider = araliktakiFinanslar
-                                            .expand(
-                                              (finans) => finans.ekstraGiderler,
-                                            )
-                                            .fold(
-                                              0.0,
-                                              (sum, item) => sum + item.miktar,
-                                            );
+                                            // Ek Gelir/Gider Toplamları
+                                            double toplamEkstraGelir =
+                                                araliktakiFinanslar
+                                                    .expand(
+                                                      (finans) =>
+                                                          finans.ekstraGelirler,
+                                                    )
+                                                    .fold(
+                                                      0.0,
+                                                      (sum, item) =>
+                                                          sum + item.miktar,
+                                                    );
+                                            double toplamEkstraGider =
+                                                araliktakiFinanslar
+                                                    .expand(
+                                                      (finans) =>
+                                                          finans.ekstraGiderler,
+                                                    )
+                                                    .fold(
+                                                      0.0,
+                                                      (sum, item) =>
+                                                          sum + item.miktar,
+                                                    );
 
-                                        double toplamGelir =
-                                            kayitliGelir + toplamEkstraGelir;
+                                            double toplamGelir =
+                                                kayitliGelir +
+                                                toplamEkstraGelir;
 
-                                        // Gider Hesabı: User requested "WORKER TOTAL COST" (Hakediş) to be included in total expense,
-                                        // not just paid amount.
-                                        // "toplamGidere dahil edilmiyor" -> Fixed by using toplamMaas.
-                                        double toplamGider =
-                                            toplamMaas + // HAKEDİŞ ESASLI: Toplam hak edilen maaş gider sayılır
-                                            topBenzin +
-                                            topYemek +
-                                            topEk +
-                                            toplamEkstraGider;
-                                        double netDurum =
-                                            toplamGelir - toplamGider;
+                                            // Gider Hesabı: User requested "WORKER TOTAL COST" (Hakediş) to be included in total expense,
+                                            // not just paid amount.
+                                            // "toplamGidere dahil edilmiyor" -> Fixed by using toplamMaas.
+                                            double toplamGider =
+                                                toplamMaas + // HAKEDİŞ ESASLI: Toplam hak edilen maaş gider sayılır
+                                                topBenzin +
+                                                topYemek +
+                                                topEk +
+                                                toplamEkstraGider;
+                                            double netDurum =
+                                                toplamGelir - toplamGider;
 
-                                        return TabBarView(
-                                          children: [
-                                            // --- SEKME 1: GENEL ÖZET ---
-                                            SingleChildScrollView(
-                                              padding:
-                                                  const EdgeInsets.fromLTRB(
-                                                    16,
-                                                    16,
-                                                    16,
-                                                    _shellDockBodyPadding,
-                                                  ),
-                                              child: Column(
-                                                children: [
-                                                  _buildExpansionCard(
-                                                    context,
-                                                    "PERSONEL HAKEDİŞ GİDERİ", // Renamed from Odenen
-                                                    toplamMaas, // Showing Accrued amount
-                                                    Icons.people_alt_outlined,
-                                                    Colors.purple,
-                                                    [
-                                                      if (false)
-                                                        SingleChildScrollView(
-                                                          scrollDirection:
-                                                              Axis.horizontal,
-                                                          child: DataTable(
-                                                            columnSpacing: 16,
-                                                            headingRowHeight:
-                                                                40,
-                                                            columns: const [
-                                                              DataColumn(
-                                                                label: Text(
-                                                                  'İşçi',
-                                                                ),
-                                                              ),
-                                                              DataColumn(
-                                                                label: Text(
-                                                                  'Hakediş',
-                                                                ),
-                                                                numeric: true,
-                                                              ),
-                                                              DataColumn(
-                                                                label: Text(
-                                                                  'Avans',
-                                                                ),
-                                                                numeric: true,
-                                                              ),
-                                                              DataColumn(
-                                                                label: Text(
-                                                                  'Gider Masrafı',
-                                                                ),
-                                                                numeric: true,
-                                                              ),
-                                                              DataColumn(
-                                                                label: Text(
-                                                                  'Net',
-                                                                ),
-                                                                numeric: true,
-                                                              ),
-                                                            ],
-                                                            rows:
-                                                                hesaplar.values
-                                                                    .where(
-                                                                      (s) =>
-                                                                          s.toplamHakedis >
-                                                                              0 ||
-                                                                          s.toplamAvans >
-                                                                              0,
-                                                                    )
-                                                                    .map(
-                                                                      (
-                                                                        s,
-                                                                      ) => DataRow(
-                                                                        cells: [
-                                                                          DataCell(
-                                                                            Text(
-                                                                              s.isci.ad,
-                                                                              style: const TextStyle(
-                                                                                fontWeight:
-                                                                                    FontWeight.w500,
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                          DataCell(
-                                                                            Text(
-                                                                              Formatlayici.yap(
-                                                                                s.toplamHakedis,
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                          DataCell(
-                                                                            Text(
-                                                                              Formatlayici.yap(
-                                                                                s.toplamAvans,
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                          DataCell(
-                                                                            Text(
-                                                                              Formatlayici.yap(
-                                                                                s.toplamGiderMasrafi,
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                          DataCell(
-                                                                            Text(
-                                                                              Formatlayici.yap(
-                                                                                s.odenecekTutar,
-                                                                              ),
-                                                                              style: const TextStyle(
-                                                                                fontWeight:
-                                                                                    FontWeight.bold,
-                                                                                color:
-                                                                                    Colors.green,
-                                                                              ),
-                                                                            ),
-                                                                          ),
-                                                                        ],
-                                                                      ),
-                                                                    )
-                                                                    .toList(),
-                                                          ),
-                                                        ),
-                                                      ...hesaplar.values
-                                                          .where(
-                                                            (s) =>
-                                                                s.toplamHakedis >
-                                                                    0 ||
-                                                                s.toplamAvans >
-                                                                    0 ||
-                                                                s.toplamGiderMasrafi >
-                                                                    0,
-                                                          )
-                                                          .map(
-                                                            (s) => Container(
-                                                              margin:
-                                                                  const EdgeInsets.only(
-                                                                    bottom: 10,
-                                                                  ),
-                                                              padding:
-                                                                  const EdgeInsets.all(
-                                                                    12,
-                                                                  ),
-                                                              decoration: BoxDecoration(
-                                                                color: Theme.of(
-                                                                      context,
-                                                                    )
-                                                                    .colorScheme
-                                                                    .surfaceContainerHighest
-                                                                    .withOpacity(
-                                                                      Theme.of(context).brightness ==
-                                                                              Brightness.dark
-                                                                          ? 0.18
-                                                                          : 0.18,
-                                                                    ),
-                                                                borderRadius:
-                                                                    BorderRadius.circular(
-                                                                      12,
-                                                                    ),
-                                                                border: Border.all(
-                                                                  color: Theme.of(
-                                                                    context,
-                                                                  ).dividerColor.withOpacity(
-                                                                    Theme.of(
-                                                                              context,
-                                                                            ).brightness ==
-                                                                            Brightness.dark
-                                                                        ? 0.45
-                                                                        : 0.28,
-                                                                  ),
-                                                                ),
-                                                              ),
-                                                              child: Column(
-                                                                crossAxisAlignment:
-                                                                    CrossAxisAlignment
-                                                                        .start,
-                                                                children: [
-                                                                  Container(
-                                                                    padding: const EdgeInsets.symmetric(
-                                                                      horizontal:
-                                                                          10,
-                                                                      vertical:
-                                                                          8,
-                                                                    ),
-                                                                    decoration: BoxDecoration(
-                                                                      color:
-                                                                          Theme.of(context).brightness ==
-                                                                                  Brightness.dark
-                                                                              ? Colors.white.withOpacity(
-                                                                                0.08,
-                                                                              )
-                                                                              : Colors.black.withOpacity(0.08),
-                                                                      borderRadius:
-                                                                          BorderRadius.circular(
-                                                                            10,
-                                                                          ),
-                                                                    ),
-                                                                    child: Row(
-                                                                      children: [
-                                                                        Expanded(
-                                                                          child: Text(
-                                                                            s.isci.ad,
-                                                                            maxLines:
-                                                                                1,
-                                                                            overflow:
-                                                                                TextOverflow.ellipsis,
-                                                                            style: TextStyle(
-                                                                              fontWeight:
-                                                                                  FontWeight.w800,
-                                                                              color:
-                                                                                  Theme.of(
-                                                                                    context,
-                                                                                  ).colorScheme.onSurface,
-                                                                            ),
-                                                                          ),
-                                                                        ),
-                                                                        const SizedBox(
-                                                                          width:
-                                                                              10,
-                                                                        ),
-                                                                        Text(
-                                                                          'Net: ${Formatlayici.yap(s.odenecekTutar)}',
-                                                                          maxLines:
-                                                                              1,
-                                                                          overflow:
-                                                                              TextOverflow.ellipsis,
-                                                                          style: TextStyle(
-                                                                            fontWeight:
-                                                                                FontWeight.bold,
-                                                                            color:
-                                                                                Theme.of(
-                                                                                          context,
-                                                                                        ).brightness ==
-                                                                                        Brightness.dark
-                                                                                    ? const Color(
-                                                                                      0xFF6EE7B7,
-                                                                                    )
-                                                                                    : Colors.green,
-                                                                          ),
-                                                                        ),
-                                                                      ],
-                                                                    ),
-                                                                  ),
-                                                                  const SizedBox(
-                                                                    height: 8,
-                                                                  ),
-                                                                  Divider(
-                                                                    color: Theme.of(
-                                                                      context,
-                                                                    ).dividerColor.withOpacity(
-                                                                      Theme.of(context).brightness ==
-                                                                              Brightness.dark
-                                                                          ? 0.5
-                                                                          : 0.35,
-                                                                    ),
-                                                                    height: 1,
-                                                                  ),
-                                                                  const SizedBox(
-                                                                    height: 8,
-                                                                  ),
-                                                                  Wrap(
-                                                                    spacing: 8,
-                                                                    runSpacing:
-                                                                        8,
-                                                                    children: [
-                                                                      _buildMiniList(
-                                                                        'Hakediş',
-                                                                        Formatlayici.yap(
-                                                                          s.toplamHakedis,
-                                                                        ),
-                                                                      ),
-                                                                      _buildMiniList(
-                                                                        'Gider Masrafı',
-                                                                        Formatlayici.yap(
-                                                                          s.toplamGiderMasrafi,
-                                                                        ),
-                                                                      ),
-                                                                      _buildMiniList(
-                                                                        'Yevmiye',
-                                                                        '${s.tamGun} tam / ${s.yarimGun} yarim',
-                                                                      ),
-                                                                      _buildMiniList(
-                                                                        'Avans',
-                                                                        Formatlayici.yap(
-                                                                          s.toplamAvans,
-                                                                        ),
-                                                                      ),
-                                                                    ],
-                                                                  ),
-                                                                ],
-                                                              ),
-                                                            ),
-                                                          ),
-                                                      const SizedBox(
-                                                        height: 10,
+                                            return TabBarView(
+                                              children: [
+                                                // --- SEKME 1: GENEL ÖZET ---
+                                                SingleChildScrollView(
+                                                  padding:
+                                                      const EdgeInsets.fromLTRB(
+                                                        16,
+                                                        16,
+                                                        16,
+                                                        _shellDockBodyPadding,
                                                       ),
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 12),
-                                                  _buildExpansionCard(
-                                                    context,
-                                                    "OPERASYONEL GİDERLER",
-                                                    topBenzin +
-                                                        topYemek +
+                                                  child: Column(
+                                                    children: [
+                                                      _buildFinansCard(
+                                                        context,
+                                                        kayitliGelir,
+                                                        toplamGelir,
+                                                        toplamGider,
+                                                        netDurum,
+                                                        aylikFinans,
+                                                        isDark,
+                                                        servisi,
+                                                        toplamMaas,
+                                                        topBenzin,
+                                                        topYemek,
                                                         topEk,
-                                                    Icons.pie_chart_outline,
-                                                    Colors.orange,
-                                                    [
-                                                      _buildOperasyonelToplamKart(
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 14,
+                                                      ),
+                                                      _buildPersonelHakedisKarti(
+                                                        context: context,
+                                                        isDark: isDark,
+                                                        hesaplar: hesaplar,
+                                                        toplamMaas: toplamMaas,
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 14,
+                                                      ),
+                                                      _buildOperasyonelGiderlerKarti(
+                                                        context: context,
+                                                        isDark: isDark,
                                                         topBenzin: topBenzin,
                                                         topYemek: topYemek,
                                                         topEk: topEk,
-                                                      ),
-                                                      if (operasyonelHarcamaSahipleri
-                                                          .isNotEmpty) ...[
-                                                        const SizedBox(
-                                                          height: 12,
-                                                        ),
-                                                        const Divider(),
-                                                        const SizedBox(
-                                                          height: 8,
-                                                        ),
-                                                        ...operasyonelHarcamaSahipleri
-                                                            .entries
-                                                            .map(
-                                                              (
-                                                                entry,
-                                                              ) => _buildOperasyonelHarcamaSatiri(
-                                                                entry.key,
-                                                                entry.value,
-                                                                operasyonelHarcamaDetaylari[entry
-                                                                        .key] ??
-                                                                    const <
-                                                                      OperasyonelHarcamaDetay
-                                                                    >[],
-                                                              ),
-                                                            ),
-                                                      ],
-                                                    ],
-                                                  ),
-                                                  const SizedBox(height: 12),
-                                                  _buildFinansCard(
-                                                    context,
-                                                    kayitliGelir,
-                                                    toplamGelir,
-                                                    toplamGider,
-                                                    netDurum,
-                                                    aylikFinans,
-                                                    isDark,
-                                                    servisi,
-                                                    toplamMaas, // Passing Accrued (Hakediş) instead of Paid
-                                                    topBenzin,
-                                                    topYemek,
-                                                    topEk,
-                                                  ),
-                                                  const SizedBox(height: 24),
-
-                                                  ElevatedButton.icon(
-                                                    icon: const Icon(
-                                                      Icons.share,
-                                                    ),
-                                                    label: const Text(
-                                                      "Genel Raporu Paylaş",
-                                                    ),
-                                                    style: ElevatedButton.styleFrom(
-                                                      backgroundColor:
-                                                          _kBrandTeal,
-                                                      foregroundColor:
-                                                          Colors.white,
-                                                      padding:
-                                                          const EdgeInsets.symmetric(
-                                                            vertical: 16,
-                                                          ),
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
-                                                            ),
-                                                      ),
-                                                      minimumSize: const Size(
-                                                        double.infinity,
-                                                        50,
-                                                      ),
-                                                    ),
-                                                    onPressed:
-                                                        () => _paylasimMenusunuGoster(
-                                                          _raporuMetneDonusturDetayli(
-                                                            _donemBaslikMetni,
-                                                            hesaplar,
+                                                        operasyonelHarcamaSahipleri:
                                                             operasyonelHarcamaSahipleri,
-                                                            toplamMaas,
-                                                            topBenzin,
-                                                            topYemek,
-                                                            topEk,
-                                                            kayitliGelir,
-                                                            toplamEkstraGelir,
-                                                            toplamEkstraGider,
-                                                            netDurum,
+                                                        operasyonelHarcamaDetaylari:
+                                                            operasyonelHarcamaDetaylari,
+                                                        raporlar: raporlar,
+                                                      ),
+                                                      const SizedBox(
+                                                        height: 16,
+                                                      ),
+
+                                                      ElevatedButton.icon(
+                                                        icon: const Icon(
+                                                          Icons.share,
+                                                        ),
+                                                        label: const Text(
+                                                          "Genel Raporu Paylaş",
+                                                        ),
+                                                        style: ElevatedButton.styleFrom(
+                                                          backgroundColor:
+                                                              _kBrandTeal,
+                                                          foregroundColor:
+                                                              Colors.white,
+                                                          padding:
+                                                              const EdgeInsets.symmetric(
+                                                                vertical: 16,
+                                                              ),
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  12,
+                                                                ),
                                                           ),
-                                                          pdfOlusturucu:
-                                                              () => _raporuPdfOlusturDetayli(
+                                                          minimumSize:
+                                                              const Size(
+                                                                double.infinity,
+                                                                50,
+                                                              ),
+                                                        ),
+                                                        onPressed:
+                                                            () => _paylasimMenusunuGoster(
+                                                              _raporuMetneDonusturDetayli(
                                                                 _donemBaslikMetni,
                                                                 hesaplar,
                                                                 operasyonelHarcamaSahipleri,
@@ -1857,272 +1597,285 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                                 toplamEkstraGider,
                                                                 netDurum,
                                                               ),
-                                                        ),
-                                                  ),
-                                                  const SizedBox(
-                                                    height:
-                                                        _shellDockBodyPadding,
-                                                  ),
-                                                ],
-                                              ),
-                                            ),
-
-                                            // --- SEKME 2: ŞANTİYE BAZLI DETAY ---
-                                            santiyeler.isEmpty
-                                                ? const Center(
-                                                  child: Text(
-                                                    "Şantiye bulunamadı.",
-                                                  ),
-                                                )
-                                                : ListView.builder(
-                                                  padding:
-                                                      const EdgeInsets.fromLTRB(
-                                                        16,
-                                                        16,
-                                                        16,
-                                                        _shellDockBodyPadding,
-                                                      ),
-                                                  itemCount: santiyeler.length,
-                                                  itemBuilder: (ctx, index) {
-                                                    final sAdi =
-                                                        santiyeler[index].ad;
-                                                    final sRaporlar =
-                                                        raporlar
-                                                            .where(
-                                                              (r) =>
-                                                                  r.santiyeAdi ==
-                                                                  sAdi,
-                                                            )
-                                                            .toList();
-                                                    final sOdemeler =
-                                                        odemeler
-                                                            .where(
-                                                              (o) =>
-                                                                  o.santiyeAdi ==
-                                                                      sAdi &&
-                                                                  _tarihAralikta(
-                                                                    o.tarih,
-                                                                    baslangic,
-                                                                    bitis,
-                                                                  ),
-                                                            )
-                                                            .toList();
-
-                                                    double sBenzin = 0,
-                                                        sYemek = 0,
-                                                        sEk = 0,
-                                                        sMaas = 0,
-                                                        sGelir = 0;
-                                                    for (var o in sOdemeler)
-                                                      sGelir += o.miktar;
-
-                                                    for (var r in sRaporlar) {
-                                                      sBenzin += r.benzinGideri;
-                                                      sYemek += r.yemekGideri;
-                                                      sEk += r.ekMasraflar;
-                                                      for (var c
-                                                          in r.calisanlar) {
-                                                        sMaas +=
-                                                            (c.durum ==
-                                                                    "Tam Gün"
-                                                                ? c
-                                                                    .isci
-                                                                    .gunlukMaas
-                                                                : (c
-                                                                        .isci
-                                                                        .gunlukMaas /
-                                                                    2));
-                                                      }
-                                                    }
-
-                                                    double sToplamGider =
-                                                        sBenzin +
-                                                        sYemek +
-                                                        sEk +
-                                                        sMaas;
-                                                    double sKar =
-                                                        sGelir - sToplamGider;
-
-                                                    return Card(
-                                                      margin:
-                                                          const EdgeInsets.only(
-                                                            bottom: 12,
-                                                          ),
-                                                      elevation: 4,
-                                                      shape: RoundedRectangleBorder(
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              16,
-                                                            ),
-                                                        side: BorderSide(
-                                                          color:
-                                                              isDark
-                                                                  ? Colors.white
-                                                                      .withOpacity(
-                                                                        0.08,
-                                                                      )
-                                                                  : const Color(
-                                                                    0xFFD8EAF0,
-                                                                  ),
-                                                          width: 1.5,
-                                                        ),
-                                                      ),
-                                                      color:
-                                                          isDark
-                                                              ? const Color(
-                                                                0xFF101317,
-                                                              )
-                                                              : const Color(
-                                                                0xFFF7FBFD,
-                                                              ),
-                                                      child: ExpansionTile(
-                                                        leading: Container(
-                                                          padding:
-                                                              const EdgeInsets.all(
-                                                                8,
-                                                              ),
-                                                          decoration: BoxDecoration(
-                                                            gradient: LinearGradient(
-                                                              begin:
-                                                                  Alignment
-                                                                      .topLeft,
-                                                              end:
-                                                                  Alignment
-                                                                      .bottomRight,
-                                                              colors: [
-                                                                Colors.teal
-                                                                    .withOpacity(
-                                                                      isDark
-                                                                          ? 0.18
-                                                                          : 0.14,
-                                                                    ),
-                                                                (isDark
-                                                                        ? const Color(
-                                                                          0xFF171B20,
-                                                                        )
-                                                                        : Colors
-                                                                            .white)
-                                                                    .withOpacity(
-                                                                      isDark
-                                                                          ? 0.82
-                                                                          : 0.92,
-                                                                    ),
-                                                              ],
-                                                            ),
-                                                            borderRadius:
-                                                                BorderRadius.circular(
-                                                                  8,
-                                                                ),
-                                                            border: Border.all(
-                                                              color: Colors.teal
-                                                                  .withOpacity(
-                                                                    isDark
-                                                                        ? 0.16
-                                                                        : 0.12,
+                                                              pdfOlusturucu:
+                                                                  () => _raporuPdfOlusturDetayli(
+                                                                    _donemBaslikMetni,
+                                                                    hesaplar,
+                                                                    operasyonelHarcamaSahipleri,
+                                                                    toplamMaas,
+                                                                    topBenzin,
+                                                                    topYemek,
+                                                                    topEk,
+                                                                    kayitliGelir,
+                                                                    toplamEkstraGelir,
+                                                                    toplamEkstraGider,
+                                                                    netDurum,
                                                                   ),
                                                             ),
-                                                          ),
-                                                          child: const Icon(
-                                                            Icons.location_city,
-                                                            color: Colors.teal,
-                                                          ),
-                                                        ),
-                                                        title: Text(
-                                                          sAdi,
-                                                          style:
-                                                              const TextStyle(
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                                fontSize: 16,
-                                                              ),
-                                                        ),
-                                                        subtitle: Consumer<
-                                                          PrivacyProvider
-                                                        >(
-                                                          builder: (
-                                                            context,
-                                                            privacy,
-                                                            child,
-                                                          ) {
-                                                            return Text(
-                                                              privacy.isHidden
-                                                                  ? "**** TL"
-                                                                  : "${sKar >= 0 ? '+' : ''}${Formatlayici.yap(sKar)}",
-                                                              style: TextStyle(
-                                                                color:
-                                                                    sKar >= 0
-                                                                        ? Colors
-                                                                            .green
-                                                                        : Colors
-                                                                            .red,
-                                                                fontWeight:
-                                                                    FontWeight
-                                                                        .bold,
-                                                              ),
-                                                            );
-                                                          },
-                                                        ),
-                                                        children: [
-                                                          const Divider(
-                                                            height: 1,
-                                                          ),
-                                                          Padding(
-                                                            padding:
-                                                                const EdgeInsets.all(
-                                                                  16.0,
-                                                                ),
-                                                            child: Column(
-                                                              children: [
-                                                                _buildListRow(
-                                                                  "Toplam Gelir",
-                                                                  sGelir,
-                                                                  Colors.green,
-                                                                ),
-                                                                const Divider(),
-                                                                _buildListRow(
-                                                                  "Personel Maliyeti",
-                                                                  sMaas,
-                                                                  Colors.purple,
-                                                                ),
-                                                                _buildListRow(
-                                                                  "Benzin",
-                                                                  sBenzin,
-                                                                  Colors
-                                                                      .redAccent,
-                                                                ),
-                                                                _buildListRow(
-                                                                  "Yemek",
-                                                                  sYemek,
-                                                                  Colors
-                                                                      .orangeAccent,
-                                                                ),
-                                                                _buildListRow(
-                                                                  "Ek Masraflar",
-                                                                  sEk,
-                                                                  Colors
-                                                                      .blueAccent,
-                                                                ),
-                                                                const Divider(),
-                                                                _buildSummaryRow(
-                                                                  "NET DURUM",
-                                                                  sKar,
-                                                                  sKar >= 0
-                                                                      ? Colors
-                                                                          .green
-                                                                      : Colors
-                                                                          .red,
-                                                                  isLarge: true,
-                                                                ),
-                                                              ],
-                                                            ),
-                                                          ),
-                                                        ],
                                                       ),
-                                                    );
-                                                  },
+                                                      const SizedBox(
+                                                        height:
+                                                            _shellDockBodyPadding,
+                                                      ),
+                                                    ],
+                                                  ),
                                                 ),
-                                          ],
+
+                                                // --- SEKME 2: ŞANTİYE BAZLI DETAY ---
+                                                santiyeler.isEmpty
+                                                    ? const Center(
+                                                      child: Text(
+                                                        "Şantiye bulunamadı.",
+                                                      ),
+                                                    )
+                                                    : ListView.builder(
+                                                      padding:
+                                                          const EdgeInsets.fromLTRB(
+                                                            16,
+                                                            16,
+                                                            16,
+                                                            _shellDockBodyPadding,
+                                                          ),
+                                                      itemCount:
+                                                          santiyeler.length,
+                                                      itemBuilder: (
+                                                        ctx,
+                                                        index,
+                                                      ) {
+                                                        final sAdi =
+                                                            santiyeler[index]
+                                                                .ad;
+                                                        final sRaporlar =
+                                                            raporlar
+                                                                .where(
+                                                                  (r) =>
+                                                                      r.santiyeAdi ==
+                                                                      sAdi,
+                                                                )
+                                                                .toList();
+                                                        final sOdemeler =
+                                                            odemeler
+                                                                .where(
+                                                                  (o) =>
+                                                                      o.santiyeAdi ==
+                                                                          sAdi &&
+                                                                      _tarihAralikta(
+                                                                        o.tarih,
+                                                                        baslangic,
+                                                                        bitis,
+                                                                      ),
+                                                                )
+                                                                .toList();
+
+                                                        double sBenzin = 0,
+                                                            sYemek = 0,
+                                                            sEk = 0,
+                                                            sMaas = 0,
+                                                            sGelir = 0;
+                                                        for (var o in sOdemeler)
+                                                          sGelir += o.miktar;
+
+                                                        for (var r
+                                                            in sRaporlar) {
+                                                          sBenzin +=
+                                                              r.benzinGideri;
+                                                          sYemek +=
+                                                              r.yemekGideri;
+                                                          sEk += r.ekMasraflar;
+                                                          for (var c
+                                                              in r.calisanlar) {
+                                                            sMaas +=
+                                                                (c.durum ==
+                                                                        "Tam Gün"
+                                                                    ? c
+                                                                        .isci
+                                                                        .gunlukMaas
+                                                                    : (c.isci.gunlukMaas /
+                                                                        2));
+                                                          }
+                                                        }
+
+                                                        double sToplamGider =
+                                                            sBenzin +
+                                                            sYemek +
+                                                            sEk +
+                                                            sMaas;
+                                                        double sKar =
+                                                            sGelir -
+                                                            sToplamGider;
+
+                                                        return Container(
+                                                          margin:
+                                                              const EdgeInsets.only(
+                                                                bottom: 12,
+                                                              ),
+                                                          decoration:
+                                                              _buildPanelGlassCardDecoration(
+                                                                isDark,
+                                                                borderRadius:
+                                                                    BorderRadius.circular(
+                                                                      16,
+                                                                    ),
+                                                              ),
+                                                          child: Theme(
+                                                            data: Theme.of(
+                                                              context,
+                                                            ).copyWith(
+                                                              dividerColor:
+                                                                  Colors
+                                                                      .transparent,
+                                                            ),
+                                                            child: ExpansionTile(
+                                                              leading: Container(
+                                                                padding:
+                                                                    const EdgeInsets.all(
+                                                                      8,
+                                                                    ),
+                                                                decoration: BoxDecoration(
+                                                                  gradient: LinearGradient(
+                                                                    begin:
+                                                                        Alignment
+                                                                            .topLeft,
+                                                                    end:
+                                                                        Alignment
+                                                                            .bottomRight,
+                                                                    colors: [
+                                                                      Colors.teal.withOpacity(
+                                                                        isDark
+                                                                            ? 0.18
+                                                                            : 0.14,
+                                                                      ),
+                                                                      (isDark
+                                                                              ? const Color(
+                                                                                0xFF171B20,
+                                                                              )
+                                                                              : Colors.white)
+                                                                          .withOpacity(
+                                                                            isDark
+                                                                                ? 0.82
+                                                                                : 0.92,
+                                                                          ),
+                                                                    ],
+                                                                  ),
+                                                                  borderRadius:
+                                                                      BorderRadius.circular(
+                                                                        8,
+                                                                      ),
+                                                                  border: Border.all(
+                                                                    color: Colors
+                                                                        .teal
+                                                                        .withOpacity(
+                                                                          isDark
+                                                                              ? 0.16
+                                                                              : 0.12,
+                                                                        ),
+                                                                  ),
+                                                                ),
+                                                                child: const Icon(
+                                                                  Icons
+                                                                      .location_city,
+                                                                  color:
+                                                                      Colors
+                                                                          .teal,
+                                                                ),
+                                                              ),
+                                                              title: Text(
+                                                                sAdi,
+                                                                style: const TextStyle(
+                                                                  fontWeight:
+                                                                      FontWeight
+                                                                          .bold,
+                                                                  fontSize: 16,
+                                                                ),
+                                                              ),
+                                                              subtitle: Consumer<
+                                                                PrivacyProvider
+                                                              >(
+                                                                builder: (
+                                                                  context,
+                                                                  privacy,
+                                                                  child,
+                                                                ) {
+                                                                  return Text(
+                                                                    privacy.isHidden
+                                                                        ? "**** TL"
+                                                                        : "${sKar >= 0 ? '+' : ''}${Formatlayici.yap(sKar)}",
+                                                                    style: TextStyle(
+                                                                      color:
+                                                                          sKar >= 0
+                                                                              ? Colors.green
+                                                                              : Colors.red,
+                                                                      fontWeight:
+                                                                          FontWeight
+                                                                              .bold,
+                                                                    ),
+                                                                  );
+                                                                },
+                                                              ),
+                                                              children: [
+                                                                const Divider(
+                                                                  height: 1,
+                                                                ),
+                                                                Padding(
+                                                                  padding:
+                                                                      const EdgeInsets.all(
+                                                                        16.0,
+                                                                      ),
+                                                                  child: Column(
+                                                                    children: [
+                                                                      _buildListRow(
+                                                                        "Toplam Gelir",
+                                                                        sGelir,
+                                                                        Colors
+                                                                            .green,
+                                                                      ),
+                                                                      const Divider(),
+                                                                      _buildListRow(
+                                                                        "Personel Maliyeti",
+                                                                        sMaas,
+                                                                        Colors
+                                                                            .purple,
+                                                                      ),
+                                                                      _buildListRow(
+                                                                        "Benzin",
+                                                                        sBenzin,
+                                                                        Colors
+                                                                            .redAccent,
+                                                                      ),
+                                                                      _buildListRow(
+                                                                        "Yemek",
+                                                                        sYemek,
+                                                                        Colors
+                                                                            .orangeAccent,
+                                                                      ),
+                                                                      _buildListRow(
+                                                                        "Ek Masraflar",
+                                                                        sEk,
+                                                                        Colors
+                                                                            .blueAccent,
+                                                                      ),
+                                                                      const Divider(),
+                                                                      _buildSummaryRow(
+                                                                        "NET DURUM",
+                                                                        sKar,
+                                                                        sKar >= 0
+                                                                            ? Colors.green
+                                                                            : Colors.red,
+                                                                        isLarge:
+                                                                            true,
+                                                                      ),
+                                                                    ],
+                                                                  ),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                          ),
+                                                        );
+                                                      },
+                                                    ),
+                                              ],
+                                            );
+                                          },
                                         );
                                       },
                                     );
@@ -2133,23 +1886,21 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                           },
                         );
                       },
-                    );
-                  },
-                ),
+                    ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            ),
+            if (_isTourActive)
+              InteractiveTourOverlay(
+                steps: _buildTourSteps(),
+                onFinish: _turSonlandir,
+                onSkip: _turSonlandir,
+              ),
+          ],
         ),
-        if (_isTourActive)
-          InteractiveTourOverlay(
-            steps: _buildTourSteps(),
-            onFinish: _turSonlandir,
-            onSkip: _turSonlandir,
-          ),
-      ],
-    ),
-  ),
-);
+      ),
+    );
   }
 
   // --- YARDIMCI WIDGETLAR ---
@@ -2222,6 +1973,236 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
     );
   }
 
+  void _ekstraKalemEkleSecici(
+    BuildContext context,
+    AylikFinans aylikFinans,
+    FirestoreServisi servisi,
+  ) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    showModalBottomSheet<void>(
+      context: context,
+      backgroundColor: Colors.transparent,
+      builder: (ctx) {
+        return Container(
+          margin: const EdgeInsets.all(16),
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161E28) : Colors.white,
+            borderRadius: BorderRadius.circular(24),
+            border: Border.all(
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.12)
+                      : const Color(0xFFD4E7EF),
+              width: 1.2,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.08),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                "Ekstra Kalem Ekle",
+                style: GoogleFonts.poppins(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                "Hakediş dışı ara gelir veya beklenmedik şantiye gideri ekleyin.",
+                textAlign: TextAlign.center,
+                style: GoogleFonts.poppins(
+                  fontSize: 12,
+                  color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                ),
+              ),
+              const SizedBox(height: 16),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                tileColor:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : const Color(0xFFF8FCFE),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.add_circle_outline,
+                    color: Color(0xFF10B981),
+                    size: 22,
+                  ),
+                ),
+                title: Text(
+                  "Ekstra Gelir Ekle",
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  "Hakediş dışı kasa ve ara gelir girişi",
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: Colors.grey,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: Colors.grey,
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _kalemEkleDialog(context, "Ekstra Gelir Ekle", (ad, miktar) {
+                    aylikFinans.ekstraGelirler.add(
+                      FinansalKalem(ad: ad, miktar: miktar),
+                    );
+                    servisi.aylikFinansGuncelle(widget.teamId, aylikFinans);
+                  });
+                },
+              ),
+              const SizedBox(height: 10),
+              ListTile(
+                contentPadding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 4,
+                ),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                tileColor:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.04)
+                        : const Color(0xFFF8FCFE),
+                leading: Container(
+                  padding: const EdgeInsets.all(8),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: const Icon(
+                    Icons.remove_circle_outline,
+                    color: Color(0xFFEF4444),
+                    size: 22,
+                  ),
+                ),
+                title: Text(
+                  "Ekstra Gider Ekle",
+                  style: GoogleFonts.poppins(
+                    fontWeight: FontWeight.w600,
+                    fontSize: 14,
+                  ),
+                ),
+                subtitle: Text(
+                  "Beklenmedik veya şirket dışı gider girişi",
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    color: Colors.grey,
+                  ),
+                ),
+                trailing: const Icon(
+                  Icons.chevron_right,
+                  size: 20,
+                  color: Colors.grey,
+                ),
+                onTap: () {
+                  Navigator.pop(ctx);
+                  _kalemEkleDialog(context, "Ekstra Gider Ekle", (ad, miktar) {
+                    aylikFinans.ekstraGiderler.add(
+                      FinansalKalem(ad: ad, miktar: miktar),
+                    );
+                    servisi.aylikFinansGuncelle(widget.teamId, aylikFinans);
+                  });
+                },
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  BoxDecoration _buildPanelGlassCardDecoration(
+    bool isDark, {
+    BorderRadius? borderRadius,
+  }) {
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          (isDark ? const Color(0xFF15181D) : const Color(0xFFE7EEF1))
+              .withValues(alpha: isDark ? 0.96 : 0.90),
+          (isDark ? const Color(0xFF090B0F) : const Color(0xFFD6E1E6))
+              .withValues(alpha: isDark ? 0.98 : 0.94),
+        ],
+      ),
+      border: Border.all(
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.07)
+                : const Color(0xFFBFD0D6).withValues(alpha: 0.92),
+      ),
+      borderRadius: borderRadius ?? BorderRadius.circular(22),
+      boxShadow: [
+        BoxShadow(
+          color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
+          blurRadius: isDark ? 18 : 12,
+          offset: const Offset(0, 8),
+        ),
+        BoxShadow(
+          color: const Color(
+            0xFF79E9D7,
+          ).withValues(alpha: isDark ? 0.03 : 0.08),
+          blurRadius: isDark ? 12 : 18,
+          offset: const Offset(0, 10),
+        ),
+      ],
+    );
+  }
+
+  BoxDecoration _buildPanelGlassInsetDecoration(
+    bool isDark, {
+    BorderRadius? borderRadius,
+  }) {
+    return BoxDecoration(
+      gradient: LinearGradient(
+        begin: Alignment.topLeft,
+        end: Alignment.bottomRight,
+        colors: [
+          (isDark ? const Color(0xFF171A1F) : const Color(0xFFE0EAEE))
+              .withValues(alpha: isDark ? 0.88 : 0.82),
+          (isDark ? const Color(0xFF0D0F13) : const Color(0xFFCCD9DE))
+              .withValues(alpha: isDark ? 0.96 : 0.90),
+        ],
+      ),
+      border: Border.all(
+        color:
+            isDark
+                ? Colors.white.withValues(alpha: 0.05)
+                : const Color(0xFFC7D7DC).withValues(alpha: 0.85),
+      ),
+      borderRadius: borderRadius ?? BorderRadius.circular(16),
+    );
+  }
+
   Widget _buildFinansCard(
     BuildContext context,
     double kayitliGelir,
@@ -2245,203 +2226,587 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       (toplam, kalem) => toplam + kalem.miktar,
     );
 
-    return Card(
-      elevation: 2,
-      shadowColor:
-          isDark
-              ? Colors.black.withOpacity(0.5)
-              : Colors.blueAccent.withOpacity(0.2),
-      shape: RoundedRectangleBorder(
-        borderRadius: BorderRadius.circular(20),
-        side: BorderSide(
-          color:
-              isDark
-                  ? Colors.white.withOpacity(0.10)
-                  : const Color(0xFFD8EAF0).withOpacity(0.9),
-          width: 1,
-        ),
-      ),
-      color: isDark ? const Color(0xFF10141A) : const Color(0xFFF7FBFD),
-      child: Theme(
-        data: Theme.of(context).copyWith(dividerColor: Colors.transparent),
-        child: ExpansionTile(
-          initiallyExpanded: false,
-          tilePadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-          leading: Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: [
-                  (netDurum >= 0 ? Colors.green : Colors.red).withOpacity(
-                    isDark ? 0.18 : 0.14,
-                  ),
-                  (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
-                    isDark ? 0.82 : 0.92,
-                  ),
-                ],
-              ),
-              borderRadius: BorderRadius.circular(12),
-              border: Border.all(
-                color: (netDurum >= 0 ? Colors.green : Colors.red).withOpacity(
-                  isDark ? 0.16 : 0.12,
-                ),
-              ),
-            ),
-            child: Icon(
-              netDurum >= 0 ? Icons.trending_up : Icons.trending_down,
-              color: netDurum >= 0 ? Colors.green : Colors.red,
-              size: 28,
-            ),
-          ),
-          title: const Text(
-            "FİNANSAL DURUM",
-            style: TextStyle(
-              fontWeight: FontWeight.w800,
-              fontSize: 16,
-              letterSpacing: 0.5,
-            ),
-          ),
-          subtitle: Consumer<PrivacyProvider>(
-            builder: (context, privacy, child) {
-              return Text(
-                privacy.isHidden
-                    ? "**** TL"
-                    : "${netDurum >= 0 ? '+' : ''}${Formatlayici.yap(netDurum)}",
-                style: TextStyle(
-                  color: netDurum >= 0 ? Colors.green : Colors.red,
-                  fontWeight: FontWeight.bold,
-                  fontSize: 18,
-                ),
-              );
-            },
-          ),
+    final bool isPositive = netDurum >= 0;
+    final primaryStatusColor =
+        isPositive ? const Color(0xFF10B981) : const Color(0xFFEF4444);
+
+    // Kâr Marjı ve Hacim Oranları
+    final double margin =
+        toplamGelir > 0
+            ? ((netDurum / toplamGelir) * 100).clamp(-100.0, 100.0)
+            : 0.0;
+    final double totalVolume = (toplamGelir + toplamGider).clamp(
+      1.0,
+      double.infinity,
+    );
+    final double gelirShare = (toplamGelir / totalVolume).clamp(0.06, 0.94);
+    final double giderShare = (toplamGider / totalVolume).clamp(0.06, 0.94);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: _buildPanelGlassCardDecoration(isDark),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-              child: Column(
-                children: [
+            // 1. Üst Başlık & Dinamik Rozet Satırı
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Durum Kapsülü
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 10,
+                    vertical: 5,
+                  ),
+                  decoration: BoxDecoration(
+                    color: primaryStatusColor.withValues(
+                      alpha: isDark ? 0.16 : 0.12,
+                    ),
+                    borderRadius: BorderRadius.circular(10),
+                    border: Border.all(
+                      color: primaryStatusColor.withValues(alpha: 0.25),
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        isPositive
+                            ? Icons.trending_up_rounded
+                            : Icons.trending_down_rounded,
+                        size: 15,
+                        color: primaryStatusColor,
+                      ),
+                      const SizedBox(width: 5),
+                      Text(
+                        isPositive ? "NET DÖNEM KÂRI" : "BÜTÇE AŞIMI / ZARAR",
+                        style: GoogleFonts.poppins(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          letterSpacing: 0.4,
+                          color: primaryStatusColor,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                // Kâr / Aşım Oranı Rozeti
+                if (toplamGelir > 0)
                   Container(
-                    padding: const EdgeInsets.all(16),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 9,
+                      vertical: 4,
+                    ),
                     decoration: BoxDecoration(
                       color:
                           isDark
-                              ? Colors.black.withOpacity(0.2)
-                              : Colors.grey[50]!,
-                      borderRadius: BorderRadius.circular(16),
-                      border: Border.all(
-                        color: isDark ? Colors.grey[800]! : Colors.grey[200]!,
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : const Color(0xFF0F172A).withValues(alpha: 0.05),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Text(
+                      isPositive
+                          ? "+%${margin.toStringAsFixed(0)} Kâr Oranı"
+                          : "-%${margin.abs().toStringAsFixed(0)} Açık",
+                      style: GoogleFonts.poppins(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color:
+                            isDark ? Colors.white70 : const Color(0xFF475569),
                       ),
                     ),
+                  ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // 2. Net Tutar ve Açıklama
+            Text(
+              "Dönem Net Kasa Dengesi",
+              style: GoogleFonts.poppins(
+                fontSize: 12,
+                fontWeight: FontWeight.w400,
+                color: isDark ? Colors.white60 : const Color(0xFF64748B),
+              ),
+            ),
+            const SizedBox(height: 2),
+            Consumer<PrivacyProvider>(
+              builder: (context, privacy, child) {
+                if (privacy.isHidden) {
+                  return Text(
+                    "**** TL",
+                    style: GoogleFonts.poppins(
+                      fontSize: 26,
+                      fontWeight: FontWeight.w800,
+                      color: primaryStatusColor,
+                    ),
+                  );
+                }
+                return SayiSayici(
+                  hedefDeger: netDurum,
+                  style: GoogleFonts.poppins(
+                    fontSize: 26,
+                    fontWeight: FontWeight.w800,
+                    letterSpacing: -0.5,
+                    color: primaryStatusColor,
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 14),
+
+            // 3. İki Renkli Sıvı Denge Çubuğu
+            ClipRRect(
+              borderRadius: BorderRadius.circular(6),
+              child: SizedBox(
+                height: 6,
+                child: Row(
+                  children: [
+                    Expanded(
+                      flex: (gelirShare * 1000).toInt(),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFF10B981), Color(0xFF14B8A6)],
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 2),
+                    Expanded(
+                      flex: (giderShare * 1000).toInt(),
+                      child: Container(
+                        decoration: const BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [Color(0xFFF43F5E), Color(0xFFEF4444)],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+            const SizedBox(height: 6),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  "%${(gelirShare * 100).toStringAsFixed(0)} Gelir Hacmi",
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFF10B981),
+                  ),
+                ),
+                Text(
+                  "%${(giderShare * 100).toStringAsFixed(0)} Gider Yükü",
+                  style: GoogleFonts.poppins(
+                    fontSize: 10.5,
+                    fontWeight: FontWeight.w500,
+                    color: const Color(0xFFEF4444),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 14),
+
+            // 4. İkili Gelir / Gider Metrik Blokları
+            Row(
+              children: [
+                // Toplam Gelir Bloğu
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: _buildPanelGlassInsetDecoration(
+                      isDark,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
                     child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Row(
                           children: [
-                            Expanded(
-                              child: _buildCompactFinanceStatCard(
-                                title: "Kayıtlı Gelir",
-                                value: kayitliGelir,
-                                color: const Color(0xFF16A34A),
-                                icon: Icons.account_balance_wallet_rounded,
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF10B981,
+                                ).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_downward_rounded,
+                                size: 14,
+                                color: Color(0xFF10B981),
                               ),
                             ),
-                            const SizedBox(width: 10),
-                            Expanded(
-                              child: _buildCompactFinanceStatCard(
-                                title: "Toplam Gelir",
-                                value: toplamGelir,
-                                color: const Color(0xFF0EA5A4),
-                                icon: Icons.trending_up_rounded,
+                            const SizedBox(width: 6),
+                            Text(
+                              "GELİR",
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF10B981),
                               ),
                             ),
                           ],
                         ),
-                        const SizedBox(height: 12),
-                        _buildGiderPastaGrafik(
-                          context,
-                          odenenMaas: odenenMaas,
-                          benzin: benzin,
-                          yemek: yemek,
-                          ek: ek,
-                          ekstraGider: ekstraGiderToplam,
+                        const SizedBox(height: 6),
+                        Consumer<PrivacyProvider>(
+                          builder:
+                              (context, privacy, child) => Text(
+                                privacy.isHidden
+                                    ? "**** TL"
+                                    : Formatlayici.yap(toplamGelir),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                ),
+                              ),
                         ),
-                        const SizedBox(height: 12),
-                        _buildEkstraKalemlerKarti(
-                          context: context,
-                          aylikFinans: aylikFinans,
-                          servisi: servisi,
-                          ekstraGelirToplam: ekstraGelirToplam,
-                          ekstraGiderToplam: ekstraGiderToplam,
-                        ),
-
-                        const SizedBox(height: 16),
-                        const Divider(thickness: 1.5),
-                        const SizedBox(height: 16),
-
-                        // --- TOPLAM ÖZETİ (GELİR/GİDER) ---
-                        _buildListRow(
-                          "Toplam Gelir",
-                          toplamGelir,
-                          Colors.green,
-                          fontWeight: FontWeight.bold,
-                        ),
-                        _buildListRow(
-                          "Toplam Gider",
-                          toplamGider,
-                          Colors.red,
-                          fontWeight: FontWeight.bold,
-                        ),
-
-                        const SizedBox(height: 16),
-                        const Divider(thickness: 1.5),
-                        const SizedBox(height: 16),
-
-                        // --- GİDER KALEMLERİ LİSTESİ ---
-                        Text(
-                          "GİDER DETAYLARI",
-                          style: TextStyle(
-                            color: Colors.grey[600],
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            letterSpacing: 1.0,
-                          ),
-                        ),
-                        const SizedBox(height: 8),
-                        _buildListRow(
-                          "Personel Maliyeti (Hakediş)",
-                          odenenMaas,
-                          Colors.purple,
-                        ),
-                        _buildListRow(
-                          "Benzin Gideri",
-                          benzin,
-                          Colors.redAccent,
-                        ),
-                        _buildListRow(
-                          "Yemek Gideri",
-                          yemek,
-                          Colors.orangeAccent,
-                        ),
-                        _buildListRow("Ek Operasyonel", ek, Colors.blueAccent),
-
-                        const SizedBox(height: 12),
-
-                        const Divider(height: 24),
-                        _buildSummaryRow(
-                          "NET KÂR/ZARAR",
-                          netDurum,
-                          netDurum >= 0 ? Colors.green : Colors.red,
-                          isLarge: true,
+                        const SizedBox(height: 2),
+                        Consumer<PrivacyProvider>(
+                          builder:
+                              (context, privacy, child) => Text(
+                                privacy.isHidden
+                                    ? "**** TL"
+                                    : "Kayıtlı: ${Formatlayici.yap(kayitliGelir)}",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 10.5,
+                                  color:
+                                      isDark
+                                          ? Colors.white54
+                                          : const Color(0xFF64748B),
+                                ),
+                              ),
                         ),
                       ],
                     ),
                   ),
-                ],
-              ),
+                ),
+                const SizedBox(width: 10),
+
+                // Toplam Gider Bloğu
+                Expanded(
+                  child: Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: _buildPanelGlassInsetDecoration(
+                      isDark,
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(4),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFFEF4444,
+                                ).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: const Icon(
+                                Icons.arrow_upward_rounded,
+                                size: 14,
+                                color: Color(0xFFEF4444),
+                              ),
+                            ),
+                            const SizedBox(width: 6),
+                            Text(
+                              "GİDER",
+                              style: GoogleFonts.poppins(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFFEF4444),
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 6),
+                        Consumer<PrivacyProvider>(
+                          builder:
+                              (context, privacy, child) => Text(
+                                privacy.isHidden
+                                    ? "**** TL"
+                                    : Formatlayici.yap(toplamGider),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                ),
+                              ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          "Hakediş + Saha Gideri",
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.5,
+                            color:
+                                isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF64748B),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
             ),
+            const SizedBox(height: 12),
+
+            // 5. Gider Dağılım Çipleri (4 Ana Kalem)
+            Wrap(
+              spacing: 8,
+              runSpacing: 6,
+              children: [
+                _buildGiderChip(
+                  label: "İşçilik",
+                  value: odenenMaas,
+                  color: const Color(0xFF10B981),
+                  isDark: isDark,
+                ),
+                _buildGiderChip(
+                  label: "Yakıt",
+                  value: benzin,
+                  color: const Color(0xFFEF4444),
+                  isDark: isDark,
+                ),
+                _buildGiderChip(
+                  label: "Yemek",
+                  value: yemek,
+                  color: const Color(0xFFF59E0B),
+                  isDark: isDark,
+                ),
+                _buildGiderChip(
+                  label: "Ekstra & Diğer",
+                  value: ek + ekstraGiderToplam,
+                  color: const Color(0xFF06B6D4),
+                  isDark: isDark,
+                ),
+              ],
+            ),
+            const SizedBox(height: 10),
+
+            // 6. Alt Aksiyon & Detay Açma Barı
+            const Divider(height: 18),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                // Ekstra Kalem Ekle Butonu
+                TextButton.icon(
+                  onPressed:
+                      () =>
+                          _ekstraKalemEkleSecici(context, aylikFinans, servisi),
+                  icon: const Icon(
+                    Icons.add_circle_outline,
+                    size: 16,
+                    color: Color(0xFF14B8A6),
+                  ),
+                  label: Text(
+                    "Ek Kalem Ekle",
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF14B8A6),
+                    ),
+                  ),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 6,
+                    ),
+                    minimumSize: Size.zero,
+                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                  ),
+                ),
+
+                // Grafik & Detayları Aç/Kapat Butonu
+                InkWell(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _finansDetayAcik = !_finansDetayAcik;
+                    });
+                  },
+                  borderRadius: BorderRadius.circular(8),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          _finansDetayAcik
+                              ? "Detayları Gizle"
+                              : "Grafik & Kalemler",
+                          style: GoogleFonts.poppins(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w500,
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF64748B),
+                          ),
+                        ),
+                        const SizedBox(width: 4),
+                        Icon(
+                          _finansDetayAcik
+                              ? Icons.keyboard_arrow_up_rounded
+                              : Icons.keyboard_arrow_down_rounded,
+                          size: 18,
+                          color:
+                              isDark ? Colors.white70 : const Color(0xFF64748B),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ],
+            ),
+
+            // 7. Açılır Genişletilebilir Detay Bölümü
+            if (_finansDetayAcik) ...[
+              const SizedBox(height: 12),
+              _buildGiderPastaGrafik(
+                context,
+                odenenMaas: odenenMaas,
+                benzin: benzin,
+                yemek: yemek,
+                ek: ek,
+                ekstraGider: ekstraGiderToplam,
+              ),
+              const SizedBox(height: 12),
+              _buildEkstraKalemlerKarti(
+                context: context,
+                aylikFinans: aylikFinans,
+                servisi: servisi,
+                ekstraGelirToplam: ekstraGelirToplam,
+                ekstraGiderToplam: ekstraGiderToplam,
+              ),
+              const SizedBox(height: 12),
+              Container(
+                padding: const EdgeInsets.symmetric(vertical: 8),
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.03)
+                          : const Color(0xFFF8FCFE),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.06)
+                            : const Color(0xFFE2E8F0),
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    _buildListRow(
+                      "Personel Maliyeti (Hakediş)",
+                      odenenMaas,
+                      const Color(0xFF10B981),
+                    ),
+                    _buildListRow(
+                      "Benzin Gideri",
+                      benzin,
+                      const Color(0xFFEF4444),
+                    ),
+                    _buildListRow(
+                      "Yemek Gideri",
+                      yemek,
+                      const Color(0xFFF59E0B),
+                    ),
+                    _buildListRow(
+                      "Ek Operasyonel",
+                      ek,
+                      const Color(0xFF06B6D4),
+                    ),
+                    if (ekstraGiderToplam > 0)
+                      _buildListRow(
+                        "Ekstra Giderler",
+                        ekstraGiderToplam,
+                        const Color(0xFFEC4899),
+                      ),
+                  ],
+                ),
+              ),
+            ],
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildGiderChip({
+    required String label,
+    required double value,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
+        borderRadius: BorderRadius.circular(10),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.35 : 0.25),
+          width: 1,
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 7,
+            height: 7,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 6),
+          Text(
+            "$label: ",
+            style: GoogleFonts.poppins(
+              fontSize: 11,
+              fontWeight: FontWeight.w400,
+              color: isDark ? Colors.white60 : const Color(0xFF64748B),
+            ),
+          ),
+          Consumer<PrivacyProvider>(
+            builder:
+                (context, privacy, child) => Text(
+                  privacy.isHidden ? "****" : Formatlayici.yap(value),
+                  style: GoogleFonts.poppins(
+                    fontSize: 11.5,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+          ),
+        ],
       ),
     );
   }
@@ -2461,206 +2826,1482 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
     return !ayBitisi.isBefore(baslangic) && !ayBaslangici.isAfter(bitis);
   }
 
-  Widget _buildOperasyonelToplamKart({
+  // ==========================================
+  // 1. PERSONEL HAKEDİŞ GİDERİ KARTI (LİKİT CAM)
+  // ==========================================
+  Widget _buildPersonelHakedisKarti({
+    required BuildContext context,
+    required bool isDark,
+    required Map<String, MaasHesaplamaSonucu> hesaplar,
+    required double toplamMaas,
+  }) {
+    final double toplamAvans = hesaplar.values.fold(
+      0.0,
+      (sum, s) => sum + s.toplamAvans,
+    );
+    final double kalanNetBorc = hesaplar.values.fold(
+      0.0,
+      (sum, s) => sum + s.odenecekTutar,
+    );
+
+    final aktifHesaplar =
+        hesaplar.values
+            .where(
+              (s) =>
+                  s.toplamHakedis > 0 ||
+                  s.toplamAvans > 0 ||
+                  s.toplamGiderMasrafi > 0,
+            )
+            .toList();
+
+    final int toplamTam = aktifHesaplar.fold(0, (sum, s) => sum + s.tamGun);
+    final int toplamYarim = aktifHesaplar.fold(0, (sum, s) => sum + s.yarimGun);
+    final double toplamYevmiye = toplamTam + (toplamYarim * 0.5);
+    final String yevmiyeMetni =
+        "${toplamYevmiye % 1 == 0 ? toplamYevmiye.toInt() : toplamYevmiye.toStringAsFixed(1)} Yevmiye";
+
+    // Dağılım Çubuğu Hacimleri
+    final double totalHakedisVolume = (toplamAvans +
+            (kalanNetBorc > 0 ? kalanNetBorc : 0.0))
+        .clamp(1.0, double.infinity);
+    final double avansShare = (toplamAvans / totalHakedisVolume).clamp(
+      0.04,
+      0.96,
+    );
+    final double kalanShare = ((kalanNetBorc > 0 ? kalanNetBorc : 0.0) /
+            totalHakedisVolume)
+        .clamp(0.04, 0.96);
+
+    // Filtreleme ve Sıralama
+    List<MaasHesaplamaSonucu> filtrelenmisListe = List.from(aktifHesaplar);
+    if (_personelFiltre == 'Kalanı Olanlar') {
+      filtrelenmisListe =
+          filtrelenmisListe.where((s) => s.odenecekTutar > 0).toList();
+    } else if (_personelFiltre == 'Yüksek Hakediş') {
+      filtrelenmisListe.sort(
+        (a, b) => b.toplamHakedis.compareTo(a.toplamHakedis),
+      );
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: _buildPanelGlassCardDecoration(isDark),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ÜST BAŞLIK VE TIKLANABİLİR PANEL
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                setState(() {
+                  _personelKartAcik = !_personelKartAcik;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    // İkon Rozeti (Sleek White Glass)
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : const Color(
+                                  0xFF0F172A,
+                                ).withValues(alpha: 0.08),
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : const Color(
+                                  0xFF0F172A,
+                                ).withValues(alpha: 0.03),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.2)
+                                  : const Color(
+                                    0xFF0F172A,
+                                  ).withValues(alpha: 0.15),
+                        ),
+                      ),
+                      child: Icon(
+                        Icons.engineering_rounded,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Başlık ve Rozet
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              Text(
+                                "PERSONEL HAKEDİŞLERİ",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              // Kapsül Rozet: XX Personel • YY Yevmiye (Clean White / Slate)
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : const Color(
+                                            0xFF0F172A,
+                                          ).withValues(alpha: 0.06),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color:
+                                        isDark
+                                            ? Colors.white.withValues(
+                                              alpha: 0.18,
+                                            )
+                                            : const Color(
+                                              0xFF0F172A,
+                                            ).withValues(alpha: 0.12),
+                                  ),
+                                ),
+                                child: Text(
+                                  "${aktifHesaplar.length} Personel • $yevmiyeMetni",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color:
+                                        isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          // Toplam Hakediş Tutarı
+                          Consumer<PrivacyProvider>(
+                            builder: (context, privacy, child) {
+                              if (privacy.isHidden) {
+                                return Text(
+                                  "**** TL",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
+                                    color:
+                                        isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A),
+                                  ),
+                                );
+                              }
+                              return SayiSayici(
+                                hedefDeger: toplamMaas,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 17,
+                                  fontWeight: FontWeight.w800,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Aç/Kapa Ok İkonu
+                    AnimatedRotation(
+                      turns: _personelKartAcik ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOutCubic,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : Colors.black.withValues(alpha: 0.04),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color:
+                              isDark ? Colors.white70 : const Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // AÇILABİLİR İÇERİK
+            if (_personelKartAcik) ...[
+              const SizedBox(height: 14),
+
+              // Ödenen Avans vs. Kalan Borç Dağılım Çubuğu (Yalnızca avans verilmişse aktif)
+              if (toplamAvans > 0) ...[
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(6),
+                  child: SizedBox(
+                    height: 7,
+                    child: Row(
+                      children: [
+                        // Ödenen Avans (Yeşil)
+                        Expanded(
+                          flex: (avansShare * 1000).toInt(),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF10B981), Color(0xFF059669)],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 2),
+                        // Kalan Net Borç (Turkuaz)
+                        Expanded(
+                          flex: (kalanShare * 1000).toInt(),
+                          child: Container(
+                            decoration: const BoxDecoration(
+                              gradient: LinearGradient(
+                                colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 6),
+                // Alt Açıklama Etiketleri
+                Wrap(
+                  alignment: WrapAlignment.spaceBetween,
+                  runSpacing: 4,
+                  spacing: 8,
+                  children: [
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF10B981),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Consumer<PrivacyProvider>(
+                          builder:
+                              (context, privacy, child) => Text(
+                                "Ödenen Avans: ${privacy.isHidden ? '****' : Formatlayici.yap(toplamAvans)}",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF10B981),
+                                ),
+                              ),
+                        ),
+                      ],
+                    ),
+                    Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Container(
+                          width: 7,
+                          height: 7,
+                          decoration: const BoxDecoration(
+                            color: Color(0xFF06B6D4),
+                            shape: BoxShape.circle,
+                          ),
+                        ),
+                        const SizedBox(width: 5),
+                        Consumer<PrivacyProvider>(
+                          builder:
+                              (context, privacy, child) => Text(
+                                "Kalan Net: ${privacy.isHidden ? '****' : Formatlayici.yap(kalanNetBorc)}",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF06B6D4),
+                                ),
+                              ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 14),
+              ],
+
+              // Hızlı Filtre / Sıralama Çipleri
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    _buildFilterChip(
+                      label: "Tümü (${aktifHesaplar.length})",
+                      selected: _personelFiltre == 'Tümü',
+                      isDark: isDark,
+                      onTap: () => setState(() => _personelFiltre = 'Tümü'),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label:
+                          "Kalanı Olanlar (${aktifHesaplar.where((s) => s.odenecekTutar > 0).length})",
+                      selected: _personelFiltre == 'Kalanı Olanlar',
+                      isDark: isDark,
+                      onTap:
+                          () => setState(
+                            () => _personelFiltre = 'Kalanı Olanlar',
+                          ),
+                    ),
+                    const SizedBox(width: 8),
+                    _buildFilterChip(
+                      label: "Yüksek Hakediş",
+                      selected: _personelFiltre == 'Yüksek Hakediş',
+                      isDark: isDark,
+                      onTap:
+                          () => setState(
+                            () => _personelFiltre = 'Yüksek Hakediş',
+                          ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+
+              // Personel Cam Satırları (Glass Tiles)
+              if (filtrelenmisListe.isEmpty)
+                Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  child: Center(
+                    child: Text(
+                      "Seçili kriterde personel bulunamadı.",
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        color:
+                            isDark ? Colors.white60 : const Color(0xFF64748B),
+                      ),
+                    ),
+                  ),
+                )
+              else
+                ...filtrelenmisListe.map(
+                  (s) => _buildModernPersonelSatiri(s, isDark),
+                ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterChip({
+    required String label,
+    required bool selected,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+        decoration: BoxDecoration(
+          color:
+              selected
+                  ? (isDark
+                      ? Colors.white.withValues(alpha: 0.14)
+                      : const Color(0xFF0F172A))
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.white),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color:
+                selected
+                    ? (isDark
+                        ? Colors.white.withValues(alpha: 0.3)
+                        : const Color(0xFF0F172A))
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : const Color(0xFFE2E8F0)),
+            width: selected ? 1.2 : 1,
+          ),
+        ),
+        child: Text(
+          label,
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+            color:
+                selected
+                    ? (isDark ? Colors.white : Colors.white)
+                    : (isDark ? Colors.white70 : const Color(0xFF64748B)),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildModernPersonelSatiri(MaasHesaplamaSonucu s, bool isDark) {
+    final double toplamGelirMaliyeti = s.toplamHakedis + s.toplamGiderMasrafi;
+    final double avansOrani =
+        toplamGelirMaliyeti > 0
+            ? (s.toplamAvans / toplamGelirMaliyeti).clamp(0.0, 1.0)
+            : 0.0;
+
+    // Baş harfleri al
+    final words = s.isci.ad.trim().split(RegExp(r'\s+'));
+    final initials =
+        words.length > 1
+            ? '${words.first[0]}${words.last[0]}'.toUpperCase()
+            : (s.isci.ad.isNotEmpty
+                ? s.isci.ad
+                    .substring(0, math.min(2, s.isci.ad.length))
+                    .toUpperCase()
+                : "P");
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 8),
+      padding: const EdgeInsets.all(12),
+      decoration: _buildPanelGlassInsetDecoration(
+        isDark,
+        borderRadius: BorderRadius.circular(14),
+      ),
+      child: Column(
+        children: [
+          Row(
+            children: [
+              // Avatar (White / Dark Slate)
+              Container(
+                width: 38,
+                height: 38,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors:
+                        isDark
+                            ? [
+                              Colors.white.withValues(alpha: 0.22),
+                              Colors.white.withValues(alpha: 0.09),
+                            ]
+                            : [
+                              const Color(0xFF334155),
+                              const Color(0xFF0F172A),
+                            ],
+                  ),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.15)
+                            : Colors.transparent,
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  initials,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w700,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 10),
+              // İsim ve Yevmiye Rozeti
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      s.isci.ad,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Wrap(
+                      spacing: 4,
+                      runSpacing: 2,
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 6,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                isDark
+                                    ? Colors.white.withValues(alpha: 0.06)
+                                    : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                          child: Text(
+                            "${s.tamGun} Tam${s.yarimGun > 0 ? ' / ${s.yarimGun} Yarım' : ''}",
+                            style: GoogleFonts.poppins(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w500,
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF475569),
+                            ),
+                          ),
+                        ),
+                        if (s.toplamGiderMasrafi > 0)
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 6,
+                              vertical: 2,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFFF59E0B,
+                              ).withValues(alpha: isDark ? 0.16 : 0.10),
+                              borderRadius: BorderRadius.circular(6),
+                            ),
+                            child: Text(
+                              "+${Formatlayici.yap(s.toplamGiderMasrafi)} Gider",
+                              style: GoogleFonts.poppins(
+                                fontSize: 9.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFFF59E0B),
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 8),
+              // Sağ Taraf: Net Ödenecek Rakamı
+              Column(
+                crossAxisAlignment: CrossAxisAlignment.end,
+                children: [
+                  Text(
+                    "Kalan Net",
+                    style: GoogleFonts.poppins(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w500,
+                      color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
+                    ),
+                  ),
+                  Consumer<PrivacyProvider>(
+                    builder:
+                        (context, privacy, child) => Text(
+                          privacy.isHidden
+                              ? "**** TL"
+                              : Formatlayici.yap(s.odenecekTutar),
+                          style: GoogleFonts.poppins(
+                            fontWeight: FontWeight.w800,
+                            fontSize: 13.5,
+                            color:
+                                s.odenecekTutar > 0
+                                    ? (isDark
+                                        ? const Color(0xFF34D399)
+                                        : const Color(0xFF059669))
+                                    : (isDark
+                                        ? Colors.white54
+                                        : const Color(0xFF64748B)),
+                          ),
+                        ),
+                  ),
+                ],
+              ),
+            ],
+          ),
+          // Alt İlerleme Çizgisi: Yalnızca Avans Verilmişse Göster
+          if (s.toplamAvans > 0) ...[
+            const SizedBox(height: 8),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(4),
+              child: SizedBox(
+                height: 4,
+                child: LinearProgressIndicator(
+                  value: avansOrani,
+                  backgroundColor:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.08)
+                          : const Color(0xFFE2E8F0),
+                  valueColor: AlwaysStoppedAnimation<Color>(
+                    avansOrani >= 1.0
+                        ? const Color(0xFF10B981)
+                        : const Color(0xFF10B981),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 4),
+            Wrap(
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              spacing: 6,
+              runSpacing: 2,
+              children: [
+                Text(
+                  "%${(avansOrani * 100).toStringAsFixed(0)} avansla kapatıldı",
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w500,
+                    color: isDark ? Colors.white54 : const Color(0xFF64748B),
+                  ),
+                ),
+                Consumer<PrivacyProvider>(
+                  builder:
+                      (context, privacy, child) => Text(
+                        "Avans: ${privacy.isHidden ? '****' : Formatlayici.yap(s.toplamAvans)}",
+                        style: GoogleFonts.poppins(
+                          fontSize: 10,
+                          fontWeight: FontWeight.w600,
+                          color: const Color(0xFF10B981),
+                        ),
+                      ),
+                ),
+              ],
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  // ==========================================
+  // 2. OPERASYONEL GİDERLER KARTI (LİKİT CAM)
+  // ==========================================
+  Widget _buildOperasyonelGiderlerKarti({
+    required BuildContext context,
+    required bool isDark,
     required double topBenzin,
     required double topYemek,
     required double topEk,
+    required Map<String, OperasyonelHarcamaOzeti> operasyonelHarcamaSahipleri,
+    required Map<String, List<OperasyonelHarcamaDetay>>
+    operasyonelHarcamaDetaylari,
+    required List<GunlukSantiyeRaporu> raporlar,
   }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final double topOperasyonel = topBenzin + topYemek + topEk;
+
+    // Fiş ve Kayıt Adetleri
+    final int benzinKayitSayisi =
+        raporlar.where((r) => r.benzinGideri > 0).length;
+    final int yemekKayitSayisi =
+        raporlar.where((r) => r.yemekGideri > 0).length;
+    final int ekKayitSayisi = raporlar.where((r) => r.ekMasraflar > 0).length;
+    final int toplamFisSayisi =
+        benzinKayitSayisi + yemekKayitSayisi + ekKayitSayisi;
+
+    // Yüzdesel Hacimler (minimum 0.04 görsel genişlik)
+    final double benzinShare =
+        topOperasyonel > 0
+            ? (topBenzin / topOperasyonel).clamp(0.04, 0.92)
+            : 0.33;
+    final double yemekShare =
+        topOperasyonel > 0
+            ? (topYemek / topOperasyonel).clamp(0.04, 0.92)
+            : 0.33;
+    final double ekShare =
+        topOperasyonel > 0 ? (topEk / topOperasyonel).clamp(0.04, 0.92) : 0.34;
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
-      padding: const EdgeInsets.all(12),
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: _buildPanelGlassCardDecoration(isDark),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            // ÜST BAŞLIK VE TIKLANABİLİR PANEL
+            InkWell(
+              borderRadius: BorderRadius.circular(14),
+              onTap: () {
+                setState(() {
+                  _operasyonelKartAcik = !_operasyonelKartAcik;
+                });
+              },
+              child: Padding(
+                padding: const EdgeInsets.symmetric(vertical: 4),
+                child: Row(
+                  children: [
+                    // İkon Rozeti
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(
+                              0xFF06B6D4,
+                            ).withValues(alpha: isDark ? 0.25 : 0.16),
+                            const Color(
+                              0xFF0891B2,
+                            ).withValues(alpha: isDark ? 0.18 : 0.08),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
+                        ),
+                      ),
+                      child: const Icon(
+                        Icons.local_gas_station_rounded,
+                        color: Color(0xFF06B6D4),
+                        size: 20,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    // Başlık ve Rozet
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Wrap(
+                            crossAxisAlignment: WrapCrossAlignment.center,
+                            spacing: 6,
+                            runSpacing: 4,
+                            children: [
+                              Text(
+                                "OPERASYONEL GİDERLER",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 13,
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: 0.3,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              // Fiş Rozeti
+                              Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 8,
+                                  vertical: 3,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF06B6D4,
+                                  ).withValues(alpha: isDark ? 0.16 : 0.10),
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF06B6D4,
+                                    ).withValues(alpha: 0.25),
+                                  ),
+                                ),
+                                child: Text(
+                                  "$toplamFisSayisi Fiş / Kayıt",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 10.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: const Color(0xFF06B6D4),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 3),
+                          // Toplam Operasyonel Tutarı
+                          Consumer<PrivacyProvider>(
+                            builder: (context, privacy, child) {
+                              if (privacy.isHidden) {
+                                return Text(
+                                  "**** TL",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF06B6D4),
+                                  ),
+                                );
+                              }
+                              return SayiSayici(
+                                hedefDeger: topOperasyonel,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color: const Color(0xFF06B6D4),
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
+                    ),
+                    // Aç/Kapa Ok İkonu
+                    AnimatedRotation(
+                      turns: _operasyonelKartAcik ? 0.5 : 0.0,
+                      duration: const Duration(milliseconds: 250),
+                      curve: Curves.easeInOutCubic,
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : Colors.black.withValues(alpha: 0.04),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.keyboard_arrow_down_rounded,
+                          size: 20,
+                          color:
+                              isDark ? Colors.white70 : const Color(0xFF475569),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+
+            // AÇILABİLİR İÇERİK
+            if (_operasyonelKartAcik) ...[
+              const SizedBox(height: 14),
+
+              // 3 Renkli Kategori Dağılım Barı
+              ClipRRect(
+                borderRadius: BorderRadius.circular(6),
+                child: SizedBox(
+                  height: 7,
+                  child: Row(
+                    children: [
+                      // Benzin (Turkuaz)
+                      Expanded(
+                        flex: (benzinShare * 1000).toInt(),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      // Yemek (Amber)
+                      Expanded(
+                        flex: (yemekShare * 1000).toInt(),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFFF59E0B), Color(0xFFD97706)],
+                            ),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 2),
+                      // Ek Masraf (Mor)
+                      Expanded(
+                        flex: (ekShare * 1000).toInt(),
+                        child: Container(
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF8B5CF6), Color(0xFF7C3AED)],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+
+              // Yüzdesel Gösterge Etiketleri
+              Wrap(
+                alignment: WrapAlignment.spaceBetween,
+                spacing: 8,
+                runSpacing: 4,
+                children: [
+                  _buildLegendItem(
+                    label: "Benzin",
+                    ratio:
+                        topOperasyonel > 0
+                            ? (topBenzin / topOperasyonel) * 100
+                            : 0,
+                    color: const Color(0xFF06B6D4),
+                  ),
+                  _buildLegendItem(
+                    label: "Yemek",
+                    ratio:
+                        topOperasyonel > 0
+                            ? (topYemek / topOperasyonel) * 100
+                            : 0,
+                    color: const Color(0xFFF59E0B),
+                  ),
+                  _buildLegendItem(
+                    label: "Ek Masraf",
+                    ratio:
+                        topOperasyonel > 0 ? (topEk / topOperasyonel) * 100 : 0,
+                    color: const Color(0xFF10B981),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 14),
+
+              // Görünüm Seçici (Segmented Switch - No Overflow)
+              Container(
+                padding: const EdgeInsets.all(3),
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? Colors.white.withValues(alpha: 0.05)
+                          : const Color(0xFFEDF4F7),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.08)
+                            : const Color(0xFFDBE8EE),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => setState(() => _operasyonelSekme = 0),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                _operasyonelSekme == 0
+                                    ? (isDark
+                                        ? const Color(0xFF0F1720)
+                                        : Colors.white)
+                                    : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow:
+                                _operasyonelSekme == 0
+                                    ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: isDark ? 0.3 : 0.06,
+                                        ),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                    : null,
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.pie_chart_outline_rounded,
+                                  size: 14,
+                                  color:
+                                      _operasyonelSekme == 0
+                                          ? const Color(0xFF06B6D4)
+                                          : (isDark
+                                              ? Colors.white60
+                                              : const Color(0xFF64748B)),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  "Kategoriye Göre",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight:
+                                        _operasyonelSekme == 0
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                    color:
+                                        _operasyonelSekme == 0
+                                            ? (isDark
+                                                ? Colors.white
+                                                : const Color(0xFF0F172A))
+                                            : (isDark
+                                                ? Colors.white60
+                                                : const Color(0xFF64748B)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    Expanded(
+                      child: InkWell(
+                        borderRadius: BorderRadius.circular(10),
+                        onTap: () => setState(() => _operasyonelSekme = 1),
+                        child: AnimatedContainer(
+                          duration: const Duration(milliseconds: 200),
+                          padding: const EdgeInsets.symmetric(
+                            vertical: 7,
+                            horizontal: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                _operasyonelSekme == 1
+                                    ? (isDark
+                                        ? const Color(0xFF0F1720)
+                                        : Colors.white)
+                                    : Colors.transparent,
+                            borderRadius: BorderRadius.circular(10),
+                            boxShadow:
+                                _operasyonelSekme == 1
+                                    ? [
+                                      BoxShadow(
+                                        color: Colors.black.withValues(
+                                          alpha: isDark ? 0.3 : 0.06,
+                                        ),
+                                        blurRadius: 6,
+                                        offset: const Offset(0, 2),
+                                      ),
+                                    ]
+                                    : null,
+                          ),
+                          child: FittedBox(
+                            fit: BoxFit.scaleDown,
+                            child: Row(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(
+                                  Icons.people_outline_rounded,
+                                  size: 14,
+                                  color:
+                                      _operasyonelSekme == 1
+                                          ? const Color(0xFF06B6D4)
+                                          : (isDark
+                                              ? Colors.white60
+                                              : const Color(0xFF64748B)),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  "Kişiye Göre",
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 11,
+                                    fontWeight:
+                                        _operasyonelSekme == 1
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                    color:
+                                        _operasyonelSekme == 1
+                                            ? (isDark
+                                                ? Colors.white
+                                                : const Color(0xFF0F172A))
+                                            : (isDark
+                                                ? Colors.white60
+                                                : const Color(0xFF64748B)),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+
+              // GÖRÜNÜM 1: Kategoriye Göre (3 Görsel Harcama Segmenti)
+              if (_operasyonelSekme == 0) ...[
+                Row(
+                  children: [
+                    // 1. Yakıt / Benzin Kartı
+                    Expanded(
+                      child: _buildCategorySegmentCard(
+                        title: "Yakıt / Benzin",
+                        amount: topBenzin,
+                        countText: "$benzinKayitSayisi Fiş / İşlem",
+                        icon: Icons.local_gas_station_rounded,
+                        color: const Color(0xFF06B6D4),
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 2. Yemek Kartı
+                    Expanded(
+                      child: _buildCategorySegmentCard(
+                        title: "Yemek Gideri",
+                        amount: topYemek,
+                        countText: "$yemekKayitSayisi Harcama",
+                        icon: Icons.restaurant_rounded,
+                        color: const Color(0xFFF59E0B),
+                        isDark: isDark,
+                      ),
+                    ),
+                    const SizedBox(width: 8),
+                    // 3. Ek / Diğer Kartı
+                    Expanded(
+                      child: _buildCategorySegmentCard(
+                        title: "Ek / Diğer",
+                        amount: topEk,
+                        countText: "$ekKayitSayisi Kalem",
+                        icon: Icons.receipt_long_rounded,
+                        color: const Color(0xFF10B981),
+                        isDark: isDark,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+
+              // GÖRÜNÜM 2: Harcayan Kişiye Göre
+              if (_operasyonelSekme == 1) ...[
+                if (operasyonelHarcamaSahipleri.isEmpty)
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    child: Center(
+                      child: Text(
+                        "Kayıtlı kişi bazlı operasyonel harcama bulunamadı.",
+                        style: GoogleFonts.poppins(
+                          fontSize: 12,
+                          color:
+                              isDark ? Colors.white60 : const Color(0xFF64748B),
+                        ),
+                      ),
+                    ),
+                  )
+                else
+                  ...operasyonelHarcamaSahipleri.entries.map(
+                    (entry) => _buildModernHarcamaSahibiSatiri(
+                      ad: entry.key,
+                      ozet: entry.value,
+                      detaylar:
+                          operasyonelHarcamaDetaylari[entry.key] ?? const [],
+                      isDark: isDark,
+                    ),
+                  ),
+              ],
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLegendItem({
+    required String label,
+    required double ratio,
+    required Color color,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Container(
+          width: 7,
+          height: 7,
+          decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+        ),
+        const SizedBox(width: 4),
+        Text(
+          "$label %${ratio.toStringAsFixed(0)}",
+          style: GoogleFonts.poppins(
+            fontSize: 11,
+            fontWeight: FontWeight.w600,
+            color: color,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildCategorySegmentCard({
+    required String title,
+    required double amount,
+    required String countText,
+    required IconData icon,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(isDark ? 0.18 : 0.18),
-        borderRadius: BorderRadius.circular(12),
+        color: isDark ? Colors.white.withValues(alpha: 0.04) : Colors.white,
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: Theme.of(
-            context,
-          ).dividerColor.withOpacity(isDark ? 0.45 : 0.28),
+          color: color.withValues(alpha: isDark ? 0.35 : 0.25),
+          width: 1.1,
         ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+            padding: const EdgeInsets.all(5),
             decoration: BoxDecoration(
-              color:
-                  isDark
-                      ? Colors.white.withOpacity(0.08)
-                      : Colors.black.withOpacity(0.08),
-              borderRadius: BorderRadius.circular(10),
+              color: color.withValues(alpha: isDark ? 0.16 : 0.12),
+              borderRadius: BorderRadius.circular(8),
             ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: Text(
-                    "Toplam Operasyonel",
+            child: Icon(icon, size: 15, color: color),
+          ),
+          const SizedBox(height: 6),
+          Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(
+              fontSize: 10.5,
+              fontWeight: FontWeight.w600,
+              color: isDark ? Colors.white70 : const Color(0xFF475569),
+            ),
+          ),
+          const SizedBox(height: 2),
+          FittedBox(
+            fit: BoxFit.scaleDown,
+            alignment: Alignment.centerLeft,
+            child: Consumer<PrivacyProvider>(
+              builder:
+                  (context, privacy, child) => Text(
+                    privacy.isHidden ? "****" : Formatlayici.yap(amount),
                     maxLines: 1,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
+                    style: GoogleFonts.poppins(
+                      fontSize: 12,
                       fontWeight: FontWeight.w800,
-                      color: Theme.of(context).colorScheme.onSurface,
+                      color: color,
                     ),
                   ),
-                ),
-                const SizedBox(width: 10),
-                Consumer<PrivacyProvider>(
-                  builder:
-                      (context, privacy, child) => Text(
-                        privacy.isHidden
-                            ? "**** TL"
-                            : Formatlayici.yap(topBenzin + topYemek + topEk),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontWeight: FontWeight.bold,
-                          color:
-                              isDark
-                                  ? const Color(0xFF5EEAD4)
-                                  : const Color(0xFF0F7C86),
-                        ),
-                      ),
-                ),
-              ],
             ),
           ),
-          const SizedBox(height: 8),
-          Divider(
-            color: Theme.of(
-              context,
-            ).dividerColor.withOpacity(isDark ? 0.5 : 0.35),
-            height: 1,
-          ),
-          const SizedBox(height: 8),
-          Consumer<PrivacyProvider>(
-            builder:
-                (context, privacy, child) => Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    _buildMiniList(
-                      'Benzin',
-                      privacy.isHidden
-                          ? "**** TL"
-                          : Formatlayici.yap(topBenzin),
-                    ),
-                    _buildMiniList(
-                      'Yemek',
-                      privacy.isHidden ? "**** TL" : Formatlayici.yap(topYemek),
-                    ),
-                    _buildMiniList(
-                      'Ek Operasyonel',
-                      privacy.isHidden ? "**** TL" : Formatlayici.yap(topEk),
-                    ),
-                  ],
-                ),
+          const SizedBox(height: 2),
+          Text(
+            countText,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: GoogleFonts.poppins(
+              fontSize: 9,
+              fontWeight: FontWeight.w500,
+              color: isDark ? Colors.white54 : const Color(0xFF94A3B8),
+            ),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildOperasyonelHarcamaSatiri(
-    String ad,
-    OperasyonelHarcamaOzeti ozet,
-    List<OperasyonelHarcamaDetay> detaylar,
-  ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
+  Widget _buildModernHarcamaSahibiSatiri({
+    required String ad,
+    required OperasyonelHarcamaOzeti ozet,
+    required List<OperasyonelHarcamaDetay> detaylar,
+    required bool isDark,
+  }) {
+    // İsim baş harfi
+    final words = ad.trim().split(RegExp(r'\s+'));
+    final initials =
+        words.length > 1
+            ? '${words.first[0]}${words.last[0]}'.toUpperCase()
+            : (ad.isNotEmpty
+                ? ad.substring(0, math.min(2, ad.length)).toUpperCase()
+                : "O");
+
     return Container(
-      margin: const EdgeInsets.only(bottom: 10),
+      margin: const EdgeInsets.only(bottom: 8),
       padding: const EdgeInsets.all(12),
-      decoration: BoxDecoration(
-        color: Theme.of(
-          context,
-        ).colorScheme.surfaceContainerHighest.withOpacity(isDark ? 0.14 : 0.16),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color: Theme.of(
-            context,
-          ).dividerColor.withOpacity(isDark ? 0.4 : 0.26),
-        ),
+      decoration: _buildPanelGlassInsetDecoration(
+        isDark,
+        borderRadius: BorderRadius.circular(14),
       ),
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Row(
             children: [
-              Expanded(
+              // Avatar
+              Container(
+                width: 36,
+                height: 36,
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF06B6D4).withValues(alpha: 0.8),
+                      const Color(0xFF0F7C86),
+                    ],
+                  ),
+                  shape: BoxShape.circle,
+                ),
+                alignment: Alignment.center,
                 child: Text(
-                  ad,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
+                  initials,
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
                     fontWeight: FontWeight.w700,
-                    color: Theme.of(context).colorScheme.onSurface,
+                    fontSize: 12.5,
                   ),
                 ),
               ),
-              const SizedBox(width: 10),
-              Consumer<PrivacyProvider>(
-                builder:
-                    (context, privacy, child) => Text(
-                      privacy.isHidden
-                          ? "**** TL"
-                          : Formatlayici.yap(ozet.toplam),
+              const SizedBox(width: 8),
+              // Harcayan Adı ve Tutar
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      ad,
                       maxLines: 1,
                       overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        color:
-                            isDark
-                                ? const Color(0xFF5EEAD4)
-                                : const Color(0xFF0F7C86),
+                      style: GoogleFonts.poppins(
+                        fontWeight: FontWeight.w700,
+                        fontSize: 13,
+                        color: isDark ? Colors.white : const Color(0xFF0F172A),
                       ),
                     ),
+                    const SizedBox(height: 2),
+                    FittedBox(
+                      fit: BoxFit.scaleDown,
+                      alignment: Alignment.centerLeft,
+                      child: Consumer<PrivacyProvider>(
+                        builder:
+                            (context, privacy, child) => Text(
+                              "Toplam: ${privacy.isHidden ? '**** TL' : Formatlayici.yap(ozet.toplam)}",
+                              style: GoogleFonts.poppins(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: const Color(0xFF06B6D4),
+                              ),
+                            ),
+                      ),
+                    ),
+                  ],
+                ),
               ),
+              const SizedBox(width: 6),
+              // "Detaylandır" Cam Butonu
+              if (detaylar.isNotEmpty)
+                InkWell(
+                  borderRadius: BorderRadius.circular(8),
+                  onTap: () => _operasyonelDetayDallanmaGoster(ad, detaylar),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.06)
+                              : const Color(0xFFE0F2FE),
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(
+                        color: const Color(0xFF06B6D4).withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Text(
+                          "Detaylandır",
+                          style: GoogleFonts.poppins(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: const Color(0xFF0891B2),
+                          ),
+                        ),
+                        const SizedBox(width: 3),
+                        const Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          size: 9,
+                          color: Color(0xFF0891B2),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
             ],
           ),
           const SizedBox(height: 8),
+          // Mikro Renkli Kategori Noktaları
+          Wrap(
+            spacing: 6,
+            runSpacing: 4,
+            children: [
+              if (ozet.benzin > 0)
+                _buildMicroChip(
+                  label: "Benzin: ${Formatlayici.yap(ozet.benzin)}",
+                  color: const Color(0xFF06B6D4),
+                  isDark: isDark,
+                ),
+              if (ozet.yemek > 0)
+                _buildMicroChip(
+                  label: "Yemek: ${Formatlayici.yap(ozet.yemek)}",
+                  color: const Color(0xFFF59E0B),
+                  isDark: isDark,
+                ),
+              if (ozet.ekMasraf > 0)
+                _buildMicroChip(
+                  label: "Ek: ${Formatlayici.yap(ozet.ekMasraf)}",
+                  color: const Color(0xFF10B981),
+                  isDark: isDark,
+                ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMicroChip({
+    required String label,
+    required Color color,
+    required bool isDark,
+  }) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+      decoration: BoxDecoration(
+        color: color.withValues(alpha: isDark ? 0.14 : 0.08),
+        borderRadius: BorderRadius.circular(6),
+        border: Border.all(color: color.withValues(alpha: 0.25)),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Container(
+            width: 5,
+            height: 5,
+            decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+          ),
+          const SizedBox(width: 4),
           Consumer<PrivacyProvider>(
             builder:
-                (context, privacy, child) => Wrap(
-                  spacing: 8,
-                  runSpacing: 8,
-                  children: [
-                    if (ozet.benzin > 0)
-                      _buildMiniList(
-                        'Benzin',
-                        privacy.isHidden
-                            ? "**** TL"
-                            : Formatlayici.yap(ozet.benzin),
-                      ),
-                    if (ozet.yemek > 0)
-                      _buildMiniList(
-                        'Yemek',
-                        privacy.isHidden
-                            ? "**** TL"
-                            : Formatlayici.yap(ozet.yemek),
-                      ),
-                    if (ozet.ekMasraf > 0)
-                      _buildMiniList(
-                        'Ek',
-                        privacy.isHidden
-                            ? "**** TL"
-                            : Formatlayici.yap(ozet.ekMasraf),
-                      ),
-                  ],
+                (context, privacy, child) => Text(
+                  privacy.isHidden ? "****" : label,
+                  style: GoogleFonts.poppins(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: color,
+                  ),
                 ),
           ),
-          if (detaylar.isNotEmpty) ...[
-            const SizedBox(height: 8),
-            Align(
-              alignment: Alignment.centerRight,
-              child: TextButton.icon(
-                onPressed: () => _operasyonelDetayDallanmaGoster(ad, detaylar),
-                icon: const Icon(Icons.list_alt_rounded, size: 18),
-                label: const Text("Detaylandır"),
-              ),
-            ),
-          ],
         ],
       ),
     );
@@ -2754,148 +4395,378 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
           .add(d);
     }
     final santiyeler = santiyeBazli.keys.toList()..sort();
+    final double kisiToplam = detaylar.fold(0.0, (t, d) => t + d.tutar);
+
+    final words = kisiAdi.trim().split(RegExp(r'\s+'));
+    final initials =
+        words.length > 1
+            ? '${words.first[0]}${words.last[0]}'.toUpperCase()
+            : (kisiAdi.isNotEmpty
+                ? kisiAdi
+                    .substring(0, math.min(2, kisiAdi.length))
+                    .toUpperCase()
+                : "O");
 
     showModalBottomSheet<void>(
       context: context,
       isScrollControlled: true,
-      backgroundColor: Theme.of(context).colorScheme.surface,
-      shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(20)),
-      ),
+      backgroundColor: Colors.transparent,
       builder: (sheetContext) {
-        return SafeArea(
-          child: Padding(
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 12),
+        return Container(
+          margin: const EdgeInsets.fromLTRB(10, 0, 10, 16),
+          decoration: _buildPanelGlassCardDecoration(
+            isDark,
+            borderRadius: BorderRadius.circular(26),
+          ),
+          child: SafeArea(
+            top: false,
             child: SizedBox(
-              height: MediaQuery.of(sheetContext).size.height * 0.62,
+              height: MediaQuery.of(sheetContext).size.height * 0.70,
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  Text(
-                    "$kisiAdi - Harcama Detayi",
-                    style: const TextStyle(
-                      fontSize: 17,
-                      fontWeight: FontWeight.w700,
+                  // Sürüklenebilir Üst Çubuk
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 10, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.2)
+                                : Colors.black.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 4),
-                  Text(
-                    "Şantiye satırına dokunarak gün bazlı harcamaları açın.",
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: isDark ? Colors.white70 : const Color(0xFF5B6B77),
+
+                  // Başlık ve Profil Bilgisi
+                  Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 8,
                     ),
-                  ),
-                  const SizedBox(height: 12),
-                  Expanded(
-                    child: ListView(
-                      children:
-                          santiyeler.map((santiyeAdi) {
-                            final kayitlar = [
-                              ...(santiyeBazli[santiyeAdi] ??
-                                  const <OperasyonelHarcamaDetay>[]),
-                            ]..sort((a, b) => b.tarih.compareTo(a.tarih));
-                            final toplam = kayitlar.fold<double>(
-                              0.0,
-                              (t, e) => t + e.tutar,
-                            );
-                            return Container(
-                              margin: const EdgeInsets.only(bottom: 8),
-                              decoration: BoxDecoration(
-                                color:
-                                    isDark
-                                        ? const Color(0xFF11212B)
-                                        : const Color(0xFFEAF5FA),
-                                borderRadius: BorderRadius.circular(12),
-                                border: Border.all(
+                    child: Row(
+                      children: [
+                        Container(
+                          width: 40,
+                          height: 40,
+                          decoration: const BoxDecoration(
+                            gradient: LinearGradient(
+                              colors: [Color(0xFF06B6D4), Color(0xFF0891B2)],
+                            ),
+                            shape: BoxShape.circle,
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            initials,
+                            style: GoogleFonts.poppins(
+                              color: Colors.white,
+                              fontWeight: FontWeight.w700,
+                              fontSize: 14,
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                kisiAdi,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w700,
                                   color:
                                       isDark
-                                          ? const Color(0xFF1E3A47)
-                                          : const Color.fromARGB(
-                                            255,
-                                            191,
-                                            219,
-                                            230,
-                                          ),
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
                                 ),
                               ),
-                              child: ExpansionTile(
-                                tilePadding: const EdgeInsets.symmetric(
-                                  horizontal: 12,
-                                  vertical: 2,
+                              Text(
+                                "${detaylar.length} harcama kaydı • ${santiyeler.length} şantiye",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w500,
+                                  color:
+                                      isDark
+                                          ? Colors.white60
+                                          : const Color(0xFF64748B),
                                 ),
-                                childrenPadding: const EdgeInsets.only(
-                                  left: 8,
-                                  right: 8,
-                                  bottom: 6,
-                                ),
-                                leading: const Icon(
-                                  Icons.domain_rounded,
-                                  color: Color(0xFF0F7C86),
-                                ),
-                                title: Text(
-                                  santiyeAdi,
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.w700,
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF06B6D4,
+                            ).withValues(alpha: isDark ? 0.16 : 0.10),
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF06B6D4,
+                              ).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Consumer<PrivacyProvider>(
+                            builder:
+                                (context, privacy, child) => Text(
+                                  privacy.isHidden
+                                      ? "**** TL"
+                                      : Formatlayici.yap(kisiToplam),
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: const Color(0xFF0891B2),
                                   ),
                                 ),
-                                subtitle: Text(
-                                  "${kayitlar.length} kayıt • Detayı aç",
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Divider(
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.08)
+                              : const Color(0xFFE2E8F0),
+                      height: 16,
+                    ),
+                  ),
+
+                  // Şantiye Bazlı Harcama Kartları Listesi
+                  Expanded(
+                    child: ListView.builder(
+                      padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
+                      itemCount: santiyeler.length,
+                      itemBuilder: (context, idx) {
+                        final santiyeAdi = santiyeler[idx];
+                        final kayitlar = [
+                          ...(santiyeBazli[santiyeAdi] ??
+                              const <OperasyonelHarcamaDetay>[]),
+                        ]..sort((a, b) => b.tarih.compareTo(a.tarih));
+                        final double santiyeToplam = kayitlar.fold(
+                          0.0,
+                          (t, e) => t + e.tutar,
+                        );
+
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 10),
+                          decoration: _buildPanelGlassInsetDecoration(
+                            isDark,
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          child: Theme(
+                            data: Theme.of(
+                              context,
+                            ).copyWith(dividerColor: Colors.transparent),
+                            child: ExpansionTile(
+                              tilePadding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 4,
+                              ),
+                              childrenPadding: const EdgeInsets.fromLTRB(
+                                8,
+                                0,
+                                8,
+                                8,
+                              ),
+                              leading: Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF06B6D4,
+                                  ).withValues(alpha: isDark ? 0.16 : 0.10),
+                                  borderRadius: BorderRadius.circular(10),
                                 ),
-                                trailing: Consumer<PrivacyProvider>(
-                                  builder:
-                                      (context, privacy, child) => Row(
-                                        mainAxisSize: MainAxisSize.min,
+                                child: const Icon(
+                                  Icons.location_city_rounded,
+                                  color: Color(0xFF06B6D4),
+                                  size: 18,
+                                ),
+                              ),
+                              title: Text(
+                                santiyeAdi,
+                                style: GoogleFonts.poppins(
+                                  fontWeight: FontWeight.w700,
+                                  fontSize: 13,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                ),
+                              ),
+                              subtitle: Text(
+                                "${kayitlar.length} fiş / kayıt",
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  color:
+                                      isDark
+                                          ? Colors.white60
+                                          : const Color(0xFF64748B),
+                                ),
+                              ),
+                              trailing: Consumer<PrivacyProvider>(
+                                builder:
+                                    (context, privacy, child) => Text(
+                                      privacy.isHidden
+                                          ? "**** TL"
+                                          : Formatlayici.yap(santiyeToplam),
+                                      style: GoogleFonts.poppins(
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 13,
+                                        color: const Color(0xFF06B6D4),
+                                      ),
+                                    ),
+                              ),
+                              children:
+                                  kayitlar.map((d) {
+                                    final Color kalemRengi =
+                                        d.kalem.toLowerCase().contains(
+                                                  'benzin',
+                                                ) ||
+                                                d.kalem.toLowerCase().contains(
+                                                  'yakıt',
+                                                )
+                                            ? const Color(0xFF06B6D4)
+                                            : (d.kalem.toLowerCase().contains(
+                                                  'yemek',
+                                                )
+                                                ? const Color(0xFFF59E0B)
+                                                : const Color(0xFF10B981));
+                                    final IconData kalemIkonu =
+                                        d.kalem.toLowerCase().contains(
+                                                  'benzin',
+                                                ) ||
+                                                d.kalem.toLowerCase().contains(
+                                                  'yakıt',
+                                                )
+                                            ? Icons.local_gas_station_rounded
+                                            : (d.kalem.toLowerCase().contains(
+                                                  'yemek',
+                                                )
+                                                ? Icons.restaurant_rounded
+                                                : Icons.receipt_long_rounded);
+
+                                    return Container(
+                                      margin: const EdgeInsets.only(bottom: 6),
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 10,
+                                        vertical: 8,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color:
+                                            isDark
+                                                ? Colors.white.withValues(
+                                                  alpha: 0.03,
+                                                )
+                                                : Colors.white,
+                                        borderRadius: BorderRadius.circular(10),
+                                        border: Border.all(
+                                          color:
+                                              isDark
+                                                  ? Colors.white.withValues(
+                                                    alpha: 0.05,
+                                                  )
+                                                  : const Color(0xFFE2E8F0),
+                                        ),
+                                      ),
+                                      child: Row(
                                         children: [
-                                          Text(
-                                            privacy.isHidden
-                                                ? "**** TL"
-                                                : Formatlayici.yap(toplam),
-                                            style: const TextStyle(
-                                              fontWeight: FontWeight.w700,
+                                          Container(
+                                            padding: const EdgeInsets.all(6),
+                                            decoration: BoxDecoration(
+                                              color: kalemRengi.withValues(
+                                                alpha: isDark ? 0.16 : 0.10,
+                                              ),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                            ),
+                                            child: Icon(
+                                              kalemIkonu,
+                                              size: 14,
+                                              color: kalemRengi,
                                             ),
                                           ),
-                                          const SizedBox(width: 6),
-                                          const Icon(Icons.expand_more_rounded),
+                                          const SizedBox(width: 8),
+                                          Expanded(
+                                            child: Column(
+                                              crossAxisAlignment:
+                                                  CrossAxisAlignment.start,
+                                              children: [
+                                                Text(
+                                                  d.kalem,
+                                                  maxLines: 1,
+                                                  overflow:
+                                                      TextOverflow.ellipsis,
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w600,
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white
+                                                            : const Color(
+                                                              0xFF0F172A,
+                                                            ),
+                                                  ),
+                                                ),
+                                                Text(
+                                                  DateFormat(
+                                                    'd MMMM yyyy',
+                                                    'tr_TR',
+                                                  ).format(d.tarih),
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 10,
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white54
+                                                            : const Color(
+                                                              0xFF94A3B8,
+                                                            ),
+                                                  ),
+                                                ),
+                                              ],
+                                            ),
+                                          ),
+                                          Consumer<PrivacyProvider>(
+                                            builder:
+                                                (
+                                                  context,
+                                                  privacy,
+                                                  child,
+                                                ) => Text(
+                                                  privacy.isHidden
+                                                      ? "****"
+                                                      : Formatlayici.yap(
+                                                        d.tutar,
+                                                      ),
+                                                  style: GoogleFonts.poppins(
+                                                    fontSize: 12,
+                                                    fontWeight: FontWeight.w700,
+                                                    color: kalemRengi,
+                                                  ),
+                                                ),
+                                          ),
                                         ],
                                       ),
-                                ),
-                                children:
-                                    kayitlar.map((d) {
-                                      return ListTile(
-                                        dense: true,
-                                        contentPadding: const EdgeInsets.only(
-                                          left: 8,
-                                          right: 6,
-                                        ),
-                                        leading: const Icon(
-                                          Icons.receipt_long_rounded,
-                                          size: 18,
-                                          color: Color(0xFF0F7C86),
-                                        ),
-                                        title: Text(d.kalem),
-                                        subtitle: Text(
-                                          DateFormat(
-                                            'd MMMM yyyy',
-                                            'tr_TR',
-                                          ).format(d.tarih),
-                                        ),
-                                        trailing: Consumer<PrivacyProvider>(
-                                          builder:
-                                              (context, privacy, child) => Text(
-                                                privacy.isHidden
-                                                    ? "**** TL"
-                                                    : Formatlayici.yap(d.tutar),
-                                                style: const TextStyle(
-                                                  fontWeight: FontWeight.w700,
-                                                ),
-                                              ),
-                                        ),
-                                      );
-                                    }).toList(),
-                              ),
-                            );
-                          }).toList(),
+                                    );
+                                  }).toList(),
+                            ),
+                          ),
+                        );
+                      },
                     ),
                   ),
                 ],
@@ -3015,63 +4886,6 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
     );
   }
 
-  Widget _buildCompactFinanceStatCard({
-    required String title,
-    required double value,
-    required Color color,
-    required IconData icon,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-      decoration: BoxDecoration(
-        color: isDark ? Colors.white.withOpacity(0.06) : Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(
-          color:
-              isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
-        ),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: color, size: 18),
-          const SizedBox(width: 8),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
-                    color: isDark ? Colors.white70 : const Color(0xFF607482),
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Consumer<PrivacyProvider>(
-                  builder:
-                      (context, privacy, child) => Text(
-                        privacy.isHidden ? "**** TL" : Formatlayici.yap(value),
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          color: color,
-                          fontWeight: FontWeight.w800,
-                          fontSize: 14,
-                        ),
-                      ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
   Widget _buildGiderPastaGrafik(
     BuildContext context, {
     required double odenenMaas,
@@ -3083,7 +4897,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final dilimler =
         <_PastaDilim>[
-          _PastaDilim("Personel", odenenMaas, const Color(0xFF8B5CF6)),
+          _PastaDilim("Personel", odenenMaas, const Color(0xFF10B981)),
           _PastaDilim("Benzin", benzin, const Color(0xFFEF4444)),
           _PastaDilim("Yemek", yemek, const Color(0xFFF59E0B)),
           _PastaDilim("Ek Operasyonel", ek, const Color(0xFF3B82F6)),

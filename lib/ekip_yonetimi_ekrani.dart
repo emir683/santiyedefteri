@@ -5,7 +5,6 @@ import 'package:flutter/services.dart';
 import 'package:provider/provider.dart';
 import 'package:share_plus/share_plus.dart';
 import 'user_model.dart';
-import 'auth_servisi.dart';
 import 'firestore_servisi.dart';
 import 'team_gate.dart';
 import 'widgets/glass_surface.dart';
@@ -283,8 +282,9 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                           return;
                                         }
 
-                                        final messenger =
-                                            ScaffoldMessenger.of(context);
+                                        final messenger = ScaffoldMessenger.of(
+                                          context,
+                                        );
                                         await servisi.ekipParolasiniGuncelle(
                                           widget.teamId,
                                           yeniParolaCtrl.text.trim(),
@@ -337,20 +337,14 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
   }
 
   // --- BAĞLANTI PAYLAŞMA ---
-  void _baglantiPaylas(
-    String ekipAdi,
-    String ekipSifresi,
-    String ekipId,
-  ) {
-    final String deepLink = Uri(
-      scheme: 'https',
-      host: 'emrcore.com',
-      path: '/katil',
-      queryParameters: {
-        'ad': ekipAdi,
-        'id': ekipId,
-      },
-    ).toString();
+  void _baglantiPaylas(String ekipAdi, String ekipSifresi, String ekipId) {
+    final String deepLink =
+        Uri(
+          scheme: 'https',
+          host: 'emrcore.com',
+          path: '/katil',
+          queryParameters: {'ad': ekipAdi, 'id': ekipId},
+        ).toString();
     const String storeLink =
         "https://play.google.com/store/apps/details?id=com.emircf.santiyepuantaj";
     final String mesaj =
@@ -486,562 +480,589 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
       body: GlassPageSurface(
         preferSoftLightBackground: true,
         child: StreamBuilder<DocumentSnapshot>(
-        stream:
-            FirebaseFirestore.instance
-                .collection('teams')
-                .doc(widget.teamId)
-                .snapshots(),
-        builder: (context, teamSnapshot) {
-          if (teamSnapshot.connectionState == ConnectionState.waiting)
-            return const Center(child: CircularProgressIndicator());
-          if (!teamSnapshot.hasData || !teamSnapshot.data!.exists)
-            return const Center(child: Text("Ekip bilgileri bulunamadı."));
+          stream:
+              FirebaseFirestore.instance
+                  .collection('teams')
+                  .doc(widget.teamId)
+                  .snapshots(),
+          builder: (context, teamSnapshot) {
+            if (teamSnapshot.connectionState == ConnectionState.waiting)
+              return const Center(child: CircularProgressIndicator());
+            if (!teamSnapshot.hasData || !teamSnapshot.data!.exists)
+              return const Center(child: Text("Ekip bilgileri bulunamadı."));
 
-          final teamData = teamSnapshot.data!.data() as Map<String, dynamic>;
-          final String ekipAdi = teamData['ad'] ?? 'İsimsiz Ekip';
-          final String ekipParolasi = teamData['sifre'] ?? 'Yok';
-          final String kurucuUid = teamData['kurucu'] ?? '';
-          final List<String> yoneticiUidleri = List<String>.from(
-            teamData['yoneticiler'] ?? const <String>[],
-          );
-          final bool isKurucu = user?.uid == kurucuUid;
+            final teamData = teamSnapshot.data!.data() as Map<String, dynamic>;
+            final String ekipAdi = teamData['ad'] ?? 'İsimsiz Ekip';
+            final String ekipParolasi = teamData['sifre'] ?? 'Yok';
+            final String kurucuUid = teamData['kurucu'] ?? '';
+            final List<String> yoneticiUidleri = List<String>.from(
+              teamData['yoneticiler'] ?? const <String>[],
+            );
+            final bool isKurucu = user?.uid == kurucuUid;
 
-          return ListView(
-            padding: EdgeInsets.fromLTRB(
-              16.0,
-              FloatingLiquidAppBar.topPadding(context, extra: 4),
-              16.0,
-              16.0,
-            ),
-            children: [
-              // 1. EKİP BİLGİLERİ KARTI
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: cardBorderColor,
-                    width: 2,
-                  ),
-                ),
-                color: cardColor,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        "Ekip Bilgileriniz",
-                        style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 12),
-                        child: Divider(),
-                      ),
-                      _buildEditableRow(
-                        context,
-                        label: "Ekip Adı:",
-                        value: ekipAdi,
-                        icon: Icons.groups,
-                        canEdit: isKurucu,
-                        onEdit:
-                            () =>
-                                _isimDegistirDialog(firestoreServisi, ekipAdi),
-                        onCopy: () => _copyToClipboard(ekipAdi),
-                        isDark: isDark,
-                      ),
-                      const SizedBox(height: 20),
-                      _buildEditableRow(
-                        context,
-                        label: "Ekip Parolası:",
-                        value: ekipParolasi,
-                        icon: Icons.lock,
-                        canEdit: isKurucu,
-                        isPassword: true,
-                        onEdit:
-                            () => _parolaDegistirDialog(
-                              firestoreServisi,
-                              ekipParolasi,
-                            ),
-                        onCopy: () => _copyToClipboard(ekipParolasi),
-                        isDark: isDark,
-                      ),
-                    ],
-                  ),
-                ),
+            return ListView(
+              padding: EdgeInsets.fromLTRB(
+                16.0,
+                FloatingLiquidAppBar.topPadding(context, extra: 4),
+                16.0,
+                16.0,
               ),
-              const SizedBox(height: 20),
-              // 2. PAYLAŞIM KARTI
-              Card(
-                color:
-                    isDark
-                        ? const Color(0xFF12202A)
-                        : const Color(0xFF0F7C86),
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                elevation: 6,
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(20),
-                  onTap:
-                      () => _baglantiPaylas(
-                        ekipAdi,
-                        ekipParolasi,
-                        widget.teamId,
-                      ),
+              children: [
+                // 1. EKİP BİLGİLERİ KARTI
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: cardBorderColor, width: 2),
+                  ),
+                  color: cardColor,
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
-                    child: Row(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Container(
-                          padding: const EdgeInsets.all(12),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.2),
-                            shape: BoxShape.circle,
-                          ),
-                          child: const Icon(
-                            Icons.share,
-                            color: Colors.white,
-                            size: 28,
-                          ),
+                        Text(
+                          "Ekip Bilgileriniz",
+                          style: Theme.of(context).textTheme.titleLarge
+                              ?.copyWith(fontWeight: FontWeight.bold),
                         ),
-                        const SizedBox(width: 16),
-                        const Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                "Ekip Bağlantısını Paylaş",
-                                style: TextStyle(
-                                  color: Colors.white,
-                                  fontSize: 18,
-                                  fontWeight: FontWeight.bold,
-                                ),
-                              ),
-                              SizedBox(height: 4),
-                              Text(
-                                "Çalışanları davet et",
-                                style: TextStyle(
-                                  color: Colors.white70,
-                                  fontSize: 13,
-                                ),
-                              ),
-                            ],
-                          ),
+                        const Padding(
+                          padding: EdgeInsets.symmetric(vertical: 12),
+                          child: Divider(),
                         ),
-                        const Icon(
-                          Icons.arrow_forward_ios,
-                          color: Colors.white70,
-                          size: 16,
+                        _buildEditableRow(
+                          context,
+                          label: "Ekip Adı:",
+                          value: ekipAdi,
+                          icon: Icons.groups,
+                          canEdit: isKurucu,
+                          onEdit:
+                              () => _isimDegistirDialog(
+                                firestoreServisi,
+                                ekipAdi,
+                              ),
+                          onCopy: () => _copyToClipboard(ekipAdi),
+                          isDark: isDark,
+                        ),
+                        const SizedBox(height: 20),
+                        _buildEditableRow(
+                          context,
+                          label: "Ekip Parolası:",
+                          value: ekipParolasi,
+                          icon: Icons.lock,
+                          canEdit: isKurucu,
+                          isPassword: true,
+                          onEdit:
+                              () => _parolaDegistirDialog(
+                                firestoreServisi,
+                                ekipParolasi,
+                              ),
+                          onCopy: () => _copyToClipboard(ekipParolasi),
+                          isDark: isDark,
                         ),
                       ],
                     ),
                   ),
                 ),
-              ),
-              const SizedBox(height: 24),
-              // 3. ÜYELER KARTI
-              Card(
-                elevation: 4,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(20),
-                  side: BorderSide(
-                    color: cardBorderColor,
-                    width: 2,
+                const SizedBox(height: 20),
+                // 2. PAYLAŞIM KARTI
+                Card(
+                  color:
+                      isDark
+                          ? const Color(0xFF12202A)
+                          : const Color(0xFF0F7C86),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
                   ),
-                ),
-                color: cardColor,
-                child: Padding(
-                  padding: const EdgeInsets.all(20.0),
-                  child: StreamBuilder<List<Map<String, dynamic>>>(
-                        stream: firestoreServisi.getEkipUyeleriStream(
+                  elevation: 6,
+                  child: InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap:
+                        () => _baglantiPaylas(
+                          ekipAdi,
+                          ekipParolasi,
                           widget.teamId,
                         ),
-                        builder: (context, uyeSnapshot) {
-                          final bool yukleniyor = !uyeSnapshot.hasData;
-                          final List<Map<String, dynamic>> uyeler =
-                              uyeSnapshot.data ?? const <Map<String, dynamic>>[];
-                          return Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              InkWell(
-                                borderRadius: BorderRadius.circular(16),
-                                onTap: () {
-                                  setState(() {
-                                    _uyelerListesiAcik = !_uyelerListesiAcik;
-                                  });
-                                },
-                                child: Row(
-                                  children: [
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            "Ekip Üyeleri",
-                                            style: Theme.of(context)
-                                                .textTheme
-                                                .titleLarge
-                                                ?.copyWith(
-                                                  fontWeight: FontWeight.bold,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            yukleniyor
-                                                ? "Üyeler yükleniyor..."
-                                                : "${uyeler.length} kişi",
-                                            style: TextStyle(
-                                              fontSize: 13,
-                                              color:
-                                                  isDark
-                                                      ? Colors.white60
-                                                      : Colors.black54,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 6,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color:
-                                            isDark
-                                                ? Colors.white.withOpacity(0.05)
-                                                : Colors.grey.shade100,
-                                        borderRadius: BorderRadius.circular(999),
-                                        border: Border.all(
-                                          color: Colors.grey.withOpacity(0.12),
-                                        ),
-                                      ),
-                                      child: Row(
-                                        mainAxisSize: MainAxisSize.min,
-                                        children: [
-                                          Text(
-                                            _uyelerListesiAcik
-                                                ? "Gizle"
-                                                : "Göster",
-                                            style: const TextStyle(
-                                              fontSize: 12,
-                                              fontWeight: FontWeight.w600,
-                                              color: _kBrandTeal,
-                                            ),
-                                          ),
-                                          const SizedBox(width: 6),
-                                          AnimatedRotation(
-                                            turns:
-                                                _uyelerListesiAcik ? 0.5 : 0.0,
-                                            duration: const Duration(
-                                              milliseconds: 220,
-                                            ),
-                                            curve: Curves.easeOutCubic,
-                                            child: const Icon(
-                                              Icons.keyboard_arrow_down,
-                                              color: _kBrandTeal,
-                                            ),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                    child: Padding(
+                      padding: const EdgeInsets.all(20.0),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.white.withOpacity(0.2),
+                              shape: BoxShape.circle,
+                            ),
+                            child: const Icon(
+                              Icons.share,
+                              color: Colors.white,
+                              size: 28,
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          const Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Text(
+                                  "Ekip Bağlantısını Paylaş",
+                                  style: TextStyle(
+                                    color: Colors.white,
+                                    fontSize: 18,
+                                    fontWeight: FontWeight.bold,
+                                  ),
                                 ),
-                              ),
-                              AnimatedSize(
-                                duration: const Duration(milliseconds: 220),
-                                curve: Curves.easeOutCubic,
-                                alignment: Alignment.topCenter,
-                                child:
-                                    _uyelerListesiAcik
-                                        ? Padding(
-                                          padding: const EdgeInsets.only(
-                                            top: 12,
+                                SizedBox(height: 4),
+                                Text(
+                                  "Çalışanları davet et",
+                                  style: TextStyle(
+                                    color: Colors.white70,
+                                    fontSize: 13,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const Icon(
+                            Icons.arrow_forward_ios,
+                            color: Colors.white70,
+                            size: 16,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 24),
+                // 3. ÜYELER KARTI
+                Card(
+                  elevation: 4,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(20),
+                    side: BorderSide(color: cardBorderColor, width: 2),
+                  ),
+                  color: cardColor,
+                  child: Padding(
+                    padding: const EdgeInsets.all(20.0),
+                    child: StreamBuilder<List<Map<String, dynamic>>>(
+                      stream: firestoreServisi.getEkipUyeleriStream(
+                        widget.teamId,
+                      ),
+                      builder: (context, uyeSnapshot) {
+                        final bool yukleniyor = !uyeSnapshot.hasData;
+                        final List<Map<String, dynamic>> uyeler =
+                            uyeSnapshot.data ?? const <Map<String, dynamic>>[];
+                        return Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
+                                setState(() {
+                                  _uyelerListesiAcik = !_uyelerListesiAcik;
+                                });
+                              },
+                              child: Row(
+                                children: [
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment:
+                                          CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          "Ekip Üyeleri",
+                                          style: Theme.of(
+                                            context,
+                                          ).textTheme.titleLarge?.copyWith(
+                                            fontWeight: FontWeight.bold,
                                           ),
-                                          child:
-                                              yukleniyor
-                                                  ? const Center(
-                                                    child:
-                                                        CircularProgressIndicator(),
-                                                  )
-                                                  : Column(
-                                                    children:
-                                                        uyeler.map((uye) {
-                                  final bool isCurrentUser =
-                                      user?.uid == uye['uid'];
-                                  final bool isMemberKurucu =
-                                      uye['uid'] == kurucuUid;
-                                  final bool isMemberYonetici =
-                                      yoneticiUidleri.contains(uye['uid']);
-                                  return Container(
-                                    margin: const EdgeInsets.only(bottom: 10),
-                                    padding: const EdgeInsets.all(8),
+                                        ),
+                                        const SizedBox(height: 4),
+                                        Text(
+                                          yukleniyor
+                                              ? "Üyeler yükleniyor..."
+                                              : "${uyeler.length} kişi",
+                                          style: TextStyle(
+                                            fontSize: 13,
+                                            color:
+                                                isDark
+                                                    ? Colors.white60
+                                                    : Colors.black54,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 10,
+                                      vertical: 6,
+                                    ),
                                     decoration: BoxDecoration(
                                       color:
                                           isDark
-                                              ? Colors.black26
-                                              : Colors.grey.shade50,
-                                      borderRadius: BorderRadius.circular(12),
+                                              ? Colors.white.withOpacity(0.05)
+                                              : Colors.grey.shade100,
+                                      borderRadius: BorderRadius.circular(999),
                                       border: Border.all(
-                                        color: Colors.grey.withOpacity(0.1),
+                                        color: Colors.grey.withOpacity(0.12),
                                       ),
                                     ),
-                                    child: ListTile(
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 8,
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Text(
+                                          _uyelerListesiAcik
+                                              ? "Gizle"
+                                              : "Göster",
+                                          style: const TextStyle(
+                                            fontSize: 12,
+                                            fontWeight: FontWeight.w600,
+                                            color: _kBrandTeal,
                                           ),
-                                      leading: CircleAvatar(
-                                        backgroundColor: _kBrandTeal,
-                                        child: Text(
-                                          uye['username'].isNotEmpty
-                                              ? uye['username'][0].toUpperCase()
-                                              : '?',
                                         ),
-                                      ),
-                                      title: Text(
-                                        uye['username'],
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
+                                        const SizedBox(width: 6),
+                                        AnimatedRotation(
+                                          turns: _uyelerListesiAcik ? 0.5 : 0.0,
+                                          duration: const Duration(
+                                            milliseconds: 220,
+                                          ),
+                                          curve: Curves.easeOutCubic,
+                                          child: const Icon(
+                                            Icons.keyboard_arrow_down,
+                                            color: _kBrandTeal,
+                                          ),
                                         ),
-                                      ),
-                                      subtitle: Column(
-                                        mainAxisSize: MainAxisSize.min,
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            uye['email'],
-                                            style: TextStyle(
-                                              fontSize: 12,
-                                              color: Colors.grey[600],
-                                            ),
-                                          ),
-                                          const SizedBox(height: 6),
-                                          _buildRoleChip(
-                                            isDark: isDark,
-                                            label:
-                                                isMemberKurucu
-                                                    ? 'Kurucu'
-                                                    : (isMemberYonetici
-                                                        ? 'Yönetici'
-                                                        : 'Üye'),
-                                            color:
-                                                isMemberKurucu
-                                                    ? const Color(0xFFF59E0B)
-                                                    : (isMemberYonetici
-                                                        ? _kBrandTeal
-                                                        : Colors.grey),
-                                          ),
-                                        ],
-                                      ),
-                                      trailing:
-                                          (isKurucu && !isCurrentUser)
-                                              ? Row(
-                                                mainAxisSize: MainAxisSize.min,
-                                                children: [
-                                                  if (!isMemberKurucu)
-                                                    IconButton(
-                                                      tooltip:
-                                                          isMemberYonetici
-                                                              ? 'Yöneticilikten çıkar'
-                                                              : 'Yönetici yap',
-                                                      icon: Icon(
-                                                        isMemberYonetici
-                                                            ? Icons
-                                                                .shield_outlined
-                                                            : Icons
-                                                                .shield_moon_outlined,
-                                                        color:
-                                                            isMemberYonetici
-                                                                ? const Color(
-                                                                  0xFFF59E0B,
-                                                                )
-                                                                : _kBrandTeal,
-                                                      ),
-                                                      onPressed: () async {
-                                                        final bool onaylandi =
-                                                            await _onayDialoguGoster(
-                                                              baslik:
-                                                                  isMemberYonetici
-                                                                      ? 'Yöneticilik kaldırılsın mı?'
-                                                                      : 'Yönetici yapılsın mı?',
-                                                              mesaj:
-                                                                  isMemberYonetici
-                                                                      ? "${uye['username']} artık finansal verilere erişemeyen normal üye rolüne dönecek."
-                                                                      : "${uye['username']} ekipte yönetici olacak ve finansal verilere erişebilecek.",
-                                                              onayMetni:
-                                                                  isMemberYonetici
-                                                                      ? 'Kaldır'
-                                                                      : 'Yap',
-                                                              onayRengi:
-                                                                  isMemberYonetici
-                                                                      ? const Color(
-                                                                        0xFFF59E0B,
-                                                                      )
-                                                                      : _kBrandTeal,
-                                                            );
-                                                        if (!onaylandi) {
-                                                          return;
-                                                        }
-                                                        if (isMemberYonetici) {
-                                                          await firestoreServisi
-                                                              .yoneticiliktenCikar(
-                                                                widget.teamId,
-                                                                uye['uid'],
-                                                              );
-                                                          if (mounted) {
-                                                            ScaffoldMessenger.of(
-                                                              context,
-                                                            ).showSnackBar(
-                                                              SnackBar(
-                                                                content: Text(
-                                                                  "${uye['username']} artık üye rolünde.",
-                                                                ),
-                                                                backgroundColor:
-                                                                    _kBrandTeal,
-                                                              ),
-                                                            );
-                                                          }
-                                                        } else {
-                                                          await firestoreServisi
-                                                              .yoneticiYap(
-                                                                widget.teamId,
-                                                                uye['uid'],
-                                                              );
-                                                          if (mounted) {
-                                                            ScaffoldMessenger.of(
-                                                              context,
-                                                            ).showSnackBar(
-                                                              SnackBar(
-                                                                content: Text(
-                                                                  "${uye['username']} yönetici yapıldı.",
-                                                                ),
-                                                                backgroundColor:
-                                                                    _kBrandTeal,
-                                                              ),
-                                                            );
-                                                          }
-                                                        }
-                                                      },
-                                                    ),
-                                                  if (!isMemberKurucu)
-                                                    IconButton(
-                                                      tooltip:
-                                                          'Üyeyi ekipten çıkar',
-                                                      icon: const Icon(
-                                                        Icons
-                                                            .person_remove_outlined,
-                                                        color: Colors.redAccent,
-                                                      ),
-                                                      onPressed: () async {
-                                                        final bool onaylandi =
-                                                            await _onayDialoguGoster(
-                                                              baslik:
-                                                                  'Üye ekipten çıkarılsın mı?',
-                                                              mesaj:
-                                                                  "${uye['username']} ekipten kaldırılacak. Bu işlemden sonra ekip verilerine erişemeyecek.",
-                                                              onayMetni:
-                                                                  'Çıkar',
-                                                              onayRengi:
-                                                                  Colors.redAccent,
-                                                            );
-                                                        if (!onaylandi) {
-                                                          return;
-                                                        }
-                                                        await firestoreServisi
-                                                            .uyeyiEkiptenSil(
-                                                              widget.teamId,
-                                                              uye['uid'],
-                                                            );
-                                                        if (mounted) {
-                                                          ScaffoldMessenger.of(
-                                                            context,
-                                                          ).showSnackBar(
-                                                            SnackBar(
-                                                              content: Text(
-                                                                "${uye['username']} ekipten çıkarıldı.",
-                                                              ),
-                                                              backgroundColor:
-                                                                  Colors
-                                                                      .redAccent,
-                                                            ),
-                                                          );
-                                                        }
-                                                      },
-                                                    ),
-                                                ],
-                                              )
-                                              : null,
+                                      ],
                                     ),
-                                  );
-                                }).toList(),
-                                                  ),
-                                        )
-                                        : const SizedBox.shrink(),
+                                  ),
+                                ],
                               ),
-                            ],
-                          );
-                        },
-                      ),
-                ),
-              ),
-              const SizedBox(height: 32),
-
-              // Başka Ekibe Geç Butonu
-              OutlinedButton.icon(
-                icon: const Icon(Icons.swap_horiz),
-                label: const Text("Başka Ekibe Geç"),
-                style: OutlinedButton.styleFrom(
-                  foregroundColor: _kBrandTeal,
-                  padding: const EdgeInsets.symmetric(vertical: 16),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
+                            ),
+                            AnimatedSize(
+                              duration: const Duration(milliseconds: 220),
+                              curve: Curves.easeOutCubic,
+                              alignment: Alignment.topCenter,
+                              child:
+                                  _uyelerListesiAcik
+                                      ? Padding(
+                                        padding: const EdgeInsets.only(top: 12),
+                                        child:
+                                            yukleniyor
+                                                ? const Center(
+                                                  child:
+                                                      CircularProgressIndicator(),
+                                                )
+                                                : Column(
+                                                  children:
+                                                      uyeler.map((uye) {
+                                                        final bool
+                                                        isCurrentUser =
+                                                            user?.uid ==
+                                                            uye['uid'];
+                                                        final bool
+                                                        isMemberKurucu =
+                                                            uye['uid'] ==
+                                                            kurucuUid;
+                                                        final bool
+                                                        isMemberYonetici =
+                                                            yoneticiUidleri
+                                                                .contains(
+                                                                  uye['uid'],
+                                                                );
+                                                        return Container(
+                                                          margin:
+                                                              const EdgeInsets.only(
+                                                                bottom: 10,
+                                                              ),
+                                                          padding:
+                                                              const EdgeInsets.all(
+                                                                8,
+                                                              ),
+                                                          decoration: BoxDecoration(
+                                                            color:
+                                                                isDark
+                                                                    ? Colors
+                                                                        .black26
+                                                                    : Colors
+                                                                        .grey
+                                                                        .shade50,
+                                                            borderRadius:
+                                                                BorderRadius.circular(
+                                                                  12,
+                                                                ),
+                                                            border: Border.all(
+                                                              color: Colors.grey
+                                                                  .withOpacity(
+                                                                    0.1,
+                                                                  ),
+                                                            ),
+                                                          ),
+                                                          child: ListTile(
+                                                            contentPadding:
+                                                                const EdgeInsets.symmetric(
+                                                                  horizontal: 8,
+                                                                ),
+                                                            leading: CircleAvatar(
+                                                              backgroundColor:
+                                                                  _kBrandTeal,
+                                                              child: Text(
+                                                                uye['username']
+                                                                        .isNotEmpty
+                                                                    ? uye['username'][0]
+                                                                        .toUpperCase()
+                                                                    : '?',
+                                                              ),
+                                                            ),
+                                                            title: Text(
+                                                              uye['username'],
+                                                              style: const TextStyle(
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .bold,
+                                                              ),
+                                                            ),
+                                                            subtitle: Column(
+                                                              mainAxisSize:
+                                                                  MainAxisSize
+                                                                      .min,
+                                                              crossAxisAlignment:
+                                                                  CrossAxisAlignment
+                                                                      .start,
+                                                              children: [
+                                                                Text(
+                                                                  uye['email'],
+                                                                  style: TextStyle(
+                                                                    fontSize:
+                                                                        12,
+                                                                    color:
+                                                                        Colors
+                                                                            .grey[600],
+                                                                  ),
+                                                                ),
+                                                                const SizedBox(
+                                                                  height: 6,
+                                                                ),
+                                                                _buildRoleChip(
+                                                                  isDark:
+                                                                      isDark,
+                                                                  label:
+                                                                      isMemberKurucu
+                                                                          ? 'Kurucu'
+                                                                          : (isMemberYonetici
+                                                                              ? 'Yönetici'
+                                                                              : 'Üye'),
+                                                                  color:
+                                                                      isMemberKurucu
+                                                                          ? const Color(
+                                                                            0xFFF59E0B,
+                                                                          )
+                                                                          : (isMemberYonetici
+                                                                              ? _kBrandTeal
+                                                                              : Colors.grey),
+                                                                ),
+                                                              ],
+                                                            ),
+                                                            trailing:
+                                                                (isKurucu &&
+                                                                        !isCurrentUser)
+                                                                    ? Row(
+                                                                      mainAxisSize:
+                                                                          MainAxisSize
+                                                                              .min,
+                                                                      children: [
+                                                                        if (!isMemberKurucu)
+                                                                          IconButton(
+                                                                            tooltip:
+                                                                                isMemberYonetici
+                                                                                    ? 'Yöneticilikten çıkar'
+                                                                                    : 'Yönetici yap',
+                                                                            icon: Icon(
+                                                                              isMemberYonetici
+                                                                                  ? Icons.shield_outlined
+                                                                                  : Icons.shield_moon_outlined,
+                                                                              color:
+                                                                                  isMemberYonetici
+                                                                                      ? const Color(
+                                                                                        0xFFF59E0B,
+                                                                                      )
+                                                                                      : _kBrandTeal,
+                                                                            ),
+                                                                            onPressed: () async {
+                                                                              final bool
+                                                                              onaylandi = await _onayDialoguGoster(
+                                                                                baslik:
+                                                                                    isMemberYonetici
+                                                                                        ? 'Yöneticilik kaldırılsın mı?'
+                                                                                        : 'Yönetici yapılsın mı?',
+                                                                                mesaj:
+                                                                                    isMemberYonetici
+                                                                                        ? "${uye['username']} artık finansal verilere erişemeyen normal üye rolüne dönecek."
+                                                                                        : "${uye['username']} ekipte yönetici olacak ve finansal verilere erişebilecek.",
+                                                                                onayMetni:
+                                                                                    isMemberYonetici
+                                                                                        ? 'Kaldır'
+                                                                                        : 'Yap',
+                                                                                onayRengi:
+                                                                                    isMemberYonetici
+                                                                                        ? const Color(
+                                                                                          0xFFF59E0B,
+                                                                                        )
+                                                                                        : _kBrandTeal,
+                                                                              );
+                                                                              if (!onaylandi) {
+                                                                                return;
+                                                                              }
+                                                                              if (isMemberYonetici) {
+                                                                                await firestoreServisi.yoneticiliktenCikar(
+                                                                                  widget.teamId,
+                                                                                  uye['uid'],
+                                                                                );
+                                                                                if (mounted) {
+                                                                                  ScaffoldMessenger.of(
+                                                                                    context,
+                                                                                  ).showSnackBar(
+                                                                                    SnackBar(
+                                                                                      content: Text(
+                                                                                        "${uye['username']} artık üye rolünde.",
+                                                                                      ),
+                                                                                      backgroundColor:
+                                                                                          _kBrandTeal,
+                                                                                    ),
+                                                                                  );
+                                                                                }
+                                                                              } else {
+                                                                                await firestoreServisi.yoneticiYap(
+                                                                                  widget.teamId,
+                                                                                  uye['uid'],
+                                                                                );
+                                                                                if (mounted) {
+                                                                                  ScaffoldMessenger.of(
+                                                                                    context,
+                                                                                  ).showSnackBar(
+                                                                                    SnackBar(
+                                                                                      content: Text(
+                                                                                        "${uye['username']} yönetici yapıldı.",
+                                                                                      ),
+                                                                                      backgroundColor:
+                                                                                          _kBrandTeal,
+                                                                                    ),
+                                                                                  );
+                                                                                }
+                                                                              }
+                                                                            },
+                                                                          ),
+                                                                        if (!isMemberKurucu)
+                                                                          IconButton(
+                                                                            tooltip:
+                                                                                'Üyeyi ekipten çıkar',
+                                                                            icon: const Icon(
+                                                                              Icons.person_remove_outlined,
+                                                                              color:
+                                                                                  Colors.redAccent,
+                                                                            ),
+                                                                            onPressed: () async {
+                                                                              final bool
+                                                                              onaylandi = await _onayDialoguGoster(
+                                                                                baslik:
+                                                                                    'Üye ekipten çıkarılsın mı?',
+                                                                                mesaj:
+                                                                                    "${uye['username']} ekipten kaldırılacak. Bu işlemden sonra ekip verilerine erişemeyecek.",
+                                                                                onayMetni:
+                                                                                    'Çıkar',
+                                                                                onayRengi:
+                                                                                    Colors.redAccent,
+                                                                              );
+                                                                              if (!onaylandi) {
+                                                                                return;
+                                                                              }
+                                                                              await firestoreServisi.uyeyiEkiptenSil(
+                                                                                widget.teamId,
+                                                                                uye['uid'],
+                                                                              );
+                                                                              if (mounted) {
+                                                                                ScaffoldMessenger.of(
+                                                                                  context,
+                                                                                ).showSnackBar(
+                                                                                  SnackBar(
+                                                                                    content: Text(
+                                                                                      "${uye['username']} ekipten çıkarıldı.",
+                                                                                    ),
+                                                                                    backgroundColor:
+                                                                                        Colors.redAccent,
+                                                                                  ),
+                                                                                );
+                                                                              }
+                                                                            },
+                                                                          ),
+                                                                      ],
+                                                                    )
+                                                                    : null,
+                                                          ),
+                                                        );
+                                                      }).toList(),
+                                                ),
+                                      )
+                                      : const SizedBox.shrink(),
+                            ),
+                          ],
+                        );
+                      },
+                    ),
                   ),
-                  side: const BorderSide(color: _kBrandTeal),
                 ),
-                onPressed: () {
-                  Navigator.push(
-                    context,
-                    MaterialPageRoute(builder: (_) => const TeamGate()),
-                  );
-                },
-              ),
-              const SizedBox(height: 12),
+                const SizedBox(height: 32),
 
-              if (!isKurucu)
-                ElevatedButton.icon(
-                  icon: const Icon(Icons.exit_to_app),
-                  label: const Text("Ekipten Ayrıl"),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: Colors.red,
-                    foregroundColor: Colors.white,
+                // Başka Ekibe Geç Butonu
+                OutlinedButton.icon(
+                  icon: const Icon(Icons.swap_horiz),
+                  label: const Text("Başka Ekibe Geç"),
+                  style: OutlinedButton.styleFrom(
+                    foregroundColor: _kBrandTeal,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
+                    side: const BorderSide(color: _kBrandTeal),
                   ),
-                  onPressed: () async {
-                    await firestoreServisi.ekiptenAyril(
-                      widget.teamId,
-                      user!.uid,
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(builder: (_) => const TeamGate()),
                     );
-                    if (mounted)
-                      Navigator.pushReplacement(
-                        context,
-                        MaterialPageRoute(builder: (_) => const TeamGate()),
-                      );
                   },
                 ),
-              const SizedBox(height: 20),
-            ],
-          );
-        },
-      ),
+                const SizedBox(height: 12),
+
+                if (!isKurucu)
+                  ElevatedButton.icon(
+                    icon: const Icon(Icons.exit_to_app),
+                    label: const Text("Ekipten Ayrıl"),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: Colors.red,
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(vertical: 16),
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                    ),
+                    onPressed: () async {
+                      await firestoreServisi.ekiptenAyril(
+                        widget.teamId,
+                        user!.uid,
+                      );
+                      if (mounted)
+                        Navigator.pushReplacement(
+                          context,
+                          MaterialPageRoute(builder: (_) => const TeamGate()),
+                        );
+                    },
+                  ),
+                const SizedBox(height: 20),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -1056,9 +1077,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
       decoration: BoxDecoration(
         color: color.withOpacity(isDark ? 0.18 : 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(
-          color: color.withOpacity(isDark ? 0.26 : 0.16),
-        ),
+        border: Border.all(color: color.withOpacity(isDark ? 0.26 : 0.16)),
       ),
       child: Text(
         label,

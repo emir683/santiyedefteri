@@ -1,8 +1,13 @@
+import '../../models/metraj_hesap_model.dart';
+
 /// ŞPD AI - Akıllı İnşaat Metraj ve Malzeme Hesaplayıcı 🧱📐
 /// Tamamen yerel, deterministik, formüllere dayalı şantiye malzeme motoru.
 /// Gemini API veya harici sunucu KULLANMAZ; anlık, hatasız, internetsiz ve limitsiz çalışır.
 /// Fire payları, paket/kutu/palet/mikser lojistiği ve yaklaşık piyasa maliyeti döker.
 class InsaatMetrajHesaplayici {
+  static String formatDouble(double val) => _f(val);
+  static String formatPara(double tutar) => _para(tutar);
+
   /// Prompt'u analiz eder, inşaat metrajı hesabı içeriyorsa formatlanmış rapor döner.
   /// Metraj hesabı değilse null döner.
   static String? hesapla(String prompt) {
@@ -14,78 +19,157 @@ class InsaatMetrajHesaplayici {
       return _metrajYardimMenusu();
     }
 
-    // 1. Beton & Tabliye / Temel / Kolon / Saha Betonu
+    final model = hesaplaModel(prompt);
+    return model?.raporMetni;
+  }
+
+  /// Prompt'u analiz eder, yapılandırılmış MetrajHesapModel nesnesi döner.
+  static MetrajHesapModel? hesaplaModel(String prompt) {
+    final lower = prompt.toLowerCase();
+    final norm = _normalize(lower);
+
+    if (_isHelpRequest(norm)) return null;
+
     if (_isBetonHesabi(norm)) {
-      return _hesaplaBeton(prompt, norm);
+      return _extractAndBuildBeton(prompt, norm);
     }
-
-    // 2. Tuğla / Bims / Gazbeton (Ytong) Duvar
     if (_isTuglaHesabi(norm)) {
-      return _hesaplaTugla(prompt, norm);
+      return _extractAndBuildTugla(prompt, norm);
     }
-
-    // 3. Seramik / Fayans / Granit
     if (_isSeramikHesabi(norm)) {
-      return _hesaplaSeramik(prompt, norm);
+      return _extractAndBuildSeramik(prompt, norm);
     }
-
-    // 4. Şap (Tesviye Betonu)
     if (_isSapHesabi(norm)) {
-      return _hesaplaSap(prompt, norm);
+      return _extractAndBuildSap(prompt, norm);
     }
-
-    // 5. Sıva & Alçı
     if (_isSivaHesabi(norm)) {
-      return _hesaplaSiva(prompt, norm);
+      return _extractAndBuildSiva(prompt, norm);
     }
-
-    // 6. Boya & Astar
     if (_isBoyaHesabi(norm)) {
-      return _hesaplaBoya(prompt, norm);
+      return _extractAndBuildBoya(prompt, norm);
     }
-
-    // 7. Demir (Donatı)
     if (_isDemirHesabi(norm)) {
-      return _hesaplaDemir(prompt, norm);
+      return _extractAndBuildDemir(prompt, norm);
     }
-
-    // 8. Alçıpan (Asma Tavan & Bölme Duvar)
     if (_isAlcipanHesabi(norm)) {
-      return _hesaplaAlcipan(prompt, norm);
+      return _extractAndBuildAlcipan(prompt, norm);
     }
-
-    // 9. Dış Cephe Mantolama / Isı Yalıtımı
     if (_isMantolamaHesabi(norm)) {
-      return _hesaplaMantolama(prompt, norm);
+      return _extractAndBuildMantolama(prompt, norm);
     }
-
-    // 10. Su Yalıtımı & Membran
     if (_isYalitimHesabi(norm)) {
-      return _hesaplaYalitim(prompt, norm);
+      return _extractAndBuildYalitim(prompt, norm);
     }
-
-    // 11. Hafriyat & Kazı & Kamyon Seferi
     if (_isHafriyatHesabi(norm)) {
-      return _hesaplaHafriyat(prompt, norm);
+      return _extractAndBuildHafriyat(prompt, norm);
     }
-
-    // 12. Parke / Laminat
     if (_isParkeHesabi(norm)) {
-      return _hesaplaParke(prompt, norm);
+      return _extractAndBuildParke(prompt, norm);
     }
 
     return null;
+  }
+
+  /// Kart üzerinden parametreler değiştirildiğinde anında yeniden hesaplama yapar.
+  static MetrajHesapModel recalculate(
+    MetrajHesapModel current, {
+    double? primaryValue,
+    double? secondaryValue,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final pVal = primaryValue ?? current.primaryValue;
+    final sVal = secondaryValue ?? current.secondaryValue;
+    final vr = variant ?? current.selectedVariant;
+    final bFiyat = birimFiyat ?? current.birimFiyat;
+
+    switch (current.category) {
+      case 'beton':
+        return buildBetonModel(
+          alan: pVal,
+          kalinlikCm: sVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+          elemanAdi: current.elementAdi,
+        );
+      case 'tugla':
+        return buildTuglaModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'seramik':
+        return buildSeramikModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'sap':
+        return buildSapModel(
+          alan: pVal,
+          kalinlikCm: sVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'siva':
+        return buildSivaModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'boya':
+        return buildBoyaModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'demir':
+        return buildDemirModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'alcipan':
+        return buildAlcipanModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'mantolama':
+        return buildMantolamaModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'yalitim':
+        return buildYalitimModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'hafriyat':
+        return buildHafriyatModel(
+          alan: pVal,
+          derinlikM: sVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      case 'parke':
+        return buildParkeModel(
+          alan: pVal,
+          variant: vr,
+          birimFiyat: bFiyat,
+        );
+      default:
+        return current;
+    }
   }
 
   // ═══════════════════════════════════════════════════════════
   // 1. BETON HESAPLAYICI (Tabliye, Temel, Kolon, Saha)
   // ═══════════════════════════════════════════════════════════
   static bool _isBetonHesabi(String norm) {
-    // Kazı ve hafriyat beton hesabı değildir
-    if (norm.contains('kazi') || norm.contains('hafriyat')) {
-      return false;
-    }
-
+    if (norm.contains('kazi') || norm.contains('hafriyat')) return false;
     final keywords = [
       'beton',
       'tabliye',
@@ -98,12 +182,10 @@ class InsaatMetrajHesaplayici {
       'perde betonu',
       'mikser',
     ];
-    final hasKw = keywords.any((k) => norm.contains(k));
-    final hasNumbers = RegExp(r'\d+').hasMatch(norm);
-    return hasKw && hasNumbers;
+    return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaBeton(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildBeton(String original, String norm) {
     double? alan = _extractAlan(original, norm);
     double? kalinlikCm = _extractKalinlikCm(original, norm);
     double? direktHacim = _extractHacimM3(original, norm);
@@ -118,86 +200,84 @@ class InsaatMetrajHesaplayici {
       }
     }
 
-    // Varsayılan kalınlık
     if (kalinlikCm == null && direktHacim == null) {
       if (norm.contains('radye') || norm.contains('temel')) {
         kalinlikCm = 50.0;
       } else if (norm.contains('saha')) {
         kalinlikCm = 12.0;
       } else {
-        kalinlikCm = 15.0; // Standart tabliye
+        kalinlikCm = 15.0;
       }
     }
 
-    double netHacim = 0;
-    if (direktHacim != null && direktHacim > 0) {
-      netHacim = direktHacim;
-    } else if (alan != null && alan > 0 && kalinlikCm != null) {
-      netHacim = alan * (kalinlikCm / 100.0);
-    } else {
-      return '📐 **Beton Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Beton hesabı için lütfen alan (m²) ve kalınlık (cm) belirtin.\n'
-          'Örnek: *"350 m2 tabliyeye 15 cm C30 beton kaç mikser tutar?"*';
+    if (alan == null && direktHacim != null && direktHacim > 0) {
+      alan = direktHacim / (kalinlikCm != null ? (kalinlikCm / 100.0) : 0.15);
     }
 
-    // Beton sınıfı tespiti
+    if (alan == null || alan <= 0) return null;
+
     String betonSinifi = 'C25/30';
-    double m3BirimFiyat = 2650.0; // 2025-2026 ortalama m³ beton fiyatı (KDV hariç)
     final gradeMatch = RegExp(r'(c\s?16|c\s?20|c\s?25|c\s?30|c\s?35|c\s?40)', caseSensitive: false).firstMatch(original);
     if (gradeMatch != null) {
       final g = gradeMatch.group(1)!.toUpperCase().replaceAll(' ', '');
-      betonSinifi = g;
-      if (g == 'C20') {
-        m3BirimFiyat = 2400.0;
-      } else if (g == 'C25') {
-        m3BirimFiyat = 2550.0;
-      } else if (g == 'C30') {
-        m3BirimFiyat = 2700.0;
-      } else if (g == 'C35') {
-        m3BirimFiyat = 2900.0;
-      } else if (g == 'C40') {
-        m3BirimFiyat = 3150.0;
-      }
+      if (g == 'C25') betonSinifi = 'C25/30';
+      else betonSinifi = g;
     }
 
     String elemanAdi = 'Tabliye / Döşeme Betonu';
-    if (norm.contains('radye')) {
-      elemanAdi = 'Radye Temel Betonu';
-    } else if (norm.contains('temel')) {
-      elemanAdi = 'Mütemadi / Tekil Temel';
-    } else if (norm.contains('kolon')) {
-      elemanAdi = 'Kolon / Perde Betonu';
-    } else if (norm.contains('saha')) {
-      elemanAdi = 'Saha / Zemin Betonu';
-    } else if (norm.contains('grobeton')) {
-      elemanAdi = 'Grobeton';
+    if (norm.contains('radye')) elemanAdi = 'Radye Temel Betonu';
+    else if (norm.contains('temel')) elemanAdi = 'Mütemadi / Tekil Temel';
+    else if (norm.contains('kolon')) elemanAdi = 'Kolon / Perde Betonu';
+    else if (norm.contains('saha')) elemanAdi = 'Saha / Zemin Betonu';
+    else if (norm.contains('grobeton')) elemanAdi = 'Grobeton';
+
+    return buildBetonModel(
+      alan: alan,
+      kalinlikCm: kalinlikCm ?? 15.0,
+      variant: betonSinifi,
+      elemanAdi: elemanAdi,
+    );
+  }
+
+  static MetrajHesapModel buildBetonModel({
+    double? alan,
+    double? kalinlikCm,
+    String? variant,
+    double? birimFiyat,
+    String? elemanAdi,
+  }) {
+    final a = alan ?? 100.0;
+    final k = kalinlikCm ?? 15.0;
+    final v = variant ?? 'C25/30';
+    final el = elemanAdi ?? 'Tabliye / Döşeme Betonu';
+
+    double bf = birimFiyat ?? 2650.0;
+    if (birimFiyat == null) {
+      if (v == 'C20') bf = 2400.0;
+      else if (v == 'C25' || v == 'C25/30') bf = 2650.0;
+      else if (v == 'C30') bf = 2700.0;
+      else if (v == 'C35') bf = 2900.0;
+      else if (v == 'C40') bf = 3150.0;
     }
 
-    // Fire payı (%5 tabliye, %7 temel)
-    final double fireOrani = (norm.contains('temel') || norm.contains('grobeton')) ? 0.07 : 0.05;
+    final double netHacim = a * (k / 100.0);
+    final double fireOrani = (el.contains('Temel') || el.contains('Grobeton')) ? 0.07 : 0.05;
     final double fireHacmi = netHacim * fireOrani;
     final double toplamSiparis = netHacim + fireHacmi;
 
-    // Transmikser hesabı (1 mikser standart 8.5 m³ baz alınır)
     const double mikserKapasite = 8.5;
     final int mikserSayisi = (toplamSiparis / mikserKapasite).ceil();
-
-    // Yaklaşık donatı ihtiyacı (90 kg/m³)
     final double tahminiDemirTon = (netHacim * 90.0) / 1000.0;
-
-    // Maliyet hesabı
-    final double betonMaliyeti = toplamSiparis * m3BirimFiyat;
-    final double pompaMaliyeti = toplamSiparis >= 15 ? 12000.0 : 0.0; // Pompa bedeli
+    final double betonMaliyeti = toplamSiparis * bf;
+    final double pompaMaliyeti = toplamSiparis >= 15 ? 12000.0 : 0.0;
     final double toplamMaliyet = betonMaliyeti + pompaMaliyeti;
 
     final buffer = StringBuffer();
     buffer.writeln('🏗️ **ŞPD AI - Hazır Beton & Metraj Raporu**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📋 **Uygulama:** $elemanAdi ($betonSinifi)');
-    if (alan != null) {
-      buffer.writeln('📐 **Döküm Alanı:** ${_f(alan)} m²');
-      buffer.writeln('📏 **Döküm Kalınlığı:** ${_f(kalinlikCm!)} cm');
-    }
+    buffer.writeln('📋 **Uygulama:** $el ($v)');
+    buffer.writeln('📐 **Döküm Alanı:** ${_f(a)} m²');
+    buffer.writeln('📏 **Döküm Kalınlığı:** ${_f(k)} cm');
     buffer.writeln('🧊 **Net Hacim:** ${_f(netHacim)} m³');
     buffer.writeln('⚠️ **Önerilen Fire Payı (%${(fireOrani * 100).toInt()}):** +${_f(fireHacmi)} m³');
     buffer.writeln('🚚 **Toplam Sipariş Hacmi:** **${_f(toplamSiparis)} m³**');
@@ -212,7 +292,7 @@ class InsaatMetrajHesaplayici {
     buffer.writeln('• **Tahmini Donatı İhtiyacı:** ~${_f(tahminiDemirTon)} Ton demir (90 kg/m³ ortalama)');
     buffer.writeln('');
     buffer.writeln('💰 **Tahmini Yaklaşık Maliyet (Piyasa Rayici):**');
-    buffer.writeln('• **Hazır Beton (${_f(toplamSiparis)} m³ x ${_para(m3BirimFiyat)}):** ${_para(betonMaliyeti)}');
+    buffer.writeln('• **Hazır Beton (${_f(toplamSiparis)} m³ x ${_para(bf)}):** ${_para(betonMaliyeti)}');
     if (pompaMaliyeti > 0) {
       buffer.writeln('• **Mobil Beton Pompası Hizmeti:** ${_para(pompaMaliyeti)}');
     }
@@ -223,202 +303,299 @@ class InsaatMetrajHesaplayici {
     buffer.writeln('2. Döküm sonrası ilk 24 saat rötre çatlaklarına karşı nemlendirilmeli, 7 gün boyunca düzenli sulanmalıdır.');
     buffer.writeln('3. Son mikser şantiyeye çıkmadan önce kalıp içi ölçülüp kalan net hacim santrale iletilmelidir.');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'beton',
+      title: 'Hazır Beton & Metraj Hesabı',
+      icon: '🏗️',
+      elementAdi: el,
+      primaryValue: a,
+      primaryLabel: 'Döküm Alanı',
+      primaryUnit: 'm²',
+      secondaryValue: k,
+      secondaryLabel: 'Döküm Kalınlığı',
+      secondaryUnit: 'cm',
+      selectedVariant: v,
+      availableVariants: const ['C20', 'C25/30', 'C30', 'C35', 'C40'],
+      birimFiyat: bf,
+      birimFiyatLabel: 'm³ Beton Fiyatı (TL)',
+      anaMiktar: '${_f(toplamSiparis)} m³',
+      anaMiktarLabel: 'Toplam Sipariş Hacmi',
+      lojistik: '~$mikserSayisi Mikser',
+      lojistikLabel: 'Lojistik (8.5 m³)',
+      firePayi: '%${(fireOrani * 100).toInt()} (+${_f(fireHacmi)} m³)',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Tahmini Beton Maliyeti',
+      sarfMalzemeler: [
+        'Transmikser: ~$mikserSayisi Sefer (8.5 m³)',
+        if (toplamSiparis >= 15) 'Beton Pompası: Mobil pompa (36m-42m boom)' else 'Beton Pompası: Mikser oluğu ile direkt döküm',
+        'Tahmini Donatı: ~${_f(tahminiDemirTon)} Ton demir (90 kg/m³)',
+      ],
+      tavsiyeler: const [
+        'Vibratör yedekli bulundurulmalı; döküm esnasında demire değil betona daldırılmalıdır.',
+        'Döküm sonrası ilk 24 saat rötre çatlaklarına karşı nemlendirilmeli, 7 gün boyunca düzenli sulanmalıdır.',
+        'Son mikser şantiyeye çıkmadan önce kalıp içi ölçülüp kalan net hacim santrale iletilmelidir.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
   // 2. TUĞLA & BİMS & GAZBETON (YTONG) DUVAR HESAPLAYICI
   // ═══════════════════════════════════════════════════════════
   static bool _isTuglaHesabi(String norm) {
-    final keywords = [
-      'tugla',
-      'tuğla',
-      'duvar',
-      'bims',
-      'gazbeton',
-      'ytong',
-      'briket',
-    ];
+    final keywords = ['tugla', 'tuğla', 'duvar', 'bims', 'gazbeton', 'ytong', 'briket'];
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaTugla(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildTugla(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '🧱 **Duvar Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen duvar alanını (m²) belirtin.\n'
-          'Örnek: *"120 m2 duvara 13.5 tuğla öreceğiz, kaç adet tuğla ve ne kadar harç gider?"*';
+    String variant = "13.5'luk Tuğla (Standart)";
+    if (norm.contains('8.5') || norm.contains('8,5')) {
+      variant = "8.5'luk İnce Tuğla";
+    } else if (norm.contains('19') || norm.contains('izo')) {
+      variant = "19'luk Dış Duvar Tuğlası";
+    } else if (norm.contains('bims')) {
+      variant = "15-20'lik Bims Blok";
+    } else if (norm.contains('gazbeton') || norm.contains('ytong')) {
+      variant = "Gazbeton / Ytong";
     }
 
-    // Malzeme cinsi
-    String malzemeAdi = "13.5'luk Yatay Delikli Tuğla (Standart)";
+    return buildTuglaModel(alan: alan, variant: variant);
+  }
+
+  static MetrajHesapModel buildTuglaModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 100.0;
+    final v = variant ?? "13.5'luk Tuğla (Standart)";
+
     double adetPerM2 = 25.0;
     int paletAdedi = 420;
-    double birimFiyat = 7.5; // Adet tuğla TL
+    double defBirimFiyat = 7.5;
     bool isGazbeton = false;
 
-    if (norm.contains('8.5') || norm.contains('8,5')) {
-      malzemeAdi = "8.5'luk İnce Bölme Tuğlası";
+    if (v.contains('8.5')) {
       adetPerM2 = 28.0;
       paletAdedi = 550;
-      birimFiyat = 6.2;
-    } else if (norm.contains('19') || norm.contains('izo')) {
-      malzemeAdi = "19'luk Isı Yalıtımlı Dış Duvar Tuğlası";
+      defBirimFiyat = 6.2;
+    } else if (v.contains('19')) {
       adetPerM2 = 22.0;
       paletAdedi = 320;
-      birimFiyat = 11.5;
-    } else if (norm.contains('bims')) {
-      malzemeAdi = "15'lik veya 20'lik Bims Blok";
+      defBirimFiyat = 11.5;
+    } else if (v.contains('Bims')) {
       adetPerM2 = 12.5;
       paletAdedi = 80;
-      birimFiyat = 16.0;
-    } else if (norm.contains('gazbeton') || norm.contains('ytong')) {
-      malzemeAdi = "Gazbeton / Ytong Blok (60x25 cm)";
+      defBirimFiyat = 16.0;
+    } else if (v.contains('Gazbeton') || v.contains('Ytong')) {
       adetPerM2 = 6.67;
       paletAdedi = 48;
-      birimFiyat = 42.0;
+      defBirimFiyat = 42.0;
       isGazbeton = true;
     }
 
-    final double netAdet = alan * adetPerM2;
-    final double fireAdet = netAdet * 0.05; // %5 fire
+    final bf = birimFiyat ?? defBirimFiyat;
+    final double netAdet = a * adetPerM2;
+    final double fireAdet = netAdet * 0.05;
     final int toplamAdet = (netAdet + fireAdet).ceil();
     final int paletSayisi = (toplamAdet / paletAdedi).ceil();
 
-    final buffer = StringBuffer();
-    buffer.writeln('🧱 **ŞPD AI - Duvar Örme & Malzeme Raporu**');
-    buffer.writeln('────────────────────────────');
-    buffer.writeln('📋 **Malzeme Cinsi:** $malzemeAdi');
-    buffer.writeln('📐 **Toplam Duvar Alanı:** ${_f(alan)} m²');
-    buffer.writeln('📊 **Birim Sarfiyat:** ${_f(adetPerM2)} adet / m²');
-    buffer.writeln('⚠️ **Önerilen Fire Payı:** +%5 (kırılma ve köşe kesimleri)');
-    buffer.writeln('📦 **Sipariş Edilecek Toplam:** **$toplamAdet Adet** (~**$paletSayisi Palet**)');
-    buffer.writeln('');
-    buffer.writeln('🥣 **Harç & Bağlayıcı İhtiyacı:**');
-
     double harcMaliyeti = 0.0;
+    final sarfList = <String>[];
     if (isGazbeton) {
-      final double tutkalKg = alan * 2.5; // ~2.5 kg/m²
+      final double tutkalKg = a * 2.5;
       final int torbaTutkal = (tutkalKg / 25.0).ceil();
       harcMaliyeti = torbaTutkal * 190.0;
-      buffer.writeln('• **Gazbeton Örgü Tutkalı:** ~**$torbaTutkal Torba** (25 kg\'lık) — Toplam ${_f(tutkalKg)} kg');
-      buffer.writeln('• Taraklı gazbeton malası ile 2-3 mm derz kalınlığında örülmelidir.');
+      sarfList.add('Gazbeton Örgü Tutkalı: ~$torbaTutkal Torba (25 kg) — Toplam ${_f(tutkalKg)} kg');
+      sarfList.add('Taraklı mala ile 2-3 mm derz kalınlığında örülmelidir.');
     } else {
-      final double harcHacmiM3 = alan * 0.035; // 1 m² duvara ~0.035 m³ harç
-      final double cimentoKg = alan * 7.5; // ~7.5 kg çimento
+      final double harcHacmiM3 = a * 0.035;
+      final double cimentoKg = a * 7.5;
       final int cimentoTorba50 = (cimentoKg / 50.0).ceil();
       final double kumM3 = harcHacmiM3 * 0.9;
       final double cimentoTutari = cimentoTorba50 * 200.0;
       final double kumTutari = kumM3 * 650.0;
       harcMaliyeti = cimentoTutari + kumTutari;
-
-      buffer.writeln('• **Gereken Harç Hacmi:** ~${_f(harcHacmiM3)} m³');
-      buffer.writeln('• **Portland Çimentosu:** ~**$cimentoTorba50 Torba** (50 kg\'lık) — Toplam ${_f(cimentoKg)} kg');
-      buffer.writeln('• **Duvar/Sıva Kumu:** ~**${_f(kumM3)} m³** (0-3 mm dişli kum)');
+      sarfList.add('Harç Hacmi: ~${_f(harcHacmiM3)} m³');
+      sarfList.add('Portland Çimento: ~$cimentoTorba50 Torba (50 kg) — Toplam ${_f(cimentoKg)} kg');
+      sarfList.add('Duvar Kumu: ~${_f(kumM3)} m³ (0-3 mm dişli kum)');
     }
 
-    final double tuglaMaliyeti = toplamAdet * birimFiyat;
-    final double toplamTahmini = tuglaMaliyeti + harcMaliyeti;
+    final double tuglaMaliyeti = toplamAdet * bf;
+    final double toplamMaliyet = tuglaMaliyeti + harcMaliyeti;
 
+    final buffer = StringBuffer();
+    buffer.writeln('🧱 **ŞPD AI - Duvar Örme & Malzeme Raporu**');
+    buffer.writeln('────────────────────────────');
+    buffer.writeln('📋 **Malzeme Cinsi:** $v');
+    buffer.writeln('📐 **Toplam Duvar Alanı:** ${_f(a)} m²');
+    buffer.writeln('📊 **Birim Sarfiyat:** ${_f(adetPerM2)} adet / m²');
+    buffer.writeln('⚠️ **Önerilen Fire Payı:** +%5 (kırılma ve köşe kesimleri)');
+    buffer.writeln('📦 **Sipariş Edilecek Toplam:** **$toplamAdet Adet** (~**$paletSayisi Palet**)');
+    buffer.writeln('');
+    buffer.writeln('🥣 **Harç & Bağlayıcı İhtiyacı:**');
+    for (final s in sarfList) {
+      buffer.writeln('• $s');
+    }
     buffer.writeln('');
     buffer.writeln('💰 **Tahmini Yaklaşık Maliyet (Piyasa Rayici):**');
     buffer.writeln('• **Duvar Blok Malzemesi ($toplamAdet adet):** ${_para(tuglaMaliyeti)}');
     buffer.writeln('• **Harç & Bağlayıcı Gideri:** ${_para(harcMaliyeti)}');
-    buffer.writeln('• **Toplam Tahmini Duvar Malzemesi:** **${_para(toplamTahmini)}**');
+    buffer.writeln('• **Toplam Tahmini Duvar Malzemesi:** **${_para(toplamMaliyet)}**');
     buffer.writeln('');
     buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
     buffer.writeln('1. Tuğlalar örülmeden önce ıslatılmalıdır (harcın suyunu hızla emip yakmaması için).');
-    buffer.writeln('2. Günde 1.5 metreden (yaklaşık 7-8 sıra) fazla yükseklik örülmemelidir; priz alması beklenmelidir.');
+    buffer.writeln('2. Günde 1.5 metreden fazla yükseklik örülmemelidir; priz alması beklenmelidir.');
     buffer.writeln('3. Kolon-duvar birleşimlerine en az her 3 sırada bir L ankraj demiri çakılmalıdır.');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'tugla',
+      title: 'Tuğla & Blok Duvar Hesabı',
+      icon: '🧱',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Duvar Alanı',
+      primaryUnit: 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        "13.5'luk Tuğla (Standart)",
+        "8.5'luk İnce Tuğla",
+        "19'luk Dış Duvar Tuğlası",
+        "15-20'lik Bims Blok",
+        "Gazbeton / Ytong",
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: 'Adet Fiyatı (TL)',
+      anaMiktar: '$toplamAdet Adet',
+      anaMiktarLabel: 'Sipariş Edilecek Toplam',
+      lojistik: '~$paletSayisi Palet',
+      lojistikLabel: 'Lojistik & Palet',
+      firePayi: '%5 (+${_f(fireAdet)} Adet)',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: sarfList,
+      tavsiyeler: const [
+        'Tuğlalar örülmeden önce ıslatılmalıdır (harcın suyunu emmemesi için).',
+        'Günde 1.5 metreden (7-8 sıra) fazla örülmemeli, priz alması beklenmelidir.',
+        'Kolon-duvar birleşimlerine her 3 sırada bir L ankraj demiri çakılmalıdır.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
   // 3. SERAMİK / FAYANS / GRANİT HESAPLAYICI
   // ═══════════════════════════════════════════════════════════
   static bool _isSeramikHesabi(String norm) {
-    final keywords = [
-      'seramik',
-      'fayans',
-      'granit',
-      'kalebodur',
-      'porselen',
-      'yer dosemesi',
-      'derz',
-      'kalekim',
-    ];
+    final keywords = ['seramik', 'fayans', 'granit', 'kalebodur', 'porselen', 'yer dosemesi', 'derz', 'kalekim'];
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaSeramik(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildSeramik(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '✨ **Seramik Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen kaplanacak alanı (m²) belirtin.\n'
-          'Örnek: *"80 m2 alana seramik döşemek için kaç paket seramik ve kaç torba yapıştırıcı lazım?"*';
-    }
+    String variant = '60x60 Porselen Seramik';
+    if (norm.contains('granit')) variant = '60x120 Granit Seramik';
+    else if (norm.contains('fayans') || norm.contains('duvar')) variant = 'Standart Duvar/Yer Seramiği';
 
-    // %10 fire (kesim, köşe ve süpürgelik payı)
-    final double fireOrani = 0.10;
-    final double toplamSeramikM2 = alan * (1 + fireOrani);
+    return buildSeramikModel(alan: alan, variant: variant);
+  }
 
-    // Kutu hesabı: 1 kutu standart 1.44 m² kabul edilir (60x60 veya 60x120)
+  static MetrajHesapModel buildSeramikModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 80.0;
+    final v = variant ?? '60x60 Porselen Seramik';
+    final bf = birimFiyat ?? (v.contains('Granit') ? 580.0 : 450.0);
+
+    const double fireOrani = 0.10;
+    final double toplamM2 = a * (1 + fireOrani);
     const double kutuM2 = 1.44;
-    final int paketSayisi = (toplamSeramikM2 / kutuM2).ceil();
+    final int paketSayisi = (toplamM2 / kutuM2).ceil();
 
-    // Seramik yapıştırıcısı: m² başına 4.8 kg
-    final double yapistiriciKg = alan * 4.8;
+    final double yapistiriciKg = a * 4.8;
     final int yapistiriciTorba = (yapistiriciKg / 25.0).ceil();
+    final double derzKg = a * 0.5;
+    final int derzTorba = (derzKg / 5.0).ceil();
 
-    // Derz dolgusu: m² başına ~0.5 kg (2-3 mm derz için)
-    final double derzKg = alan * 0.5;
-    final int derzTorba5Kg = (derzKg / 5.0).ceil();
-
-    // Maliyet hesapları
-    final double seramikBirimM2 = 450.0; // 60x60 / 60x120 1. sınıf porselen seramik ortalaması
-    final double seramikTutari = toplamSeramikM2 * seramikBirimM2;
-    final double yapistiriciTutari = yapistiriciTorba * 220.0; // 25kg C2TE
-    final double derzTutari = derzTorba5Kg * 140.0; // 5kg Fuga
-    final double klipsSarf = (alan * 12) * 0.45; // Klips & takoz birim maliyeti
+    final double seramikTutari = toplamM2 * bf;
+    final double yapistiriciTutari = yapistiriciTorba * 220.0;
+    final double derzTutari = derzTorba * 140.0;
+    final double klipsSarf = (a * 12) * 0.45;
     final double toplamMaliyet = seramikTutari + yapistiriciTutari + derzTutari + klipsSarf;
 
     final buffer = StringBuffer();
     buffer.writeln('✨ **ŞPD AI - Seramik, Granit & Yapıştırıcı Raporu**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📐 **Net Kaplama Alanı:** ${_f(alan)} m²');
-    buffer.writeln('⚠️ **Önerilen Fire Payı (%10):** +${_f(alan * fireOrani)} m² (Köşe, süpürgelik & kesim)');
-    buffer.writeln('📦 **Sipariş Edilecek Seramik:** **${_f(toplamSeramikM2)} m²** (~**$paketSayisi Kutu/Paket** [1.44 m²/kutu])');
+    buffer.writeln('📐 **Net Kaplama Alanı:** ${_f(a)} m²');
+    buffer.writeln('⚠️ **Önerilen Fire Payı (%10):** +${_f(a * fireOrani)} m² (Köşe, süpürgelik & kesim)');
+    buffer.writeln('📦 **Sipariş Edilecek Seramik:** **${_f(toplamM2)} m²** (~**$paketSayisi Kutu/Paket** [1.44 m²/kutu])');
     buffer.writeln('');
     buffer.writeln('🥣 **Kimyasal & Sarf Malzeme İhtiyacı:**');
     buffer.writeln('• **Seramik Yapıştırıcısı (C2TE):** **$yapistiriciTorba Torba** (25 kg\'lık) — Toplam ${_f(yapistiriciKg)} kg');
-    buffer.writeln('• **Derz Dolgusu (Fuga):** **$derzTorba5Kg Kutu/Torba** (5 kg\'lık) — Toplam ${_f(derzKg)} kg');
-    buffer.writeln('• **Derz Artısı / Terazi Klipsi:** Yaklaşık ${(alan * 12).toInt()} adet klips ve takoz');
+    buffer.writeln('• **Derz Dolgusu (Fuga):** **$derzTorba Kutu/Torba** (5 kg\'lık) — Toplam ${_f(derzKg)} kg');
+    buffer.writeln('• **Derz Artısı / Terazi Klipsi:** Yaklaşık ${(a * 12).toInt()} adet klips ve takoz');
     buffer.writeln('');
     buffer.writeln('💰 **Tahmini Yaklaşık Maliyet (Piyasa Rayici):**');
-    buffer.writeln('• **Porselen Seramik (${_f(toplamSeramikM2)} m² x ${_para(seramikBirimM2)}):** ${_para(seramikTutari)}');
-    buffer.writeln('• **Yapıştırıcı ($yapistiriciTorba torba) & Fuga ($derzTorba5Kg adet):** ${_para(yapistiriciTutari + derzTutari)}');
+    buffer.writeln('• **Porselen Seramik (${_f(toplamM2)} m² x ${_para(bf)}):** ${_para(seramikTutari)}');
+    buffer.writeln('• **Yapıştırıcı ($yapistiriciTorba torba) & Fuga ($derzTorba adet):** ${_para(yapistiriciTutari + derzTutari)}');
     buffer.writeln('• **Klips & Yardımcı Sarf:** ${_para(klipsSarf)}');
     buffer.writeln('• **Toplam Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
     buffer.writeln('');
     buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
     buffer.writeln('1. Zemin eğimi kontrol edilmeli; 5 mm üzeri sapmalarda önce tesviye şapı çekilmelidir.');
-    buffer.writeln('2. 60x60 ve üzeri porselen seramiklerde hem zemine hem seramiğin arkasına çift taraflı yapıştırma yapılmalıdır.');
+    buffer.writeln('2. 60x60 ve üzeri seramiklerde hem zemine hem arkasına çift taraflı yapıştırma yapılmalıdır.');
     buffer.writeln('3. Derz dolgusu yapıştırmadan en az 24-48 saat sonra uygulanmalıdır.');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'seramik',
+      title: 'Seramik, Granit & Derz Hesabı',
+      icon: '✨',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Kaplama Alanı',
+      primaryUnit: 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        '60x60 Porselen Seramik',
+        '60x120 Granit Seramik',
+        'Standart Duvar/Yer Seramiği',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: 'm² Seramik Fiyatı (TL)',
+      anaMiktar: '${_f(toplamM2)} m²',
+      anaMiktarLabel: 'Sipariş Edilecek Seramik',
+      lojistik: '~$paketSayisi Kutu',
+      lojistikLabel: 'Paket / Kutu (1.44 m²)',
+      firePayi: '%10 (+${_f(a * fireOrani)} m²)',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: [
+        'Seramik Yapıştırıcısı (C2TE): $yapistiriciTorba Torba (25 kg)',
+        'Derz Dolgusu (Fuga): $derzTorba Kutu (5 kg)',
+        'Terazi Klipsi & Takoz: ~${(a * 12).toInt()} Adet',
+      ],
+      tavsiyeler: const [
+        'Zemin eğimi kontrol edilmeli; 5 mm üzeri sapmalarda tesviye şapı çekilmelidir.',
+        '60x60 ve üzeri porselen seramiklerde çift taraflı yapıştırma uygulanmalıdır.',
+        'Derz dolgusu yapıştırmadan 24-48 saat sonra uygulanmalıdır.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -429,38 +606,46 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaSap(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildSap(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-    double? kalinlikCm = _extractKalinlikCm(original, norm) ?? 5.0; // Standart 5 cm
-
+    double? kalinlikCm = _extractKalinlikCm(original, norm) ?? 5.0;
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '📐 **Şap Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen alanı (m²) ve şap kalınlığını (cm) belirtin.\n'
-          'Örnek: *"150 m2 daireye 5 cm şap atacağız, ne kadar kum ve çimento gider?"*';
-    }
+    return buildSapModel(alan: alan, kalinlikCm: kalinlikCm);
+  }
 
-    final double hacimM3 = alan * (kalinlikCm / 100.0);
-    const double cimentoDoz = 350.0; // 350 doz standardı
+  static MetrajHesapModel buildSapModel({
+    double? alan,
+    double? kalinlikCm,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 100.0;
+    final k = kalinlikCm ?? 5.0;
+    final v = variant ?? '350 Doz Standart Şap';
+    final bf = birimFiyat ?? 650.0; // Kum m³
+
+    final double hacimM3 = a * (k / 100.0);
+    const double cimentoDoz = 350.0;
     final double toplamCimentoKg = hacimM3 * cimentoDoz;
     final int cimentoTorba50 = (toplamCimentoKg / 50.0).ceil();
     final double kumM3 = hacimM3 * 1.15;
     final double elyafKg = hacimM3 * 0.9;
 
     final double cimentoTutari = cimentoTorba50 * 200.0;
-    final double kumTutari = kumM3 * 650.0;
+    final double kumTutari = kumM3 * bf;
     final double elyafTutari = elyafKg * 160.0;
     final double toplamMaliyet = cimentoTutari + kumTutari + elyafTutari;
 
     final buffer = StringBuffer();
     buffer.writeln('📐 **ŞPD AI - Zemin Şapı & Tesviye Metrajı**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📐 **Uygulama Alanı:** ${_f(alan)} m²');
-    buffer.writeln('📏 **Ortalama Şap Kalınlığı:** ${_f(kalinlikCm)} cm');
+    buffer.writeln('📐 **Uygulama Alanı:** ${_f(a)} m²');
+    buffer.writeln('📏 **Ortalama Şap Kalınlığı:** ${_f(k)} cm');
     buffer.writeln('🧊 **Toplam Şap Hacmi:** **${_f(hacimM3)} m³**');
     buffer.writeln('');
     buffer.writeln('📦 **Gereken Malzeme Listesi (350 Doz Standardı):**');
@@ -473,12 +658,44 @@ class InsaatMetrajHesaplayici {
     buffer.writeln('• **Mil Kumu (${_f(kumM3)} m³):** ${_para(kumTutari)}');
     buffer.writeln('• **Şap Elyafı & Katkı:** ${_para(elyafTutari)}');
     buffer.writeln('• **Toplam Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
-    buffer.writeln('');
-    buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
-    buffer.writeln('1. Zemin temizlenip tozdan arındırılmalı ve aderans köprüsü (şerbet/astar) uygulanmalıdır.');
-    buffer.writeln('2. Geniş mekanlarda 25-30 m²\'de bir derz kesilerek oturma çatlakları engellenmelidir.');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'sap',
+      title: 'Zemin Şapı & Tesviye Hesabı',
+      icon: '📐',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Uygulama Alanı',
+      primaryUnit: 'm²',
+      secondaryValue: k,
+      secondaryLabel: 'Şap Kalınlığı',
+      secondaryUnit: 'cm',
+      selectedVariant: v,
+      availableVariants: const [
+        '350 Doz Standart Şap',
+        '400 Doz Mukavemetli Şap',
+        'Hazır Kuru Harç Şapı',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: 'Kum m³ Fiyatı (TL)',
+      anaMiktar: '${_f(hacimM3)} m³',
+      anaMiktarLabel: 'Toplam Şap Hacmi',
+      lojistik: '$cimentoTorba50 Torba Çimento',
+      lojistikLabel: 'Bağlayıcı Çimento (50 kg)',
+      firePayi: '%5 tesviye toleransı',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: [
+        'Portland Çimentosu: $cimentoTorba50 Torba (50 kg) — ${_f(toplamCimentoKg)} kg',
+        '0-3 Mil Kumu: ${_f(kumM3)} m³ (~${_f(kumM3 * 1.6)} Ton)',
+        'Polipropilen Şap Elyafı: ~${_f(elyafKg)} kg',
+      ],
+      tavsiyeler: const [
+        'Zemin temizlenip aderans köprüsü (şerbet/astar) uygulanmalıdır.',
+        'Geniş mekanlarda 25-30 m²\'de bir derz kesilerek oturma çatlakları engellenmelidir.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -489,71 +706,106 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaSiva(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildSiva(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '🖌️ **Sıva & Alçı Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen alanı (m²) belirtin.\n'
-          'Örnek: *"200 m2 duvara alçı sıva yapacağız, kaç torba alçı gider?"*';
+    final bool isKara = norm.contains('kara') || norm.contains('kaba') || norm.contains('cimento');
+    final variant = isKara ? 'Çimento Esaslı Kara Sıva' : 'Perlitli Sıva Alçısı + Saten';
+
+    return buildSivaModel(alan: alan, variant: variant);
+  }
+
+  static MetrajHesapModel buildSivaModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 150.0;
+    final v = variant ?? 'Perlitli Sıva Alçısı + Saten';
+    final isKara = v.contains('Kara');
+
+    double toplamMaliyet = 0.0;
+    final sarfList = <String>[];
+    String anaMiktar = '';
+    String lojistik = '';
+
+    if (isKara) {
+      final double kumM3 = a * 0.024;
+      final double cimentoKg = a * 7.5;
+      final int cimentoTorba50 = (cimentoKg / 50.0).ceil();
+      final double cimentoTutari = cimentoTorba50 * 200.0;
+      final double kumTutari = kumM3 * (birimFiyat ?? 650.0);
+      toplamMaliyet = cimentoTutari + kumTutari;
+
+      anaMiktar = '${_f(kumM3)} m³ Kum';
+      lojistik = '$cimentoTorba50 Torba Çimento';
+      sarfList.add('Sıva Kumu: ~${_f(kumM3)} m³');
+      sarfList.add('Portland Çimento: ~$cimentoTorba50 Torba (50 kg)');
+      sarfList.add('Torbalı Kireç: ~${(a * 2.5 / 25).ceil()} Torba');
+    } else {
+      final double alciKg = a * 9.0;
+      final int alciTorba35 = (alciKg / 35.0).ceil();
+      final double satenKg = a * 1.0;
+      final int satenTorba25 = (satenKg / 25.0).ceil();
+      final double alciTutari = alciTorba35 * (birimFiyat ?? 165.0);
+      final double satenTutari = satenTorba25 * 145.0;
+      final double kosebentAstar = a * 15.0;
+      toplamMaliyet = alciTutari + satenTutari + kosebentAstar;
+
+      anaMiktar = '$alciTorba35 Torba Alçı';
+      lojistik = '$alciTorba35 Torba + $satenTorba25 Saten';
+      sarfList.add('Perlitli Sıva Alçısı: $alciTorba35 Torba (35 kg) — Toplam ${_f(alciKg)} kg');
+      sarfList.add('Saten Perdah Alçısı: $satenTorba25 Torba (25 kg) — Toplam ${_f(satenKg)} kg');
+      sarfList.add('Brüt Beton Astarı: ~${_f(a * 0.25)} kg');
     }
 
-    final bool isKaraSiva = norm.contains('kara') || norm.contains('cimento') || norm.contains('kaba');
     final buffer = StringBuffer();
     buffer.writeln('🖌️ **ŞPD AI - Sıva & Alçı Metraj Raporu**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📐 **Uygulama Alanı:** ${_f(alan)} m²');
-
-    double toplamMaliyet = 0.0;
-    if (isKaraSiva) {
-      final double kumM3 = alan * 0.024;
-      final double cimentoKg = alan * 7.5;
-      final int cimentoTorba50 = (cimentoKg / 50.0).ceil();
-      final double cimentoTutari = cimentoTorba50 * 200.0;
-      final double kumTutari = kumM3 * 650.0;
-      toplamMaliyet = cimentoTutari + kumTutari;
-
-      buffer.writeln('📋 **Tür:** Çimento Esaslı Kaba Sıva (Kara Sıva - ~2 cm)');
-      buffer.writeln('• **Sıva Kumu:** ~**${_f(kumM3)} m³**');
-      buffer.writeln('• **Çimento:** ~**$cimentoTorba50 Torba** (50 kg\'lık) — Toplam ${_f(cimentoKg)} kg');
-      buffer.writeln('• **Kireç:** ~${(alan * 2.5 / 25).ceil()} Torba torbalı sönmüş kireç');
-      buffer.writeln('');
-      buffer.writeln('💰 **Tahmini Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
-    } else {
-      final double alciKg = alan * 9.0;
-      final int alciTorba35 = (alciKg / 35.0).ceil();
-      final double satenKg = alan * 1.0;
-      final int satenTorba25 = (satenKg / 25.0).ceil();
-      final double alciTutari = alciTorba35 * 165.0;
-      final double satenTutari = satenTorba25 * 145.0;
-      final double kosebentAstar = alan * 15.0;
-      toplamMaliyet = alciTutari + satenTutari + kosebentAstar;
-
-      buffer.writeln('📋 **Tür:** İç Mekan Perlitli Sıva Alçısı + Saten Perdah');
-      buffer.writeln('📦 **Malzeme İhtiyacı:**');
-      buffer.writeln('• **Perlitli Sıva Alçısı (1 cm):** **$alciTorba35 Torba** (35 kg\'lık) — Toplam ${_f(alciKg)} kg');
-      buffer.writeln('• **Saten Perdah Alçısı (Son Kat):** **$satenTorba25 Torba** (25 kg\'lık) — Toplam ${_f(satenKg)} kg');
-      buffer.writeln('• **Fileli Sıva Köşebenti:** Kapı ve kolon kenarları için köşe profili');
-      buffer.writeln('• **Brüt Beton Astarı:** ~${_f(alan * 0.25)} kg kumlu astar');
-      buffer.writeln('');
-      buffer.writeln('💰 **Tahmini Malzeme Maliyeti:**');
-      buffer.writeln('• **Perlitli Sıva ($alciTorba35 torba):** ${_para(alciTutari)}');
-      buffer.writeln('• **Saten Alçı ($satenTorba25 torba):** ${_para(satenTutari)}');
-      buffer.writeln('• **Köşebent & Astar:** ${_para(kosebentAstar)}');
-      buffer.writeln('• **Toplam Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
+    buffer.writeln('📐 **Uygulama Alanı:** ${_f(a)} m²');
+    buffer.writeln('📋 **Tür:** $v');
+    buffer.writeln('📦 **Malzeme İhtiyacı:**');
+    for (final s in sarfList) {
+      buffer.writeln('• $s');
     }
-
     buffer.writeln('');
-    buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
-    buffer.writeln('1. Brüt beton yüzeylerde aderansı artırmak için kesinlikle brüt beton astarı (kumlu astar) uygulanmalıdır.');
-    buffer.writeln('2. Alçı karışımı temiz su ve temiz teknede yapılmalı, priz almaya başlayan harca su ilave edilmemelidir.');
+    buffer.writeln('💰 **Tahmini Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'siva',
+      title: 'Sıva & Alçı Metraj Hesabı',
+      icon: '🖌️',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Sıva Alanı',
+      primaryUnit: 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        'Perlitli Sıva Alçısı + Saten',
+        'Çimento Esaslı Kara Sıva',
+        'Hazır Dış Cephe Sıvası',
+      ],
+      birimFiyat: birimFiyat ?? (isKara ? 650.0 : 165.0),
+      birimFiyatLabel: isKara ? 'Kum m³ Fiyatı (TL)' : 'Alçı Torba Fiyatı (TL)',
+      anaMiktar: anaMiktar,
+      anaMiktarLabel: 'Ana Malzeme İhtiyacı',
+      lojistik: lojistik,
+      lojistikLabel: 'Paket / Ambalaj',
+      firePayi: '%5 dökülme payı',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: sarfList,
+      tavsiyeler: const [
+        'Brüt beton yüzeylerde aderans için brüt beton astarı (kumlu astar) uygulanmalıdır.',
+        'Alçı karışımı temiz su ve teknede yapılmalı, priz alan harca su ilave edilmemelidir.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -564,60 +816,95 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaBoya(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildBoya(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '🎨 **Boya Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen boyanacak alanı (m²) belirtin.\n'
-          'Örnek: *"250 m2 duvara silikonlu iç cephe boyası kaç kova gider?"*';
+    String variant = 'Silikonlu İç Cephe (Çift Kat)';
+    if (norm.contains('dis') || norm.contains('dış')) {
+      variant = 'Akrilik Dış Cephe (Çift Kat)';
     }
 
-    // 1 Litre boya çift katta ortalama 7.5 m²
-    final double boyaLitre = alan / 7.5;
+    return buildBoyaModel(alan: alan, variant: variant);
+  }
+
+  static MetrajHesapModel buildBoyaModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 200.0;
+    final v = variant ?? 'Silikonlu İç Cephe (Çift Kat)';
+    final bf = birimFiyat ?? 2250.0;
+
+    final double boyaLitre = a / 7.5;
     final int kova15Litre = (boyaLitre / 15.0).ceil();
-
-    // 1 Litre astar tek katta ortalama 11 m²
-    final double astarLitre = alan / 11.0;
+    final double astarLitre = a / 11.0;
     final int astarKova15Litre = (astarLitre / 15.0).ceil();
-
-    final double tavanBoyaKg = (alan * 0.35);
+    final double tavanBoyaKg = (a * 0.35);
     final int tavanKova17_5Kg = (tavanBoyaKg / 17.5).ceil();
 
-    final double boyaTutari = kova15Litre * 2250.0;
+    final double boyaTutari = kova15Litre * bf;
     final double astarTutari = astarKova15Litre * 1350.0;
     final double tavanTutari = tavanKova17_5Kg * 750.0;
-    final double sarfMalzeme = 450.0; // Bant, hışır, rulo
+    const double sarfMalzeme = 450.0;
     final double toplamMaliyet = boyaTutari + astarTutari + tavanTutari + sarfMalzeme;
 
     final buffer = StringBuffer();
     buffer.writeln('🎨 **ŞPD AI - Boya & Astar Metraj Raporu**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📐 **Net Boya Alanı:** ${_f(alan)} m²');
-    buffer.writeln('🎨 **Uygulama:** Çift Kat Silikonlu İç Cephe');
+    buffer.writeln('📐 **Net Boya Alanı:** ${_f(a)} m²');
+    buffer.writeln('🎨 **Uygulama:** $v');
     buffer.writeln('');
     buffer.writeln('📦 **Gereken Ambalaj Sayıları:**');
     buffer.writeln('• **Duvar Boyası (Çift Kat):** **$kova15Litre Kova** (15 Litrelik) — Toplam ${_f(boyaLitre)} Litre');
     buffer.writeln('• **Şeffaf / Dönüşüm Astarı:** **$astarKova15Litre Kova** (15 Litrelik) — Toplam ${_f(astarLitre)} Litre');
     buffer.writeln('• **Tavan Boyası:** ~**$tavanKova17_5Kg Kova** (17.5 kg plastik tavan boyası)');
-    buffer.writeln('• **Yardımcı Malzemeler:** 3-4 rulo maskeleme bandı, 2 adet zemin hışır örtü');
     buffer.writeln('');
     buffer.writeln('💰 **Tahmini Yaklaşık Maliyet (Piyasa Rayici):**');
-    buffer.writeln('• **İç Cephe Boyası ($kova15Litre kova):** ${_para(boyaTutari)}');
+    buffer.writeln('• **Duvar Boyası ($kova15Litre kova):** ${_para(boyaTutari)}');
     buffer.writeln('• **Astar ($astarKova15Litre kova) & Tavan ($tavanKova17_5Kg kova):** ${_para(astarTutari + tavanTutari)}');
-    buffer.writeln('• **Rulo, Bant & Örtü Sarfiyatı:** ${_para(sarfMalzeme)}');
     buffer.writeln('• **Toplam Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
-    buffer.writeln('');
-    buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
-    buffer.writeln('1. Alçı yüzeylerin zımparası bittikten sonra toz tamamen temizlenmeden astar atılmamalıdır.');
-    buffer.writeln('2. Katlar arasında en az 4-6 saat kuruma süresi beklenmelidir.');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'boya',
+      title: 'Boya, Astar & Tavan Hesabı',
+      icon: '🎨',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Boya Alanı',
+      primaryUnit: 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        'Silikonlu İç Cephe (Çift Kat)',
+        'Akrilik Dış Cephe (Çift Kat)',
+        'Plastik Mat İç Cephe Boyası',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: '15L Boya Kova Fiyatı (TL)',
+      anaMiktar: '$kova15Litre Kova Boya',
+      anaMiktarLabel: 'Ana Duvar Boyası (15L)',
+      lojistik: '$kova15Litre Kova + $astarKova15Litre Astar',
+      lojistikLabel: 'Ambalaj / Kova',
+      firePayi: '%5 yüzey emme payı',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: [
+        'Duvar Boyası: $kova15Litre Kova (15L) — ${_f(boyaLitre)} Litre',
+        'Dönüşüm Astarı: $astarKova15Litre Kova (15L)',
+        'Tavan Boyası: ~$tavanKova17_5Kg Kova (17.5 kg)',
+        'Maskeleme bandı & zemin hışır örtü',
+      ],
+      tavsiyeler: const [
+        'Alçı yüzeylerin zımparası bittikten sonra toz tamamen temizlenmeden astar atılmamalıdır.',
+        'Katlar arasında en az 4-6 saat kuruma süresi beklenmelidir.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -628,59 +915,77 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaDemir(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildDemir(String original, String norm) {
     double? hacimM3 = _extractHacimM3(original, norm);
     double? alan = _extractAlan(original, norm);
+    final pVal = hacimM3 ?? alan;
+    if (pVal == null || pVal <= 0) return null;
 
-    if (hacimM3 == null && alan == null) {
-      return '🔩 **Demir Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen beton hacmini (m³) veya toplam inşaat kapalı alanını (m²) belirtin.\n'
-          'Örnek: *"120 m3 betona kaç ton demir gider?"* veya *"500 m2 inşaata ne kadar demir gerekir?"*';
-    }
+    return buildDemirModel(alan: pVal, isHacim: hacimM3 != null);
+  }
 
-    double toplamTon = 0;
-    String aciklama = '';
+  static MetrajHesapModel buildDemirModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+    bool isHacim = true,
+  }) {
+    final a = alan ?? 100.0;
+    final v = variant ?? 'Nervürlü Donatı (90 kg/m³)';
+    final bf = birimFiyat ?? 31000.0;
 
-    if (hacimM3 != null && hacimM3 > 0) {
-      const double kgPerM3 = 90.0;
-      final double toplamKg = hacimM3 * kgPerM3;
-      toplamTon = toplamKg / 1000.0;
-      aciklama = '${_f(hacimM3)} m³ beton hacmi baz alındı (90 kg/m³)';
-    } else if (alan != null && alan > 0) {
-      const double kgPerM2 = 40.0;
-      final double toplamKg = alan * kgPerM2;
-      toplamTon = toplamKg / 1000.0;
-      aciklama = '${_f(alan)} m² kapalı inşaat alanı baz alındı (40 kg/m²)';
-    }
+    double kgPerUnit = 90.0;
+    if (v.contains('75')) kgPerUnit = 75.0;
+    else if (v.contains('115')) kgPerUnit = 115.0;
 
-    final double bagTeliKg = toplamTon * 15.0; // Ton başına 15 kg bağ teli
-    const double demirTonFiyati = 31000.0; // Güncel nervürlü donatı ton fiyatı TL
-    final double demirMaliyeti = toplamTon * demirTonFiyati;
+    final double toplamKg = a * kgPerUnit;
+    final double toplamTon = toplamKg / 1000.0;
+    final double bagTeliKg = toplamTon * 15.0;
+    final double demirMaliyeti = toplamTon * bf;
     final double bagTeliMaliyeti = bagTeliKg * 55.0;
     final double toplamMaliyet = demirMaliyeti + bagTeliMaliyeti;
 
     final buffer = StringBuffer();
     buffer.writeln('🔩 **ŞPD AI - İnşaat Demiri (Donatı) Yaklaşık Metrajı**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📋 **Ölçüt:** $aciklama');
-    buffer.writeln('📊 **Tahmini Donatı Miktarı:** **${_f(toplamTon)} Ton** (~${_f(toplamTon * 1000)} kg)');
+    buffer.writeln('📊 **Tahmini Donatı Miktarı:** **${_f(toplamTon)} Ton** (~${_f(toplamKg)} kg)');
     buffer.writeln('🧵 **Tavlı Bağ Teli:** ~**${_f(bagTeliKg)} kg** (Ton başına 15 kg)');
-    buffer.writeln('');
-    buffer.writeln('📐 **Kaba Çap Dağılım Tahmini:**');
-    buffer.writeln('• **İnce Çaplar (Ø8 - Ø10):** ~%25 (${_f(toplamTon * 0.25)} Ton - Etriye & döşeme)');
-    buffer.writeln('• **Orta Çaplar (Ø12 - Ø16):** ~%45 (${_f(toplamTon * 0.45)} Ton - Kiriş & kolon boyuna)');
-    buffer.writeln('• **Kalın Çaplar (Ø18 - Ø25):** ~%30 (${_f(toplamTon * 0.30)} Ton - Kolon & temel donatısı)');
-    buffer.writeln('');
-    buffer.writeln('💰 **Tahmini Yaklaşık Maliyet (Fabrika/Tüccar Rayici):**');
-    buffer.writeln('• **Nervürlü Demir (${_f(toplamTon)} Ton x ${_para(demirTonFiyati)}):** ${_para(demirMaliyeti)}');
-    buffer.writeln('• **Tavlı Bağ Teli (${_f(bagTeliKg)} kg):** ${_para(bagTeliMaliyeti)}');
-    buffer.writeln('• **Toplam Demir Maliyeti:** **${_para(toplamMaliyet)}** (+Nakliye & KDV)');
-    buffer.writeln('');
-    buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
-    buffer.writeln('1. Paspayı takozları ihmal edilmemeli (temelde 5 cm, kolon/kirişte 3 cm).');
-    buffer.writeln('2. Kesin tonaj statik aplikasyon projesindeki donatı metraj cetvelinden teyit edilmelidir.');
+    buffer.writeln('💰 **Toplam Demir Maliyeti:** **${_para(toplamMaliyet)}** (+Nakliye & KDV)');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'demir',
+      title: 'İnşaat Demiri (Donatı) Hesabı',
+      icon: '🔩',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: isHacim ? 'Beton Hacmi' : 'İnşaat Alanı',
+      primaryUnit: isHacim ? 'm³' : 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        'Nervürlü Donatı (90 kg/m³)',
+        'Hafif Yapı Donatısı (75 kg/m³)',
+        'Ağır Sanayi / Radye (115 kg/m³)',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: 'Ton Demir Fiyatı (TL)',
+      anaMiktar: '${_f(toplamTon)} Ton',
+      anaMiktarLabel: 'Tahmini Donatı Miktarı',
+      lojistik: '~${_f(toplamKg)} kg',
+      lojistikLabel: 'Toplam Net Kilo',
+      firePayi: '%3 bindirme payı',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Demir Maliyeti',
+      sarfMalzemeler: [
+        'Nervürlü Donatı: ${_f(toplamTon)} Ton',
+        'Tavlı Bağ Teli: ~${_f(bagTeliKg)} kg',
+        'Paspayı takozları (temel 5cm, kolon/kiriş 3cm)',
+      ],
+      tavsiyeler: const [
+        'Paspayı takozları ihmal edilmemeli (temelde 5 cm, kolon/kirişte 3 cm).',
+        'Kesin tonaj statik aplikasyon projesindeki donatı metraj cetvelinden teyit edilmelidir.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -691,29 +996,34 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaAlcipan(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildAlcipan(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '🏗️ **Alçıpan Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen alanı (m²) belirtin.\n'
-          'Örnek: *"60 m2 asma tavan için kaç plaka alçıpan ve profil gider?"*';
-    }
+    return buildAlcipanModel(alan: alan);
+  }
 
-    // 1 adet standart alçıpan = 1.20 x 2.50 = 3.0 m² (+%7 fire)
-    final int plakaSayisi = ((alan * 1.07) / 3.0).ceil();
-    final double tcProfilMetre = alan * 1.8;
+  static MetrajHesapModel buildAlcipanModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 60.0;
+    final v = variant ?? '12.5mm Asma Tavan Alçıpanı';
+    final bf = birimFiyat ?? 210.0;
+
+    final int plakaSayisi = ((a * 1.07) / 3.0).ceil();
+    final double tcProfilMetre = a * 1.8;
     final int tcBoy3m = (tcProfilMetre / 3.0).ceil();
-    final int vidaAdet = (alan * 25).toInt();
-    final double derzBandiMetre = alan * 1.5;
-    final int derzAlciTorba = (alan * 0.4 / 25.0).ceil();
+    final int vidaAdet = (a * 25).toInt();
+    final double derzBandiMetre = a * 1.5;
+    final int derzAlciTorba = (a * 0.4 / 25.0).ceil();
 
-    final double plakaTutari = plakaSayisi * 210.0;
+    final double plakaTutari = plakaSayisi * bf;
     final double profilTutari = tcBoy3m * 95.0;
     final double sarfTutari = vidaAdet * 0.35 + derzAlciTorba * 180.0 + 200.0;
     final double toplamMaliyet = plakaTutari + profilTutari + sarfTutari;
@@ -721,23 +1031,47 @@ class InsaatMetrajHesaplayici {
     final buffer = StringBuffer();
     buffer.writeln('🏗️ **ŞPD AI - Alçıpan Asma Tavan & Bölme Duvar Raporu**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📐 **Net Alan:** ${_f(alan)} m²');
-    buffer.writeln('📦 **Gereken Plaka:** **$plakaSayisi Adet Plaka** (12.5mm Alçıpan [1.2x2.5m])');
-    buffer.writeln('');
-    buffer.writeln('🔩 **Karkas & Bağlantı Elemanları:**');
-    buffer.writeln('• **Tavan C (TC) Profili:** ~**$tcBoy3m Boy** (3 metrelik) — Toplam ${_f(tcProfilMetre)} metre');
-    buffer.writeln('• **Tavan U (TU) Profili:** Odanın çevre uzunluğu kadar');
-    buffer.writeln('• **Borazan Vida (25 mm):** ~**$vidaAdet Adet**');
-    buffer.writeln('• **Derz Bandı (File):** ~${_f(derzBandiMetre)} Metre');
-    buffer.writeln('• **Derz Dolgu Alçısı (Fugagips):** ~**$derzAlciTorba Torba**');
-    buffer.writeln('');
-    buffer.writeln('💰 **Tahmini Malzeme Maliyeti:**');
-    buffer.writeln('• **Alçıpan Plakalar ($plakaSayisi adet):** ${_para(plakaTutari)}');
-    buffer.writeln('• **Galvaniz Profiller ($tcBoy3m boy TC):** ${_para(profilTutari)}');
-    buffer.writeln('• **Vida, Dübel, File & Derz Alçısı:** ${_para(sarfTutari)}');
-    buffer.writeln('• **Toplam Karkas & Plaka Maliyeti:** **${_para(toplamMaliyet)}**');
+    buffer.writeln('📐 **Net Alan:** ${_f(a)} m²');
+    buffer.writeln('📦 **Gereken Plaka:** **$plakaSayisi Adet Plaka** (12.5mm [1.2x2.5m])');
+    buffer.writeln('🔩 **Tavan C (TC) Profili:** ~**$tcBoy3m Boy** (3 metrelik)');
+    buffer.writeln('💰 **Toplam Karkas & Plaka Maliyeti:** **${_para(toplamMaliyet)}**');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'alcipan',
+      title: 'Alçıpan & Karkas Hesabı',
+      icon: '🔨',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Net Alan',
+      primaryUnit: 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        '12.5mm Asma Tavan Alçıpanı',
+        'Suya Dayanıklı Yeşil Alçıpan',
+        'Yangına Dayanıklı Kırmızı Alçıpan',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: 'Plaka Fiyatı (TL)',
+      anaMiktar: '$plakaSayisi Adet Plaka',
+      anaMiktarLabel: 'Gereken Alçıpan Plaka',
+      lojistik: '$tcBoy3m Boy Profil',
+      lojistikLabel: 'Galvaniz TC Profil (3m)',
+      firePayi: '%7 kesim payı',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: [
+        'Alçıpan Plaka: $plakaSayisi Adet (1.20x2.50m)',
+        'Tavan C Profili: ~$tcBoy3m Boy (3m) — ${_f(tcProfilMetre)} mt',
+        'Borazan Vida (25mm): ~$vidaAdet Adet',
+        'Derz Bandı: ~${_f(derzBandiMetre)} Metre',
+        'Derz Dolgu Alçısı (Fugagips): ~$derzAlciTorba Torba',
+      ],
+      tavsiyeler: const [
+        'Vidalama 20-25 cm aralıkla yapılmalı, vida başları plaka yüzeyine hafifçe gömülmelidir.',
+        'Derz bandı çekilmeden derz dolgu alçısı uygulanmamalıdır.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -748,40 +1082,43 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaMantolama(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildMantolama(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '🧱 **Mantolama Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen cephe alanını (m²) belirtin.\n'
-          'Örnek: *"300 m2 dış cepheye mantolama yapacağız, ne kadar strafor, yapıştırıcı ve file gider?"*';
+    String variant = '5 cm Karbonlu EPS Levha';
+    if (norm.contains('tasyunu') || norm.contains('taşyünü')) {
+      variant = '5 cm Taşyünü (150 kg/m³)';
+    } else if (norm.contains('4 cm') || norm.contains('4cm')) {
+      variant = '4 cm Karbonlu EPS Levha';
     }
 
-    // %5 fire
-    final double toplamLevhaM2 = alan * 1.05;
-    final int paketSayisi = (toplamLevhaM2 / 5.0).ceil(); // Standart 1 paket EPS ~5 m² (5 cm kalınlık)
+    return buildMantolamaModel(alan: alan, variant: variant);
+  }
 
-    // Yapıştırıcı (4.5 kg/m²) ve Sıva (4.5 kg/m²)
-    final int yapistiriciTorba = ((alan * 4.5) / 25.0).ceil();
-    final int sivaTorba = ((alan * 4.5) / 25.0).ceil();
+  static MetrajHesapModel buildMantolamaModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 250.0;
+    final v = variant ?? '5 cm Karbonlu EPS Levha';
+    final bf = birimFiyat ?? (v.contains('Taşyünü') ? 310.0 : 180.0);
 
-    // Donatı Filesi (160 gr): alan * 1.10 (%10 bini payı)
-    final double fileM2 = alan * 1.10;
-    final int fileRulo = (fileM2 / 50.0).ceil(); // 50 m² rulo
+    final double toplamLevhaM2 = a * 1.05;
+    final int paketSayisi = (toplamLevhaM2 / 5.0).ceil();
+    final int yapistiriciTorba = ((a * 4.5) / 25.0).ceil();
+    final int sivaTorba = ((a * 4.5) / 25.0).ceil();
+    final double fileM2 = a * 1.10;
+    final int fileRulo = (fileM2 / 50.0).ceil();
+    final int dubelAdet = (a * 6).toInt();
+    final int mineralSivaTorba = ((a * 2.8) / 25.0).ceil();
 
-    // Dübel: m² başına 6 adet
-    final int dubelAdet = (alan * 6).toInt();
-
-    // Dekoratif mineral sıva: m² başına ~2.8 kg
-    final int mineralSivaTorba = ((alan * 2.8) / 25.0).ceil();
-
-    // Maliyet hesabı
-    final double levhaTutari = toplamLevhaM2 * 180.0; // 5 cm EPS m²
+    final double levhaTutari = toplamLevhaM2 * bf;
     final double yapistiriciSivaTutari = (yapistiriciTorba + sivaTorba) * 190.0;
     final double fileDubelTutari = (fileRulo * 950.0) + (dubelAdet * 1.2);
     final double mineralSivaTutari = mineralSivaTorba * 220.0;
@@ -790,28 +1127,47 @@ class InsaatMetrajHesaplayici {
     final buffer = StringBuffer();
     buffer.writeln('🏠 **ŞPD AI - Dış Cephe Isı Yalıtımı (Mantolama) Metrajı**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📐 **Net Cephe Alanı:** ${_f(alan)} m²');
-    buffer.writeln('📦 **Yalıtım Levhası (5 cm EPS):** **${_f(toplamLevhaM2)} m²** (~**$paketSayisi Paket**)');
-    buffer.writeln('');
-    buffer.writeln('🧱 **Sıva, Yapıştırıcı & Donatı Malzemeleri:**');
-    buffer.writeln('• **Mantolama Yapıştırıcısı:** **$yapistiriciTorba Torba** (25 kg\'lık)');
-    buffer.writeln('• **Mantolama Sıvası:** **$sivaTorba Torba** (25 kg\'lık)');
-    buffer.writeln('• **Donatı Filesi (160 gr):** **$fileRulo Rulo** (50 m²\'lik) — Toplam ${_f(fileM2)} m²');
-    buffer.writeln('• **Plastik/Çelik Çivili Dübel:** **$dubelAdet Adet** (6 adet/m²)');
-    buffer.writeln('• **Dekoratif Mineral Kaplama Sıvası:** **$mineralSivaTorba Torba** (25 kg\'lık)');
-    buffer.writeln('');
-    buffer.writeln('💰 **Tahmini Malzeme Maliyeti (Piyasa Rayici):**');
-    buffer.writeln('• **EPS Yalıtım Levhaları:** ${_para(levhaTutari)}');
-    buffer.writeln('• **Yapıştırıcı & Sıva:** ${_para(yapistiriciSivaTutari)}');
-    buffer.writeln('• **File, Dübel & Aksesuar:** ${_para(fileDubelTutari)}');
-    buffer.writeln('• **Dekoratif Mineral Sıva:** ${_para(mineralSivaTutari)}');
-    buffer.writeln('• **Toplam Paket Malzeme:** **${_para(toplamMaliyet)}**');
-    buffer.writeln('');
-    buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
-    buffer.writeln('1. Levhalar şaşırtmalı örülmeli, köşe ve pencere kenarlarında L şeklinde kesim (çatlak önleyici) yapılmalıdır.');
-    buffer.writeln('2. Donatı filesi ek yerlerinde en az 10 cm üst üste bindirilmelidir.');
+    buffer.writeln('📐 **Net Cephe Alanı:** ${_f(a)} m²');
+    buffer.writeln('📦 **Yalıtım Levhası:** **${_f(toplamLevhaM2)} m²** (~**$paketSayisi Paket**)');
+    buffer.writeln('🧱 **Yapıştırıcı & Sıva:** ${yapistiriciTorba + sivaTorba} Torba (25 kg)');
+    buffer.writeln('💰 **Toplam Paket Malzeme:** **${_para(toplamMaliyet)}**');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'mantolama',
+      title: 'Dış Cephe Mantolama Hesabı',
+      icon: '🏠',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Cephe Alanı',
+      primaryUnit: 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        '5 cm Karbonlu EPS Levha',
+        '4 cm Karbonlu EPS Levha',
+        '5 cm Taşyünü (150 kg/m³)',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: 'm² Levha Fiyatı (TL)',
+      anaMiktar: '${_f(toplamLevhaM2)} m²',
+      anaMiktarLabel: 'Yalıtım Levhası (m²)',
+      lojistik: '~$paketSayisi Paket',
+      lojistikLabel: 'Levha Paketi (~5 m²)',
+      firePayi: '%5 kesim payı',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: [
+        'Mantolama Yapıştırıcısı: $yapistiriciTorba Torba (25 kg)',
+        'Mantolama Sıvası: $sivaTorba Torba (25 kg)',
+        'Donatı Filesi (160 gr): $fileRulo Rulo (50 m²)',
+        'Plastik/Çelik Çivili Dübel: $dubelAdet Adet',
+        'Dekoratif Mineral Sıva: $mineralSivaTorba Torba (25 kg)',
+      ],
+      tavsiyeler: const [
+        'Levhalar şaşırtmalı örülmeli, pencere köşelerinde L kesim yapılmalıdır.',
+        'Donatı filesi ek yerlerinde en az 10 cm bindirilmelidir.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -822,33 +1178,33 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaYalitim(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildYalitim(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '💧 **Su Yalıtımı Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen yalıtım yapılacak alanı (m²) belirtin.\n'
-          'Örnek: *"180 m2 çatı terasına bitümlü membran kaç rulo ve astar gider?"*';
-    }
+    return buildYalitimModel(alan: alan);
+  }
 
-    // %12 bini ve parapet dönme payı
-    final double toplamMembranM2 = alan * 1.12;
-    // 1 rulo membran standart 10 m² (1m x 10m)
+  static MetrajHesapModel buildYalitimModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 120.0;
+    final v = variant ?? '3mm/4mm Bitümlü Membran';
+    final bf = birimFiyat ?? 1450.0;
+
+    final double toplamMembranM2 = a * 1.12;
     final int ruloSayisi = (toplamMembranM2 / 10.0).ceil();
+    final double astarKg = a * 0.35;
+    final int astarTeneke = (astarKg / 16.0).ceil();
+    final int tupSayisi = (a / 100.0).ceil();
 
-    // Bitüm astar: m² başına ~0.35 kg
-    final double astarKg = alan * 0.35;
-    final int astarTeneke = (astarKg / 16.0).ceil(); // 16 kg teneke
-
-    // Şaloma tüpü: Yaklaşık her 100 m²'ye 1 sanayi tüpü
-    final int tupSayisi = (alan / 100.0).ceil();
-
-    final double membranTutari = ruloSayisi * 1450.0; // 3mm / 4mm kumlu/mineral rulo
+    final double membranTutari = ruloSayisi * bf;
     final double astarTutari = astarTeneke * 980.0;
     final double gazTutari = tupSayisi * 900.0;
     final double toplamMaliyet = membranTutari + astarTutari + gazTutari;
@@ -856,25 +1212,44 @@ class InsaatMetrajHesaplayici {
     final buffer = StringBuffer();
     buffer.writeln('💧 **ŞPD AI - Su Yalıtımı & Bitümlü Membran Metrajı**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📐 **Net Yalıtım Alanı:** ${_f(alan)} m²');
-    buffer.writeln('⚠️ **Bini & Parapet Payı (%12):** +${_f(toplamMembranM2 - alan)} m²');
-    buffer.writeln('📦 **Membran İhtiyacı:** **$ruloSayisi Rulo** (10 m²\'lik rulolar halinde) — Toplam ${_f(toplamMembranM2)} m²');
-    buffer.writeln('');
-    buffer.writeln('🥣 **Astar & Sarf Malzeme:**');
-    buffer.writeln('• **Bitümlü Astar:** **$astarTeneke Teneke** (16 kg\'lık) — Toplam ${_f(astarKg)} kg');
-    buffer.writeln('• **Şaloma Gazı (Sanayi Tüpü):** ~**$tupSayisi Adet**');
-    buffer.writeln('');
-    buffer.writeln('💰 **Tahmini Malzeme Maliyeti:**');
-    buffer.writeln('• **Bitümlü Membran ($ruloSayisi rulo):** ${_para(membranTutari)}');
-    buffer.writeln('• **Bitüm Astarı ($astarTeneke teneke):** ${_para(astarTutari)}');
-    buffer.writeln('• **Tüp & Sarfiyat:** ${_para(gazTutari)}');
-    buffer.writeln('• **Toplam Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
-    buffer.writeln('');
-    buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
-    buffer.writeln('1. Parapet dönüşlerinde pah bantları ihmal edilmemeli, membran dik eksende en az 25-30 cm yukarı döndürülmelidir.');
-    buffer.writeln('2. Boyuna bindirmelerde 10 cm, enine bindirmelerde 15 cm şaloma ile tam eritilerek yapıştırılmalıdır.');
+    buffer.writeln('📐 **Net Yalıtım Alanı:** ${_f(a)} m²');
+    buffer.writeln('📦 **Membran İhtiyacı:** **$ruloSayisi Rulo** (10 m²\'lik rulolar)');
+    buffer.writeln('💰 **Toplam Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'yalitim',
+      title: 'Su Yalıtımı & Membran Hesabı',
+      icon: '💧',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Yalıtım Alanı',
+      primaryUnit: 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        '3mm/4mm Bitümlü Membran',
+        'Kumlu Arduvazlı Membran (Üst Kat)',
+        'Çift Kat Membran (2 Kat)',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: '10 m² Rulo Fiyatı (TL)',
+      anaMiktar: '$ruloSayisi Rulo Membran',
+      anaMiktarLabel: 'Gereken Membran Rulosu',
+      lojistik: '${_f(toplamMembranM2)} m²',
+      lojistikLabel: 'Toplam Kaplama (10 m²/rulo)',
+      firePayi: '%12 bini ve parapet payı',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: [
+        'Bitümlü Membran: $ruloSayisi Rulo (10 m²)',
+        'Bitümlü Astar: $astarTeneke Teneke (16 kg)',
+        'Sanayi Tüpü: ~$tupSayisi Adet',
+      ],
+      tavsiyeler: const [
+        'Parapet dönüşlerinde pah bantları ihmal edilmemeli, en az 25 cm döndürülmelidir.',
+        'Ek yerlerinde 10-15 cm bini payı şaloma ile eritilerek yapıştırılmalıdır.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -885,7 +1260,7 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaHafriyat(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildHafriyat(String original, String norm) {
     double? direktM3 = _extractHacimM3(original, norm);
     double? alan = _extractAlan(original, norm);
     double? derinlikM;
@@ -905,28 +1280,38 @@ class InsaatMetrajHesaplayici {
       derinlikM = double.tryParse(depthMatch.group(1)!.replaceAll(',', '.'));
     }
 
-    double netKaziM3 = 0;
-    if (direktM3 != null && direktM3 > 0) {
-      netKaziM3 = direktM3;
-    } else if (alan != null && derinlikM != null) {
-      netKaziM3 = alan * derinlikM;
-    } else {
-      return '🚜 **Hafriyat Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen kazı alanını (m²) ve derinliğini (m) ya da toplam kazı hacmini (m³) belirtin.\n'
-          'Örnek: *"400 m2 arsada 2.5 metre temel kazısı kaç kamyon hafriyat çıkar?"*';
+    if (direktM3 != null && direktM3 > 0 && alan == null) {
+      alan = direktM3 / (derinlikM ?? 2.5);
     }
 
-    // Toprak kabarma katsayısı: %20 - %25 kabarma
-    const double kabarmaOrani = 0.25;
-    final double kabarikHacim = netKaziM3 * (1 + kabarmaOrani);
+    if (alan == null || alan <= 0) return null;
 
-    // Standart 3 veya 4 dingilli hafriyat kamyonu faydalı hacmi ~15 m³
+    return buildHafriyatModel(
+      alan: alan,
+      derinlikM: derinlikM ?? 2.5,
+    );
+  }
+
+  static MetrajHesapModel buildHafriyatModel({
+    double? alan,
+    double? derinlikM,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 300.0;
+    final d = derinlikM ?? 2.5;
+    final v = variant ?? 'Killi/Toprak Zemin (%25 Kabarma)';
+    final bf = birimFiyat ?? 2800.0;
+
+    final double netKaziM3 = a * d;
+    double kabarmaOrani = 0.25;
+    if (v.contains('30')) kabarmaOrani = 0.30;
+    else if (v.contains('35')) kabarmaOrani = 0.35;
+
+    final double kabarikHacim = netKaziM3 * (1 + kabarmaOrani);
     const double kamyonKapasiteM3 = 15.0;
     final int kamyonSeferSayisi = (kabarikHacim / kamyonKapasiteM3).ceil();
-
-    // Yaklaşık sefer başı nakliye + döküm ücreti (İstanbul/Büyükşehir ortalaması ~2.800 ₺/sefer)
-    final double seferBirimFiyat = 2800.0;
-    final double toplamHafriyatMaliyeti = kamyonSeferSayisi * seferBirimFiyat;
+    final double toplamHafriyatMaliyeti = kamyonSeferSayisi * bf;
 
     final buffer = StringBuffer();
     buffer.writeln('🚜 **ŞPD AI - Temel Kazısı & Hafriyat Lojistik Raporu**');
@@ -934,20 +1319,46 @@ class InsaatMetrajHesaplayici {
     buffer.writeln('🧊 **Sıkışık (Net) Kazı Hacmi:** ${_f(netKaziM3)} m³');
     buffer.writeln('📈 **Zemin Kabarma Payı (%${(kabarmaOrani * 100).toInt()}):** +${_f(kabarikHacim - netKaziM3)} m³');
     buffer.writeln('🚚 **Toplam Taşınacak Hacim:** **${_f(kabarikHacim)} m³**');
-    buffer.writeln('');
-    buffer.writeln('🚛 **Lojistik & Kamyon İhtiyacı:**');
-    buffer.writeln('• **Hafriyat Kamyonu Kapasitesi:** 15 m³ (Standart 4 dingilli damperli kamyon)');
-    buffer.writeln('• **Gereken Toplam Sefer Sayısı:** ~**$kamyonSeferSayisi Sefer**');
-    buffer.writeln('');
-    buffer.writeln('💰 **Tahmini Hafriyat & Döküm Maliyeti:**');
-    buffer.writeln('• **Ortalama Sefer Bedeli (Nakliye + Döküm):** ${_para(seferBirimFiyat)} / sefer');
-    buffer.writeln('• **Toplam Tahmini Hafriyat Gideri:** **${_para(toplamHafriyatMaliyeti)}**');
-    buffer.writeln('');
-    buffer.writeln('💡 **Şantiye Şefine Tavsiyeler:**');
-    buffer.writeln('1. Kazı kotu laser nivo ile kontrol edilmeli; temel altı lüzumsuz derin kazılıp grobeton zayiatı yaratılmamalıdır.');
-    buffer.writeln('2. Derin kazılarda komşu bina ve yol güvenliği için iksa/şev emniyeti alınmalıdır.');
+    buffer.writeln('🚛 **Gereken Kamyon Seferi:** ~**$kamyonSeferSayisi Sefer** (15 m³ kamyon)');
+    buffer.writeln('💰 **Toplam Tahmini Hafriyat Gideri:** **${_para(toplamHafriyatMaliyeti)}**');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'hafriyat',
+      title: 'Temel Kazısı & Hafriyat Hesabı',
+      icon: '🚜',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Kazı Taban Alanı',
+      primaryUnit: 'm²',
+      secondaryValue: d,
+      secondaryLabel: 'Kazı Derinliği',
+      secondaryUnit: 'm',
+      selectedVariant: v,
+      availableVariants: const [
+        'Killi/Toprak Zemin (%25 Kabarma)',
+        'Sert Küskülük Zemin (%30 Kabarma)',
+        'Kaya Zemin / Kırıcı (%35 Kabarma)',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: 'Kamyon Sefer Ücreti (TL)',
+      anaMiktar: '~${_f(kabarikHacim)} m³',
+      anaMiktarLabel: 'Taşınacak Kabarık Hacim',
+      lojistik: '~$kamyonSeferSayisi Sefer',
+      lojistikLabel: 'Damperli Kamyon (15 m³)',
+      firePayi: '%${(kabarmaOrani * 100).toInt()} kabarma',
+      toplamMaliyet: toplamHafriyatMaliyeti,
+      toplamMaliyetLabel: 'Toplam Hafriyat Maliyeti',
+      sarfMalzemeler: [
+        'Net Sıkışık Kazı: ${_f(netKaziM3)} m³',
+        'Kabarık Kazı Hacmi: ${_f(kabarikHacim)} m³',
+        'Damperli Kamyon: ~$kamyonSeferSayisi Sefer (15 m³)',
+      ],
+      tavsiyeler: const [
+        'Kazı kotu lazer nivo ile kontrol edilmeli, temel altı lüzumsuz derin kazılmamalıdır.',
+        'Derin kazılarda komşu bina ve yol güvenliği için iksa emniyeti alınmalıdır.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -958,35 +1369,38 @@ class InsaatMetrajHesaplayici {
     return keywords.any((k) => norm.contains(k)) && RegExp(r'\d+').hasMatch(norm);
   }
 
-  static String _hesaplaParke(String original, String norm) {
+  static MetrajHesapModel? _extractAndBuildParke(String original, String norm) {
     double? alan = _extractAlan(original, norm);
-
     if (alan == null) {
       final dim = _extractDimensions(original);
       if (dim.length >= 2) alan = dim[0] * dim[1];
     }
+    if (alan == null || alan <= 0) return null;
 
-    if (alan == null || alan <= 0) {
-      return '🪵 **Laminat Parke Metrajı İçin Bilgi Gerekli:**\n\n'
-          'Lütfen kaplanacak alanı (m²) belirtin.\n'
-          'Örnek: *"90 m2 daireye laminat parke döşeyeceğiz, kaç paket parke ve süpürgelik gider?"*';
-    }
+    String variant = '8 mm 32. Sınıf Derzli Laminat';
+    if (norm.contains('33')) variant = '10 mm 33. Sınıf Yoğun Trafik';
+    else if (norm.contains('31')) variant = '8 mm 31. Sınıf Düz Laminat';
 
-    // %7 fire payı
-    final double toplamParkeM2 = alan * 1.07;
-    // 1 paket laminat parke standart ~2.13 m² (8mm derzsiz/derzli)
+    return buildParkeModel(alan: alan, variant: variant);
+  }
+
+  static MetrajHesapModel buildParkeModel({
+    double? alan,
+    String? variant,
+    double? birimFiyat,
+  }) {
+    final a = alan ?? 85.0;
+    final v = variant ?? '8 mm 32. Sınıf Derzli Laminat';
+    final bf = birimFiyat ?? (v.contains('33') ? 420.0 : 320.0);
+
+    final double toplamParkeM2 = a * 1.07;
     const double paketM2 = 2.13;
     final int paketSayisi = (toplamParkeM2 / paketM2).ceil();
+    final double silteM2 = a * 1.05;
+    final double supurgelikMetre = a * 0.85;
+    final int supurgelikBoy = (supurgelikMetre / 2.8).ceil();
 
-    // Şilte / Kapron: alan * 1.05
-    final double silteM2 = alan * 1.05;
-
-    // Süpürgelik: Ortalama m²'nin ~0.8 katı kadar mt tül çevre gerekir
-    final double supurgelikMetre = alan * 0.85;
-    final int supurgelikBoy = (supurgelikMetre / 2.8).ceil(); // 1 boy süpürgelik 2.80 mt
-
-    final double parkeBirimM2 = 320.0; // 8mm AC4 laminat
-    final double parkeTutari = toplamParkeM2 * parkeBirimM2;
+    final double parkeTutari = toplamParkeM2 * bf;
     final double silteTutari = silteM2 * 25.0;
     final double supurgelikTutari = supurgelikBoy * 110.0;
     final double toplamMaliyet = parkeTutari + silteTutari + supurgelikTutari;
@@ -994,22 +1408,46 @@ class InsaatMetrajHesaplayici {
     final buffer = StringBuffer();
     buffer.writeln('🪵 **ŞPD AI - Laminat Parke & Süpürgelik Raporu**');
     buffer.writeln('────────────────────────────');
-    buffer.writeln('📐 **Net Zemin Alanı:** ${_f(alan)} m²');
-    buffer.writeln('⚠️ **Önerilen Fire Payı (%7):** +${_f(toplamParkeM2 - alan)} m²');
+    buffer.writeln('📐 **Net Zemin Alanı:** ${_f(a)} m²');
     buffer.writeln('📦 **Sipariş Parke:** **${_f(toplamParkeM2)} m²** (~**$paketSayisi Paket** [2.13 m²/paket])');
-    buffer.writeln('');
-    buffer.writeln('🧶 **Yalıtım Şiltesi & Aksesuarlar:**');
-    buffer.writeln('• **Kapron / Taban Şiltesi (3-5 mm):** ~**${_f(silteM2)} m²**');
-    buffer.writeln('• **Süpürgelik:** ~**$supurgelikBoy Boy** (2.80 mt) — Toplam ${_f(supurgelikMetre)} mt');
-    buffer.writeln('• **Kapı Geçiş Profili:** Oda sayısı kadar kot/geçiş profili');
-    buffer.writeln('');
-    buffer.writeln('💰 **Tahmini Malzeme Maliyeti:**');
-    buffer.writeln('• **Laminat Parke (${_f(toplamParkeM2)} m² x ${_para(parkeBirimM2)}):** ${_para(parkeTutari)}');
-    buffer.writeln('• **Şilte / Kapron:** ${_para(silteTutari)}');
-    buffer.writeln('• **Süpürgelik ($supurgelikBoy boy):** ${_para(supurgelikTutari)}');
-    buffer.writeln('• **Toplam Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
+    buffer.writeln('🧶 **Kapron / Taban Şiltesi:** ~**${_f(silteM2)} m²**');
+    buffer.writeln('• **Süpürgelik:** ~**$supurgelikBoy Boy** (2.80 mt)');
+    buffer.writeln('💰 **Toplam Malzeme Maliyeti:** **${_para(toplamMaliyet)}**');
 
-    return buffer.toString();
+    return MetrajHesapModel(
+      category: 'parke',
+      title: 'Laminat Parke & Süpürgelik Hesabı',
+      icon: '🪵',
+      elementAdi: v,
+      primaryValue: a,
+      primaryLabel: 'Zemin Alanı',
+      primaryUnit: 'm²',
+      selectedVariant: v,
+      availableVariants: const [
+        '8 mm 32. Sınıf Derzli Laminat',
+        '8 mm 31. Sınıf Düz Laminat',
+        '10 mm 33. Sınıf Yoğun Trafik',
+      ],
+      birimFiyat: bf,
+      birimFiyatLabel: 'm² Parke Fiyatı (TL)',
+      anaMiktar: '${_f(toplamParkeM2)} m²',
+      anaMiktarLabel: 'Sipariş Edilecek Parke',
+      lojistik: '~$paketSayisi Paket',
+      lojistikLabel: 'Parke Paketi (2.13 m²)',
+      firePayi: '%7 kesim & fire payı',
+      toplamMaliyet: toplamMaliyet,
+      toplamMaliyetLabel: 'Toplam Malzeme Maliyeti',
+      sarfMalzemeler: [
+        'Laminat Parke: ${_f(toplamParkeM2)} m² (~$paketSayisi Paket)',
+        'Kapron / Taban Şiltesi: ~${_f(silteM2)} m²',
+        'Süpürgelik: ~$supurgelikBoy Boy (2.80 mt) — ${_f(supurgelikMetre)} mt',
+      ],
+      tavsiyeler: const [
+        'Parke paketleri döşeme öncesinde en az 48 saat mekanda bekletilmelidir.',
+        'Duvar kenarlarında 10-15 mm genleşme boşluğu bırakılmalıdır.',
+      ],
+      raporMetni: buffer.toString(),
+    );
   }
 
   // ═══════════════════════════════════════════════════════════
@@ -1030,7 +1468,7 @@ class InsaatMetrajHesaplayici {
 
   static String _metrajYardimMenusu() {
     return '📐 **ŞPD AI - Akıllı Metraj ve Malzeme Hesaplayıcı**\n\n'
-        'Bana şantiyedeki ölçüleri doğrudan yazın; anında fire payları, paket/kutu/mikser sayıları ve yaklaşık piyasa maliyeti listesini dökeyim:\n\n'
+        'Bana şantiyedeki ölçüleri doğrudan yazın; anında interaktif hesaplama kartları, fire payları, paket/kutu/mikser sayıları ve piyasa maliyetini çıkarayım:\n\n'
         '🧱 **Desteklenen Hesaplama Kalemleri:**\n'
         '• **Beton & Tabliye:** *"350 m2 tabliyeye 15 cm C30 beton kaç mikser gider?"*\n'
         '• **Tuğla / Duvar:** *"120 m2 duvara 13.5 tuğla öreceğiz, kaç adet tuğla ve harç lazım?"*\n'
@@ -1044,14 +1482,13 @@ class InsaatMetrajHesaplayici {
         '• **Membran / Su Yalıtımı:** *"180 m2 terasa bitümlü membran kaç rulo gider?"*\n'
         '• **Hafriyat & Kazı:** *"400 m2 arsada 2.5m temel kazısı kaç kamyon çıkar?"*\n'
         '• **Parke / Laminat:** *"90 m2 daireye laminat parke ve süpürgelik ne kadar lazım?"*\n\n'
-        '_⚡ Bu hesaplamalar tamamen yerel mühendislik formülleriyle çalışır, kotanızdan düşmez ve anında yanıtlanır!_';
+        '_⚡ Hesaplanan kartın üzerindeki "Düzenle" butonuna dokunarak değerleri dilediğiniz an değiştirebilir ve yeniden hesaplatabilirsiniz!_';
   }
 
   // ═══════════════════════════════════════════════════════════
   // PARSER YARDIMCILARI
   // ═══════════════════════════════════════════════════════════
   static double? _extractAlan(String original, String norm) {
-    // 350 m2, 350 m², 350 metrekare, 350 metre kare
     final m2Match = RegExp(r'(\d+[\.,]?\d*)\s*(m2|m²|metrekare|metre\s*kare|mt2)', caseSensitive: false).firstMatch(original);
     if (m2Match != null) {
       return double.tryParse(m2Match.group(1)!.replaceAll(',', '.'));
@@ -1064,12 +1501,10 @@ class InsaatMetrajHesaplayici {
   }
 
   static double? _extractKalinlikCm(String original, String norm) {
-    // 15 cm, 15 santim, 15 santimetre
     final cmMatch = RegExp(r'(\d+[\.,]?\d*)\s*(cm|santim|santimetre)', caseSensitive: false).firstMatch(original);
     if (cmMatch != null) {
       return double.tryParse(cmMatch.group(1)!.replaceAll(',', '.'));
     }
-    // 0.15 m, 0,15 metre
     final mMatch = RegExp(r'(0[\.,]\d+)\s*(m|metre)', caseSensitive: false).firstMatch(original);
     if (mMatch != null) {
       final val = double.tryParse(mMatch.group(1)!.replaceAll(',', '.'));

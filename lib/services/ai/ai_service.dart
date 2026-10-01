@@ -78,7 +78,7 @@ class AIService {
         return AIIntent(
           action: 'chat_response',
           message:
-              '⏳ Günlük AI soru limitinize ulaştınız (10/10).\n\nYarın tekrar kullanabilirsiniz. Komutlar (rapor, yönlendirme) her zaman ücretsiz çalışır! 😊',
+              '⏳ Günlük AI soru limitinize ulaştınız (${limitResult.limit}/${limitResult.limit}).\n\nYarın tekrar kullanabilirsiniz. Komutlar (rapor, yönlendirme, metraj) her zaman ücretsiz çalışır! 😊',
           params: {},
         );
       }
@@ -97,7 +97,7 @@ class AIService {
         }
         return intent;
       } catch (e) {
-        return _localFallback(userPrompt);
+        return _localFallback(userPrompt, isError: true);
       }
     }
 
@@ -119,6 +119,27 @@ class AIService {
     final norm = AkilliSesAyristirici.normalize(text);
 
     // 0. Akıllı İnşaat Metraj ve Malzeme Hesaplayıcı (Gemini'ye gitmez, 100% deterministik & limitsiz)
+    final metrajModel = InsaatMetrajHesaplayici.hesaplaModel(userPrompt);
+    if (metrajModel != null) {
+      final card = AIActionCardData(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: AIActionType.materialCalculation,
+        title: metrajModel.title,
+        description: metrajModel.ozetBilgi,
+        status: AIActionStatus.confirmed,
+        data: metrajModel.toMap(),
+      );
+
+      return AIChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text:
+            '🧱 **${metrajModel.title}** hesaplandı. Ölçüleri ve birim fiyatı aşağıdaki karttan dilediğiniz gibi değiştirip anında yeniden hesaplayabilirsiniz:',
+        isUser: false,
+        timestamp: DateTime.now(),
+        actionCard: card,
+      );
+    }
+
     final metrajMesaj = InsaatMetrajHesaplayici.hesapla(userPrompt);
     if (metrajMesaj != null) {
       return AIChatMessage(
@@ -991,9 +1012,10 @@ class AIService {
     List<String> siteNames,
   ) async {
     const systemInstruction =
-        'Sen ŞPD (Şantiye Puantaj Defteri) uygulamasının yapay zeka asistanısın. '
-        'Şantiye yönetimi, inşaat tekniği, iş güvenliği, malzeme hesaplama ve genel konularda yardımcı oluyorsun. '
-        'Türkçe, samimi ve profesyonel cevap ver. Kısa ve net ol. Gerekirse emoji kullan.';
+        'Sen ŞPD (Şantiye Puantaj Defteri) uygulamasının uzman yapay zeka asistanı ve tecrübeli bir inşaat mühendisisin. '
+        'Şantiye yönetimi, inşaat tekniği, statik, malzeme özellikleri (beton, demir, harç, tuğla, yalıtım vb.), '
+        'iş güvenliği ve şantiye organizasyonu konularında profesyonel, doğru ve net cevaplar verirsin. '
+        'Türkçe, samimi, anlaşılır ve yapıcı bir dille yanıt ver. Gerekirse maddeler ve emojiler kullan.';
 
     final body = jsonEncode({
       'system_instruction': {
@@ -1008,13 +1030,15 @@ class AIService {
           ],
         },
       ],
-      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 500},
+      'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1200},
     });
 
     final models = [
-      'gemini-flash-latest',
+      'gemini-3.5-flash-lite',
+      'gemini-3.5-flash',
       'gemini-3.8-flash',
-      'gemini-2.5-flash-lite',
+      'gemini-3.6-flash',
+      'gemini-flash-latest',
     ];
 
     for (final m in models) {
@@ -1026,7 +1050,7 @@ class AIService {
               headers: {'Content-Type': 'application/json'},
               body: body,
             )
-            .timeout(const Duration(seconds: 15));
+            .timeout(const Duration(seconds: 12));
 
         if (response.statusCode == 200) {
           final json = jsonDecode(response.body);
@@ -1053,30 +1077,13 @@ class AIService {
   // ═══════════════════════════════════════════════════════
   // LOCAL FALLBACK
   // ═══════════════════════════════════════════════════════
-  static AIIntent _localFallback(String original) {
+  static AIIntent _localFallback(String original, {bool isError = false}) {
     final text = original.toLowerCase();
-    if (_m(text, ['merhaba', 'selam', 'günaydın', 'iyi günler'])) {
+    if (_m(text, ['merhaba', 'selam', 'günaydın', 'iyi günler', 'kolay gelsin'])) {
       return AIIntent(
         action: 'chat_response',
         message:
-            '👋 Merhaba! Sizi dinliyorum. "Neler yapabilirsin?" diyerek özelliklerimi görebilirsiniz.',
-        params: {},
-      );
-    }
-    if (_m(text, [
-      'beton',
-      'demir',
-      'çelik',
-      'sıva',
-      'alçı',
-      'fayans',
-      'boya',
-      'kalıp',
-    ])) {
-      return AIIntent(
-        action: 'chat_response',
-        message:
-            '🏗️ Malzeme sorunuz için teknik ekibinize danışmanızı öneririm. Giderleri "Günlük rapor" ile kayıt altına alabilirsiniz.',
+            '👋 Merhaba! Sizi dinliyorum. İnşaat teknik soruları, malzeme metrajı veya puantaj/avans işlemleri için bana danışabilirsiniz.',
         params: {},
       );
     }
@@ -1084,14 +1091,22 @@ class AIService {
       return AIIntent(
         action: 'chat_response',
         message:
-            '⛑️ İSG için 6331 sayılı Kanun geçerlidir. İSG uzmanınıza danışın. Kaza kayıtlarını uygulama üzerinden tutabilirsiniz.',
+            '⛑️ İSG için 6331 sayılı İş Sağlığı ve Güvenliği Kanunu geçerlidir. Şantiyede baret, yelek ve emniyet kemeri kullanımı zorunludur.',
+        params: {},
+      );
+    }
+    if (isError) {
+      return AIIntent(
+        action: 'chat_response',
+        message:
+            '⚠️ Yapay zeka servisine bağlanırken geçici bir gecikme oluştu. Lütfen internet bağlantınızı kontrol edip sorunuzu tekrar gönderin.',
         params: {},
       );
     }
     return AIIntent(
       action: 'chat_response',
       message:
-          '🤔 Sorunuzu tam anlayamadım.\n\n💡 Kullanabileceğiniz örnekler:\n• "Ali\'ye 500 TL avans ver"\n• "Yeni işçi ekle: Ahmet 1500 TL"\n• "Kadıköy şantiyesine puantaj gir"\n• "Yeni şantiye ekle: Başakşehir Projesi"\n• "Neler yapabilirsin?"${_geminiEnabled ? '' : '\n\n💬 Teknik sorular için API key gereklidir.'}',
+          '🤔 Sorunuzu tam anlayamadım.\n\n💡 Kullanabileceğiniz örnekler:\n• "C30 beton özellikleri nelerdir?"\n• "350 m2 tabliyeye kaç mikser beton gider?"\n• "Ali\'ye 500 TL avans ver"\n• "Yeni işçi ekle: Ahmet 1500 TL"\n• "Kadıköy şantiyesine puantaj gir"',
       params: {},
     );
   }

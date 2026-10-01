@@ -79,7 +79,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
   bool _isOffline = false;
 
-
   void _hizliErisimAc(int index, bool finansalErisim) {
     final finansSekmesi = index == 3 || index == 4;
     if (finansSekmesi && !finansalErisim) {
@@ -404,9 +403,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           child: BackdropFilter(
             filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
             child: Material(
-              color: isDark
-                  ? Colors.black.withValues(alpha: 0.26)
-                  : Colors.white.withValues(alpha: 0.56),
+              color:
+                  isDark
+                      ? Colors.black.withValues(alpha: 0.26)
+                      : Colors.white.withValues(alpha: 0.56),
               child: InkWell(
                 onTap: () => _turBaslat(),
                 child: Container(
@@ -654,8 +654,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         }
 
         final panel = snapshot.data!;
-        final isDark = Theme.of(context).brightness == Brightness.dark;
-        final rolProvider = context.watch<RolProvider>();
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -2576,34 +2574,34 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           body: Stack(
             children: [
               Consumer<RolProvider>(
-            builder: (context, rolProvider, _) {
-              return Column(
-                children: [
-                  if (_isOffline)
-                    Container(
-                      width: double.infinity,
-                      color: Colors.redAccent,
-                      padding: const EdgeInsets.symmetric(vertical: 4),
-                      child: const Text(
-                        'İnternet bağlantısı yok (Çevrimdışı Çalışıyorsunuz)',
-                        textAlign: TextAlign.center,
-                        style: TextStyle(
-                          color: Colors.white,
-                          fontSize: 12,
-                          fontWeight: FontWeight.bold,
+                builder: (context, rolProvider, _) {
+                  return Column(
+                    children: [
+                      if (_isOffline)
+                        Container(
+                          width: double.infinity,
+                          color: Colors.redAccent,
+                          padding: const EdgeInsets.symmetric(vertical: 4),
+                          child: const Text(
+                            'İnternet bağlantısı yok (Çevrimdışı Çalışıyorsunuz)',
+                            textAlign: TextAlign.center,
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 12,
+                              fontWeight: FontWeight.bold,
+                            ),
+                          ),
+                        ),
+                      Expanded(
+                        child: _buildPrimaryShell(
+                          rolProvider.isFinansalErisim,
+                          ekipAdi,
                         ),
                       ),
-                    ),
-                  Expanded(
-                    child: _buildPrimaryShell(
-                      rolProvider.isFinansalErisim,
-                      ekipAdi,
-                    ),
-                  ),
-                ],
-              );
-            },
-          ),
+                    ],
+                  );
+                },
+              ),
               if (_turAktif)
                 InteractiveTourOverlay(
                   steps: _buildTourSteps(),
@@ -2978,15 +2976,20 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       );
                       if (onayla == true && mounted) {
                         // Çekmeceyi kapat ve navigation stack'i kök sayfaya getir
-                        Navigator.of(context, rootNavigator: true)
-                            .popUntil((route) => route.isFirst);
+                        Navigator.of(
+                          context,
+                          rootNavigator: true,
+                        ).popUntil((route) => route.isFirst);
 
                         // Aktif panel veri dinleyicilerini durdur
                         _disposePanelStream();
 
                         // RolProvider'ın Firestore dinleyicisini iptal et ve sıfırla
                         if (mounted) {
-                          Provider.of<RolProvider>(context, listen: false).sifirla();
+                          Provider.of<RolProvider>(
+                            context,
+                            listen: false,
+                          ).sifirla();
                         }
 
                         // Hesaptan güvenle çıkış yap

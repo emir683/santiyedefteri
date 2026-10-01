@@ -5,6 +5,7 @@ enum AIActionType {
   addSite,
   siteMonthlySummary,
   workerMonthlySummary,
+  materialCalculation,
 }
 
 enum AIActionStatus {

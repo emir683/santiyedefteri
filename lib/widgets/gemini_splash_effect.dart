@@ -795,9 +795,11 @@ class MysticalWavesState extends State<MysticalWaves>
     _isVoiceActive = active;
     _typingIdleTimer?.cancel();
     if (active) {
+      _surgeOffset = 0.0;
+      _voiceLevel = 0.0;
       _visibilityController.animateTo(
-        0.92,
-        duration: const Duration(milliseconds: 320),
+        0.85,
+        duration: const Duration(milliseconds: 350),
         curve: Curves.easeOutCubic,
       );
     } else {
@@ -805,7 +807,7 @@ class MysticalWavesState extends State<MysticalWaves>
       if (!_isLockedActive) {
         _visibilityController.animateTo(
           0.0,
-          duration: const Duration(milliseconds: 550),
+          duration: const Duration(milliseconds: 500),
           curve: Curves.easeOut,
         );
       }
@@ -817,9 +819,17 @@ class MysticalWavesState extends State<MysticalWaves>
   void updateVoiceLevel(double normalizedLevel) {
     if (!mounted || !_isVoiceActive) return;
     final clamped = normalizedLevel.clamp(0.0, 1.0);
-    // Yumuşatılmış ses dalgası interpolasyonu
-    _voiceLevel = (_voiceLevel * 0.40) + (clamped * 0.60);
-    _surgeOffset += 0.08 + (_voiceLevel * 0.22);
+    // Asimetrik yumuşatma: Ani sıçramaları engelleyen kademeli geçiş
+    final target = clamped < 0.06 ? 0.0 : clamped;
+    if (target > _voiceLevel) {
+      // Konuşma başladığında sakin ve yumuşak yükseliş (attack)
+      _voiceLevel = (_voiceLevel * 0.75) + (target * 0.25);
+    } else {
+      // Kelime aralarındaki sessizliklerde dalganın aniden çökmesini önleyen yavaş sönümleme (decay)
+      _voiceLevel = (_voiceLevel * 0.88) + (target * 0.12);
+    }
+    // Sadece yumuşak organik kayma (titreme ve zıplamayı sıfırlar)
+    _surgeOffset += 0.012 * _voiceLevel;
     setState(() {});
   }
 
@@ -884,15 +894,15 @@ class MysticalWavesState extends State<MysticalWaves>
         if (vis <= 0.01) return const SizedBox.shrink();
 
         final pulseVal = _pulseAnimation.value;
-        // Dinamik yükseklik: Hem klavye nabzı hem de gerçek zamanlı ses desibeli
-        final dynamicBoost = (0.22 * pulseVal) + (0.55 * _voiceLevel);
+        // Dinamik yükseklik: Aşırı büyüme engellenerek nefes alan sakin bir salınım
+        final dynamicBoost = (0.15 * pulseVal) + (0.18 * _voiceLevel);
         final currentHeight = widget.height * vis * (1.0 + dynamicBoost);
 
         return ClipRect(
           child: BackdropFilter(
             filter: ImageFilter.blur(
-              sigmaX: (30 + 12 * pulseVal + 16 * _voiceLevel) * vis,
-              sigmaY: (30 + 12 * pulseVal + 16 * _voiceLevel) * vis,
+              sigmaX: (28 + 8 * pulseVal + 8 * _voiceLevel) * vis,
+              sigmaY: (28 + 8 * pulseVal + 8 * _voiceLevel) * vis,
             ),
             child: SizedBox(
               height: currentHeight,
@@ -910,13 +920,13 @@ class MysticalWavesState extends State<MysticalWaves>
                               radius: 1.25,
                               colors: [
                                 const Color(0xFF10B981).withValues(
-                                  alpha: (0.30 + 0.35 * _voiceLevel) * vis,
+                                  alpha: (0.22 + 0.18 * _voiceLevel) * vis,
                                 ),
                                 const Color(0xFF06B6D4).withValues(
-                                  alpha: (0.20 + 0.28 * _voiceLevel) * vis,
+                                  alpha: (0.16 + 0.14 * _voiceLevel) * vis,
                                 ),
                                 const Color(0xFF8B5CF6).withValues(
-                                  alpha: (0.10 + 0.20 * _voiceLevel) * vis,
+                                  alpha: (0.08 + 0.10 * _voiceLevel) * vis,
                                 ),
                                 Colors.transparent,
                               ],
@@ -936,14 +946,14 @@ class MysticalWavesState extends State<MysticalWaves>
                         waveColor: _waveColors[index],
                         animation: _waveController,
                         waveOffset: index * 0.35 + _surgeOffset,
-                        amplitude: (25 - (index * 4.5)) *
-                            (1.0 + 1.15 * pulseVal + 2.2 * _voiceLevel),
-                        frequency: 1.5 +
-                            (index * 0.45) +
-                            (0.35 * pulseVal) +
-                            (0.85 * _voiceLevel),
-                        blur: (30 + 10 * pulseVal + 14 * _voiceLevel) * vis,
-                        opacity: ((0.50 + 0.30 * pulseVal + 0.35 * _voiceLevel) * vis)
+                        amplitude: (20 - (index * 3.5)) *
+                            (1.0 + 0.45 * pulseVal + 0.35 * _voiceLevel),
+                        frequency: 1.4 +
+                            (index * 0.35) +
+                            (0.12 * pulseVal) +
+                            (0.15 * _voiceLevel),
+                        blur: (28 + 6 * pulseVal + 6 * _voiceLevel) * vis,
+                        opacity: ((0.45 + 0.15 * pulseVal + 0.20 * _voiceLevel) * vis)
                             .clamp(0.0, 1.0),
                       ),
                     ),
