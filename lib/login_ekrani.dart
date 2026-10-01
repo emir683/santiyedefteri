@@ -242,9 +242,9 @@ class _LoginEkraniState extends State<LoginEkrani> {
                     children: [
                       // En üstte logo (ortalanmış)
                       const Center(
-                        child: AuthLogoBadge(size: 68),
+                        child: AuthLogoBadge(size: 60),
                       ),
-                      const SizedBox(height: 12),
+                      const SizedBox(height: 10),
                       // Altına bir satıra ortalanmış Şantiye Puantaj Defteri
                       Text(
                         "Şantiye Puantaj Defteri",
@@ -252,13 +252,13 @@ class _LoginEkraniState extends State<LoginEkrani> {
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
                         style: theme.textTheme.titleMedium?.copyWith(
-                          fontSize: 21,
+                          fontSize: 20,
                           fontWeight: FontWeight.w800,
                           letterSpacing: -0.4,
                           color: isDark ? Colors.white : const Color(0xFF0F1E26),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3),
                       // Altına daha küçük fontla hoşgeldiniz yazısı
                       Text(
                         "Hoş Geldiniz",
@@ -267,19 +267,19 @@ class _LoginEkraniState extends State<LoginEkrani> {
                           color: isDark
                               ? const Color(0xFF24B7A4)
                               : const Color(0xFF0F766E),
-                          fontSize: 13.5,
+                          fontSize: 13,
                           fontWeight: FontWeight.w600,
                           letterSpacing: 0.2,
                         ),
                       ),
-                      const SizedBox(height: 14),
-                      // Otomatik Kayan Özellik Vitrini (Carousel)
-                      const AuthFeatureShowcaseCarousel(height: 90),
+                      const SizedBox(height: 10),
+                      // Otomatik Kayan Özellik Vitrini (Kompakt, taşma yapmaz)
+                      const AuthFeatureShowcaseCarousel(height: 60),
                       if (WebInstallHelper.shouldShowInstallCard) ...[
-                        const SizedBox(height: 12),
+                        const SizedBox(height: 10),
                         const _WebInstallCard(),
                       ],
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 12),
                       // Giriş Alanları
                       _GlassAuthInput(
                         controller: _emailOrUsernameController,

@@ -2,11 +2,11 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 
 /// Giriş ve kayıt ekranlarında uygulamanın temel yeteneklerini
-/// emoji kullanmadan, kurumsal ve modern bir dille tanıtan otomatik kayan vitrin kartı.
+/// emoji kullanmadan, az ve öz, kurumsal bir dille tanıtan kompakt vitrin kartı.
 class AuthFeatureShowcaseCarousel extends StatefulWidget {
   const AuthFeatureShowcaseCarousel({
     super.key,
-    this.height = 92,
+    this.height = 60,
     this.autoSlideDuration = const Duration(milliseconds: 3800),
   });
 
@@ -28,44 +28,38 @@ class _AuthFeatureShowcaseCarouselState
     _FeatureItem(
       icon: Icons.smart_toy_outlined,
       accentColor: Color(0xFF24B7A4),
-      tag: "YAPAY ZEKA",
       title: "Akıllı Şantiye Asistanı",
-      description: "Sesli komut ile anlık şantiye raporu ve akıllı veri analizi.",
+      description: "Sesli komutla anlık rapor ve analiz",
     ),
     _FeatureItem(
       icon: Icons.badge_outlined,
       accentColor: Color(0xFF0EA5E9),
-      tag: "PUANTAJ",
-      title: "Hızlı Puantaj ve Mesai",
-      description: "İşçi, usta ve taşeron çalışma saatlerini hatasız kaydedin.",
+      title: "Hızlı Puantaj Takibi",
+      description: "İşçi ve usta mesailerini kolayca yönetin",
     ),
     _FeatureItem(
       icon: Icons.account_balance_wallet_outlined,
       accentColor: Color(0xFF10B981),
-      tag: "FİNANS",
-      title: "Maaş ve Hakediş Yönetimi",
-      description: "Yevmiye, avans ve aylık maliyetleri anında hesaplayın.",
+      title: "Maaş ve Hakediş",
+      description: "Yevmiye ve maliyetleri anında hesaplayın",
     ),
     _FeatureItem(
       icon: Icons.wb_cloudy_outlined,
       accentColor: Color(0xFF38BDF8),
-      tag: "HAVA DURUMU",
-      title: "Canlı Şantiye Meteorolojisi",
-      description: "81 il ve ilçe için canlı hava tahmini ve saha şartları.",
+      title: "Şantiye Hava Durumu",
+      description: "81 il ve ilçe için canlı meteoroloji",
     ),
     _FeatureItem(
       icon: Icons.description_outlined,
       accentColor: Color(0xFFF59E0B),
-      tag: "RAPORLAMA",
-      title: "Günlük Rapor ve PDF Çıktısı",
-      description: "Resmi şantiye defteri ve dökümleri tek tıkla paylaşın.",
+      title: "Günlük Rapor & PDF",
+      description: "Şantiye defterini tek tıkla paylaşın",
     ),
     _FeatureItem(
       icon: Icons.hub_outlined,
       accentColor: Color(0xFF8B5CF6),
-      tag: "YÖNETİM",
-      title: "Çoklu Şantiye & Ekip Takibi",
-      description: "Tüm projelerinizi ve yetkili ekipleri tek merkezden yönetin.",
+      title: "Merkezi Ekip Yönetimi",
+      description: "Tüm projelerinizi tek merkezden koordine edin",
     ),
   ];
 
@@ -104,9 +98,9 @@ class _AuthFeatureShowcaseCarouselState
 
     return Container(
       height: widget.height,
-      margin: const EdgeInsets.only(top: 4, bottom: 4),
+      margin: const EdgeInsets.symmetric(vertical: 2),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -131,13 +125,13 @@ class _AuthFeatureShowcaseCarouselState
             color: currentItem.accentColor.withValues(
               alpha: isDark ? 0.08 : 0.05,
             ),
-            blurRadius: 14,
-            offset: const Offset(0, 4),
+            blurRadius: 12,
+            offset: const Offset(0, 3),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(16),
         child: PageView.builder(
           controller: _pageController,
           onPageChanged: (index) {
@@ -147,51 +141,53 @@ class _AuthFeatureShowcaseCarouselState
           itemBuilder: (context, index) {
             final item = _features[index];
             return Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                mainAxisAlignment: MainAxisAlignment.center,
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  // Üst Satır: İkon Rozeti + Başlık + Kategori Rozeti
-                  Row(
-                    children: [
-                      Container(
-                        width: 30,
-                        height: 30,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(9),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [
-                              item.accentColor.withValues(
-                                alpha: isDark ? 0.28 : 0.20,
-                              ),
-                              (isDark ? const Color(0xFF181E26) : Colors.white)
-                                  .withValues(alpha: isDark ? 0.85 : 0.95),
-                            ],
+                  // Sol ikon rozeti (Kompakt Liquid Glass)
+                  Container(
+                    width: 34,
+                    height: 34,
+                    decoration: BoxDecoration(
+                      borderRadius: BorderRadius.circular(10),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: [
+                          item.accentColor.withValues(
+                            alpha: isDark ? 0.28 : 0.20,
                           ),
-                          border: Border.all(
-                            color: item.accentColor.withValues(
-                              alpha: isDark ? 0.45 : 0.35,
-                            ),
-                            width: 1,
-                          ),
-                        ),
-                        child: Icon(
-                          item.icon,
-                          size: 16,
-                          color: item.accentColor,
-                        ),
+                          (isDark ? const Color(0xFF181E26) : Colors.white)
+                              .withValues(alpha: isDark ? 0.85 : 0.95),
+                        ],
                       ),
-                      const SizedBox(width: 8),
-                      Expanded(
-                        child: Text(
+                      border: Border.all(
+                        color: item.accentColor.withValues(
+                          alpha: isDark ? 0.45 : 0.35,
+                        ),
+                        width: 1,
+                      ),
+                    ),
+                    child: Icon(
+                      item.icon,
+                      size: 18,
+                      color: item.accentColor,
+                    ),
+                  ),
+                  const SizedBox(width: 10),
+                  // Az ama öz metin alanı (Taşma yapmayan tek satırlı net hiyerarşi)
+                  Expanded(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
                           item.title,
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 13.5,
+                            fontSize: 13,
                             fontWeight: FontWeight.w700,
                             color: isDark
                                 ? Colors.white
@@ -199,72 +195,44 @@ class _AuthFeatureShowcaseCarouselState
                             letterSpacing: -0.2,
                           ),
                         ),
-                      ),
-                      const SizedBox(width: 8),
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
-                        ),
-                        decoration: BoxDecoration(
-                          color: item.accentColor.withValues(
-                            alpha: isDark ? 0.20 : 0.12,
-                          ),
-                          borderRadius: BorderRadius.circular(6),
-                        ),
-                        child: Text(
-                          item.tag,
-                          style: TextStyle(
-                            fontSize: 9,
-                            fontWeight: FontWeight.w700,
-                            color: item.accentColor,
-                            letterSpacing: 0.4,
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 7),
-                  // Alt Satır: 2 satırlı tam okunaklı açıklama ve sağda mikro nokta göstergesi
-                  Row(
-                    crossAxisAlignment: CrossAxisAlignment.center,
-                    children: [
-                      Expanded(
-                        child: Text(
+                        const SizedBox(height: 2),
+                        Text(
                           item.description,
-                          maxLines: 2,
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
                           style: TextStyle(
-                            fontSize: 11.5,
+                            fontSize: 11,
                             color: isDark
                                 ? Colors.white70
-                                : const Color(0xFF526772),
-                            height: 1.35,
-                            fontWeight: FontWeight.w400,
+                                : const Color(0xFF5A707B),
+                            height: 1.2,
                           ),
                         ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  // Sağda şık sayfa sayacı etiketi (Örn: 1/6)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 2.5,
+                    ),
+                    decoration: BoxDecoration(
+                      color: item.accentColor.withValues(
+                        alpha: isDark ? 0.18 : 0.12,
                       ),
-                      const SizedBox(width: 10),
-                      Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: List.generate(_features.length, (dotIndex) {
-                          final isSelected = dotIndex == _currentPage;
-                          return AnimatedContainer(
-                            duration: const Duration(milliseconds: 250),
-                            margin: const EdgeInsets.symmetric(horizontal: 1.5),
-                            width: isSelected ? 12 : 3.5,
-                            height: 3.5,
-                            decoration: BoxDecoration(
-                              color: isSelected
-                                  ? item.accentColor
-                                  : (isDark
-                                      ? Colors.white24
-                                      : const Color(0xFFC0D2D7)),
-                              borderRadius: BorderRadius.circular(2),
-                            ),
-                          );
-                        }),
+                      borderRadius: BorderRadius.circular(6),
+                    ),
+                    child: Text(
+                      '${index + 1}/${_features.length}',
+                      style: TextStyle(
+                        fontSize: 9.5,
+                        fontWeight: FontWeight.w700,
+                        color: item.accentColor,
+                        letterSpacing: 0.3,
                       ),
-                    ],
+                    ),
                   ),
                 ],
               ),
@@ -281,7 +249,7 @@ class _AuthFeatureShowcaseCarouselState
 class AuthLogoBadge extends StatelessWidget {
   const AuthLogoBadge({
     super.key,
-    this.size = 64,
+    this.size = 60,
     this.fallbackIcon = Icons.construction_rounded,
   });
 
@@ -295,9 +263,9 @@ class AuthLogoBadge extends StatelessWidget {
     return Container(
       width: size,
       height: size,
-      padding: const EdgeInsets.all(7),
+      padding: const EdgeInsets.all(6),
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(18),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
@@ -310,23 +278,23 @@ class AuthLogoBadge extends StatelessWidget {
         ),
         border: Border.all(
           color: const Color(0xFF24B7A4).withValues(alpha: isDark ? 0.38 : 0.28),
-          width: 1.3,
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF24B7A4).withValues(alpha: isDark ? 0.24 : 0.15),
-            blurRadius: 20,
-            offset: const Offset(0, 6),
+            color: const Color(0xFF24B7A4).withValues(alpha: isDark ? 0.22 : 0.12),
+            blurRadius: 18,
+            offset: const Offset(0, 5),
           ),
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
-            blurRadius: 14,
-            offset: const Offset(0, 7),
+            color: Colors.black.withValues(alpha: isDark ? 0.30 : 0.05),
+            blurRadius: 12,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(14),
+        borderRadius: BorderRadius.circular(12),
         child: Image.asset(
           'assets/logo.png',
           fit: BoxFit.contain,
@@ -344,14 +312,12 @@ class AuthLogoBadge extends StatelessWidget {
 class _FeatureItem {
   final IconData icon;
   final Color accentColor;
-  final String tag;
   final String title;
   final String description;
 
   const _FeatureItem({
     required this.icon,
     required this.accentColor,
-    required this.tag,
     required this.title,
     required this.description,
   });
