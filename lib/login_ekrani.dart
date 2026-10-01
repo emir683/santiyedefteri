@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 
 import 'auth_servisi.dart';
 import 'web_install_helper.dart';
+import 'widgets/auth_showcase_carousel.dart';
 
 class LoginEkrani extends StatefulWidget {
   const LoginEkrani({super.key, required this.onRegisterTap});
@@ -32,7 +33,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
   Future<void> _signIn() async {
     if (_emailOrUsernameController.text.isEmpty ||
         _passwordController.text.isEmpty) {
-      setState(() => _error = "L\u00fctfen t\u00fcm alanlar\u0131 doldurun.");
+      setState(() => _error = "Lütfen tüm alanları doldurun.");
       return;
     }
 
@@ -49,7 +50,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.message ?? "Giri\u015f ba\u015far\u0131s\u0131z.";
+        _error = e.message ?? "Giriş başarısız.";
         _loading = false;
       });
     } catch (e) {
@@ -72,7 +73,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
     } catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = "Google ile giri\u015f ba\u015far\u0131s\u0131z: $e";
+        _error = "Google ile giriş başarısız: $e";
         _loading = false;
       });
     }
@@ -85,7 +86,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
 
     showDialog(
       context: context,
-      barrierColor: Colors.black.withOpacity(0.55),
+      barrierColor: Colors.black.withValues(alpha: 0.55),
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setDialogState) {
@@ -99,28 +100,25 @@ class _LoginEkraniState extends State<LoginEkrani> {
                   children: [
                     Row(
                       children: const [
-                        _AuthIconBadge(
-                          icon: Icons.lock_reset_rounded,
-                          color: Color(0xFF24B7A4),
-                        ),
+                        AuthLogoBadge(size: 44),
                         SizedBox(width: 12),
                         Expanded(
                           child: Text(
-                            "\u015eifre S\u0131f\u0131rlama",
+                            "Şifre Sıfırlama",
                             style: TextStyle(
-                              fontSize: 20,
+                              fontSize: 19,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 16),
+                    const SizedBox(height: 14),
                     const Text(
-                      "E-posta adresini gir. Sana \u015fifre s\u0131f\u0131rlama ba\u011flant\u0131s\u0131 g\u00f6nderece\u011fiz.",
-                      style: TextStyle(height: 1.45),
+                      "E-posta adresini gir. Sana şifre sıfırlama bağlantısı göndereceğiz.",
+                      style: TextStyle(height: 1.45, fontSize: 13.5),
                     ),
-                    const SizedBox(height: 18),
+                    const SizedBox(height: 16),
                     _DialogInput(
                       controller: emailController,
                       hintText: "E-posta adresi",
@@ -128,7 +126,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                       keyboardType: TextInputType.emailAddress,
                       errorText: errorText,
                     ),
-                    const SizedBox(height: 20),
+                    const SizedBox(height: 18),
                     Row(
                       children: [
                         Expanded(
@@ -136,7 +134,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                             onPressed: isLoading
                                 ? null
                                 : () => Navigator.pop(ctx),
-                            child: const Text("\u0130ptal"),
+                            child: const Text("İptal"),
                           ),
                         ),
                         const SizedBox(width: 12),
@@ -154,7 +152,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                                     if (!emailController.text.contains('@')) {
                                       setDialogState(() {
                                         errorText =
-                                            "Ge\u00e7erli bir e-posta adresi gir.";
+                                            "Geçerli bir e-posta adresi gir.";
                                       });
                                       return;
                                     }
@@ -165,16 +163,18 @@ class _LoginEkraniState extends State<LoginEkrani> {
                                     });
 
                                     try {
+                                      final sentEmail = emailController.text.trim();
                                       await _authServisi
                                           .sifreSifirlamaEmailiGonder(
-                                        emailController.text.trim(),
+                                        sentEmail,
                                       );
-                                      if (!mounted) return;
+                                      if (!ctx.mounted) return;
                                       Navigator.pop(ctx);
+                                      if (!mounted) return;
                                       ScaffoldMessenger.of(context).showSnackBar(
                                         SnackBar(
                                           content: Text(
-                                            "S\u0131f\u0131rlama ba\u011flant\u0131s\u0131 ${emailController.text.trim()} adresine g\u00f6nderildi.",
+                                            "Sıfırlama bağlantısı $sentEmail adresine gönderildi.",
                                           ),
                                           backgroundColor: const Color(
                                             0xFF24B7A4,
@@ -193,6 +193,9 @@ class _LoginEkraniState extends State<LoginEkrani> {
                             style: ElevatedButton.styleFrom(
                               backgroundColor: const Color(0xFF24B7A4),
                               foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(14),
+                              ),
                             ),
                             child: isLoading
                                 ? const SizedBox(
@@ -203,7 +206,7 @@ class _LoginEkraniState extends State<LoginEkrani> {
                                       color: Colors.white,
                                     ),
                                   )
-                                : const Text("G\u00f6nder"),
+                                : const Text("Gönder"),
                           ),
                         ),
                       ],
@@ -228,43 +231,42 @@ class _LoginEkraniState extends State<LoginEkrani> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
+                constraints: const BoxConstraints(maxWidth: 420),
                 child: _AuthCardSurface(
-                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Başlık ve Logo Alanı
                       Row(
                         children: [
-                          const _AuthIconBadge(
-                            icon: Icons.construction_rounded,
-                            color: Color(0xFF24B7A4),
-                            size: 52,
-                            iconSize: 26,
-                          ),
+                          const AuthLogoBadge(size: 52),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "\u015eantiye Puantaj Defteri",
+                                  "Şantiye Puantaj Defteri",
                                   style: theme.textTheme.titleMedium?.copyWith(
-                                    fontSize: 21,
+                                    fontSize: 19.5,
                                     height: 1.15,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3),
                                 Text(
                                   "Kontrol merkezine devam et.",
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: isDark
                                         ? Colors.white70
                                         : const Color(0xFF526772),
-                                    height: 1.3,
+                                    fontSize: 13,
+                                    height: 1.25,
                                   ),
                                 ),
                               ],
@@ -272,25 +274,29 @@ class _LoginEkraniState extends State<LoginEkrani> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      // Otomatik Kayan Özellik Vitrini (Carousel)
+                      const AuthFeatureShowcaseCarousel(height: 68),
                       if (WebInstallHelper.shouldShowInstallCard) ...[
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 12),
                         const _WebInstallCard(),
                       ],
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 14),
+                      // Giriş Alanları
                       _GlassAuthInput(
                         controller: _emailOrUsernameController,
-                        label: "E-posta / kullan\u0131c\u0131 ad\u0131",
+                        label: "E-posta / kullanıcı adı",
                         icon: Icons.person_outline_rounded,
                         keyboardType: TextInputType.emailAddress,
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 11),
                       _GlassAuthInput(
                         controller: _passwordController,
-                        label: "\u015eifre",
+                        label: "Şifre",
                         icon: Icons.lock_outline_rounded,
                         obscureText: _isObscured,
                         suffixIcon: IconButton(
-                          iconSize: 22,
+                          iconSize: 21,
                           icon: Icon(
                             _isObscured
                                 ? Icons.visibility_off_rounded
@@ -308,47 +314,77 @@ class _LoginEkraniState extends State<LoginEkrani> {
                         child: TextButton(
                           style: TextButton.styleFrom(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 4,
+                              horizontal: 6,
+                              vertical: 2,
                             ),
+                            visualDensity: VisualDensity.compact,
                           ),
                           onPressed: () => _showForgotPasswordDialog(context),
-                          child: const Text("\u015eifremi Unuttum"),
+                          child: const Text(
+                            "Şifremi Unuttum",
+                            style: TextStyle(fontSize: 13),
+                          ),
                         ),
                       ),
                       if (_error.isNotEmpty) ...[
                         const SizedBox(height: 4),
                         _AuthErrorBanner(message: _error),
+                        const SizedBox(height: 8),
                       ],
-                      const SizedBox(height: 18),
-                      ElevatedButton(
-                        onPressed: _loading ? null : _signIn,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF24B7A4),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 17),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                      const SizedBox(height: 10),
+                      // Giriş Butonu
+                      Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF2DD4BF),
+                              Color(0xFF14B8A6),
+                              Color(0xFF0F766E),
+                            ],
                           ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF14B8A6)
+                                  .withValues(alpha: isDark ? 0.35 : 0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
                         ),
-                        child: _loading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: Colors.white,
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _signIn,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  "Giriş Yap",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: 0.3,
+                                  ),
                                 ),
-                              )
-                            : const Text(
-                                "Giri\u015f Yap",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
+                        ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       Row(
                         children: [
                           Expanded(
@@ -378,47 +414,54 @@ class _LoginEkraniState extends State<LoginEkrani> {
                           ),
                         ],
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 14),
                       OutlinedButton.icon(
                         icon: Image.asset('assets/google_logo.png', height: 20),
                         label: const Text(
                           "Google ile Devam Et",
-                          style: TextStyle(fontWeight: FontWeight.w700),
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
                         ),
                         onPressed: _loading ? null : _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
-                          padding: const EdgeInsets.symmetric(vertical: 14),
+                          padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           side: BorderSide(
                             color: isDark
-                                ? Colors.white12
+                                ? Colors.white.withValues(alpha: 0.12)
                                 : const Color(0xFFBFD0D6),
                           ),
                           backgroundColor: isDark
-                              ? Colors.white.withOpacity(0.04)
-                              : Colors.white.withOpacity(0.68),
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : Colors.white.withValues(alpha: 0.85),
                           foregroundColor: isDark
                               ? Colors.white
                               : const Color(0xFF10232C),
                         ),
                       ),
-                      const SizedBox(height: 16),
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "Hesab\u0131n yok mu?",
+                            "Hesabın yok mu?",
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: isDark
                                   ? Colors.white70
                                   : const Color(0xFF5A707B),
+                              fontSize: 13.5,
                             ),
                           ),
                           TextButton(
                             onPressed: widget.onRegisterTap,
-                            child: const Text("Kay\u0131t Ol"),
+                            child: const Text(
+                              "Kayıt Ol",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13.5,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -490,26 +533,29 @@ class _AuthErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEF4444).withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.20)),
+        color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+        ),
       ),
       child: Row(
         children: [
           const Icon(
             Icons.error_outline_rounded,
-            size: 20,
+            size: 19,
             color: Color(0xFFFF7A7A),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 9),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
                 color: Color(0xFFFF8A8A),
                 fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
           ),
@@ -543,22 +589,29 @@ class _DialogInput extends StatelessWidget {
           child: TextField(
             controller: controller,
             keyboardType: keyboardType,
+            style: const TextStyle(fontSize: 14, fontWeight: FontWeight.w600),
             decoration: InputDecoration(
               hintText: hintText,
-              prefixIcon: Icon(icon),
+              prefixIcon: Icon(icon, size: 20),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 40,
+                minHeight: 40,
+              ),
               border: InputBorder.none,
               enabledBorder: InputBorder.none,
               focusedBorder: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
             ),
           ),
         ),
         if (errorText != null) ...[
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           Text(
             errorText!,
             style: const TextStyle(
               color: Color(0xFFFF8A8A),
               fontWeight: FontWeight.w600,
+              fontSize: 12,
             ),
           ),
         ],
@@ -586,15 +639,15 @@ class _AuthBackground extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: isDark
                     ? const [
-                        Color(0xFF030405),
-                        Color(0xFF070A0D),
-                        Color(0xFF0B1115),
-                        Color(0xFF080B0E),
+                        Color(0xFF030406),
+                        Color(0xFF06090D),
+                        Color(0xFF0A0F15),
+                        Color(0xFF06080B),
                       ]
                     : const [
                         Color(0xFFF7FCFD),
-                        Color(0xFFEFF6F8),
-                        Color(0xFFE7EFF2),
+                        Color(0xFFEFF5F8),
+                        Color(0xFFE6EFF3),
                         Color(0xFFF4FAFC),
                       ],
               ),
@@ -602,18 +655,20 @@ class _AuthBackground extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: -120,
+          top: -100,
           left: -60,
           right: -60,
           child: IgnorePointer(
             child: Container(
-              height: 260,
+              height: 280,
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   center: Alignment.topCenter,
-                  radius: 1.0,
+                  radius: 1.1,
                   colors: [
-                    const Color(0xFF24B7A4).withOpacity(isDark ? 0.12 : 0.08),
+                    const Color(0xFF24B7A4).withValues(
+                      alpha: isDark ? 0.16 : 0.10,
+                    ),
                     Colors.transparent,
                   ],
                 ),
@@ -622,18 +677,20 @@ class _AuthBackground extends StatelessWidget {
           ),
         ),
         Positioned(
-          left: -30,
-          right: -30,
-          bottom: -80,
+          left: -40,
+          right: -40,
+          bottom: -70,
           child: IgnorePointer(
             child: Container(
-              height: 220,
+              height: 240,
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   center: Alignment.bottomCenter,
                   radius: 0.95,
                   colors: [
-                    const Color(0xFF24B7A4).withOpacity(isDark ? 0.10 : 0.12),
+                    const Color(0xFF0EA5E9).withValues(
+                      alpha: isDark ? 0.12 : 0.08,
+                    ),
                     Colors.transparent,
                   ],
                 ),
@@ -655,18 +712,16 @@ class _WebInstallCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color:
-            isDark
-                ? Colors.white.withOpacity(0.05)
-                : const Color(0xFFEAF6F8).withOpacity(0.92),
-        borderRadius: BorderRadius.circular(20),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : const Color(0xFFEAF6F8).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color:
-              isDark
-                  ? const Color(0xFF24B7A4).withOpacity(0.18)
-                  : const Color(0xFFB9DDE1),
+          color: isDark
+              ? const Color(0xFF24B7A4).withValues(alpha: 0.22)
+              : const Color(0xFFB9DDE1),
         ),
       ),
       child: Column(
@@ -677,10 +732,10 @@ class _WebInstallCard extends StatelessWidget {
               const _AuthIconBadge(
                 icon: Icons.add_to_home_screen_rounded,
                 color: Color(0xFF24B7A4),
-                size: 48,
-                iconSize: 22,
+                size: 42,
+                iconSize: 20,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -688,7 +743,7 @@ class _WebInstallCard extends StatelessWidget {
                     Text(
                       'Ana Ekrana Ekle',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w700,
                         color:
                             isDark ? Colors.white : const Color(0xFF10232C),
@@ -698,11 +753,10 @@ class _WebInstallCard extends StatelessWidget {
                     Text(
                       'Safari üzerinden uygulamayı tam ekran gibi kullan.',
                       style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            isDark
-                                ? Colors.white70
-                                : const Color(0xFF607480),
+                        fontSize: 11.5,
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xFF607480),
                       ),
                     ),
                   ],
@@ -710,18 +764,18 @@ class _WebInstallCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          _InstallStep(
+          const SizedBox(height: 10),
+          const _InstallStep(
             no: '1',
             text: 'Safari alt menüsünde Paylaş düğmesine dokun.',
           ),
-          const SizedBox(height: 8),
-          _InstallStep(
+          const SizedBox(height: 6),
+          const _InstallStep(
             no: '2',
             text: 'Ana Ekrana Ekle seçeneğini aç.',
           ),
-          const SizedBox(height: 8),
-          _InstallStep(
+          const SizedBox(height: 6),
+          const _InstallStep(
             no: '3',
             text: 'Kaydedince uygulama ana ekranda kart olarak görünür.',
           ),
@@ -745,29 +799,31 @@ class _InstallStep extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
-          width: 24,
-          height: 24,
+          width: 20,
+          height: 20,
           alignment: Alignment.center,
           decoration: BoxDecoration(
-            color: const Color(0xFF24B7A4).withOpacity(isDark ? 0.18 : 0.14),
+            color: const Color(0xFF24B7A4).withValues(
+              alpha: isDark ? 0.20 : 0.14,
+            ),
             borderRadius: BorderRadius.circular(999),
           ),
           child: Text(
             no,
             style: const TextStyle(
-              fontSize: 12,
+              fontSize: 11,
               fontWeight: FontWeight.w700,
               color: Color(0xFF24B7A4),
             ),
           ),
         ),
-        const SizedBox(width: 10),
+        const SizedBox(width: 8),
         Expanded(
           child: Text(
             text,
             style: TextStyle(
-              height: 1.4,
-              fontSize: 12,
+              height: 1.35,
+              fontSize: 11.5,
               color: isDark ? Colors.white70 : const Color(0xFF526772),
             ),
           ),
@@ -794,20 +850,28 @@ class _AuthCardSurface extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: isDark
-              ? const [Color(0xFF171B20), Color(0xFF0E1115)]
-              : const [Color(0xFFFFFFFF), Color(0xFFF0F6F8)],
+              ? const [Color(0xFF161B22), Color(0xFF0D1014)]
+              : const [Color(0xFFFFFFFF), Color(0xFFF1F6F8)],
         ),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.08)
-              : const Color(0xFFD1DEE3),
+              ? Colors.white.withValues(alpha: 0.09)
+              : const Color(0xFFCFDDE2),
+          width: 1.1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.24 : 0.08),
-            blurRadius: 28,
-            offset: const Offset(0, 18),
+            color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.07),
+            blurRadius: 30,
+            offset: const Offset(0, 16),
+          ),
+          BoxShadow(
+            color: const Color(0xFF24B7A4).withValues(
+              alpha: isDark ? 0.06 : 0.04,
+            ),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -826,16 +890,17 @@ class _AuthFieldSurface extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(18),
+            ? Colors.white.withValues(alpha: 0.045)
+            : Colors.white.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.06)
-              : const Color(0xFFD5E0E5),
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFD6E2E6),
+          width: 1,
         ),
       ),
       child: child,
@@ -864,18 +929,20 @@ class _AuthIconBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(isDark ? 0.22 : 0.16),
-            (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
-              isDark ? 0.92 : 0.98,
+            color.withValues(alpha: isDark ? 0.22 : 0.16),
+            (isDark ? const Color(0xFF171B20) : Colors.white).withValues(
+              alpha: isDark ? 0.92 : 0.98,
             ),
           ],
         ),
-        border: Border.all(color: color.withOpacity(isDark ? 0.16 : 0.12)),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.22 : 0.16),
+        ),
       ),
       child: Icon(
         icon,
@@ -894,7 +961,7 @@ class _SimpleDialogCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return _AuthCardSurface(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(22),
       child: Material(
         color: Colors.transparent,
         child: child,

@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'auth_servisi.dart';
 import 'fcm_servisi.dart';
 import 'web_install_helper.dart';
+import 'widgets/auth_showcase_carousel.dart';
 
 class RegisterEkrani extends StatefulWidget {
   const RegisterEkrani({super.key, required this.onLoginTap});
@@ -43,13 +44,13 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
         _emailController.text.isEmpty ||
         _passwordController.text.isEmpty ||
         _confirmPasswordController.text.isEmpty) {
-      setState(() => _error = "L\u00fctfen t\u00fcm alanlar\u0131 doldurun.");
+      setState(() => _error = "Lütfen tüm alanları doldurun.");
       return;
     }
 
     if (_passwordController.text.trim() !=
         _confirmPasswordController.text.trim()) {
-      setState(() => _error = "\u015eifreler birbiriyle uyu\u015fmuyor.");
+      setState(() => _error = "Şifreler birbiriyle uyuşmuyor.");
       return;
     }
 
@@ -74,7 +75,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() {
-        _error = e.message ?? "Bir hata olu\u015ftu.";
+        _error = e.message ?? "Bir hata oluştu.";
         _loading = false;
       });
     } catch (e) {
@@ -93,7 +94,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
       context: context,
       barrierDismissible: false,
       barrierLabel: 'bildirim_onboarding',
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       transitionDuration: const Duration(milliseconds: 350),
       transitionBuilder: (ctx, anim, _, child) {
         return SlideTransition(
@@ -120,13 +121,13 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
               ),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.10)
+                    ? Colors.white.withValues(alpha: 0.10)
                     : const Color(0xFFB6DDE8),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.35 : 0.12),
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
                   blurRadius: 32,
                   offset: const Offset(0, 14),
                 ),
@@ -150,7 +151,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF14B8A6).withOpacity(0.35),
+                          color: const Color(0xFF14B8A6).withValues(alpha: 0.35),
                           blurRadius: 18,
                           offset: const Offset(0, 6),
                         ),
@@ -184,7 +185,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                     ),
                   ),
                   const SizedBox(height: 8),
-                  // Özellik listesi
+                  // Özellik listesi (Emoji içermeyen temiz kurumsal dil)
                   ..._bildirimOzellikleri(isDark),
                   const SizedBox(height: 24),
                   // Aktif et butonu
@@ -193,8 +194,6 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                     child: ElevatedButton.icon(
                       onPressed: () async {
                         Navigator.pop(ctx);
-                        // FCM izni init() sırasında zaten isteniyor;
-                        // burada sadece kapatıyoruz.
                       },
                       icon: const Icon(Icons.notifications_active_rounded, size: 18),
                       label: const Text(
@@ -232,12 +231,11 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
     );
   }
 
-
   List<Widget> _bildirimOzellikleri(bool isDark) {
     final ozellikler = [
-      ('👷 İşçi işlemleri', 'Ekleme, güncelleme ve ödeme bildirimleri'),
-      ('📄 Rapor girilince', 'Günlük rapor kaydedilince haberdar ol'),
-      ('⏰ Kapalıyken de çalışır', 'Uygulamanı açman gerekmez'),
+      ('İşçi ve Puantaj', 'Ekleme, güncelleme ve ödeme bildirimleri'),
+      ('Günlük Raporlar', 'Günlük rapor kaydedilince anında haberdar olun'),
+      ('Kesintisiz Bildirim', 'Uygulama kapalıyken de bildirimler iletilir'),
     ];
     return [
       const SizedBox(height: 16),
@@ -249,7 +247,7 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withOpacity(0.12),
+                  color: const Color(0xFF14B8A6).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -288,43 +286,42 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
         child: SafeArea(
           child: Center(
             child: SingleChildScrollView(
-              padding: const EdgeInsets.fromLTRB(20, 16, 20, 18),
+              physics: const BouncingScrollPhysics(),
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 430),
+                constraints: const BoxConstraints(maxWidth: 420),
                 child: _AuthCardSurface(
-                  padding: const EdgeInsets.fromLTRB(22, 22, 22, 18),
+                  padding: const EdgeInsets.fromLTRB(20, 20, 20, 18),
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
+                      // Başlık ve Logo Alanı
                       Row(
                         children: [
-                          const _AuthIconBadge(
-                            icon: Icons.person_add_alt_1_rounded,
-                            color: Color(0xFF24B7A4),
-                            size: 52,
-                            iconSize: 25,
-                          ),
+                          const AuthLogoBadge(size: 52),
                           const SizedBox(width: 14),
                           Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
-                                  "Yeni Hesap Olu\u015ftur",
+                                  "Yeni Hesap Oluştur",
                                   style: theme.textTheme.titleMedium?.copyWith(
-                                    fontSize: 21,
+                                    fontSize: 19.5,
                                     height: 1.15,
-                                    fontWeight: FontWeight.w700,
+                                    fontWeight: FontWeight.w800,
+                                    letterSpacing: -0.3,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 3),
                                 Text(
-                                  "Yeni hesab\u0131n\u0131 olu\u015ftur.",
+                                  "Şantiye ve personel yönetimine başlayın.",
                                   style: theme.textTheme.bodyMedium?.copyWith(
                                     color: isDark
                                         ? Colors.white70
                                         : const Color(0xFF526772),
-                                    height: 1.3,
+                                    fontSize: 13,
+                                    height: 1.25,
                                   ),
                                 ),
                               ],
@@ -332,37 +329,41 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 12),
+                      // Otomatik Kayan Özellik Vitrini (Carousel)
+                      const AuthFeatureShowcaseCarousel(height: 64),
                       if (WebInstallHelper.shouldShowInstallCard) ...[
-                        const SizedBox(height: 18),
+                        const SizedBox(height: 12),
                         const _RegisterWebInstallCard(),
                       ],
-                      const SizedBox(height: 22),
+                      const SizedBox(height: 14),
+                      // Kayıt Form Alanları (Kompakt ve taşma korumalı)
                       _GlassAuthInput(
                         controller: _adSoyadController,
                         label: "Ad Soyad",
                         icon: Icons.badge_outlined,
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       _GlassAuthInput(
                         controller: _usernameController,
-                        label: "Kullan\u0131c\u0131 Ad\u0131",
+                        label: "Kullanıcı Adı",
                         icon: Icons.alternate_email_rounded,
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       _GlassAuthInput(
                         controller: _emailController,
                         label: "E-posta",
                         icon: Icons.email_outlined,
                         keyboardType: TextInputType.emailAddress,
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       _GlassAuthInput(
                         controller: _passwordController,
-                        label: "\u015eifre",
+                        label: "Şifre",
                         icon: Icons.lock_outline_rounded,
                         obscureText: _isPasswordObscured,
                         suffixIcon: IconButton(
-                          iconSize: 22,
+                          iconSize: 21,
                           icon: Icon(
                             _isPasswordObscured
                                 ? Icons.visibility_off_rounded
@@ -375,14 +376,14 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                           },
                         ),
                       ),
-                      const SizedBox(height: 14),
+                      const SizedBox(height: 10),
                       _GlassAuthInput(
                         controller: _confirmPasswordController,
-                        label: "\u015eifre Tekrar",
+                        label: "Şifre Tekrar",
                         icon: Icons.lock_reset_outlined,
                         obscureText: _isConfirmObscured,
                         suffixIcon: IconButton(
-                          iconSize: 22,
+                          iconSize: 21,
                           icon: Icon(
                             _isConfirmObscured
                                 ? Icons.visibility_off_rounded
@@ -396,52 +397,84 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                         ),
                       ),
                       if (_error.isNotEmpty) ...[
-                        const SizedBox(height: 16),
+                        const SizedBox(height: 12),
                         _AuthErrorBanner(message: _error),
                       ],
-                      const SizedBox(height: 20),
-                      ElevatedButton(
-                        onPressed: _loading ? null : _signUp,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF24B7A4),
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 17),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(18),
-                          ),
-                        ),
-                        child: _loading
-                            ? const SizedBox(
-                                width: 20,
-                                height: 20,
-                                child: CircularProgressIndicator(
-                                  strokeWidth: 2.4,
-                                  color: Colors.white,
-                                ),
-                              )
-                            : const Text(
-                                "Kay\u0131t Ol",
-                                style: TextStyle(
-                                  fontSize: 16,
-                                  fontWeight: FontWeight.w700,
-                                ),
-                              ),
-                      ),
                       const SizedBox(height: 16),
+                      // Kayıt Butonu
+                      Container(
+                        height: 50,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(16),
+                          gradient: const LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [
+                              Color(0xFF2DD4BF),
+                              Color(0xFF14B8A6),
+                              Color(0xFF0F766E),
+                            ],
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: const Color(0xFF14B8A6)
+                                  .withValues(alpha: isDark ? 0.35 : 0.25),
+                              blurRadius: 16,
+                              offset: const Offset(0, 6),
+                            ),
+                          ],
+                        ),
+                        child: ElevatedButton(
+                          onPressed: _loading ? null : _signUp,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.transparent,
+                            shadowColor: Colors.transparent,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                          ),
+                          child: _loading
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2.2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  "Kayıt Ol",
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.w700,
+                                    color: Colors.white,
+                                    letterSpacing: 0.3,
+                                  ),
+                                ),
+                        ),
+                      ),
+                      const SizedBox(height: 14),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           Text(
-                            "Zaten hesab\u0131n var m\u0131?",
+                            "Zaten hesabın var mı?",
                             style: theme.textTheme.bodyMedium?.copyWith(
                               color: isDark
                                   ? Colors.white70
                                   : const Color(0xFF5A707B),
+                              fontSize: 13.5,
                             ),
                           ),
                           TextButton(
                             onPressed: widget.onLoginTap,
-                            child: const Text("Giri\u015f Yap"),
+                            child: const Text(
+                              "Giriş Yap",
+                              style: TextStyle(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 13.5,
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -483,22 +516,32 @@ class _GlassAuthInput extends StatelessWidget {
         controller: controller,
         obscureText: obscureText,
         keyboardType: keyboardType,
-        style: const TextStyle(fontWeight: FontWeight.w600),
+        style: TextStyle(
+          fontWeight: FontWeight.w600,
+          fontSize: 14.5,
+          color: isDark ? Colors.white : const Color(0xFF10232C),
+        ),
         decoration: InputDecoration(
           labelText: label,
-          prefixIcon: Icon(icon, size: 22),
+          labelStyle: TextStyle(
+            color: isDark ? Colors.white60 : const Color(0xFF5E727D),
+            fontSize: 13.5,
+            fontWeight: FontWeight.w500,
+          ),
+          prefixIcon: Icon(
+            icon,
+            size: 20,
+            color: const Color(0xFF24B7A4).withValues(alpha: isDark ? 0.9 : 0.8),
+          ),
           prefixIconConstraints: const BoxConstraints(
-            minWidth: 44,
-            minHeight: 44,
+            minWidth: 42,
+            minHeight: 42,
           ),
           suffixIcon: suffixIcon,
           border: InputBorder.none,
           enabledBorder: InputBorder.none,
           focusedBorder: InputBorder.none,
-          labelStyle: TextStyle(
-            color: isDark ? Colors.white60 : const Color(0xFF607480),
-            fontSize: 15,
-          ),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 8),
         ),
       ),
     );
@@ -524,15 +567,15 @@ class _AuthBackground extends StatelessWidget {
                 end: Alignment.bottomCenter,
                 colors: isDark
                     ? const [
-                        Color(0xFF030405),
-                        Color(0xFF070A0D),
-                        Color(0xFF0B1115),
-                        Color(0xFF080B0E),
+                        Color(0xFF030406),
+                        Color(0xFF06090D),
+                        Color(0xFF0A0F15),
+                        Color(0xFF06080B),
                       ]
                     : const [
                         Color(0xFFF7FCFD),
-                        Color(0xFFEFF6F8),
-                        Color(0xFFE7EFF2),
+                        Color(0xFFEFF5F8),
+                        Color(0xFFE6EFF3),
                         Color(0xFFF4FAFC),
                       ],
               ),
@@ -540,18 +583,20 @@ class _AuthBackground extends StatelessWidget {
           ),
         ),
         Positioned(
-          top: -120,
+          top: -100,
           left: -60,
           right: -60,
           child: IgnorePointer(
             child: Container(
-              height: 260,
+              height: 280,
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   center: Alignment.topCenter,
-                  radius: 1.0,
+                  radius: 1.1,
                   colors: [
-                    const Color(0xFF24B7A4).withOpacity(isDark ? 0.12 : 0.08),
+                    const Color(0xFF24B7A4).withValues(
+                      alpha: isDark ? 0.16 : 0.10,
+                    ),
                     Colors.transparent,
                   ],
                 ),
@@ -560,18 +605,20 @@ class _AuthBackground extends StatelessWidget {
           ),
         ),
         Positioned(
-          left: -30,
-          right: -30,
-          bottom: -80,
+          left: -40,
+          right: -40,
+          bottom: -70,
           child: IgnorePointer(
             child: Container(
-              height: 220,
+              height: 240,
               decoration: BoxDecoration(
                 gradient: RadialGradient(
                   center: Alignment.bottomCenter,
                   radius: 0.95,
                   colors: [
-                    const Color(0xFF24B7A4).withOpacity(isDark ? 0.10 : 0.12),
+                    const Color(0xFF0EA5E9).withValues(
+                      alpha: isDark ? 0.12 : 0.08,
+                    ),
                     Colors.transparent,
                   ],
                 ),
@@ -593,18 +640,16 @@ class _RegisterWebInstallCard extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color:
-            isDark
-                ? Colors.white.withOpacity(0.05)
-                : const Color(0xFFEAF6F8).withOpacity(0.92),
-        borderRadius: BorderRadius.circular(20),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.05)
+            : const Color(0xFFEAF6F8).withValues(alpha: 0.92),
+        borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color:
-              isDark
-                  ? const Color(0xFF24B7A4).withOpacity(0.18)
-                  : const Color(0xFFB9DDE1),
+          color: isDark
+              ? const Color(0xFF24B7A4).withValues(alpha: 0.22)
+              : const Color(0xFFB9DDE1),
         ),
       ),
       child: Column(
@@ -615,10 +660,10 @@ class _RegisterWebInstallCard extends StatelessWidget {
               const _AuthIconBadge(
                 icon: Icons.phone_iphone_rounded,
                 color: Color(0xFF24B7A4),
-                size: 48,
-                iconSize: 22,
+                size: 42,
+                iconSize: 20,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
@@ -626,7 +671,7 @@ class _RegisterWebInstallCard extends StatelessWidget {
                     Text(
                       'iPhone Kullanımı',
                       style: TextStyle(
-                        fontSize: 15,
+                        fontSize: 14.5,
                         fontWeight: FontWeight.w700,
                         color:
                             isDark ? Colors.white : const Color(0xFF10232C),
@@ -636,11 +681,10 @@ class _RegisterWebInstallCard extends StatelessWidget {
                     Text(
                       'Kayıttan sonra Safari ile ana ekrana sabitleyebilirsin.',
                       style: TextStyle(
-                        fontSize: 12,
-                        color:
-                            isDark
-                                ? Colors.white70
-                                : const Color(0xFF607480),
+                        fontSize: 11.5,
+                        color: isDark
+                            ? Colors.white70
+                            : const Color(0xFF607480),
                       ),
                     ),
                   ],
@@ -648,8 +692,8 @@ class _RegisterWebInstallCard extends StatelessWidget {
               ),
             ],
           ),
-          const SizedBox(height: 14),
-          _InstallHint(
+          const SizedBox(height: 10),
+          const _InstallHint(
             text: 'Safari > Paylaş > Ana Ekrana Ekle yolunu kullan.',
           ),
         ],
@@ -670,8 +714,8 @@ class _InstallHint extends StatelessWidget {
     return Text(
       text,
       style: TextStyle(
-        fontSize: 12,
-        height: 1.4,
+        fontSize: 11.5,
+        height: 1.35,
         color: isDark ? Colors.white70 : const Color(0xFF526772),
       ),
     );
@@ -695,20 +739,28 @@ class _AuthCardSurface extends StatelessWidget {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: isDark
-              ? const [Color(0xFF171B20), Color(0xFF0E1115)]
-              : const [Color(0xFFFFFFFF), Color(0xFFF0F6F8)],
+              ? const [Color(0xFF161B22), Color(0xFF0D1014)]
+              : const [Color(0xFFFFFFFF), Color(0xFFF1F6F8)],
         ),
-        borderRadius: BorderRadius.circular(30),
+        borderRadius: BorderRadius.circular(26),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.08)
-              : const Color(0xFFD1DEE3),
+              ? Colors.white.withValues(alpha: 0.09)
+              : const Color(0xFFCFDDE2),
+          width: 1.1,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.24 : 0.08),
-            blurRadius: 28,
-            offset: const Offset(0, 18),
+            color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.07),
+            blurRadius: 30,
+            offset: const Offset(0, 16),
+          ),
+          BoxShadow(
+            color: const Color(0xFF24B7A4).withValues(
+              alpha: isDark ? 0.06 : 0.04,
+            ),
+            blurRadius: 24,
+            offset: const Offset(0, 8),
           ),
         ],
       ),
@@ -727,16 +779,17 @@ class _AuthFieldSurface extends StatelessWidget {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 4),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.white.withOpacity(0.92),
-        borderRadius: BorderRadius.circular(18),
+            ? Colors.white.withValues(alpha: 0.045)
+            : Colors.white.withValues(alpha: 0.88),
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.06)
-              : const Color(0xFFD5E0E5),
+              ? Colors.white.withValues(alpha: 0.08)
+              : const Color(0xFFD6E2E6),
+          width: 1,
         ),
       ),
       child: child,
@@ -765,18 +818,20 @@ class _AuthIconBadge extends StatelessWidget {
       width: size,
       height: size,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(isDark ? 0.22 : 0.16),
-            (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
-              isDark ? 0.92 : 0.98,
+            color.withValues(alpha: isDark ? 0.22 : 0.16),
+            (isDark ? const Color(0xFF171B20) : Colors.white).withValues(
+              alpha: isDark ? 0.92 : 0.98,
             ),
           ],
         ),
-        border: Border.all(color: color.withOpacity(isDark ? 0.16 : 0.12)),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.22 : 0.16),
+        ),
       ),
       child: Icon(
         icon,
@@ -795,26 +850,29 @@ class _AuthErrorBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(14),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: const Color(0xFFEF4444).withOpacity(0.12),
-        borderRadius: BorderRadius.circular(18),
-        border: Border.all(color: const Color(0xFFEF4444).withOpacity(0.20)),
+        color: const Color(0xFFEF4444).withValues(alpha: 0.12),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: const Color(0xFFEF4444).withValues(alpha: 0.25),
+        ),
       ),
       child: Row(
         children: [
           const Icon(
             Icons.error_outline_rounded,
-            size: 20,
+            size: 19,
             color: Color(0xFFFF7A7A),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 9),
           Expanded(
             child: Text(
               message,
               style: const TextStyle(
                 color: Color(0xFFFF8A8A),
                 fontWeight: FontWeight.w600,
+                fontSize: 13,
               ),
             ),
           ),
