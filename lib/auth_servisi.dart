@@ -145,18 +145,40 @@ class AuthServisi {
   }
 
   Future<void> signOut() async {
+    // 1. FCM bildirim aboneliğini temizle
     try {
+      await FcmServisi().kullaniciAyril();
+    } catch (e) {
+      debugPrint("FCM token temizleme hatası: $e");
+    }
+
+    // 2. Google oturumu: Yalnızca kullanıcı gerçekten Google sağlayıcısı ile giriş yaptıysa kapat
+    // Google Play Services DEVELOPER_ERROR (SHA-1 hatası) verse dahi Firebase çıkışını ASLA engellememelidir.
+    if (!kIsWeb) {
       try {
-        await FcmServisi().kullaniciAyril();
+        final currentUser = _auth.currentUser;
+        final isGoogleUser = currentUser?.providerData.any(
+              (p) => p.providerId == 'google.com',
+            ) ??
+            false;
+
+        if (isGoogleUser) {
+          await _googleSignIn.signOut().timeout(
+            const Duration(seconds: 2),
+            onTimeout: () => null,
+          );
+        }
       } catch (e) {
-        debugPrint("FCM token temizleme hatası: $e");
+        debugPrint("GoogleSignIn signOut hatası (güvenle yoksayıldı): $e");
       }
-      if (!kIsWeb && await _googleSignIn.isSignedIn()) {
-        await _googleSignIn.signOut();
-      }
+    }
+
+    // 3. Firebase Auth oturumunu her koşulda mutlaka kapat
+    try {
       await _auth.signOut();
     } catch (e) {
-      debugPrint("Çıkış yaparken hata: ${e.toString()}");
+      debugPrint("FirebaseAuth signOut kritik hata: $e");
+      rethrow;
     }
   }
 
