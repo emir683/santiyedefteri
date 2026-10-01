@@ -295,43 +295,41 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // Başlık ve Logo Alanı
-                      Row(
-                        children: [
-                          const AuthLogoBadge(size: 52),
-                          const SizedBox(width: 14),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  "Yeni Hesap Oluştur",
-                                  style: theme.textTheme.titleMedium?.copyWith(
-                                    fontSize: 19.5,
-                                    height: 1.15,
-                                    fontWeight: FontWeight.w800,
-                                    letterSpacing: -0.3,
-                                  ),
-                                ),
-                                const SizedBox(height: 3),
-                                Text(
-                                  "Şantiye ve personel yönetimine başlayın.",
-                                  style: theme.textTheme.bodyMedium?.copyWith(
-                                    color: isDark
-                                        ? Colors.white70
-                                        : const Color(0xFF526772),
-                                    fontSize: 13,
-                                    height: 1.25,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
+                      // En üstte logo (ortalanmış)
+                      const Center(
+                        child: AuthLogoBadge(size: 68),
                       ),
                       const SizedBox(height: 12),
+                      // Altına bir satıra ortalanmış Şantiye Puantaj Defteri
+                      Text(
+                        "Şantiye Puantaj Defteri",
+                        textAlign: TextAlign.center,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: theme.textTheme.titleMedium?.copyWith(
+                          fontSize: 21,
+                          fontWeight: FontWeight.w800,
+                          letterSpacing: -0.4,
+                          color: isDark ? Colors.white : const Color(0xFF0F1E26),
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      // Altına daha küçük fontla hoşgeldiniz yazısı
+                      Text(
+                        "Hoş Geldiniz • Yeni Hesap Oluşturun",
+                        textAlign: TextAlign.center,
+                        style: theme.textTheme.bodyMedium?.copyWith(
+                          color: isDark
+                              ? const Color(0xFF24B7A4)
+                              : const Color(0xFF0F766E),
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                          letterSpacing: 0.2,
+                        ),
+                      ),
+                      const SizedBox(height: 14),
                       // Otomatik Kayan Özellik Vitrini (Carousel)
-                      const AuthFeatureShowcaseCarousel(height: 64),
+                      const AuthFeatureShowcaseCarousel(height: 90),
                       if (WebInstallHelper.shouldShowInstallCard) ...[
                         const SizedBox(height: 12),
                         const _RegisterWebInstallCard(),
