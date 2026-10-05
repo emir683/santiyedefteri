@@ -17,6 +17,8 @@ import 'bildirim_servisi.dart';
 import 'fcm_servisi.dart';
 import 'privacy_provider.dart';
 import 'rol_provider.dart';
+import 'services/ai/ai_service.dart';
+import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 bool _firebaseReady = false;
@@ -63,6 +65,8 @@ void main() async {
     }
     _firebaseReady = true;
     debugPrint("✅ Firebase başarıyla başlatıldı.");
+    // Gemini API anahtarını Remote Config'den güvenle yükle
+    await _loadGeminiApiKey();
   } catch (e) {
     debugPrint("🔥 Firebase başlatılırken KRİTİK HATA: $e");
   }
@@ -88,6 +92,29 @@ void main() async {
     }
   }
   runApp(const MyApp());
+}
+
+/// Firebase Remote Config üzerinden Gemini API anahtarını güvenle yükler.
+/// Anahtar kaynak kodda veya build çıktısında yer almaz.
+Future<void> _loadGeminiApiKey() async {
+  try {
+    final rc = FirebaseRemoteConfig.instance;
+    await rc.setConfigSettings(RemoteConfigSettings(
+      fetchTimeout: const Duration(seconds: 10),
+      minimumFetchInterval: const Duration(hours: 1),
+    ));
+    await rc.setDefaults({'gemini_api_key': ''});
+    await rc.fetchAndActivate();
+    final key = rc.getString('gemini_api_key');
+    if (key.isNotEmpty) {
+      AIService.setApiKey(key);
+      debugPrint('✅ Gemini API anahtarı Remote Config üzerinden yüklendi.');
+    } else {
+      debugPrint('⚠️ Remote Config: gemini_api_key boş — AI özellikleri devre dışı.');
+    }
+  } catch (e) {
+    debugPrint('⚠️ Remote Config yüklenemedi: $e — AI özellikleri devre dışı.');
+  }
 }
 
 class MyApp extends StatelessWidget {

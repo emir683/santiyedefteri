@@ -13,9 +13,11 @@ import 'insaat_metraj_hesaplayici.dart';
 /// - Genel sorular (inşaat, teknik, serbest chat): Gemini API — gerçek yapay zeka
 ///   → Gemini çağrıları Firestore rate limiter ile korunur (kullanıcı başına günlük 10 istek)
 class AIService {
-  // Google AI Studio'dan ücretsiz alınan Gemini API key
-  // https://aistudio.google.com/apikey → ücretsiz, kredi kartı gerekmez
-  static String _apiKey = 'AIzaSyC992EgeKcQQLCJkGCsB_m5HHDEn2q9twI';
+  // GÜVENLIK: API anahtarı kaynak kodda saklanmaz.
+  // Yeni anahtar oluşturduktan sonra Firebase Remote Config veya
+  // setApiKey() metodu aracılığıyla runtime'da inject edilmelidir.
+  // https://aistudio.google.com/apikey
+  static String _apiKey = '';
 
   static bool get _geminiEnabled =>
       _apiKey.startsWith('AIzaSy') && _apiKey.length > 20;
