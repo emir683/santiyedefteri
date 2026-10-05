@@ -161,7 +161,7 @@ class _AkilliSesliMicWidgetState extends State<AkilliSesliMicWidget>
   // ── Wizard State ──
   String? _activeWizardType; // e.g. 'daily_report', 'add_worker', 'add_site'
   int _wizardStepIndex = 0;
-  Map<String, dynamic> _wizardData = {}; // toplanan verileri tutar
+  final Map<String, dynamic> _wizardData = {}; // toplanan verileri tutar
 
   final Map<String, List<Map<String, dynamic>>> _wizards = {
     'daily_report': [
@@ -625,8 +625,9 @@ class _AkilliSesliMicWidgetState extends State<AkilliSesliMicWidget>
 
   // ── GENERIC WIZARD HANDLER ──
   void _handleWizardInput(String metin) {
-    if (_activeWizardType == null || !_wizards.containsKey(_activeWizardType))
+    if (_activeWizardType == null || !_wizards.containsKey(_activeWizardType)) {
       return;
+    }
     final wizardDef = _wizards[_activeWizardType]!;
     final stepConfig = wizardDef[_wizardStepIndex];
 

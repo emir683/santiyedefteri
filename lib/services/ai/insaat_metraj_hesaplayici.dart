@@ -220,16 +220,25 @@ class InsaatMetrajHesaplayici {
     final gradeMatch = RegExp(r'(c\s?16|c\s?20|c\s?25|c\s?30|c\s?35|c\s?40)', caseSensitive: false).firstMatch(original);
     if (gradeMatch != null) {
       final g = gradeMatch.group(1)!.toUpperCase().replaceAll(' ', '');
-      if (g == 'C25') betonSinifi = 'C25/30';
-      else betonSinifi = g;
+      if (g == 'C25') {
+        betonSinifi = 'C25/30';
+      } else {
+        betonSinifi = g;
+      }
     }
 
     String elemanAdi = 'Tabliye / Döşeme Betonu';
-    if (norm.contains('radye')) elemanAdi = 'Radye Temel Betonu';
-    else if (norm.contains('temel')) elemanAdi = 'Mütemadi / Tekil Temel';
-    else if (norm.contains('kolon')) elemanAdi = 'Kolon / Perde Betonu';
-    else if (norm.contains('saha')) elemanAdi = 'Saha / Zemin Betonu';
-    else if (norm.contains('grobeton')) elemanAdi = 'Grobeton';
+    if (norm.contains('radye')) {
+      elemanAdi = 'Radye Temel Betonu';
+    } else if (norm.contains('temel')) {
+      elemanAdi = 'Mütemadi / Tekil Temel';
+    } else if (norm.contains('kolon')) {
+      elemanAdi = 'Kolon / Perde Betonu';
+    } else if (norm.contains('saha')) {
+      elemanAdi = 'Saha / Zemin Betonu';
+    } else if (norm.contains('grobeton')) {
+      elemanAdi = 'Grobeton';
+    }
 
     return buildBetonModel(
       alan: alan,
@@ -253,11 +262,17 @@ class InsaatMetrajHesaplayici {
 
     double bf = birimFiyat ?? 2650.0;
     if (birimFiyat == null) {
-      if (v == 'C20') bf = 2400.0;
-      else if (v == 'C25' || v == 'C25/30') bf = 2650.0;
-      else if (v == 'C30') bf = 2700.0;
-      else if (v == 'C35') bf = 2900.0;
-      else if (v == 'C40') bf = 3150.0;
+      if (v == 'C20') {
+        bf = 2400.0;
+      } else if (v == 'C25' || v == 'C25/30') {
+        bf = 2650.0;
+      } else if (v == 'C30') {
+        bf = 2700.0;
+      } else if (v == 'C35') {
+        bf = 2900.0;
+      } else if (v == 'C40') {
+        bf = 3150.0;
+      }
     }
 
     final double netHacim = a * (k / 100.0);
@@ -507,8 +522,11 @@ class InsaatMetrajHesaplayici {
     if (alan == null || alan <= 0) return null;
 
     String variant = '60x60 Porselen Seramik';
-    if (norm.contains('granit')) variant = '60x120 Granit Seramik';
-    else if (norm.contains('fayans') || norm.contains('duvar')) variant = 'Standart Duvar/Yer Seramiği';
+    if (norm.contains('granit')) {
+      variant = '60x120 Granit Seramik';
+    } else if (norm.contains('fayans') || norm.contains('duvar')) {
+      variant = 'Standart Duvar/Yer Seramiği';
+    }
 
     return buildSeramikModel(alan: alan, variant: variant);
   }
@@ -935,8 +953,11 @@ class InsaatMetrajHesaplayici {
     final bf = birimFiyat ?? 31000.0;
 
     double kgPerUnit = 90.0;
-    if (v.contains('75')) kgPerUnit = 75.0;
-    else if (v.contains('115')) kgPerUnit = 115.0;
+    if (v.contains('75')) {
+      kgPerUnit = 75.0;
+    } else if (v.contains('115')) {
+      kgPerUnit = 115.0;
+    }
 
     final double toplamKg = a * kgPerUnit;
     final double toplamTon = toplamKg / 1000.0;
@@ -1305,8 +1326,11 @@ class InsaatMetrajHesaplayici {
 
     final double netKaziM3 = a * d;
     double kabarmaOrani = 0.25;
-    if (v.contains('30')) kabarmaOrani = 0.30;
-    else if (v.contains('35')) kabarmaOrani = 0.35;
+    if (v.contains('30')) {
+      kabarmaOrani = 0.30;
+    } else if (v.contains('35')) {
+      kabarmaOrani = 0.35;
+    }
 
     final double kabarikHacim = netKaziM3 * (1 + kabarmaOrani);
     const double kamyonKapasiteM3 = 15.0;
@@ -1378,8 +1402,11 @@ class InsaatMetrajHesaplayici {
     if (alan == null || alan <= 0) return null;
 
     String variant = '8 mm 32. Sınıf Derzli Laminat';
-    if (norm.contains('33')) variant = '10 mm 33. Sınıf Yoğun Trafik';
-    else if (norm.contains('31')) variant = '8 mm 31. Sınıf Düz Laminat';
+    if (norm.contains('33')) {
+      variant = '10 mm 33. Sınıf Yoğun Trafik';
+    } else if (norm.contains('31')) {
+      variant = '8 mm 31. Sınıf Düz Laminat';
+    }
 
     return buildParkeModel(alan: alan, variant: variant);
   }

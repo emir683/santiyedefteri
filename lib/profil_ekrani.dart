@@ -34,7 +34,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8), // Arka planı karart
+      barrierColor: Colors.black.withValues(alpha: 0.8), // Arka planı karart
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return StatefulBuilder(
@@ -51,10 +51,10 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                   margin: const EdgeInsets.symmetric(horizontal: 24),
                   padding: const EdgeInsets.all(24),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E1E).withOpacity(0.95), // Şeffaf Siyah
+                    color: const Color(0xFF1E1E1E).withValues(alpha: 0.95), // Şeffaf Siyah
                     borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.white.withOpacity(0.1)),
-                    boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20)],
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                    boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
                   ),
                   child: Material(
                     color: Colors.transparent,
@@ -107,7 +107,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
 
                                     try {
                                       await _authServisi.kullaniciParolasiniGuncelle(mevcutParolaCtrl.text, yeniParolaCtrl.text);
-                                      if (mounted) { 
+                                      if (mounted && ctx.mounted) { 
                                         Navigator.pop(ctx); 
                                         ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Parolanız başarıyla güncellendi."), backgroundColor: _kBrandTeal)); 
                                       }
@@ -149,7 +149,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
           context: context,
           barrierDismissible: true,
           barrierLabel: "Kapat",
-          barrierColor: Colors.black.withOpacity(0.8),
+          barrierColor: Colors.black.withValues(alpha: 0.8),
           transitionDuration: const Duration(milliseconds: 200),
           pageBuilder: (ctx, anim1, anim2) {
             return Scaffold(
@@ -210,7 +210,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
           color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
           borderRadius: BorderRadius.circular(16),
           border: Border.all(color: isDark ? Colors.grey[700]! : Colors.grey[300]!, width: 2),
-          boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 5)],
+          boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 5)],
         ),
         child: Row(
           children: [
@@ -250,7 +250,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
           Container(
             padding: const EdgeInsets.all(8), 
             decoration: BoxDecoration(
-              color: Colors.blue.withOpacity(0.1), 
+              color: Colors.blue.withValues(alpha: 0.1), 
               borderRadius: BorderRadius.circular(8)
             ), 
             child: Icon(icon, color: Colors.blue)
@@ -349,6 +349,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                       onPressed: () async {
                         if (_usernameController.text.trim().isNotEmpty) {
                           await firestoreServisi.kullaniciAdiniGuncelle(_usernameController.text.trim());
+                          if (!mounted || !context.mounted) return;
                           setState(() => _degisiklikYapildi = false);
                           ScaffoldMessenger.of(context).showSnackBar(const SnackBar(content: Text("Kullanıcı adı güncellendi."), backgroundColor: _kBrandTeal));
                         }
@@ -409,7 +410,7 @@ class _BlurryPasswordInputState extends State<_BlurryPasswordInput> {
         labelText: widget.hint,
         labelStyle: TextStyle(color: Colors.grey[400]),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
         prefixIcon: Icon(widget.icon, color: Colors.grey),
         // GÖZ İKONU

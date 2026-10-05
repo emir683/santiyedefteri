@@ -122,7 +122,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                 borderRadius: BorderRadius.circular(28),
                 side: BorderSide(
                   color: isDark
-                      ? Colors.white.withOpacity(0.08)
+                      ? Colors.white.withValues(alpha: 0.08)
                       : const Color(0xFFD8EAF0),
                 ),
               ),
@@ -136,12 +136,12 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                 borderRadius: BorderRadius.circular(28),
                 side: BorderSide(
                   color: isDark
-                      ? Colors.white.withOpacity(0.08)
+                      ? Colors.white.withValues(alpha: 0.08)
                       : const Color(0xFFD8EAF0),
                 ),
               ),
-              hourMinuteColor: MaterialStateColor.resolveWith((states) {
-                if (states.contains(MaterialState.selected)) {
+              hourMinuteColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
                   return isDark
                       ? const Color(0xFF134E4A)
                       : const Color(0xFFD6F4EF);
@@ -150,37 +150,37 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                     ? const Color(0xFF1A2027)
                     : const Color(0xFFEFF5F7);
               }),
-              hourMinuteTextColor: MaterialStateColor.resolveWith((states) {
-                if (states.contains(MaterialState.selected)) {
+              hourMinuteTextColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
                   return isDark ? const Color(0xFFB9FFF4) : _kBrandTeal;
                 }
                 return isDark ? Colors.white : const Color(0xFF0F172A);
               }),
-              dayPeriodColor: MaterialStateColor.resolveWith((states) {
-                if (states.contains(MaterialState.selected)) {
+              dayPeriodColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
                   return isDark
                       ? const Color(0xFF123E3B)
                       : const Color(0xFFD8F4EF);
                 }
                 return Colors.transparent;
               }),
-              dayPeriodTextColor: MaterialStateColor.resolveWith((states) {
-                if (states.contains(MaterialState.selected)) {
+              dayPeriodTextColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
                   return isDark ? const Color(0xFFB9FFF4) : _kBrandTeal;
                 }
                 return isDark ? Colors.white70 : const Color(0xFF64748B);
               }),
               dayPeriodBorderSide: BorderSide(
                 color: isDark
-                    ? Colors.white.withOpacity(0.10)
+                    ? Colors.white.withValues(alpha: 0.10)
                     : const Color(0xFFD8EAF0),
               ),
               dialHandColor: _kBrandTeal,
               dialBackgroundColor: isDark
-                  ? Colors.white.withOpacity(0.06)
+                  ? Colors.white.withValues(alpha: 0.06)
                   : const Color(0xFFEAF5F7),
-              dialTextColor: MaterialStateColor.resolveWith((states) {
-                if (states.contains(MaterialState.selected)) {
+              dialTextColor: WidgetStateColor.resolveWith((states) {
+                if (states.contains(WidgetState.selected)) {
                   return Colors.white;
                 }
                 return isDark ? Colors.white : const Color(0xFF0F172A);
@@ -189,7 +189,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                 borderRadius: BorderRadius.circular(18),
                 side: BorderSide(
                   color: isDark
-                      ? Colors.white.withOpacity(0.08)
+                      ? Colors.white.withValues(alpha: 0.08)
                       : const Color(0xFFD8EAF0),
                 ),
               ),
@@ -197,7 +197,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                 borderRadius: BorderRadius.circular(16),
                 side: BorderSide(
                   color: isDark
-                      ? Colors.white.withOpacity(0.08)
+                      ? Colors.white.withValues(alpha: 0.08)
                       : const Color(0xFFD8EAF0),
                 ),
               ),
@@ -286,7 +286,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                               (value) => setState(
                                 () => _geciciHatirlatmalarAktif = value,
                               ),
-                          activeColor: _kBrandTeal,
+                          activeThumbColor: _kBrandTeal,
                           secondary: Icon(
                             _geciciHatirlatmalarAktif
                                 ? Icons.notifications_active
@@ -361,7 +361,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                           onChanged: (value) => setState(
                             () => _geciciIslemBildirimleriAktif = value,
                           ),
-                          activeColor: _kBrandTeal,
+                          activeThumbColor: _kBrandTeal,
                           secondary: Icon(
                             _geciciIslemBildirimleriAktif
                                 ? Icons.group_work

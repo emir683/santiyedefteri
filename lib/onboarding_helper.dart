@@ -22,7 +22,7 @@ class OnboardingHelper {
       context: context,
       barrierDismissible: false,
       barrierLabel: 'bildirim_onboarding',
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       transitionDuration: const Duration(milliseconds: 350),
       transitionBuilder: (ctx, anim, _, child) {
         return SlideTransition(
@@ -49,13 +49,13 @@ class OnboardingHelper {
               ),
               border: Border.all(
                 color: isDark
-                    ? Colors.white.withOpacity(0.10)
+                    ? Colors.white.withValues(alpha: 0.10)
                     : const Color(0xFFB6DDE8),
                 width: 1.2,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.35 : 0.12),
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
                   blurRadius: 32,
                   offset: const Offset(0, 14),
                 ),
@@ -78,7 +78,7 @@ class OnboardingHelper {
                       borderRadius: BorderRadius.circular(22),
                       boxShadow: [
                         BoxShadow(
-                          color: const Color(0xFF14B8A6).withOpacity(0.35),
+                          color: const Color(0xFF14B8A6).withValues(alpha: 0.35),
                           blurRadius: 18,
                           offset: const Offset(0, 6),
                         ),
@@ -170,7 +170,7 @@ class OnboardingHelper {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withOpacity(0.12),
+                  color: const Color(0xFF14B8A6).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(8),
                 ),
                 child: Text(
@@ -207,7 +207,7 @@ class OnboardingHelper {
       context: context,
       barrierDismissible: false,
       barrierLabel: 'puanlama_onboarding',
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       transitionDuration: const Duration(milliseconds: 350),
       transitionBuilder: (ctx, anim, _, child) {
         return SlideTransition(
@@ -236,13 +236,13 @@ class OnboardingHelper {
                   ),
                   border: Border.all(
                     color: isDark
-                        ? Colors.white.withOpacity(0.10)
+                        ? Colors.white.withValues(alpha: 0.10)
                         : const Color(0xFFB6DDE8),
                     width: 1.2,
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(isDark ? 0.35 : 0.12),
+                      color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
                       blurRadius: 32,
                       offset: const Offset(0, 14),
                     ),
@@ -265,7 +265,7 @@ class OnboardingHelper {
                           borderRadius: BorderRadius.circular(22),
                           boxShadow: [
                             BoxShadow(
-                              color: const Color(0xFFFFB300).withOpacity(0.35),
+                              color: const Color(0xFFFFB300).withValues(alpha: 0.35),
                               blurRadius: 18,
                               offset: const Offset(0, 6),
                             ),
@@ -343,7 +343,7 @@ class OnboardingHelper {
                                 },
                           style: ElevatedButton.styleFrom(
                             backgroundColor: const Color(0xFFFFB300),
-                            disabledBackgroundColor: (isDark ? Colors.white.withOpacity(0.05) : Colors.grey[200]),
+                            disabledBackgroundColor: (isDark ? Colors.white.withValues(alpha: 0.05) : Colors.grey[200]),
                             foregroundColor: Colors.white,
                             padding: const EdgeInsets.symmetric(vertical: 15),
                             shape: RoundedRectangleBorder(

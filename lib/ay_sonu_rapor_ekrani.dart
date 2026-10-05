@@ -1,5 +1,4 @@
 import 'dart:ui'; // Blur için gerekli
-import 'dart:typed_data';
 import 'dart:math' as math;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -817,7 +816,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return _AyYilSeciciDialog(
@@ -874,7 +873,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
@@ -888,12 +887,12 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                 margin: const EdgeInsets.all(24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 20,
                     ),
                   ],
@@ -999,7 +998,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
         labelStyle: TextStyle(color: Colors.grey[400]),
         prefixIcon: Icon(icon, color: Colors.grey),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -1027,13 +1026,13 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                 decoration: BoxDecoration(
                   color:
                       isDark
-                          ? const Color(0xFF1E1E1E).withOpacity(0.9)
-                          : Colors.white.withOpacity(0.9),
+                          ? const Color(0xFF1E1E1E).withValues(alpha: 0.9)
+                          : Colors.white.withValues(alpha: 0.9),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
                   border: Border(
-                    top: BorderSide(color: Colors.white.withOpacity(0.1)),
+                    top: BorderSide(color: Colors.white.withValues(alpha: 0.1)),
                   ),
                 ),
                 child: Column(
@@ -1043,7 +1042,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                       width: 40,
                       height: 4,
                       decoration: BoxDecoration(
-                        color: Colors.grey.withOpacity(0.3),
+                        color: Colors.grey.withValues(alpha: 0.3),
                         borderRadius: BorderRadius.circular(10),
                       ),
                     ),
@@ -1052,7 +1051,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                       leading: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.red.withOpacity(0.2),
+                          color: Colors.red.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(
@@ -1078,7 +1077,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                       leading: Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: Colors.green.withOpacity(0.2),
+                          color: Colors.green.withValues(alpha: 0.2),
                           shape: BoxShape.circle,
                         ),
                         child: const Icon(Icons.message, color: Colors.green),
@@ -1159,7 +1158,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: _kBrandTeal.withOpacity(0.12),
+                              color: _kBrandTeal.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: const Icon(
@@ -1433,9 +1432,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                               )) {
                                                 if (hesaplar.containsKey(
                                                   a.isci.ad,
-                                                ))
+                                                )) {
                                                   hesaplar[a.isci.ad]!
                                                       .toplamAvans += a.miktar;
+                                                }
                                               }
                                             }
 
@@ -1672,8 +1672,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                             sEk = 0,
                                                             sMaas = 0,
                                                             sGelir = 0;
-                                                        for (var o in sOdemeler)
+                                                        for (var o in sOdemeler) {
                                                           sGelir += o.miktar;
+                                                        }
 
                                                         for (var r
                                                             in sRaporlar) {
@@ -1740,7 +1741,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                                         Alignment
                                                                             .bottomRight,
                                                                     colors: [
-                                                                      Colors.teal.withOpacity(
+                                                                      Colors.teal.withValues(alpha: 
                                                                         isDark
                                                                             ? 0.18
                                                                             : 0.14,
@@ -1750,7 +1751,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                                                 0xFF171B20,
                                                                               )
                                                                               : Colors.white)
-                                                                          .withOpacity(
+                                                                          .withValues(alpha: 
                                                                             isDark
                                                                                 ? 0.82
                                                                                 : 0.92,
@@ -1764,7 +1765,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                                   border: Border.all(
                                                                     color: Colors
                                                                         .teal
-                                                                        .withOpacity(
+                                                                        .withValues(alpha: 
                                                                           isDark
                                                                               ? 0.16
                                                                               : 0.12,
@@ -1919,7 +1920,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color:
-              isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD8EAF0),
+              isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0),
           width: 1.5,
         ),
       ),
@@ -1932,14 +1933,14 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                color.withOpacity(isDark ? 0.18 : 0.14),
-                (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
+                color.withValues(alpha: isDark ? 0.18 : 0.14),
+                (isDark ? const Color(0xFF171B20) : Colors.white).withValues(alpha: 
                   isDark ? 0.82 : 0.92,
                 ),
               ],
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withOpacity(isDark ? 0.16 : 0.12)),
+            border: Border.all(color: color.withValues(alpha: isDark ? 0.16 : 0.12)),
           ),
           child: Icon(icon, color: color),
         ),
@@ -4788,13 +4789,13 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
           borderRadius: BorderRadius.circular(10),
           color:
               isDark
-                  ? Colors.white.withOpacity(0.10)
-                  : Colors.black.withOpacity(0.08),
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : Colors.black.withValues(alpha: 0.08),
         ),
         child: RichText(
           text: TextSpan(
             style: TextStyle(
-              color: isDark ? Colors.white.withOpacity(0.90) : Colors.grey[800],
+              color: isDark ? Colors.white.withValues(alpha: 0.90) : Colors.grey[800],
               fontSize: 12,
             ),
             children: [
@@ -4910,11 +4911,11 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color:
-            isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FCFE),
+            isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8FCFE),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color:
-              isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
+              isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFDCE8EE),
         ),
       ),
       child: Column(
@@ -5038,11 +5039,11 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color:
-            isDark ? Colors.white.withOpacity(0.04) : const Color(0xFFF8FCFE),
+            isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8FCFE),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color:
-              isDark ? Colors.white.withOpacity(0.10) : const Color(0xFFDCE8EE),
+              isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFDCE8EE),
         ),
       ),
       child: Column(
@@ -5202,7 +5203,7 @@ class _PastaGrafikPainter extends CustomPainter {
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeWidth = 16
-            ..color = const Color(0xFF94A3B8).withOpacity(0.25);
+            ..color = const Color(0xFF94A3B8).withValues(alpha: 0.25);
       final rect = Rect.fromCircle(
         center: Offset(size.width / 2, size.height / 2),
         radius: (math.min(size.width, size.height) / 2) - 10,
@@ -5275,9 +5276,9 @@ class _AyYilSeciciDialogState extends State<_AyYilSeciciDialog> {
             margin: const EdgeInsets.all(24),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E).withOpacity(0.95),
+              color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.1)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
             ),
             child: Material(
               color: Colors.transparent,

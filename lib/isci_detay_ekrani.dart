@@ -1,11 +1,19 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
 import 'package:fl_chart/fl_chart.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'data_models.dart';
 import 'rol_provider.dart';
+import 'format_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 
@@ -70,13 +78,13 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
               decoration: BoxDecoration(
                 color:
                     isDark
-                        ? const Color(0xFF101317).withOpacity(0.94)
+                        ? const Color(0xFF101317).withValues(alpha: 0.94)
                         : const Color(0xFFF7FBFD),
                 borderRadius: BorderRadius.circular(12),
                 border: Border.all(
                   color:
                       isDark
-                          ? Colors.white.withOpacity(0.08)
+                          ? Colors.white.withValues(alpha: 0.08)
                           : const Color(0xFFD8EAF0),
                 ),
               ),
@@ -127,15 +135,17 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
               ),
               builder: (context, snapshotRaporlar) {
                 // Raporlar yüklenirken bekleme
-                if (!snapshotRaporlar.hasData)
+                if (!snapshotRaporlar.hasData) {
                   return const Center(child: CircularProgressIndicator());
+                }
 
                 return StreamBuilder<List<VerilenAvans>>(
                   stream: servisi.getAvanslarStream(widget.teamId),
                   builder: (context, snapshotAvanslar) {
                     // Avanslar yüklenirken bekleme
-                    if (!snapshotAvanslar.hasData)
+                    if (!snapshotAvanslar.hasData) {
                       return const Center(child: CircularProgressIndicator());
+                    }
 
                     // --- HESAPLAMA MOTORU ---
                     final raporlar = snapshotRaporlar.data!;
@@ -328,13 +338,13 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                               border: Border.all(
                                 color:
                                     isDark
-                                        ? Colors.white.withOpacity(0.08)
+                                        ? Colors.white.withValues(alpha: 0.08)
                                         : const Color(0xFFD8EAF0),
                               ),
                               boxShadow: [
                                 BoxShadow(
-                                  color: Colors.black.withOpacity(
-                                    isDark ? 0.2 : 0.06,
+                                  color: Colors.black.withValues(
+                                    alpha: isDark ? 0.2 : 0.06,
                                   ),
                                   blurRadius: isDark ? 8 : 12,
                                   offset: const Offset(0, 6),
@@ -474,7 +484,148 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                           ),
                         ),
 
-                        // 4. HAREKET LİSTESİ (Çalışma + Avanslar)
+                        // ÖZET KARTININ ALTINDAKİ ŞIK PAYLAŞ BUTONU
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 10.0),
+                          child: Container(
+                            decoration: BoxDecoration(
+                              gradient: LinearGradient(
+                                colors:
+                                    isDark
+                                        ? const [
+                                          Color(0xFF0F766E),
+                                          Color(0xFF14B8A6),
+                                        ]
+                                        : const [
+                                          Color(0xFF0D9488),
+                                          Color(0xFF14B8A6),
+                                        ],
+                                begin: Alignment.topLeft,
+                                end: Alignment.bottomRight,
+                              ),
+                              borderRadius: BorderRadius.circular(16),
+                              boxShadow: [
+                                BoxShadow(
+                                  color: const Color(
+                                    0xFF0D9488,
+                                  ).withValues(alpha: isDark ? 0.35 : 0.22),
+                                  blurRadius: 10,
+                                  offset: const Offset(0, 4),
+                                ),
+                              ],
+                            ),
+                            child: Material(
+                              color: Colors.transparent,
+                              child: InkWell(
+                                borderRadius: BorderRadius.circular(16),
+                                onTap: () {
+                                  final donemStr = DateFormat.yMMMM(
+                                    'tr_TR',
+                                  ).format(_gosterilenAy);
+                                  final metin = _isciRaporuMetniOlustur(
+                                    donem: donemStr,
+                                    tamGun: tamGun,
+                                    yarimGun: yarimGun,
+                                    toplamHakedis: toplamHakedis,
+                                    toplamAvans: toplamAvans,
+                                    toplamKarsilananGider:
+                                        toplamKarsilananGider,
+                                    kalanAlacak: kalanAlacak,
+                                    isFinans: isFinans,
+                                    tumHareketler: tumHareketler,
+                                    giderDetayGruplari: giderDetayGruplari,
+                                  );
+                                  _paylasimMenusunuGoster(
+                                    context: context,
+                                    baslik:
+                                        "${widget.isci.ad} - Rapor Paylaşımı",
+                                    metin: metin,
+                                    isDark: isDark,
+                                    pdfDosyaAdi:
+                                        "isci_raporu_${widget.isci.ad}_$donemStr.pdf",
+                                    pdfOlusturucu:
+                                        () => _isciRaporuPdfOlustur(
+                                          donem: donemStr,
+                                          tamGun: tamGun,
+                                          yarimGun: yarimGun,
+                                          toplamHakedis: toplamHakedis,
+                                          toplamAvans: toplamAvans,
+                                          toplamKarsilananGider:
+                                              toplamKarsilananGider,
+                                          kalanAlacak: kalanAlacak,
+                                          isFinans: isFinans,
+                                          tumHareketler: tumHareketler,
+                                          giderDetayGruplari:
+                                              giderDetayGruplari,
+                                        ),
+                                  );
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 12,
+                                    horizontal: 12,
+                                  ),
+                                  child: Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(6),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.2),
+                                          shape: BoxShape.circle,
+                                        ),
+                                        child: const Icon(
+                                          Icons.share_rounded,
+                                          color: Colors.white,
+                                          size: 18,
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Flexible(
+                                        child: FittedBox(
+                                          fit: BoxFit.scaleDown,
+                                          alignment: Alignment.center,
+                                          child: Text(
+                                            "İşçi Raporunu Paylaş",
+                                            style: GoogleFonts.poppins(
+                                              color: Colors.white,
+                                              fontWeight: FontWeight.w600,
+                                              fontSize: 14,
+                                              letterSpacing: 0.3,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2.5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.white.withValues(alpha: 0.2),
+                                          borderRadius: BorderRadius.circular(12),
+                                          border: Border.all(
+                                            color: Colors.white.withValues(alpha: 0.3),
+                                            width: 0.8,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          "PDF & Metin",
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.white,
+                                            fontSize: 10.5,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+                            ),
+                          ),
+                        ),
                         Expanded(
                           child:
                               tumHareketler.isEmpty
@@ -517,13 +668,13 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                                           side: BorderSide(
                                             color:
                                                 isAvans
-                                                    ? Colors.red.withOpacity(0.3)
+                                                    ? Colors.red.withValues(alpha: 0.3)
                                                     : isGider
-                                                        ? Colors.orange.withOpacity(
-                                                          0.3,
+                                                        ? Colors.orange.withValues(
+                                                          alpha: 0.3,
                                                         )
-                                                        : Colors.green.withOpacity(
-                                                          0.3,
+                                                        : Colors.green.withValues(
+                                                          alpha: 0.3,
                                                         ),
                                             width: 1,
                                           ),
@@ -538,12 +689,12 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                                             decoration: BoxDecoration(
                                               color:
                                                   isAvans
-                                                      ? Colors.red.withOpacity(0.1)
+                                                      ? Colors.red.withValues(alpha: 0.1)
                                                       : isGider
                                                           ? Colors.orange
-                                                              .withOpacity(0.1)
+                                                              .withValues(alpha: 0.1)
                                                           : Colors.green
-                                                              .withOpacity(0.1),
+                                                              .withValues(alpha: 0.1),
                                               borderRadius:
                                                   BorderRadius.circular(10),
                                             ),
@@ -751,6 +902,808 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
           ),
         );
       },
+    );
+  }
+
+  // --- İŞÇİ RAPOR METNİ OLUŞTURUCU ---
+  String _isciRaporuMetniOlustur({
+    required String donem,
+    required int tamGun,
+    required int yarimGun,
+    required double toplamHakedis,
+    required double toplamAvans,
+    required double toplamKarsilananGider,
+    required double kalanAlacak,
+    required bool isFinans,
+    required List<Map<String, dynamic>> tumHareketler,
+    required Map<String, List<Map<String, dynamic>>> giderDetayGruplari,
+  }) {
+    final sb = StringBuffer();
+    sb.writeln('📋 İŞÇİ ÇALIŞMA VE HAKEDİŞ RAPORU');
+    sb.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    sb.writeln('👷 Personel: ${widget.isci.ad}');
+    if (widget.isci.isciTuru.isNotEmpty) {
+      sb.writeln('🏷️ Ekip Durumu: ${widget.isci.isciTuru}');
+    }
+    sb.writeln('📅 Dönem: $donem');
+    sb.writeln('');
+
+    final double toplamYevmiye = tamGun + (yarimGun * 0.5);
+    final String yevmiyeStr =
+        toplamYevmiye % 1 == 0
+            ? toplamYevmiye.toInt().toString()
+            : toplamYevmiye.toStringAsFixed(1);
+
+    sb.writeln('📊 ÇALIŞMA ÖZETİ');
+    sb.writeln('• Tam Gün: $tamGun gün');
+    if (yarimGun > 0) {
+      sb.writeln('• Yarım Gün: $yarimGun gün');
+    }
+    sb.writeln('• Toplam Yevmiye: $yevmiyeStr yevmiye');
+    if (isFinans) {
+      sb.writeln('• Günlük Yevmiye: ${Formatlayici.yap(widget.isci.gunlukMaas)}');
+    }
+
+    // Günlük Çalışma Çizelgesi (Hangi gün nerede çalıştı)
+    final calismaHareketleri =
+        tumHareketler.where((h) => h['tip'] == 'calisma').toList();
+    if (calismaHareketleri.isNotEmpty) {
+      sb.writeln('');
+      sb.writeln('📅 GÜNLÜK ÇALIŞMA DETAYI (HANGİ GÜN NEREDE ÇALIŞTI)');
+      sb.writeln('──────────────────────────────');
+      for (final h in calismaHareketleri) {
+        final t = h['tarih'] as DateTime;
+        final tStr = DateFormat('dd.MM.yyyy EEEE', 'tr_TR').format(t);
+        final sAdi = (h['baslik'] as String?) ?? 'Şantiye';
+        final durum = (h['detay'] as String?) ?? 'Tam Gün';
+        final tutarStr =
+            isFinans
+                ? ' (${Formatlayici.yap((h['tutar'] as num).toDouble())})'
+                : '';
+        sb.writeln('• $tStr');
+        sb.writeln('  📍 $sAdi — $durum$tutarStr');
+      }
+    }
+
+    // Çalışılan Şantiyeler Dağılımı
+    final Map<String, double> santiyeCalismaGunleri = {};
+    for (final h in calismaHareketleri) {
+      final sAdi = (h['baslik'] as String?)?.trim() ?? 'Diğer';
+      final durum = (h['detay'] as String?) ?? 'Tam Gün';
+      final double gunDegeri = durum == 'Tam Gün' ? 1.0 : 0.5;
+      santiyeCalismaGunleri[sAdi] =
+          (santiyeCalismaGunleri[sAdi] ?? 0) + gunDegeri;
+    }
+
+    if (santiyeCalismaGunleri.isNotEmpty) {
+      sb.writeln('');
+      sb.writeln('🏢 ŞANTİYE DAĞILIMI (TOPLAM GÜN)');
+      for (final entry in santiyeCalismaGunleri.entries) {
+        final gunMetin =
+            entry.value % 1 == 0
+                ? '${entry.value.toInt()} gün'
+                : '${entry.value.toStringAsFixed(1)} gün';
+        sb.writeln('• ${entry.key}: $gunMetin');
+      }
+    }
+
+    // Finansal Durum (yetki varsa)
+    if (isFinans) {
+      sb.writeln('');
+      sb.writeln('💵 FİNANSAL HESAP');
+      sb.writeln('• Toplam Hakediş: ${Formatlayici.yap(toplamHakedis)}');
+      sb.writeln('• Alınan Avans: ${Formatlayici.yap(toplamAvans)}');
+      if (toplamKarsilananGider > 0) {
+        sb.writeln(
+          '• Karşılanan Şantiye Masrafı: ${Formatlayici.yap(toplamKarsilananGider)}',
+        );
+      }
+      sb.writeln('──────────────────────────────');
+      sb.writeln('💰 NET KALAN ALACAK: ${Formatlayici.yap(kalanAlacak)}');
+    }
+
+    // Alınan Avanslar Listesi
+    final avansHareketleri =
+        tumHareketler.where((h) => h['tip'] == 'avans').toList();
+    if (avansHareketleri.isNotEmpty && isFinans) {
+      sb.writeln('');
+      sb.writeln('💸 ALINAN AVANSLAR');
+      for (final h in avansHareketleri) {
+        final t = h['tarih'] as DateTime;
+        final tStr = DateFormat('dd.MM.yyyy', 'tr_TR').format(t);
+        final tutar = (h['tutar'] as num).abs().toDouble();
+        sb.writeln('• $tStr: ${Formatlayici.yap(tutar)}');
+      }
+    }
+
+    // Varsa Karşıladığı Giderler Detayı
+    if (giderDetayGruplari.isNotEmpty) {
+      sb.writeln('');
+      sb.writeln('⛽ KARŞILANAN GİDER DETAYLARI');
+      for (final entry in giderDetayGruplari.entries) {
+        sb.writeln('📍 ${entry.key}:');
+        for (final g in entry.value) {
+          final tarihStr = DateFormat('dd.MM.yyyy').format(g['tarih'] as DateTime);
+          final tutarVal = (g['tutar'] as num).toDouble();
+          sb.writeln(
+            '  - $tarihStr | ${g['kalem']}: ${Formatlayici.yap(tutarVal)}',
+          );
+        }
+      }
+    }
+
+    sb.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    sb.writeln('📱 Şantiye Yönetim Sistemi');
+    return sb.toString();
+  }
+
+  // --- İŞÇİ RAPOR PDF OLUŞTURUCU ---
+  Future<Uint8List> _isciRaporuPdfOlustur({
+    required String donem,
+    required int tamGun,
+    required int yarimGun,
+    required double toplamHakedis,
+    required double toplamAvans,
+    required double toplamKarsilananGider,
+    required double kalanAlacak,
+    required bool isFinans,
+    required List<Map<String, dynamic>> tumHareketler,
+    required Map<String, List<Map<String, dynamic>>> giderDetayGruplari,
+  }) async {
+    final pdf = pw.Document();
+    final fontData = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
+    final ttf = pw.Font.ttf(fontData);
+
+    final double toplamYevmiye = tamGun + (yarimGun * 0.5);
+    final String yevmiyeStr =
+        toplamYevmiye % 1 == 0
+            ? toplamYevmiye.toInt().toString()
+            : toplamYevmiye.toStringAsFixed(1);
+
+    // Günlük Çalışma Hareketleri
+    final calismaHareketleri =
+        tumHareketler.where((h) => h['tip'] == 'calisma').toList();
+
+    // Şantiyelere Göre Dağılım
+    final Map<String, double> santiyeCalismaGunleri = {};
+    for (final h in calismaHareketleri) {
+      final sAdi = (h['baslik'] as String?)?.trim() ?? 'Diğer';
+      final durum = (h['detay'] as String?) ?? 'Tam Gün';
+      final double gunDegeri = durum == 'Tam Gün' ? 1.0 : 0.5;
+      santiyeCalismaGunleri[sAdi] =
+          (santiyeCalismaGunleri[sAdi] ?? 0) + gunDegeri;
+    }
+
+    // Avans Hareketleri
+    final avansHareketleri =
+        tumHareketler.where((h) => h['tip'] == 'avans').toList();
+
+    pdf.addPage(
+      pw.MultiPage(
+        margin: const pw.EdgeInsets.all(24),
+        theme: pw.ThemeData.withFont(base: ttf),
+        build:
+            (context) => [
+              // 1. Üst Başlık Banner
+              pw.Container(
+                padding: const pw.EdgeInsets.all(18),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#0F7C86'),
+                  borderRadius: pw.BorderRadius.circular(16),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'İşçi Çalışma ve Hakediş Raporu',
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 18,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        pw.SizedBox(height: 6),
+                        pw.Text(
+                          'Personel: ${widget.isci.ad} (${widget.isci.isciTuru})',
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 12,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          'Dönem: $donem',
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 10.5,
+                            color: PdfColor.fromHex('#E0F2FE'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text(
+                          'Şantiye Yönetim',
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 11,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now()),
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 8.5,
+                            color: PdfColor.fromHex('#E0F2FE'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 16),
+
+              // 2. Özet Bilgi Kartları
+              pw.Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildPdfInfoCard(
+                    'Toplam Çalışma',
+                    '$yevmiyeStr Yevmiye ($tamGun Tam, $yarimGun Yarım)',
+                    '#EFF6FF',
+                    '#1D4ED8',
+                    ttf,
+                  ),
+                  if (isFinans) ...[
+                    _buildPdfInfoCard(
+                      'Günlük Yevmiye',
+                      Formatlayici.yap(widget.isci.gunlukMaas),
+                      '#F0FDF4',
+                      '#15803D',
+                      ttf,
+                    ),
+                    _buildPdfInfoCard(
+                      'Toplam Hakediş',
+                      Formatlayici.yap(toplamHakedis),
+                      '#F0FDF4',
+                      '#166534',
+                      ttf,
+                    ),
+                    _buildPdfInfoCard(
+                      'Alınan Avans',
+                      Formatlayici.yap(toplamAvans),
+                      '#FEF2F2',
+                      '#B91C1C',
+                      ttf,
+                    ),
+                    if (toplamKarsilananGider > 0)
+                      _buildPdfInfoCard(
+                        'Karşılanan Masraf',
+                        Formatlayici.yap(toplamKarsilananGider),
+                        '#FFFBEB',
+                        '#B45309',
+                        ttf,
+                      ),
+                    _buildPdfInfoCard(
+                      'Net Kalan Alacak',
+                      Formatlayici.yap(kalanAlacak),
+                      kalanAlacak >= 0 ? '#DCFCE7' : '#FEE2E2',
+                      kalanAlacak >= 0 ? '#166534' : '#B91C1C',
+                      ttf,
+                      isBold: true,
+                    ),
+                  ],
+                ],
+              ),
+              pw.SizedBox(height: 18),
+
+              // 3. Şantiyelere Göre Dağılım Tablosu
+              if (santiyeCalismaGunleri.isNotEmpty) ...[
+                _buildPdfSectionTitle('Şantiyelere Göre Çalışma Dağılımı', ttf),
+                pw.SizedBox(height: 6),
+                pw.TableHelper.fromTextArray(
+                  headerStyle: pw.TextStyle(
+                    font: ttf,
+                    fontSize: 9.5,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.white,
+                  ),
+                  headerDecoration: pw.BoxDecoration(
+                    color: PdfColor.fromHex('#334155'),
+                  ),
+                  cellStyle: pw.TextStyle(font: ttf, fontSize: 9),
+                  cellPadding: const pw.EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 5,
+                  ),
+                  headers: ['Şantiye Adı', 'Çalışılan Gün / Yevmiye'],
+                  data:
+                      santiyeCalismaGunleri.entries.map((e) {
+                        final gunStr =
+                            e.value % 1 == 0
+                                ? '${e.value.toInt()} gün'
+                                : '${e.value.toStringAsFixed(1)} gün';
+                        return [e.key, gunStr];
+                      }).toList(),
+                ),
+                pw.SizedBox(height: 18),
+              ],
+
+              // 4. Günlük Çalışma Çizelgesi (Hangi gün nerede çalıştı)
+              _buildPdfSectionTitle(
+                'Günlük Çalışma Çizelgesi (Hangi Gün Nerede Çalıştı)',
+                ttf,
+              ),
+              pw.SizedBox(height: 6),
+              calismaHareketleri.isEmpty
+                  ? pw.Text(
+                    'Bu dönemde kayıtlı çalışma bulunmamaktadır.',
+                    style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 10,
+                      color: PdfColors.grey700,
+                    ),
+                  )
+                  : pw.TableHelper.fromTextArray(
+                    headerStyle: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 9,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                    headerDecoration: pw.BoxDecoration(
+                      color: PdfColor.fromHex('#0F7C86'),
+                    ),
+                    cellStyle: pw.TextStyle(font: ttf, fontSize: 8.5),
+                    cellAlignment: pw.Alignment.centerLeft,
+                    cellPadding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 5,
+                    ),
+                    headers: [
+                      'Tarih',
+                      'Gün',
+                      'Şantiye',
+                      'Çalışma Durumu',
+                      if (isFinans) 'Hakediş',
+                    ],
+                    data:
+                        calismaHareketleri.map((h) {
+                          final t = h['tarih'] as DateTime;
+                          return [
+                            DateFormat('dd.MM.yyyy').format(t),
+                            DateFormat('EEEE', 'tr_TR').format(t),
+                            (h['baslik'] as String?) ?? '-',
+                            (h['detay'] as String?) ?? 'Tam Gün',
+                            if (isFinans)
+                              Formatlayici.yap((h['tutar'] as num).toDouble()),
+                          ];
+                        }).toList(),
+                  ),
+              pw.SizedBox(height: 18),
+
+              // 5. Varsa Avans Tablosu
+              if (avansHareketleri.isNotEmpty && isFinans) ...[
+                _buildPdfSectionTitle('Alınan Avans Kayıtları', ttf),
+                pw.SizedBox(height: 6),
+                pw.TableHelper.fromTextArray(
+                  headerStyle: pw.TextStyle(
+                    font: ttf,
+                    fontSize: 9,
+                    fontWeight: pw.FontWeight.bold,
+                    color: PdfColors.white,
+                  ),
+                  headerDecoration: pw.BoxDecoration(
+                    color: PdfColor.fromHex('#DC2626'),
+                  ),
+                  cellStyle: pw.TextStyle(font: ttf, fontSize: 8.5),
+                  cellPadding: const pw.EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 5,
+                  ),
+                  headers: ['Tarih', 'İşlem', 'Avans Tutarı'],
+                  data:
+                      avansHareketleri.map((h) {
+                        final t = h['tarih'] as DateTime;
+                        final tutar = (h['tutar'] as num).abs().toDouble();
+                        return [
+                          DateFormat('dd.MM.yyyy').format(t),
+                          'Avans Ödemesi',
+                          Formatlayici.yap(tutar),
+                        ];
+                      }).toList(),
+                ),
+                pw.SizedBox(height: 18),
+              ],
+
+              // 6. Varsa Karşılanan Gider Tablosu
+              if (giderDetayGruplari.isNotEmpty) ...[
+                _buildPdfSectionTitle(
+                  'İşçinin Karşıladığı Şantiye Giderleri',
+                  ttf,
+                ),
+                pw.SizedBox(height: 6),
+                ...giderDetayGruplari.entries.map((entry) {
+                  return pw.Column(
+                    crossAxisAlignment: pw.CrossAxisAlignment.start,
+                    children: [
+                      pw.Text(
+                        'Şantiye: ${entry.key}',
+                        style: pw.TextStyle(
+                          font: ttf,
+                          fontSize: 9.5,
+                          fontWeight: pw.FontWeight.bold,
+                        ),
+                      ),
+                      pw.SizedBox(height: 4),
+                      pw.TableHelper.fromTextArray(
+                        headerStyle: pw.TextStyle(
+                          font: ttf,
+                          fontSize: 8.5,
+                          color: PdfColors.white,
+                        ),
+                        headerDecoration: pw.BoxDecoration(
+                          color: PdfColor.fromHex('#D97706'),
+                        ),
+                        cellStyle: pw.TextStyle(font: ttf, fontSize: 8),
+                        cellPadding: const pw.EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 4,
+                        ),
+                        headers: ['Tarih', 'Gider Kalemi', 'Tutar'],
+                        data:
+                            entry.value.map((g) {
+                              final t = g['tarih'] as DateTime;
+                              final val = (g['tutar'] as num).toDouble();
+                              return [
+                                DateFormat('dd.MM.yyyy').format(t),
+                                '${g['kalem']}',
+                                Formatlayici.yap(val),
+                              ];
+                            }).toList(),
+                      ),
+                      pw.SizedBox(height: 8),
+                    ],
+                  );
+                }),
+                pw.SizedBox(height: 10),
+              ],
+
+              // Alt Bilgi Notu
+              pw.Divider(color: PdfColors.grey300),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Bu rapor Şantiye Puantaj ve Yönetim Sistemi ile üretilmiştir.',
+                    style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 8,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                  pw.Text(
+                    'Sayfa 1',
+                    style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 8,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  pw.Widget _buildPdfInfoCard(
+    String title,
+    String value,
+    String bgColorHex,
+    String textColorHex,
+    pw.Font font, {
+    bool isBold = false,
+  }) {
+    return pw.Container(
+      width: 155,
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        color: PdfColor.fromHex(bgColorHex),
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            title,
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 8.5,
+              color: PdfColor.fromHex(textColorHex),
+            ),
+          ),
+          pw.SizedBox(height: 3),
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 11,
+              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+              color: PdfColor.fromHex(textColorHex),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfSectionTitle(String title, pw.Font font) {
+    return pw.Text(
+      title,
+      style: pw.TextStyle(
+        font: font,
+        fontSize: 11,
+        fontWeight: pw.FontWeight.bold,
+        color: PdfColor.fromHex('#0F172A'),
+      ),
+    );
+  }
+
+  // --- MODERN PAYLAŞIM MENÜSÜ ---
+  void _paylasimMenusunuGoster({
+    required BuildContext context,
+    required String baslik,
+    required String metin,
+    required bool isDark,
+    required Future<Uint8List> Function() pdfOlusturucu,
+    required String pdfDosyaAdi,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (c) => ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF131922).withValues(alpha: 0.95)
+                          : Colors.white.withValues(alpha: 0.95),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  border: Border(
+                    top: BorderSide(
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.share_rounded,
+                            color: Color(0xFF0D9488),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            baslik,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => Navigator.pop(c),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 180),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? Colors.black.withValues(alpha: 0.3)
+                                : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          metin,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            height: 1.45,
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF334155),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Buton 1: PDF Olarak Paylaş / Yazdır
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F7C86),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 2,
+                      ),
+                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
+                      label: Text(
+                        "PDF Olarak Paylaş / Yazdır",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(c);
+                        try {
+                          final bytes = await pdfOlusturucu();
+                          await Printing.sharePdf(
+                            bytes: bytes,
+                            filename: pdfDosyaAdi,
+                          );
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("PDF oluşturulurken hata: $e"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Buton 2: Metin Olarak Paylaş (WhatsApp / SMS)
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 1,
+                      ),
+                      icon: const Icon(Icons.send_rounded, size: 18),
+                      label: Text(
+                        "Metin Olarak Paylaş (WhatsApp / SMS)",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(c);
+                        Share.share(metin, subject: baslik);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Buton 3: Metni Kopyala
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor:
+                            isDark ? Colors.white : const Color(0xFF0F172A),
+                        side: BorderSide(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.18)
+                                  : const Color(0xFFCBD5E1),
+                        ),
+                        minimumSize: const Size(double.infinity, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      label: Text(
+                        "Metni Kopyala",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: metin));
+                        Navigator.pop(c);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: const [
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                SizedBox(width: 8),
+                                Text("Rapor metni panoya kopyalandı!"),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF0D9488),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
     );
   }
 }

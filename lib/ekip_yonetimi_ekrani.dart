@@ -29,7 +29,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
@@ -43,12 +43,12 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 20,
                     ),
                   ],
@@ -79,7 +79,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                             color: Colors.grey,
                           ),
                           filled: true,
-                          fillColor: Colors.white.withOpacity(0.05),
+                          fillColor: Colors.white.withValues(alpha: 0.05),
                           border: OutlineInputBorder(
                             borderRadius: BorderRadius.circular(12),
                             borderSide: BorderSide.none,
@@ -109,7 +109,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                     widget.teamId,
                                     controller.text.trim(),
                                   );
-                                  if (mounted) {
+                                  if (mounted && ctx.mounted) {
                                     Navigator.pop(ctx);
                                     messenger.showSnackBar(
                                       const SnackBar(
@@ -165,7 +165,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return StatefulBuilder(
@@ -181,14 +181,14 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                       margin: const EdgeInsets.symmetric(horizontal: 24),
                       padding: const EdgeInsets.all(24),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                        color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                         borderRadius: BorderRadius.circular(24),
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.1),
+                          color: Colors.white.withValues(alpha: 0.1),
                         ),
                         boxShadow: [
                           BoxShadow(
-                            color: Colors.black.withOpacity(0.5),
+                            color: Colors.black.withValues(alpha: 0.5),
                             blurRadius: 20,
                           ),
                         ],
@@ -289,7 +289,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                           widget.teamId,
                                           yeniParolaCtrl.text.trim(),
                                         );
-                                        if (mounted) {
+                                        if (mounted && ctx.mounted) {
                                           Navigator.pop(ctx);
                                           messenger.showSnackBar(
                                             const SnackBar(
@@ -362,7 +362,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Kapat',
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
@@ -376,12 +376,12 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 20,
                     ),
                   ],
@@ -404,7 +404,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                       Text(
                         mesaj,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.82),
+                          color: Colors.white.withValues(alpha: 0.82),
                           fontSize: 15,
                           height: 1.45,
                         ),
@@ -467,7 +467,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
     final Color cardColor =
         isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD);
     final Color cardBorderColor =
-        isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD8EAF0);
+        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -486,10 +486,12 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                   .doc(widget.teamId)
                   .snapshots(),
           builder: (context, teamSnapshot) {
-            if (teamSnapshot.connectionState == ConnectionState.waiting)
+            if (teamSnapshot.connectionState == ConnectionState.waiting) {
               return const Center(child: CircularProgressIndicator());
-            if (!teamSnapshot.hasData || !teamSnapshot.data!.exists)
+            }
+            if (!teamSnapshot.hasData || !teamSnapshot.data!.exists) {
               return const Center(child: Text("Ekip bilgileri bulunamadı."));
+            }
 
             final teamData = teamSnapshot.data!.data() as Map<String, dynamic>;
             final String ekipAdi = teamData['ad'] ?? 'İsimsiz Ekip';
@@ -590,7 +592,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withOpacity(0.2),
+                              color: Colors.white.withValues(alpha: 0.2),
                               shape: BoxShape.circle,
                             ),
                             child: const Icon(
@@ -648,7 +650,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                       stream: firestoreServisi.getEkipUyeleriStream(
                         widget.teamId,
                       ),
-                      builder: (context, uyeSnapshot) {
+                      builder: (_, uyeSnapshot) {
                         final bool yukleniyor = !uyeSnapshot.hasData;
                         final List<Map<String, dynamic>> uyeler =
                             uyeSnapshot.data ?? const <Map<String, dynamic>>[];
@@ -701,11 +703,11 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                     decoration: BoxDecoration(
                                       color:
                                           isDark
-                                              ? Colors.white.withOpacity(0.05)
+                                              ? Colors.white.withValues(alpha: 0.05)
                                               : Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(999),
                                       border: Border.all(
-                                        color: Colors.grey.withOpacity(0.12),
+                                        color: Colors.grey.withValues(alpha: 0.12),
                                       ),
                                     ),
                                     child: Row(
@@ -793,7 +795,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                 ),
                                                             border: Border.all(
                                                               color: Colors.grey
-                                                                  .withOpacity(
+                                                                  .withValues(alpha: 
                                                                     0.1,
                                                                   ),
                                                             ),
@@ -1051,11 +1053,12 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                         widget.teamId,
                         user!.uid,
                       );
-                      if (mounted)
+                      if (mounted && context.mounted) {
                         Navigator.pushReplacement(
                           context,
                           MaterialPageRoute(builder: (_) => const TeamGate()),
                         );
+                      }
                     },
                   ),
                 const SizedBox(height: 20),
@@ -1075,9 +1078,9 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: color.withOpacity(isDark ? 0.18 : 0.10),
+        color: color.withValues(alpha: isDark ? 0.18 : 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withOpacity(isDark ? 0.26 : 0.16)),
+        border: Border.all(color: color.withValues(alpha: isDark ? 0.26 : 0.16)),
       ),
       child: Text(
         label,
@@ -1174,7 +1177,7 @@ class _BlurryPasswordInputState extends State<_BlurryPasswordInput> {
         labelText: widget.hint,
         labelStyle: TextStyle(color: Colors.grey[400]),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,

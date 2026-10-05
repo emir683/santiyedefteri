@@ -90,10 +90,12 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
     final theme = Theme.of(context);
     final isDark = theme.brightness == Brightness.dark;
 
-    return WillPopScope(
-      onWillPop: () async {
-        await DeepLinkService.instance.clearInvite();
-        return true;
+    return PopScope(
+      canPop: true,
+      onPopInvokedWithResult: (didPop, result) async {
+        if (didPop) {
+          await DeepLinkService.instance.clearInvite();
+        }
       },
       child: Scaffold(
         extendBodyBehindAppBar: true,
@@ -212,12 +214,12 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withOpacity(
+                              color: const Color(0xFFEF4444).withValues(alpha: 
                                 isDark ? 0.16 : 0.10,
                               ),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                color: const Color(0xFFEF4444).withOpacity(
+                                color: const Color(0xFFEF4444).withValues(alpha: 
                                   isDark ? 0.28 : 0.18,
                                 ),
                               ),

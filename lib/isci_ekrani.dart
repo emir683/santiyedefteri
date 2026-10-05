@@ -234,7 +234,7 @@ class _IsciEkraniState extends State<IsciEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return StatefulBuilder(
@@ -253,12 +253,12 @@ class _IsciEkraniState extends State<IsciEkrani>
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                      color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(0.5),
+                          color: Colors.black.withValues(alpha: 0.5),
                           blurRadius: 20,
                         ),
                       ],
@@ -290,12 +290,12 @@ class _IsciEkraniState extends State<IsciEkrani>
                                 onSelected: (val) {
                                   if (val) setStateDialog(() => seciliTur = "Çekirdek Ekip");
                                 },
-                                selectedColor: _kBrandTeal.withOpacity(0.3),
+                                selectedColor: _kBrandTeal.withValues(alpha: 0.3),
                                 labelStyle: TextStyle(
                                   color: seciliTur == "Çekirdek Ekip" ? Colors.white : Colors.grey,
                                   fontWeight: FontWeight.bold,
                                 ),
-                                backgroundColor: Colors.white.withOpacity(0.05),
+                                backgroundColor: Colors.white.withValues(alpha: 0.05),
                                 side: BorderSide.none,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
@@ -306,12 +306,12 @@ class _IsciEkraniState extends State<IsciEkrani>
                                 onSelected: (val) {
                                   if (val) setStateDialog(() => seciliTur = "Misafir");
                                 },
-                                selectedColor: _kBrandTeal.withOpacity(0.3),
+                                selectedColor: _kBrandTeal.withValues(alpha: 0.3),
                                 labelStyle: TextStyle(
                                   color: seciliTur == "Misafir" ? Colors.white : Colors.grey,
                                   fontWeight: FontWeight.bold,
                                 ),
-                                backgroundColor: Colors.white.withOpacity(0.05),
+                                backgroundColor: Colors.white.withValues(alpha: 0.05),
                                 side: BorderSide.none,
                                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                               ),
@@ -331,7 +331,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                 color: Colors.grey,
                               ),
                               filled: true,
-                              fillColor: Colors.white.withOpacity(0.05),
+                              fillColor: Colors.white.withValues(alpha: 0.05),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -353,7 +353,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                 color: Colors.grey,
                               ),
                               filled: true,
-                              fillColor: Colors.white.withOpacity(0.05),
+                              fillColor: Colors.white.withValues(alpha: 0.05),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(12),
                                 borderSide: BorderSide.none,
@@ -399,7 +399,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                       } else {
                                         await servisi.isciEkle(widget.teamId, isci);
                                       }
-                                      if (mounted) Navigator.pop(ctx);
+                                      if (mounted && ctx.mounted) Navigator.pop(ctx);
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
@@ -444,7 +444,7 @@ class _IsciEkraniState extends State<IsciEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
@@ -458,12 +458,12 @@ class _IsciEkraniState extends State<IsciEkrani>
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 20,
                     ),
                   ],
@@ -669,7 +669,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                         return Theme(
                           data: Theme.of(context).copyWith(
                             scrollbarTheme: ScrollbarThemeData(
-                              thumbColor: MaterialStateProperty.all(
+                              thumbColor: WidgetStateProperty.all(
                                 isDark ? Colors.white24 : Colors.black12,
                               ),
                             ),
@@ -700,13 +700,13 @@ class _IsciEkraniState extends State<IsciEkrani>
                                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                                     decoration: BoxDecoration(
                                       color: isSelected
-                                          ? const Color(0xFF3B82F6).withOpacity(isDark ? 0.15 : 0.08)
-                                          : (isDark ? Colors.white.withOpacity(0.02) : Colors.grey[50]),
+                                          ? const Color(0xFF3B82F6).withValues(alpha: isDark ? 0.15 : 0.08)
+                                          : (isDark ? Colors.white.withValues(alpha: 0.02) : Colors.grey[50]),
                                       borderRadius: BorderRadius.circular(14),
                                       border: Border.all(
                                         color: isSelected
                                             ? const Color(0xFF3B82F6)
-                                            : (isDark ? Colors.white.withOpacity(0.06) : Colors.grey[200]!),
+                                            : (isDark ? Colors.white.withValues(alpha: 0.06) : Colors.grey[200]!),
                                         width: isSelected ? 1.5 : 1.0,
                                       ),
                                     ),
@@ -814,9 +814,9 @@ class _IsciEkraniState extends State<IsciEkrani>
                               seciliUye!['uid'],
                               seciliUye!['email'],
                             );
-                            if (mounted) Navigator.pop(ctx);
+                            if (mounted && ctx.mounted) Navigator.pop(ctx);
                           } catch (e) {
-                            if (mounted) {
+                            if (mounted && context.mounted) {
                               showDialog(
                                 context: context,
                                 builder: (errCtx) => AlertDialog(
@@ -922,7 +922,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                 )
               : null,
           filled: true,
-          fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -1124,7 +1124,7 @@ class _IsciEkraniState extends State<IsciEkrani>
           side: BorderSide(
             color:
                 isDark
-                    ? Colors.white.withOpacity(0.08)
+                    ? Colors.white.withValues(alpha: 0.08)
                     : const Color(0xFFD8EAF0),
             width: 1,
           ),
@@ -1222,7 +1222,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                           borderRadius: BorderRadius.circular(16),
                                           side: BorderSide(
                                             color: isDark
-                                                ? Colors.white.withOpacity(0.12)
+                                                ? Colors.white.withValues(alpha: 0.12)
                                                 : const Color(0xFFE2E8F0),
                                             width: 1,
                                           ),
@@ -1237,7 +1237,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                         height: 34,
                                         decoration: BoxDecoration(
                                           color: isDark
-                                              ? Colors.white.withOpacity(0.06)
+                                              ? Colors.white.withValues(alpha: 0.06)
                                               : const Color(0xFFF1F5F9),
                                           shape: BoxShape.circle,
                                         ),
@@ -1354,7 +1354,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                 Icon(
                                   Icons.arrow_forward_ios,
                                   size: 14,
-                                  color: Colors.grey.withOpacity(0.5),
+                                  color: Colors.grey.withValues(alpha: 0.5),
                                 ),
                               ],
                             ),
@@ -1395,20 +1395,20 @@ class _IsciEkraniState extends State<IsciEkrani>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(isDark ? 0.28 : 0.20),
-            (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
+            color.withValues(alpha: isDark ? 0.28 : 0.20),
+            (isDark ? const Color(0xFF171B20) : Colors.white).withValues(alpha: 
               isDark ? 0.85 : 0.95,
             ),
           ],
         ),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
-          color: color.withOpacity(isDark ? 0.35 : 0.25),
+          color: color.withValues(alpha: isDark ? 0.35 : 0.25),
           width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(isDark ? 0.15 : 0.08),
+            color: color.withValues(alpha: isDark ? 0.15 : 0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),

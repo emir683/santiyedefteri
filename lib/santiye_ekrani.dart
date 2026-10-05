@@ -202,7 +202,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return StatefulBuilder(
@@ -225,11 +225,11 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                      color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withOpacity(0.1)),
+                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20),
                       ],
                     ),
                     child: Material(
@@ -255,7 +255,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                               labelStyle: TextStyle(color: Colors.grey[400]),
                               prefixIcon: const Icon(Icons.location_city, color: _kBrandTeal),
                               filled: true,
-                              fillColor: Colors.white.withOpacity(0.05),
+                              fillColor: Colors.white.withValues(alpha: 0.05),
                               border: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
                                 borderSide: BorderSide.none,
@@ -299,10 +299,10 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                                 width: double.infinity,
                                 padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
                                 decoration: BoxDecoration(
-                                  color: Colors.white.withOpacity(0.05),
+                                  color: Colors.white.withValues(alpha: 0.05),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: _kBrandTeal.withOpacity(0.4),
+                                    color: _kBrandTeal.withValues(alpha: 0.4),
                                     style: BorderStyle.solid,
                                   ),
                                 ),
@@ -326,10 +326,10 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
-                                color: _kBrandTeal.withOpacity(0.12),
+                                color: _kBrandTeal.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: _kBrandTeal.withOpacity(0.4),
+                                  color: _kBrandTeal.withValues(alpha: 0.4),
                                 ),
                               ),
                               child: Row(
@@ -456,7 +456,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
@@ -470,10 +470,10 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
-                  boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.5), blurRadius: 20)],
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
                 ),
                 child: Material(
                   color: Colors.transparent,
@@ -562,7 +562,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                 )
               : null,
           filled: true,
-          fillColor: isDark ? Colors.white.withOpacity(0.05) : Colors.white,
+          fillColor: isDark ? Colors.white.withValues(alpha: 0.05) : Colors.white,
           border: OutlineInputBorder(
             borderRadius: BorderRadius.circular(12),
             borderSide: BorderSide.none,
@@ -603,7 +603,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
           side: BorderSide(
-            color: isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD8EAF0),
+            color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0),
             width: 1,
           ),
         ),
@@ -668,7 +668,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(16),
                       side: BorderSide(
-                        color: isDark ? Colors.white.withOpacity(0.12) : const Color(0xFFE2E8F0),
+                        color: isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFE2E8F0),
                         width: 1,
                       ),
                     ),
@@ -681,7 +681,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                     width: 34,
                     height: 34,
                     decoration: BoxDecoration(
-                      color: isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFF1F5F9),
+                      color: isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFF1F5F9),
                       shape: BoxShape.circle,
                     ),
                     child: Icon(
@@ -751,7 +751,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
               Icon(
                 Icons.arrow_forward_ios,
                 size: 14,
-                color: Colors.grey.withOpacity(0.5),
+                color: Colors.grey.withValues(alpha: 0.5),
               ),
             ],
           ),
@@ -918,14 +918,14 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(isDark ? 0.18 : 0.14),
-            (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
+            color.withValues(alpha: isDark ? 0.18 : 0.14),
+            (isDark ? const Color(0xFF171B20) : Colors.white).withValues(alpha: 
               isDark ? 0.82 : 0.92,
             ),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(isDark ? 0.16 : 0.12)),
+        border: Border.all(color: color.withValues(alpha: isDark ? 0.16 : 0.12)),
       ),
       child: Icon(
         icon,

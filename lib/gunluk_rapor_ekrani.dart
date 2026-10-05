@@ -15,6 +15,8 @@ import 'isci_ekrani.dart';
 import 'tur_servisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
+import 'widgets/offline_sync_banner.dart';
+import 'services/connectivity_sync_service.dart';
 
 class GunlukRaporEkrani extends StatefulWidget {
   final String teamId;
@@ -330,7 +332,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
           mevcutKayit != null ? mevcutKayit.durum : "Yok";
     }
 
-    void _topluSecim(
+    void topluSecim(
       List<Isci> liste,
       String durum,
       StateSetter setSheetState,
@@ -357,7 +359,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
               final misafirler =
                   yerelIsciler.where((i) => i.isciTuru == "Misafir").toList();
 
-              Widget _buildIsciKart(Isci isci) {
+              Widget buildIsciKart(Isci isci) {
                 final String id = isci.id ?? isci.ad;
                 final String durum = geciciDurumlar[id] ?? "Yok";
                 return Container(
@@ -372,7 +374,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                     border: Border.all(
                       color:
                           isDark
-                              ? Colors.white.withOpacity(0.06)
+                              ? Colors.white.withValues(alpha: 0.06)
                               : const Color(0xFFDCE8ED),
                     ),
                   ),
@@ -424,7 +426,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                 );
               }
 
-              Widget _buildGrupBaslik(String baslik, List<Isci> liste) {
+              Widget buildGrupBaslik(String baslik, List<Isci> liste) {
                 return Padding(
                   padding: const EdgeInsets.symmetric(vertical: 12.0),
                   child: Row(
@@ -442,14 +444,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                         children: [
                           InkWell(
                             onTap:
-                                () => _topluSecim(liste, "Yok", setSheetState),
+                                () => topluSecim(liste, "Yok", setSheetState),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 10,
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.grey.withOpacity(0.15),
+                                color: Colors.grey.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
@@ -465,7 +467,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                           const SizedBox(width: 6),
                           InkWell(
                             onTap:
-                                () => _topluSecim(
+                                () => topluSecim(
                                   liste,
                                   "Yarım Gün",
                                   setSheetState,
@@ -476,7 +478,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.orange.withOpacity(0.15),
+                                color: Colors.orange.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
@@ -492,7 +494,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                           const SizedBox(width: 6),
                           InkWell(
                             onTap:
-                                () => _topluSecim(
+                                () => topluSecim(
                                   liste,
                                   "Tam Gün",
                                   setSheetState,
@@ -503,7 +505,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 vertical: 6,
                               ),
                               decoration: BoxDecoration(
-                                color: Colors.green.withOpacity(0.15),
+                                color: Colors.green.withValues(alpha: 0.15),
                                 borderRadius: BorderRadius.circular(8),
                               ),
                               child: const Text(
@@ -534,21 +536,21 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                     decoration: BoxDecoration(
                       color:
                           isDark
-                              ? const Color(0xFF121821).withOpacity(0.84)
-                              : Colors.white.withOpacity(0.86),
+                              ? const Color(0xFF121821).withValues(alpha: 0.84)
+                              : Colors.white.withValues(alpha: 0.86),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(24),
                       ),
                       border: Border.all(
                         color:
                             isDark
-                                ? Colors.white.withOpacity(0.08)
+                                ? Colors.white.withValues(alpha: 0.08)
                                 : const Color(0xFFD9E6EC),
                         width: 1,
                       ),
                       boxShadow: [
                         BoxShadow(
-                          color: Colors.black.withOpacity(isDark ? 0.24 : 0.08),
+                          color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.08),
                           blurRadius: 28,
                           offset: const Offset(0, -6),
                         ),
@@ -589,7 +591,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                           height: 1,
                           color:
                               isDark
-                                  ? Colors.white.withOpacity(0.08)
+                                  ? Colors.white.withValues(alpha: 0.08)
                                   : const Color(0xFFD9E6EC),
                         ),
                         Expanded(
@@ -597,8 +599,8 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                             padding: const EdgeInsets.all(16),
                             children: [
                               if (cekirdekEkip.isNotEmpty) ...[
-                                _buildGrupBaslik("Çekirdek Ekip", cekirdekEkip),
-                                ...cekirdekEkip.map(_buildIsciKart).toList(),
+                                buildGrupBaslik("Çekirdek Ekip", cekirdekEkip),
+                                ...cekirdekEkip.map(buildIsciKart),
                               ] else if (misafirler.isEmpty) ...[
                                 const Center(
                                   child: Padding(
@@ -608,8 +610,8 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 ),
                               ],
                               if (misafirler.isNotEmpty) ...[
-                                _buildGrupBaslik("Misafirler", misafirler),
-                                ...misafirler.map(_buildIsciKart).toList(),
+                                buildGrupBaslik("Misafirler", misafirler),
+                                ...misafirler.map(buildIsciKart),
                               ],
                               const SizedBox(height: 20),
                               ElevatedButton.icon(
@@ -684,8 +686,9 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                     geciciDurumlar[isci.ad] =
                                                         "Tam Gün";
                                                   });
-                                                  if (context.mounted)
+                                                  if (context.mounted) {
                                                     Navigator.pop(dc);
+                                                  }
                                                 }
                                               },
                                               child: const Text("Ekle"),
@@ -777,17 +780,17 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
           decoration: BoxDecoration(
             color:
                 isSelected
-                    ? color.withOpacity(isDark ? 0.92 : 0.16)
+                    ? color.withValues(alpha: isDark ? 0.92 : 0.16)
                     : (isDark
                         ? const Color(0xFF0F141B)
-                        : Colors.white.withOpacity(0.82)),
+                        : Colors.white.withValues(alpha: 0.82)),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
               color:
                   isSelected
-                      ? color.withOpacity(0.90)
+                      ? color.withValues(alpha: 0.90)
                       : (isDark
-                          ? Colors.white.withOpacity(0.08)
+                          ? Colors.white.withValues(alpha: 0.08)
                           : const Color(0xFFD7E4EA)),
               width: 1,
             ),
@@ -795,7 +798,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                 isSelected
                     ? [
                       BoxShadow(
-                        color: color.withOpacity(isDark ? 0.18 : 0.14),
+                        color: color.withValues(alpha: isDark ? 0.18 : 0.14),
                         blurRadius: 12,
                         offset: const Offset(0, 4),
                       ),
@@ -833,12 +836,12 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
           border: Border.all(
             color:
                 dialogDark
-                    ? Colors.white.withOpacity(0.08)
+                    ? Colors.white.withValues(alpha: 0.08)
                     : const Color(0xFFD8EAF0),
           ),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(dialogDark ? 0.30 : 0.08),
+              color: Colors.black.withValues(alpha: dialogDark ? 0.30 : 0.08),
               blurRadius: 22,
               offset: const Offset(0, 12),
             ),
@@ -853,7 +856,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                 Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(
-                    color: Colors.orange.withOpacity(0.14),
+                    color: Colors.orange.withValues(alpha: 0.14),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Icon(
@@ -995,7 +998,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
     bool degisiklikVar = false;
     bool kaydetmeDevamEdiyor = false;
 
-    void _dunuKopyala(BuildContext modalCtx, StateSetter setModalState) {
+    void dunuKopyala(BuildContext modalCtx, StateSetter setModalState) {
       final oncekiRaporlar =
           tumRaporlar
               .where(
@@ -1115,6 +1118,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
 
                   if (widget.baslatRehber && mounted) {
                     await TurServisi.adim3Isaretle();
+                    if (!ctx.mounted) return;
                     await showDialog(
                       context: ctx,
                       barrierDismissible: false,
@@ -1175,7 +1179,46 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                           ),
                     );
                   } else if (ctx.mounted) {
+                    final isOffline =
+                        Provider.of<ConnectivitySyncService>(
+                          ctx,
+                          listen: false,
+                        ).isOffline;
                     Navigator.of(ctx).pop();
+                    if (context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(
+                          content: Row(
+                            children: [
+                              Icon(
+                                isOffline
+                                    ? Icons.cloud_off_rounded
+                                    : Icons.check_circle_rounded,
+                                color: Colors.white,
+                              ),
+                              const SizedBox(width: 10),
+                              Expanded(
+                                child: Text(
+                                  isOffline
+                                      ? "Rapor telefonunuza kaydedildi. İnternet olduğunda otomatik eşitlenecektir."
+                                      : "Rapor başarıyla kaydedildi.",
+                                  style: const TextStyle(color: Colors.white),
+                                ),
+                              ),
+                            ],
+                          ),
+                          backgroundColor:
+                              isOffline
+                                  ? const Color(0xFFD97706)
+                                  : const Color(0xFF16A34A),
+                          duration: const Duration(seconds: 4),
+                          behavior: SnackBarBehavior.floating,
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                      );
+                    }
                   }
                 } finally {
                   if (ctx.mounted) {
@@ -1208,7 +1251,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
 
               return PopScope(
                 canPop: !degisiklikVar,
-                onPopInvoked: (didPop) async {
+                onPopInvokedWithResult: (didPop, result) async {
                   if (didPop) return;
                   await kapatmayiDene();
                 },
@@ -1228,10 +1271,10 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                         // 3. RENK OPAKLIĞINI DÜŞÜRÜYORUZ (Şeffaflık)
                         color:
                             isDark
-                                ? const Color(0xFF121212).withOpacity(
+                                ? const Color(0xFF121212).withValues(alpha: 
                                   0.35,
                                 ) // Koyu modda %85 opak siyah
-                                : Colors.white.withOpacity(
+                                : Colors.white.withValues(alpha: 
                                   0.40,
                                 ), // Açık modda %90 opak beyaz
                         borderRadius: const BorderRadius.vertical(
@@ -1239,7 +1282,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                         ),
                         border: Border(
                           top: BorderSide(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             width: 1,
                           ),
                         ), // Üstte ince cam çizgisi
@@ -1274,7 +1317,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                         width: 40,
                                         height: 4,
                                         decoration: BoxDecoration(
-                                          color: Colors.grey.withOpacity(0.3),
+                                          color: Colors.grey.withValues(alpha: 0.3),
                                           borderRadius: BorderRadius.circular(
                                             10,
                                           ),
@@ -1355,7 +1398,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                     ),
                                                   ),
                                                   onPressed:
-                                                      () => _dunuKopyala(
+                                                      () => dunuKopyala(
                                                         ctx,
                                                         setModalState,
                                                       ),
@@ -1425,7 +1468,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                               color:
                                                   isDark
                                                       ? Colors.white
-                                                          .withOpacity(0.08)
+                                                          .withValues(alpha: 0.08)
                                                       : const Color(0xFFDCE8ED),
                                             ),
                                           ),
@@ -1456,7 +1499,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                 color:
                                                     isDark
                                                         ? Colors.white
-                                                            .withOpacity(0.06)
+                                                            .withValues(alpha: 0.06)
                                                         : const Color(
                                                           0xFFDCE8ED,
                                                         ),
@@ -1467,7 +1510,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                 CircleAvatar(
                                                   radius: 18,
                                                   backgroundColor: Colors.blue
-                                                      .withOpacity(0.2),
+                                                      .withValues(alpha: 0.2),
                                                   child: Text(
                                                     c.isci.ad[0].toUpperCase(),
                                                     style: const TextStyle(
@@ -1503,12 +1546,12 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                               c.durum ==
                                                                       "Tam Gün"
                                                                   ? Colors.green
-                                                                      .withOpacity(
+                                                                      .withValues(alpha: 
                                                                         0.2,
                                                                       )
                                                                   : Colors
                                                                       .orange
-                                                                      .withOpacity(
+                                                                      .withValues(alpha: 
                                                                         0.2,
                                                                       ),
                                                           borderRadius:
@@ -1734,7 +1777,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
               border: Border.all(
                 color:
                     isDark
-                        ? Colors.white.withOpacity(0.08)
+                        ? Colors.white.withValues(alpha: 0.08)
                         : const Color(0xFFD5E6EC),
               ),
             ),
@@ -1746,7 +1789,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                   width: 42,
                   height: 4,
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.35),
+                    color: Colors.grey.withValues(alpha: 0.35),
                     borderRadius: BorderRadius.circular(999),
                   ),
                 ),
@@ -1768,7 +1811,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                       ...tumIsciler.map(
                         (isci) => ListTile(
                           leading: CircleAvatar(
-                            backgroundColor: Colors.teal.withOpacity(0.14),
+                            backgroundColor: Colors.teal.withValues(alpha: 0.14),
                             child: Text(
                               isci.ad.isEmpty ? "?" : isci.ad[0].toUpperCase(),
                               style: const TextStyle(
@@ -1829,7 +1872,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
               context: context,
               barrierDismissible: true,
               barrierLabel: "Kapat",
-              barrierColor: Colors.black.withOpacity(0.8), // Arka planı karart
+              barrierColor: Colors.black.withValues(alpha: 0.8), // Arka planı karart
               transitionDuration: const Duration(milliseconds: 200),
               pageBuilder: (ctx, anim1, anim2) {
                 return Scaffold(
@@ -1919,7 +1962,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                             0xFF22C55E,
                                           ),
                                           side: BorderSide(
-                                            color: Colors.white.withOpacity(
+                                            color: Colors.white.withValues(alpha: 
                                               0.32,
                                             ),
                                           ),
@@ -1952,14 +1995,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                           decoration: BoxDecoration(
                                             color: const Color(
                                               0xFF22C55E,
-                                            ).withOpacity(0.14),
+                                            ).withValues(alpha: 0.14),
                                             borderRadius: BorderRadius.circular(
                                               14,
                                             ),
                                             border: Border.all(
                                               color: const Color(
                                                 0xFF22C55E,
-                                              ).withOpacity(0.34),
+                                              ).withValues(alpha: 0.34),
                                             ),
                                           ),
                                           child: Row(
@@ -2221,9 +2264,9 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       decoration: BoxDecoration(
-        color: renk.withOpacity(0.12),
+        color: renk.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: renk.withOpacity(0.28)),
+        border: Border.all(color: renk.withValues(alpha: 0.28)),
       ),
       child: Row(
         mainAxisSize: MainAxisSize.min,
@@ -2275,10 +2318,11 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                 genisBitis,
               ),
               builder: (context, snapshotRaporlar) {
-                if (!snapshotRaporlar.hasData)
+                if (!snapshotRaporlar.hasData) {
                   return const ShimmerYukleniyor(kartGorunumu: true);
+                }
                 final tumRaporlar = snapshotRaporlar.data!;
-                List<GunlukSantiyeRaporu> _gununEtkinlikleri(DateTime gun) {
+                List<GunlukSantiyeRaporu> gununEtkinlikleri(DateTime gun) {
                   return tumRaporlar
                       .where((rapor) => isSameDay(rapor.tarih, gun))
                       .toList();
@@ -2299,6 +2343,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                           extra: 4,
                         ),
                       ),
+                      const OfflineSyncBanner(),
                       Padding(
                         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
                         child: KeyedSubtree(
@@ -2356,7 +2401,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 lastDay: genisBitis,
                                 focusedDay: _odaklanilanGun,
                                 currentDay: _seciliGun,
-                                eventLoader: _gununEtkinlikleri,
+                                eventLoader: gununEtkinlikleri,
                                 calendarStyle: CalendarStyle(
                                   markerDecoration: const BoxDecoration(
                                     color: Color(0xFF14B8A6),
@@ -2365,7 +2410,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                   todayDecoration: BoxDecoration(
                                     color: const Color(
                                       0xFF14B8A6,
-                                    ).withOpacity(0.25),
+                                    ).withValues(alpha: 0.25),
                                     shape: BoxShape.circle,
                                   ),
                                   selectedDecoration: const BoxDecoration(
@@ -2427,8 +2472,9 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                         child: StreamBuilder<List<Santiye>>(
                           stream: servisi.getSantiyelerStream(widget.teamId),
                           builder: (context, snapshotSantiyeler) {
-                            if (!snapshotSantiyeler.hasData)
+                            if (!snapshotSantiyeler.hasData) {
                               return const ShimmerYukleniyor(satirSayisi: 4);
+                            }
                             final santiyeler = snapshotSantiyeler.data!;
                             return StreamBuilder<List<Isci>>(
                               stream: servisi.getIscilerStream(widget.teamId),
@@ -2508,13 +2554,13 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                             dolu
                                                                 ? const Color(
                                                                   0xFF14B8A6,
-                                                                ).withOpacity(
+                                                                ).withValues(alpha: 
                                                                   0.18,
                                                                 )
                                                                 : (isDark
                                                                     ? Colors
                                                                         .white
-                                                                        .withOpacity(
+                                                                        .withValues(alpha: 
                                                                           0.12,
                                                                         )
                                                                     : const Color(
@@ -2566,7 +2612,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                               privacy,
                                                               child,
                                                             ) {
-                                                              if (!dolu)
+                                                              if (!dolu) {
                                                                 return Text(
                                                                   "Veri girilmemiş",
                                                                   style: TextStyle(
@@ -2578,6 +2624,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                                             ),
                                                                   ),
                                                                 );
+                                                              }
                                                               final toplam =
                                                                   mevcutRapor
                                                                       .benzinGideri +
@@ -2646,7 +2693,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                     Icon(
                                                       Icons.chevron_right,
                                                       color: Colors.grey
-                                                          .withOpacity(0.5),
+                                                          .withValues(alpha: 0.5),
                                                     ),
                                                   ],
                                                 ),

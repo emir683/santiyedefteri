@@ -1,10 +1,18 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:intl/intl.dart';
 import 'package:provider/provider.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:pdf/pdf.dart';
+import 'package:pdf/widgets.dart' as pw;
+import 'package:printing/printing.dart';
 
 import 'data_models.dart';
 import 'firestore_servisi.dart';
 import 'user_model.dart';
+import 'format_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'data/turkiye_il_ilce.dart';
@@ -109,13 +117,13 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                 decoration: BoxDecoration(
                   color:
                       isDark
-                          ? const Color(0xFF101317).withOpacity(0.94)
+                          ? const Color(0xFF101317).withValues(alpha: 0.94)
                           : const Color(0xFFF7FBFD),
                   borderRadius: BorderRadius.circular(12),
                   border: Border.all(
                     color:
                         isDark
-                            ? Colors.white.withOpacity(0.08)
+                            ? Colors.white.withValues(alpha: 0.08)
                             : const Color(0xFFD8EAF0),
                   ),
                 ),
@@ -231,13 +239,13 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                             border: Border.all(
                               color:
                                   isDark
-                                      ? Colors.white.withOpacity(0.08)
+                                      ? Colors.white.withValues(alpha: 0.08)
                                       : const Color(0xFFD8EAF0),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(
-                                  isDark ? 0.2 : 0.06,
+                                color: Colors.black.withValues(
+                                  alpha: isDark ? 0.2 : 0.06,
                                 ),
                                 blurRadius: isDark ? 8 : 12,
                                 offset: const Offset(0, 6),
@@ -272,6 +280,138 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                     : const Color(0xFF0F2A44),
                               ),
                             ],
+                          ),
+                        ),
+                      ),
+                      // ÖZET KARTININ ALTINDAKİ ŞIK PAYLAŞ BUTONU
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(16.0, 0, 16.0, 10.0),
+                        child: Container(
+                          decoration: BoxDecoration(
+                            gradient: LinearGradient(
+                              colors:
+                                  isDark
+                                      ? const [
+                                        Color(0xFF0F766E),
+                                        Color(0xFF14B8A6),
+                                      ]
+                                      : const [
+                                        Color(0xFF0D9488),
+                                        Color(0xFF14B8A6),
+                                      ],
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(
+                                  0xFF0D9488,
+                                ).withValues(alpha: isDark ? 0.35 : 0.22),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              borderRadius: BorderRadius.circular(16),
+                              onTap: () {
+                                final donemStr = DateFormat.yMMMM(
+                                  'tr_TR',
+                                ).format(_gosterilenAy);
+                                final metin = _santiyeRaporuMetniOlustur(
+                                  donem: donemStr,
+                                  raporlar: raporlar,
+                                  toplamMasrafGenel: toplamMasrafGenel,
+                                  toplamYevmiyeSayisi:
+                                      toplamYevmiyeSayisi,
+                                  toplamCalisilanGun: toplamCalisilanGun,
+                                );
+                                _paylasimMenusunuGoster(
+                                  context: context,
+                                  baslik:
+                                      "${widget.santiyeAdi} - Rapor Paylaşımı",
+                                  metin: metin,
+                                  isDark: isDark,
+                                  pdfDosyaAdi:
+                                      "santiye_raporu_${widget.santiyeAdi}_$donemStr.pdf",
+                                  pdfOlusturucu:
+                                      () => _santiyeRaporuPdfOlustur(
+                                        donem: donemStr,
+                                        raporlar: raporlar,
+                                        toplamMasrafGenel: toplamMasrafGenel,
+                                        toplamYevmiyeSayisi:
+                                            toplamYevmiyeSayisi,
+                                        toplamCalisilanGun:
+                                            toplamCalisilanGun,
+                                      ),
+                                );
+                              },
+                              child: Padding(
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 12,
+                                  horizontal: 12,
+                                ),
+                                child: Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Container(
+                                      padding: const EdgeInsets.all(6),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.share_rounded,
+                                        color: Colors.white,
+                                        size: 18,
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Flexible(
+                                      child: FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.center,
+                                        child: Text(
+                                          "Şantiye Raporunu Paylaş",
+                                          style: GoogleFonts.poppins(
+                                            color: Colors.white,
+                                            fontWeight: FontWeight.w600,
+                                            fontSize: 14,
+                                            letterSpacing: 0.3,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 8),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 2.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.white.withValues(alpha: 0.2),
+                                        borderRadius: BorderRadius.circular(12),
+                                        border: Border.all(
+                                          color: Colors.white.withValues(alpha: 0.3),
+                                          width: 0.8,
+                                        ),
+                                      ),
+                                      child: Text(
+                                        "PDF & Metin",
+                                        style: GoogleFonts.poppins(
+                                          color: Colors.white,
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ),
                           ),
                         ),
                       ),
@@ -348,7 +488,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           side: BorderSide(
                             color:
                                 isDark
-                                    ? Colors.white.withOpacity(0.08)
+                                    ? Colors.white.withValues(alpha: 0.08)
                                     : const Color(0xFFD8EAF0),
                           ),
                         ),
@@ -360,7 +500,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: _kBrandTeal.withOpacity(0.14),
+                              color: _kBrandTeal.withValues(alpha: 0.14),
                               borderRadius: BorderRadius.circular(8),
                             ),
                             child: Text(
@@ -397,8 +537,8 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                   decoration: BoxDecoration(
                                     color:
                                         c.durum == "Tam Gün"
-                                            ? Colors.green.withOpacity(0.2)
-                                            : Colors.orange.withOpacity(0.2),
+                                            ? Colors.green.withValues(alpha: 0.2)
+                                            : Colors.orange.withValues(alpha: 0.2),
                                     borderRadius: BorderRadius.circular(4),
                                   ),
                                   child: Text(
@@ -926,6 +1066,737 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
           ),
         ),
       ),
+    );
+  }
+
+  // --- ŞANTİYE RAPOR METNİ OLUŞTURUCU ---
+  String _santiyeRaporuMetniOlustur({
+    required String donem,
+    required List<GunlukSantiyeRaporu> raporlar,
+    required double toplamMasrafGenel,
+    required double toplamYevmiyeSayisi,
+    required int toplamCalisilanGun,
+  }) {
+    final sb = StringBuffer();
+    sb.writeln('🏗️ ŞANTİYE FAALİYET VE MASRAF RAPORU');
+    sb.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    sb.writeln('🏢 Şantiye: ${widget.santiyeAdi}');
+    if (_secilenIl != null && _secilenIl!.isNotEmpty) {
+      final ilceStr =
+          _secilenIlce != null && _secilenIlce!.isNotEmpty
+              ? ' / $_secilenIlce'
+              : '';
+      sb.writeln('📍 Konum: $_secilenIl$ilceStr');
+    }
+    sb.writeln('📅 Dönem: $donem');
+    sb.writeln('');
+
+    final yevmiyeStr =
+        toplamYevmiyeSayisi % 1 == 0
+            ? toplamYevmiyeSayisi.toInt().toString()
+            : toplamYevmiyeSayisi.toStringAsFixed(1);
+
+    sb.writeln('📊 ÇALIŞMA ÖZETİ');
+    sb.writeln('• Çalışılan Gün Sayısı: $toplamCalisilanGun gün');
+    sb.writeln('• Toplam Yevmiye: $yevmiyeStr yevmiye');
+
+    // Personel Dağılımı ve Masraf Dağılımı
+    final Map<String, double> isciYevmiyeleri = {};
+    final Map<String, int> isciTamGun = {};
+    final Map<String, int> isciYarimGun = {};
+
+    double topBenzin = 0;
+    double topYemek = 0;
+    double topEk = 0;
+
+    for (final r in raporlar) {
+      topBenzin += r.benzinGideri;
+      topYemek += r.yemekGideri;
+      topEk += r.ekMasraflar;
+
+      for (final c in r.calisanlar) {
+        final ad = c.isci.ad.trim();
+        final durum = c.durum.toLowerCase();
+        if (durum.contains('tam')) {
+          isciTamGun[ad] = (isciTamGun[ad] ?? 0) + 1;
+          isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + 1.0;
+        } else if (durum.contains('yar')) {
+          isciYarimGun[ad] = (isciYarimGun[ad] ?? 0) + 1;
+          isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + 0.5;
+        }
+      }
+    }
+
+    sb.writeln('• Çalışan Personel Sayısı: ${isciYevmiyeleri.length} kişi');
+
+    sb.writeln('');
+    sb.writeln('💰 MASRAF DAĞILIMI');
+    sb.writeln('• Benzin Gideri: ${Formatlayici.yap(topBenzin)}');
+    sb.writeln('• Yemek Gideri: ${Formatlayici.yap(topYemek)}');
+    sb.writeln('• Ek Masraflar: ${Formatlayici.yap(topEk)}');
+    sb.writeln('──────────────────────────────');
+    sb.writeln('💳 TOPLAM OPERASYONEL MASRAF: ${Formatlayici.yap(toplamMasrafGenel)}');
+
+    // Personel Listesi
+    if (isciYevmiyeleri.isNotEmpty) {
+      sb.writeln('');
+      sb.writeln('👷 ÇALIŞAN PERSONEL VE YEVMİYELER');
+      final siraliIsciler =
+          isciYevmiyeleri.entries.toList()
+            ..sort((a, b) => b.value.compareTo(a.value));
+      for (final entry in siraliIsciler) {
+        final tam = isciTamGun[entry.key] ?? 0;
+        final yarim = isciYarimGun[entry.key] ?? 0;
+        final yevStr =
+            entry.value % 1 == 0
+                ? '${entry.value.toInt()} yevmiye'
+                : '${entry.value.toStringAsFixed(1)} yevmiye';
+        final gunDetay =
+            yarim > 0 ? ' ($tam Tam, $yarim Yarım)' : ' ($tam Tam)';
+        sb.writeln('• ${entry.key}: $yevStr$gunDetay');
+      }
+    }
+
+    // Günlük Notlar (varsa son 5)
+    final aciklamaliRaporlar =
+        raporlar.where((r) => r.aciklama.trim().isNotEmpty).toList();
+    if (aciklamaliRaporlar.isNotEmpty) {
+      sb.writeln('');
+      sb.writeln('📝 GÜNLÜK NOTLAR & YAPILAN İŞLER');
+      for (final r in aciklamaliRaporlar.take(5)) {
+        final tStr = DateFormat('dd.MM.yyyy').format(r.tarih);
+        sb.writeln('• $tStr: ${r.aciklama.trim()}');
+      }
+      if (aciklamaliRaporlar.length > 5) {
+        sb.writeln('... ve ${aciklamaliRaporlar.length - 5} günün daha notu');
+      }
+    }
+
+    sb.writeln('━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━');
+    sb.writeln('📱 Şantiye Yönetim Sistemi');
+    return sb.toString();
+  }
+
+  // --- ŞANTİYE RAPOR PDF OLUŞTURUCU ---
+  Future<Uint8List> _santiyeRaporuPdfOlustur({
+    required String donem,
+    required List<GunlukSantiyeRaporu> raporlar,
+    required double toplamMasrafGenel,
+    required double toplamYevmiyeSayisi,
+    required int toplamCalisilanGun,
+  }) async {
+    final pdf = pw.Document();
+    final fontData = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
+    final ttf = pw.Font.ttf(fontData);
+
+    final yevmiyeStr =
+        toplamYevmiyeSayisi % 1 == 0
+            ? toplamYevmiyeSayisi.toInt().toString()
+            : toplamYevmiyeSayisi.toStringAsFixed(1);
+
+    // Personel Dağılımı ve Masraf Dağılımı
+    final Map<String, double> isciYevmiyeleri = {};
+    final Map<String, int> isciTamGun = {};
+    final Map<String, int> isciYarimGun = {};
+
+    double topBenzin = 0;
+    double topYemek = 0;
+    double topEk = 0;
+
+    for (final r in raporlar) {
+      topBenzin += r.benzinGideri;
+      topYemek += r.yemekGideri;
+      topEk += r.ekMasraflar;
+
+      for (final c in r.calisanlar) {
+        final ad = c.isci.ad.trim();
+        final durum = c.durum.toLowerCase();
+        if (durum.contains('tam')) {
+          isciTamGun[ad] = (isciTamGun[ad] ?? 0) + 1;
+          isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + 1.0;
+        } else if (durum.contains('yar')) {
+          isciYarimGun[ad] = (isciYarimGun[ad] ?? 0) + 1;
+          isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + 0.5;
+        }
+      }
+    }
+
+    final siraliIsciler =
+        isciYevmiyeleri.entries.toList()
+          ..sort((a, b) => b.value.compareTo(a.value));
+
+    pdf.addPage(
+      pw.MultiPage(
+        margin: const pw.EdgeInsets.all(24),
+        theme: pw.ThemeData.withFont(base: ttf),
+        build:
+            (context) => [
+              // Banner
+              pw.Container(
+                padding: const pw.EdgeInsets.all(18),
+                decoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#0F7C86'),
+                  borderRadius: pw.BorderRadius.circular(16),
+                ),
+                child: pw.Row(
+                  mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                  crossAxisAlignment: pw.CrossAxisAlignment.start,
+                  children: [
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.start,
+                      children: [
+                        pw.Text(
+                          'Şantiye Faaliyet ve Masraf Raporu',
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 18,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        pw.SizedBox(height: 6),
+                        pw.Text(
+                          'Şantiye: ${widget.santiyeAdi}',
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 13,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        if (_secilenIl != null && _secilenIl!.isNotEmpty) ...[
+                          pw.SizedBox(height: 2),
+                          pw.Text(
+                            'Konum: $_secilenIl${_secilenIlce != null && _secilenIlce!.isNotEmpty ? ' / $_secilenIlce' : ''}',
+                            style: pw.TextStyle(
+                              font: ttf,
+                              fontSize: 10,
+                              color: PdfColor.fromHex('#E0F2FE'),
+                            ),
+                          ),
+                        ],
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          'Dönem: $donem',
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 10.5,
+                            color: PdfColor.fromHex('#E0F2FE'),
+                          ),
+                        ),
+                      ],
+                    ),
+                    pw.Column(
+                      crossAxisAlignment: pw.CrossAxisAlignment.end,
+                      children: [
+                        pw.Text(
+                          'Şantiye Yönetim',
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 11,
+                            fontWeight: pw.FontWeight.bold,
+                            color: PdfColors.white,
+                          ),
+                        ),
+                        pw.SizedBox(height: 4),
+                        pw.Text(
+                          DateFormat('dd.MM.yyyy HH:mm').format(DateTime.now()),
+                          style: pw.TextStyle(
+                            font: ttf,
+                            fontSize: 8.5,
+                            color: PdfColor.fromHex('#E0F2FE'),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              pw.SizedBox(height: 16),
+
+              // Özet Kartları
+              pw.Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: [
+                  _buildPdfInfoCard(
+                    'Çalışılan Gün',
+                    '$toplamCalisilanGun gün',
+                    '#EFF6FF',
+                    '#1D4ED8',
+                    ttf,
+                  ),
+                  _buildPdfInfoCard(
+                    'Toplam Yevmiye',
+                    '$yevmiyeStr yevmiye',
+                    '#F0FDF4',
+                    '#15803D',
+                    ttf,
+                  ),
+                  _buildPdfInfoCard(
+                    'Çalışan Personel',
+                    '${isciYevmiyeleri.length} kişi',
+                    '#F3E8FF',
+                    '#7E22CE',
+                    ttf,
+                  ),
+                  _buildPdfInfoCard(
+                    'Toplam Masraf',
+                    Formatlayici.yap(toplamMasrafGenel),
+                    '#FEF2F2',
+                    '#B91C1C',
+                    ttf,
+                    isBold: true,
+                  ),
+                ],
+              ),
+              pw.SizedBox(height: 18),
+
+              // Masraf Dağılımı Tablosu
+              _buildPdfSectionTitle('Operasyonel Masraf Dağılımı', ttf),
+              pw.SizedBox(height: 6),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 9.5,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                ),
+                headerDecoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#334155'),
+                ),
+                cellStyle: pw.TextStyle(font: ttf, fontSize: 9),
+                cellPadding: const pw.EdgeInsets.symmetric(
+                  horizontal: 8,
+                  vertical: 5,
+                ),
+                headers: ['Masraf Kalemi', 'Tutar'],
+                data: [
+                  ['Benzin Gideri', Formatlayici.yap(topBenzin)],
+                  ['Yemek Gideri', Formatlayici.yap(topYemek)],
+                  ['Ek Masraflar', Formatlayici.yap(topEk)],
+                  [
+                    'Toplam Operasyonel Masraf',
+                    Formatlayici.yap(toplamMasrafGenel),
+                  ],
+                ],
+              ),
+              pw.SizedBox(height: 18),
+
+              // Personel ve Yevmiyeler Tablosu
+              _buildPdfSectionTitle(
+                'Personel Çalışma Dağılımı (Yevmiyeler)',
+                ttf,
+              ),
+              pw.SizedBox(height: 6),
+              siraliIsciler.isEmpty
+                  ? pw.Text(
+                    'Bu şantiyede kayıtlı personel çalışması bulunmamaktadır.',
+                    style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 10,
+                      color: PdfColors.grey700,
+                    ),
+                  )
+                  : pw.TableHelper.fromTextArray(
+                    headerStyle: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 9.5,
+                      fontWeight: pw.FontWeight.bold,
+                      color: PdfColors.white,
+                    ),
+                    headerDecoration: pw.BoxDecoration(
+                      color: PdfColor.fromHex('#0F7C86'),
+                    ),
+                    cellStyle: pw.TextStyle(font: ttf, fontSize: 9),
+                    cellPadding: const pw.EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 5,
+                    ),
+                    headers: [
+                      'Personel Adı',
+                      'Tam Gün',
+                      'Yarım Gün',
+                      'Toplam Yevmiye',
+                    ],
+                    data:
+                        siraliIsciler.map((e) {
+                          final tam = isciTamGun[e.key] ?? 0;
+                          final yarim = isciYarimGun[e.key] ?? 0;
+                          final yevStr =
+                              e.value % 1 == 0
+                                  ? '${e.value.toInt()}'
+                                  : e.value.toStringAsFixed(1);
+                          return [e.key, '$tam', '$yarim', '$yevStr yevmiye'];
+                        }).toList(),
+                  ),
+              pw.SizedBox(height: 18),
+
+              // Günlük Faaliyet ve Masraf Çizelgesi
+              _buildPdfSectionTitle('Günlük Faaliyet & Masraf Çizelgesi', ttf),
+              pw.SizedBox(height: 6),
+              pw.TableHelper.fromTextArray(
+                headerStyle: pw.TextStyle(
+                  font: ttf,
+                  fontSize: 9,
+                  fontWeight: pw.FontWeight.bold,
+                  color: PdfColors.white,
+                ),
+                headerDecoration: pw.BoxDecoration(
+                  color: PdfColor.fromHex('#1E293B'),
+                ),
+                cellStyle: pw.TextStyle(font: ttf, fontSize: 8),
+                cellPadding: const pw.EdgeInsets.symmetric(
+                  horizontal: 5,
+                  vertical: 5,
+                ),
+                headers: [
+                  'Tarih',
+                  'Kişi',
+                  'Benzin',
+                  'Yemek',
+                  'Ek Masraf',
+                  'Açıklama / Not',
+                ],
+                data:
+                    raporlar.map((r) {
+                      final tStr = DateFormat('dd.MM.yyyy').format(r.tarih);
+                      final kisiSayisi = r.calisanlar.length;
+                      final aciklamaKisa =
+                          r.aciklama.trim().isEmpty ? '-' : r.aciklama.trim();
+                      return [
+                        tStr,
+                        '$kisiSayisi',
+                        Formatlayici.yap(r.benzinGideri),
+                        Formatlayici.yap(r.yemekGideri),
+                        Formatlayici.yap(r.ekMasraflar),
+                        aciklamaKisa,
+                      ];
+                    }).toList(),
+              ),
+              pw.SizedBox(height: 12),
+
+              // Footer
+              pw.Divider(color: PdfColors.grey300),
+              pw.Row(
+                mainAxisAlignment: pw.MainAxisAlignment.spaceBetween,
+                children: [
+                  pw.Text(
+                    'Bu rapor Şantiye Puantaj ve Yönetim Sistemi ile üretilmiştir.',
+                    style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 8,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                  pw.Text(
+                    'Sayfa 1',
+                    style: pw.TextStyle(
+                      font: ttf,
+                      fontSize: 8,
+                      color: PdfColors.grey600,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+      ),
+    );
+
+    return pdf.save();
+  }
+
+  pw.Widget _buildPdfInfoCard(
+    String title,
+    String value,
+    String bgColorHex,
+    String textColorHex,
+    pw.Font font, {
+    bool isBold = false,
+  }) {
+    return pw.Container(
+      width: 155,
+      padding: const pw.EdgeInsets.all(8),
+      decoration: pw.BoxDecoration(
+        color: PdfColor.fromHex(bgColorHex),
+        borderRadius: pw.BorderRadius.circular(8),
+      ),
+      child: pw.Column(
+        crossAxisAlignment: pw.CrossAxisAlignment.start,
+        children: [
+          pw.Text(
+            title,
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 8.5,
+              color: PdfColor.fromHex(textColorHex),
+            ),
+          ),
+          pw.SizedBox(height: 3),
+          pw.Text(
+            value,
+            style: pw.TextStyle(
+              font: font,
+              fontSize: 11,
+              fontWeight: isBold ? pw.FontWeight.bold : pw.FontWeight.normal,
+              color: PdfColor.fromHex(textColorHex),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  pw.Widget _buildPdfSectionTitle(String title, pw.Font font) {
+    return pw.Text(
+      title,
+      style: pw.TextStyle(
+        font: font,
+        fontSize: 11,
+        fontWeight: pw.FontWeight.bold,
+        color: PdfColor.fromHex('#0F172A'),
+      ),
+    );
+  }
+
+  // --- MODERN PAYLAŞIM MENÜSÜ ---
+  void _paylasimMenusunuGoster({
+    required BuildContext context,
+    required String baslik,
+    required String metin,
+    required bool isDark,
+    required Future<Uint8List> Function() pdfOlusturucu,
+    required String pdfDosyaAdi,
+  }) {
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder:
+          (c) => ClipRRect(
+            borderRadius: const BorderRadius.vertical(top: Radius.circular(24)),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Container(
+                padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
+                decoration: BoxDecoration(
+                  color:
+                      isDark
+                          ? const Color(0xFF131922).withValues(alpha: 0.95)
+                          : Colors.white.withValues(alpha: 0.95),
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  border: Border(
+                    top: BorderSide(
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.12)
+                              : Colors.black.withValues(alpha: 0.08),
+                    ),
+                  ),
+                ),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Container(
+                      width: 38,
+                      height: 4,
+                      margin: const EdgeInsets.only(bottom: 16),
+                      decoration: BoxDecoration(
+                        color: (isDark ? Colors.white : Colors.black)
+                            .withValues(alpha: 0.2),
+                        borderRadius: BorderRadius.circular(10),
+                      ),
+                    ),
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.share_rounded,
+                            color: Color(0xFF0D9488),
+                            size: 20,
+                          ),
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Text(
+                            baslik,
+                            style: GoogleFonts.poppins(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w700,
+                              color:
+                                  isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
+                            ),
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close, size: 20),
+                          onPressed: () => Navigator.pop(c),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+                    Container(
+                      constraints: const BoxConstraints(maxHeight: 180),
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? Colors.black.withValues(alpha: 0.3)
+                                : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.06)
+                                  : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      child: SingleChildScrollView(
+                        child: Text(
+                          metin,
+                          style: GoogleFonts.poppins(
+                            fontSize: 11.5,
+                            height: 1.45,
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF334155),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 16),
+
+                    // Buton 1: PDF Olarak Paylaş / Yazdır
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F7C86),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 2,
+                      ),
+                      icon: const Icon(Icons.picture_as_pdf_rounded, size: 20),
+                      label: Text(
+                        "PDF Olarak Paylaş / Yazdır",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () async {
+                        Navigator.pop(c);
+                        try {
+                          final bytes = await pdfOlusturucu();
+                          await Printing.sharePdf(
+                            bytes: bytes,
+                            filename: pdfDosyaAdi,
+                          );
+                        } catch (e) {
+                          if (context.mounted) {
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: Text("PDF oluşturulurken hata: $e"),
+                                backgroundColor: Colors.red,
+                              ),
+                            );
+                          }
+                        }
+                      },
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Buton 2: Metin Olarak Paylaş (WhatsApp / SMS)
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF10B981),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        elevation: 1,
+                      ),
+                      icon: const Icon(Icons.send_rounded, size: 18),
+                      label: Text(
+                        "Metin Olarak Paylaş (WhatsApp / SMS)",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () {
+                        Navigator.pop(c);
+                        Share.share(metin, subject: baslik);
+                      },
+                    ),
+                    const SizedBox(height: 10),
+
+                    // Buton 3: Metni Kopyala
+                    OutlinedButton.icon(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor:
+                            isDark ? Colors.white : const Color(0xFF0F172A),
+                        side: BorderSide(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.18)
+                                  : const Color(0xFFCBD5E1),
+                        ),
+                        minimumSize: const Size(double.infinity, 46),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon: const Icon(Icons.copy_rounded, size: 18),
+                      label: Text(
+                        "Metni Kopyala",
+                        style: GoogleFonts.poppins(
+                          fontSize: 13.5,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      onPressed: () {
+                        Clipboard.setData(ClipboardData(text: metin));
+                        Navigator.pop(c);
+                        ScaffoldMessenger.of(context).showSnackBar(
+                          SnackBar(
+                            content: Row(
+                              children: const [
+                                Icon(
+                                  Icons.check_circle,
+                                  color: Colors.white,
+                                  size: 18,
+                                ),
+                                SizedBox(width: 8),
+                                Text("Rapor metni panoya kopyalandı!"),
+                              ],
+                            ),
+                            backgroundColor: const Color(0xFF0D9488),
+                            behavior: SnackBarBehavior.floating,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            duration: const Duration(seconds: 2),
+                          ),
+                        );
+                      },
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
     );
   }
 }

@@ -12,7 +12,6 @@ import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'widgets/interactive_tour/interactive_tour_model.dart';
 import 'widgets/interactive_tour/interactive_tour_overlay.dart';
-import 'package:connectivity_plus/connectivity_plus.dart';
 import 'main.dart';
 import 'user_model.dart';
 import 'auth_servisi.dart';
@@ -38,6 +37,7 @@ import 'data_models.dart';
 import 'home_widget_service.dart';
 import 'widgets/floating_liquid_bottom_bar.dart';
 import 'widgets/floating_liquid_app_bar.dart';
+import 'widgets/offline_sync_banner.dart';
 import 'ai_chat_screen.dart';
 
 class AnaMenuEkrani extends StatefulWidget {
@@ -75,9 +75,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   bool _klavuzAciliyor = false;
   bool _turAktif = false;
   bool _turDenendiBuAcilis = false;
-
-  StreamSubscription<List<ConnectivityResult>>? _connectivitySubscription;
-  bool _isOffline = false;
 
   void _hizliErisimAc(int index, bool finansalErisim) {
     final finansSekmesi = index == 3 || index == 4;
@@ -138,33 +135,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _klavuzKontrol();
     });
-
-    _connectivitySubscription = Connectivity().onConnectivityChanged.listen((
-      List<ConnectivityResult> results,
-    ) {
-      final isOffline =
-          results.contains(ConnectivityResult.none) || results.isEmpty;
-      if (mounted && _isOffline != isOffline) {
-        setState(() {
-          _isOffline = isOffline;
-        });
-      }
-    });
-
-    Connectivity().checkConnectivity().then((results) {
-      final isOffline =
-          results.contains(ConnectivityResult.none) || results.isEmpty;
-      if (mounted && _isOffline != isOffline) {
-        setState(() {
-          _isOffline = isOffline;
-        });
-      }
-    });
   }
 
   @override
   void dispose() {
-    _connectivitySubscription?.cancel();
     _disposePanelStream();
     super.dispose();
   }
@@ -445,15 +419,15 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             child: Material(
               color:
                   isDark
-                      ? Colors.black.withOpacity(0.26)
-                      : Colors.white.withOpacity(0.56),
+                      ? Colors.black.withValues(alpha: 0.26)
+                      : Colors.white.withValues(alpha: 0.56),
               child: InkWell(
                 key: _menuButtonKey,
                 onTap: () => _shellScaffoldKey.currentState?.openDrawer(),
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white.withOpacity(0.18)),
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Icon(
@@ -486,8 +460,8 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 child: Material(
                   color:
                       isDark
-                          ? Colors.black.withOpacity(0.26)
-                          : Colors.white.withOpacity(0.56),
+                          ? Colors.black.withValues(alpha: 0.26)
+                          : Colors.white.withValues(alpha: 0.56),
                   child: InkWell(
                     key: _privacyButtonKey,
                     onTap: () => privacy.togglePrivacy(),
@@ -495,7 +469,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
                         border: Border.all(
-                          color: Colors.white.withOpacity(0.18),
+                          color: Colors.white.withValues(alpha: 0.18),
                         ),
                         borderRadius: BorderRadius.circular(18),
                       ),
@@ -674,7 +648,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     begin: Alignment.topCenter,
                     end: Alignment.bottomCenter,
                     colors: [
-                      const Color(0xFF0B5D68).withOpacity(0.18),
+                      const Color(0xFF0B5D68).withValues(alpha: 0.18),
                       Colors.transparent,
                     ],
                   ),
@@ -693,12 +667,12 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       center: Alignment.bottomCenter,
                       radius: 0.92,
                       colors: [
-                        const Color(0xFF5EEAD4).withOpacity(
+                        const Color(0xFF5EEAD4).withValues(alpha: 
                           Theme.of(context).brightness == Brightness.dark
                               ? 0.14
                               : 0.18,
                         ),
-                        const Color(0xFFB6F5ED).withOpacity(
+                        const Color(0xFFB6F5ED).withValues(alpha: 
                           Theme.of(context).brightness == Brightness.dark
                               ? 0.08
                               : 0.10,
@@ -813,10 +787,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.10)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.10)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.24 : 0.08),
+                  color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -828,7 +802,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 Container(
                   padding: const EdgeInsets.all(16),
                   decoration: BoxDecoration(
-                    color: Colors.grey.withOpacity(0.12),
+                    color: Colors.grey.withValues(alpha: 0.12),
                     shape: BoxShape.circle,
                   ),
                   child: const Icon(
@@ -1595,26 +1569,26 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           end: Alignment.bottomRight,
           colors: [
             (isDark ? const Color(0xFF15181D) : const Color(0xFFE7EEF1))
-                .withOpacity(isDark ? 0.96 : 0.90),
+                .withValues(alpha: isDark ? 0.96 : 0.90),
             (isDark ? const Color(0xFF090B0F) : const Color(0xFFD6E1E6))
-                .withOpacity(isDark ? 0.98 : 0.94),
+                .withValues(alpha: isDark ? 0.98 : 0.94),
           ],
         ),
         border: Border.all(
           color:
               isDark
-                  ? Colors.white.withOpacity(0.07)
-                  : const Color(0xFFBFD0D6).withOpacity(0.92),
+                  ? Colors.white.withValues(alpha: 0.07)
+                  : const Color(0xFFBFD0D6).withValues(alpha: 0.92),
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
             blurRadius: isDark ? 18 : 12,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: const Color(0xFF79E9D7).withOpacity(isDark ? 0.03 : 0.08),
+            color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.03 : 0.08),
             blurRadius: isDark ? 12 : 18,
             offset: const Offset(0, 10),
           ),
@@ -1637,16 +1611,16 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           end: Alignment.bottomRight,
           colors: [
             (isDark ? const Color(0xFF171A1F) : const Color(0xFFE0EAEE))
-                .withOpacity(isDark ? 0.88 : 0.82),
+                .withValues(alpha: isDark ? 0.88 : 0.82),
             (isDark ? const Color(0xFF0D0F13) : const Color(0xFFCCD9DE))
-                .withOpacity(isDark ? 0.96 : 0.90),
+                .withValues(alpha: isDark ? 0.96 : 0.90),
           ],
         ),
         border: Border.all(
           color:
               isDark
-                  ? Colors.white.withOpacity(0.05)
-                  : const Color(0xFFBFD0D6).withOpacity(0.88),
+                  ? Colors.white.withValues(alpha: 0.05)
+                  : const Color(0xFFBFD0D6).withValues(alpha: 0.88),
         ),
         borderRadius: BorderRadius.circular(18),
       ),
@@ -1670,14 +1644,14 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            accentColor.withOpacity(isDark ? 0.20 : 0.18),
+            accentColor.withValues(alpha: isDark ? 0.20 : 0.18),
             (isDark ? const Color(0xFF15313A) : const Color(0xFFE9F8FA))
-                .withOpacity(isDark ? 0.72 : 0.96),
+                .withValues(alpha: isDark ? 0.72 : 0.96),
           ],
         ),
         borderRadius: BorderRadius.circular(compact ? 12 : 14),
         border: Border.all(
-          color: accentColor.withOpacity(isDark ? 0.20 : 0.14),
+          color: accentColor.withValues(alpha: isDark ? 0.20 : 0.14),
         ),
       ),
       child: Icon(icon, color: accentColor, size: compact ? 18 : 24),
@@ -1695,8 +1669,8 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       chromaticAberration: 0.015,
       glassColor:
           isDark
-              ? Colors.white.withOpacity(0.08)
-              : Colors.white.withOpacity(0.14),
+              ? Colors.white.withValues(alpha: 0.08)
+              : Colors.white.withValues(alpha: 0.14),
     );
   }
 
@@ -1735,13 +1709,13 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             decoration: BoxDecoration(
               color:
                   isDark
-                      ? Colors.black.withOpacity(0.36)
-                      : Colors.white.withOpacity(0.76),
+                      ? Colors.black.withValues(alpha: 0.36)
+                      : Colors.white.withValues(alpha: 0.76),
               borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withOpacity(0.18)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.24 : 0.08),
+                  color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.08),
                   blurRadius: 20,
                   offset: const Offset(0, 10),
                 ),
@@ -1855,7 +1829,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           children: [
             Icon(
               icon,
-              color: isSelected ? color : color.withOpacity(0.82),
+              color: isSelected ? color : color.withValues(alpha: 0.82),
               size: 20,
             ),
             const SizedBox(height: 4),
@@ -1904,7 +1878,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: color.withOpacity(isSelected ? 0.28 : 0.12),
+                  color: color.withValues(alpha: isSelected ? 0.28 : 0.12),
                   blurRadius: 18,
                   offset: const Offset(0, 8),
                 ),
@@ -1912,8 +1886,8 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               border: Border.all(
                 color:
                     isSelected
-                        ? color.withOpacity(0.50)
-                        : Colors.white.withOpacity(0.20),
+                        ? color.withValues(alpha: 0.50)
+                        : Colors.white.withValues(alpha: 0.20),
               ),
             ),
             child: Icon(
@@ -1963,7 +1937,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF0E525D).withOpacity(0.28),
+              color: const Color(0xFF0E525D).withValues(alpha: 0.28),
               blurRadius: 24,
               offset: const Offset(0, 14),
             ),
@@ -1975,9 +1949,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               height: 62,
               width: 62,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(isDark ? 0.16 : 0.18),
+                color: Colors.white.withValues(alpha: isDark ? 0.16 : 0.18),
                 borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withOpacity(0.16)),
+                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
               ),
               child: const Icon(
                 Icons.edit_note_rounded,
@@ -2014,7 +1988,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               height: 54,
               width: 54,
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.10),
+                color: Colors.white.withValues(alpha: 0.10),
                 borderRadius: BorderRadius.circular(18),
               ),
               child: const Icon(
@@ -2050,7 +2024,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF2877C9).withOpacity(0.20),
+            color: const Color(0xFF2877C9).withValues(alpha: 0.20),
             blurRadius: 22,
             offset: const Offset(0, 12),
           ),
@@ -2063,7 +2037,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             'BugÃ¼n',
             style: TextStyle(
               fontSize: 14,
-              color: Colors.white.withOpacity(0.82),
+              color: Colors.white.withValues(alpha: 0.82),
               fontWeight: FontWeight.w600,
             ),
           ),
@@ -2134,11 +2108,11 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(
           color:
-              isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFDAE6F2),
+              isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFDAE6F2),
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(isDark ? 0.18 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
             blurRadius: 18,
             offset: const Offset(0, 10),
           ),
@@ -2152,7 +2126,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               Container(
                 padding: const EdgeInsets.all(10),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withOpacity(0.12),
+                  color: const Color(0xFF14B8A6).withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(16),
                 ),
                 child: const Icon(
@@ -2235,7 +2209,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         ),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF13B0A5).withOpacity(0.22),
+            color: const Color(0xFF13B0A5).withValues(alpha: 0.22),
             blurRadius: 22,
             offset: const Offset(0, 12),
           ),
@@ -2262,7 +2236,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                   vertical: 10,
                 ),
                 decoration: BoxDecoration(
-                  color: Colors.white.withOpacity(0.12),
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(18),
                 ),
                 child: const Row(
@@ -2361,9 +2335,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: Colors.white.withOpacity(0.14),
+        color: Colors.white.withValues(alpha: 0.14),
         borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withOpacity(0.12)),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
       ),
       child: Row(
         children: [
@@ -2386,7 +2360,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                   label,
                   style: TextStyle(
                     fontSize: 13,
-                    color: Colors.white.withOpacity(0.82),
+                    color: Colors.white.withValues(alpha: 0.82),
                   ),
                 ),
               ],
@@ -2410,16 +2384,16 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: Colors.white.withOpacity(0.14),
+          color: Colors.white.withValues(alpha: 0.14),
           borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withOpacity(0.12)),
+          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
         ),
         child: Row(
           children: [
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.white.withOpacity(0.16),
+                color: Colors.white.withValues(alpha: 0.16),
                 borderRadius: BorderRadius.circular(16),
               ),
               child: Icon(icon, color: Colors.white),
@@ -2433,7 +2407,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     title,
                     style: TextStyle(
                       fontSize: 13,
-                      color: Colors.white.withOpacity(0.82),
+                      color: Colors.white.withValues(alpha: 0.82),
                     ),
                   ),
                   const SizedBox(height: 4),
@@ -2450,7 +2424,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     helper,
                     style: TextStyle(
                       fontSize: 12,
-                      color: Colors.white.withOpacity(0.70),
+                      color: Colors.white.withValues(alpha: 0.70),
                     ),
                   ),
                 ],
@@ -2577,21 +2551,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 builder: (context, rolProvider, _) {
                   return Column(
                     children: [
-                      if (_isOffline)
-                        Container(
-                          width: double.infinity,
-                          color: Colors.redAccent,
-                          padding: const EdgeInsets.symmetric(vertical: 4),
-                          child: const Text(
-                            'İnternet bağlantısı yok (Çevrimdışı Çalışıyorsunuz)',
-                            textAlign: TextAlign.center,
-                            style: TextStyle(
-                              color: Colors.white,
-                              fontSize: 12,
-                              fontWeight: FontWeight.bold,
-                            ),
-                          ),
-                        ),
+                      const OfflineSyncBanner(),
                       Expanded(
                         child: _buildPrimaryShell(
                           rolProvider.isFinansalErisim,
@@ -2639,16 +2599,16 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             decoration: BoxDecoration(
               color:
                   isDarkMode
-                      ? const Color(0xFF1E1E1E).withOpacity(0.15)
+                      ? const Color(0xFF1E1E1E).withValues(alpha: 0.15)
                       : const Color.fromARGB(
                         255,
                         255,
                         255,
                         255,
-                      ).withOpacity(0.25),
+                      ).withValues(alpha: 0.25),
               border: Border(
                 right: BorderSide(
-                  color: Colors.white.withOpacity(0.5),
+                  color: Colors.white.withValues(alpha: 0.5),
                   width: 1,
                 ),
               ),
@@ -2662,14 +2622,14 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                   decoration: BoxDecoration(
                     color:
                         isDarkMode
-                            ? Colors.black.withOpacity(0.3)
-                            : const Color(0xFFEAF2F8).withOpacity(0.15),
+                            ? Colors.black.withValues(alpha: 0.3)
+                            : const Color(0xFFEAF2F8).withValues(alpha: 0.15),
                     border: Border(
                       bottom: BorderSide(
                         color:
                             isDarkMode
-                                ? Colors.white.withOpacity(0.5)
-                                : const Color(0xFFD4E2EC).withOpacity(0.52),
+                                ? Colors.white.withValues(alpha: 0.5)
+                                : const Color(0xFFD4E2EC).withValues(alpha: 0.52),
                         width: 1,
                       ),
                     ),
@@ -2729,6 +2689,16 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                                   ),
                             ),
                           );
+                        },
+                      ),
+                      _buildGlassDrawerItem(
+                        context,
+                        icon: Icons.cloud_sync_rounded,
+                        title: 'Çevrimdışı & Eşitleme Durumu',
+                        color: const Color(0xFF0F7C86),
+                        onTap: () {
+                          Navigator.pop(context);
+                          OfflineSyncBanner.showSyncDetailSheet(context);
                         },
                       ),
                       _buildGlassDrawerItem(
@@ -2839,10 +2809,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                         decoration: BoxDecoration(
                           color:
                               isDarkMode
-                                  ? Colors.white.withOpacity(0.05)
-                                  : Colors.black.withOpacity(0.03),
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.03),
                           border: Border.all(
-                            color: Colors.white.withOpacity(0.1),
+                            color: Colors.white.withValues(alpha: 0.1),
                             width: 0.5,
                           ),
                           borderRadius: BorderRadius.circular(12),
@@ -2860,7 +2830,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                             ),
                           ),
                           value: isDarkMode,
-                          activeColor: Colors.white,
+                          activeThumbColor: Colors.white,
                           activeTrackColor: const Color(0xFF14B8A6),
                           inactiveThumbColor:
                               isDarkMode
@@ -2912,7 +2882,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                                   ],
                                 ),
                           );
-                          if (onayla == true) {
+                          if (onayla == true && context.mounted) {
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text("Tüm veriler siliniyor..."),
@@ -2921,6 +2891,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                             await FirestoreServisi(
                               kullaniciId: "temp",
                             ).tumVerileriSil(widget.teamId);
+                            if (!context.mounted) return;
                             ScaffoldMessenger.of(context).showSnackBar(
                               const SnackBar(
                                 content: Text(
@@ -2950,7 +2921,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       await Future<void>.delayed(
                         const Duration(milliseconds: 180),
                       );
-                      if (!mounted) return;
+                      if (!mounted || !context.mounted) return;
                       final onayla = await AnimasyonluDialog.goster<bool>(
                         context: context,
                         builder:
@@ -2974,7 +2945,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                               ],
                             ),
                       );
-                      if (onayla == true && mounted) {
+                      if (onayla == true && mounted && context.mounted) {
                         // Çekmeceyi kapat ve navigation stack'i kök sayfaya getir
                         Navigator.of(
                           context,
@@ -2985,7 +2956,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                         _disposePanelStream();
 
                         // RolProvider'ın Firestore dinleyicisini iptal et ve sıfırla
-                        if (mounted) {
+                        if (mounted && context.mounted) {
                           Provider.of<RolProvider>(
                             context,
                             listen: false,
@@ -3020,13 +2991,13 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             decoration: BoxDecoration(
               color:
                   isDark
-                      ? Colors.black.withOpacity(0.40)
-                      : Colors.white.withOpacity(0.70),
+                      ? Colors.black.withValues(alpha: 0.40)
+                      : Colors.white.withValues(alpha: 0.70),
               borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: Colors.white.withOpacity(0.20)),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(isDark ? 0.28 : 0.10),
+                  color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.10),
                   blurRadius: 24,
                   offset: const Offset(0, 10),
                 ),
@@ -3132,12 +3103,12 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               decoration: BoxDecoration(
                 color:
                     isSelected
-                        ? color.withOpacity(isDark ? 0.28 : 0.20)
-                        : color.withOpacity(isDark ? 0.18 : 0.12),
+                        ? color.withValues(alpha: isDark ? 0.28 : 0.20)
+                        : color.withValues(alpha: isDark ? 0.18 : 0.12),
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color:
-                      isSelected ? color.withOpacity(0.34) : Colors.transparent,
+                      isSelected ? color.withValues(alpha: 0.34) : Colors.transparent,
                 ),
               ),
               child: Icon(icon, color: color, size: 22),
@@ -3175,11 +3146,11 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         color:
             isTransparent
                 ? (isDark
-                    ? Colors.white.withOpacity(0.05)
-                    : Colors.black.withOpacity(0.03))
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : Colors.black.withValues(alpha: 0.03))
                 : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withOpacity(0.3), width: 0.4),
+        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.4),
       ),
       child: ListTile(
         leading: Icon(
@@ -3225,7 +3196,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               Container(
                 padding: const EdgeInsets.all(12),
                 decoration: BoxDecoration(
-                  color: color.withOpacity(0.15),
+                  color: color.withValues(alpha: 0.15),
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(icon, color: color, size: 30),
@@ -3255,7 +3226,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               Icon(
                 Icons.arrow_forward_ios,
                 size: 16,
-                color: Colors.grey.withOpacity(0.5),
+                color: Colors.grey.withValues(alpha: 0.5),
               ),
             ],
           ),
@@ -3283,7 +3254,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             Container(
               padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
-                color: Colors.grey.withOpacity(0.15),
+                color: Colors.grey.withValues(alpha: 0.15),
                 borderRadius: BorderRadius.circular(12),
               ),
               child: Icon(icon, color: Colors.grey, size: 30),
@@ -3342,23 +3313,23 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 end: Alignment.bottomRight,
                 colors: [
                   (isDark ? const Color(0xFF15181D) : const Color(0xFF15181D))
-                      .withOpacity(isDark ? 0.96 : 0.92),
+                      .withValues(alpha: isDark ? 0.96 : 0.92),
                   (isDark ? const Color(0xFF090B0F) : const Color(0xFF0B0E12))
-                      .withOpacity(isDark ? 0.98 : 0.96),
+                      .withValues(alpha: isDark ? 0.98 : 0.96),
                 ],
               ),
               border: Border.all(
-                color: Colors.white.withOpacity(isDark ? 0.07 : 0.06),
+                color: Colors.white.withValues(alpha: isDark ? 0.07 : 0.06),
               ),
               borderRadius: BorderRadius.circular(26),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.28),
+                  color: Colors.black.withValues(alpha: 0.28),
                   blurRadius: 24,
                   offset: const Offset(0, 14),
                 ),
                 BoxShadow(
-                  color: const Color(0xFF79E9D7).withOpacity(0.04),
+                  color: const Color(0xFF79E9D7).withValues(alpha: 0.04),
                   blurRadius: 20,
                   offset: const Offset(0, 16),
                 ),
@@ -3381,7 +3352,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                   const SizedBox(height: 14),
                   DefaultTextStyle(
                     style: TextStyle(
-                      color: Colors.white.withOpacity(0.78),
+                      color: Colors.white.withValues(alpha: 0.78),
                       fontSize: 14,
                       height: 1.5,
                     ),

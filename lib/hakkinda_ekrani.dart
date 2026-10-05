@@ -73,7 +73,7 @@ class _HakkindaEkraniState extends State<HakkindaEkrani> {
                     width: 88,
                     height: 88,
                     decoration: BoxDecoration(
-                      color: _kBrandTeal.withOpacity(isDark ? 0.22 : 0.12),
+                      color: _kBrandTeal.withValues(alpha: isDark ? 0.22 : 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(

@@ -211,23 +211,23 @@ class _InteractiveTourOverlayState extends State<InteractiveTourOverlay>
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                const Color(0xFF141A23).withOpacity(0.96),
-                const Color(0xFF0D1218).withOpacity(0.98),
+                const Color(0xFF141A23).withValues(alpha: 0.96),
+                const Color(0xFF0D1218).withValues(alpha: 0.98),
               ],
             ),
             border: Border.all(
-              color: const Color(0xFF14B8A6).withOpacity(0.45),
+              color: const Color(0xFF14B8A6).withValues(alpha: 0.45),
               width: 1.4,
             ),
             boxShadow: [
               BoxShadow(
-                color: const Color(0xFF14B8A6).withOpacity(0.18),
+                color: const Color(0xFF14B8A6).withValues(alpha: 0.18),
                 blurRadius: 28,
                 spreadRadius: 2,
                 offset: const Offset(0, 6),
               ),
               BoxShadow(
-                color: Colors.black.withOpacity(0.70),
+                color: Colors.black.withValues(alpha: 0.70),
                 blurRadius: 20,
                 offset: const Offset(0, 10),
               ),
@@ -249,10 +249,10 @@ class _InteractiveTourOverlayState extends State<InteractiveTourOverlay>
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF14B8A6).withOpacity(0.20),
+                            color: const Color(0xFF14B8A6).withValues(alpha: 0.20),
                             borderRadius: BorderRadius.circular(12),
                             border: Border.all(
-                              color: const Color(0xFF14B8A6).withOpacity(0.4),
+                              color: const Color(0xFF14B8A6).withValues(alpha: 0.4),
                               width: 1,
                             ),
                           ),
@@ -279,7 +279,7 @@ class _InteractiveTourOverlayState extends State<InteractiveTourOverlay>
                         Container(
                           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
-                            color: Colors.white.withOpacity(0.08),
+                            color: Colors.white.withValues(alpha: 0.08),
                             borderRadius: BorderRadius.circular(999),
                           ),
                           child: Text(
@@ -361,7 +361,7 @@ class _InteractiveTourOverlayState extends State<InteractiveTourOverlay>
                                 decoration: BoxDecoration(
                                   color: isSelected
                                       ? const Color(0xFF14B8A6)
-                                      : Colors.white.withOpacity(0.20),
+                                      : Colors.white.withValues(alpha: 0.20),
                                   borderRadius: BorderRadius.circular(99),
                                 ),
                               );
@@ -420,7 +420,7 @@ class _SpotlightPainter extends CustomPainter {
   @override
   void paint(Canvas canvas, Size size) {
     final backgroundPaint = Paint()
-      ..color = Colors.black.withOpacity(0.76)
+      ..color = Colors.black.withValues(alpha: 0.76)
       ..style = PaintingStyle.fill;
 
     if (targetRect == null) {
@@ -449,7 +449,7 @@ class _SpotlightPainter extends CustomPainter {
 
     // Hedef etrafında dinamik neon teal çerçeve (Pulsing Glow)
     final glowPaint = Paint()
-      ..color = const Color(0xFF14B8A6).withOpacity(0.35 + (0.35 * pulseValue))
+      ..color = const Color(0xFF14B8A6).withValues(alpha: 0.35 + (0.35 * pulseValue))
       ..style = PaintingStyle.stroke
       ..strokeWidth = 2.0 + (1.2 * pulseValue)
       ..maskFilter = MaskFilter.blur(BlurStyle.normal, 4 + (4 * pulseValue));
@@ -457,7 +457,7 @@ class _SpotlightPainter extends CustomPainter {
     canvas.drawRRect(targetRRect, glowPaint);
 
     final strokePaint = Paint()
-      ..color = const Color(0xFF5EEAD4).withOpacity(0.85)
+      ..color = const Color(0xFF5EEAD4).withValues(alpha: 0.85)
       ..style = PaintingStyle.stroke
       ..strokeWidth = 1.8;
 

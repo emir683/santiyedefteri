@@ -51,7 +51,7 @@ class DestekEkrani extends StatelessWidget {
                     width: 58,
                     height: 58,
                     decoration: BoxDecoration(
-                      color: _kBrandTeal.withOpacity(isDark ? 0.22 : 0.12),
+                      color: _kBrandTeal.withValues(alpha: isDark ? 0.22 : 0.12),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: const Icon(
@@ -124,7 +124,7 @@ class _SupportLinkCard extends StatelessWidget {
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: _kBrandTeal.withOpacity(isDark ? 0.20 : 0.10),
+            color: _kBrandTeal.withValues(alpha: isDark ? 0.20 : 0.10),
             borderRadius: BorderRadius.circular(15),
           ),
           child: Icon(icon, color: _kBrandTeal),

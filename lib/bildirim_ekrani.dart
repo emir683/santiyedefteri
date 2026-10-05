@@ -167,13 +167,13 @@ class _BildirimKarti extends StatelessWidget {
           color: okundu
               ? (isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD))
               : (isDark
-                  ? renk.withOpacity(0.08)
-                  : renk.withOpacity(0.05)),
+                  ? renk.withValues(alpha: 0.08)
+                  : renk.withValues(alpha: 0.05)),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: okundu
-                ? (isDark ? Colors.white.withOpacity(0.06) : const Color(0xFFD8EAF0))
-                : renk.withOpacity(0.25),
+                ? (isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFD8EAF0))
+                : renk.withValues(alpha: 0.25),
             width: okundu ? 1 : 1.5,
           ),
         ),
@@ -184,7 +184,7 @@ class _BildirimKarti extends StatelessWidget {
             Container(
               padding: const EdgeInsets.all(10),
               decoration: BoxDecoration(
-                color: renk.withOpacity(0.12),
+                color: renk.withValues(alpha: 0.12),
                 shape: BoxShape.circle,
               ),
               child: Icon(ikon, color: renk, size: 20),

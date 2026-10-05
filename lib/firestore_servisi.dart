@@ -30,8 +30,9 @@ class FirestoreServisi {
     try {
       final query =
           await _db.collection('teams').where('ad', isEqualTo: ekipAdi).get();
-      if (query.docs.isNotEmpty)
+      if (query.docs.isNotEmpty) {
         throw Exception("Bu ekip adı zaten kullanılıyor.");
+      }
 
       DocumentReference teamRef = await _db.collection('teams').add({
         'ad': ekipAdi,
@@ -63,8 +64,9 @@ class FirestoreServisi {
               ) // Kişisel ekipleri hariç tut
               .limit(1)
               .get();
-      if (query.docs.isEmpty)
+      if (query.docs.isEmpty) {
         throw Exception("Ekip bulunamadı veya şifre yanlış.");
+      }
 
       final teamDoc = query.docs.first;
       await _kullaniciRef.update({'teamId': teamDoc.id});
@@ -454,17 +456,33 @@ class FirestoreServisi {
     final ertesiGun = gunBaslangici.add(const Duration(days: 1));
     final santiyeAdiKarsilastirma = rapor.santiyeAdi.trim().toLowerCase();
 
-    final ayniGunSnapshot =
-        await reportsRef
+    QuerySnapshot<Map<String, dynamic>>? ayniGunSnapshot;
+    try {
+      ayniGunSnapshot = await reportsRef
+          .where(
+            'tarih',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(gunBaslangici),
+          )
+          .where('tarih', isLessThan: Timestamp.fromDate(ertesiGun))
+          .get()
+          .timeout(const Duration(milliseconds: 2500));
+    } catch (_) {
+      try {
+        ayniGunSnapshot = await reportsRef
             .where(
               'tarih',
               isGreaterThanOrEqualTo: Timestamp.fromDate(gunBaslangici),
             )
             .where('tarih', isLessThan: Timestamp.fromDate(ertesiGun))
-            .get();
+            .get(const GetOptions(source: Source.cache));
+      } catch (_) {
+        ayniGunSnapshot = null;
+      }
+    }
 
+    final ayniGunDocs = ayniGunSnapshot?.docs ?? const [];
     final ayniSantiyeKayitlari =
-        ayniGunSnapshot.docs.where((doc) {
+        ayniGunDocs.where((doc) {
           final docSantiyeAdi =
               (doc.data()['santiyeAdi'] ?? '').toString().trim().toLowerCase();
           return docSantiyeAdi == santiyeAdiKarsilastirma;

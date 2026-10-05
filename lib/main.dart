@@ -18,6 +18,8 @@ import 'fcm_servisi.dart';
 import 'privacy_provider.dart';
 import 'rol_provider.dart';
 import 'services/ai/ai_service.dart';
+import 'services/connectivity_sync_service.dart';
+// ignore: depend_on_referenced_packages
 import 'package:firebase_remote_config/firebase_remote_config.dart';
 
 final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
@@ -65,6 +67,14 @@ void main() async {
     }
     _firebaseReady = true;
     debugPrint("✅ Firebase başarıyla başlatıldı.");
+
+    // Çevrimdışı kalıcılık ve arka plan senkronizasyonunu başlat
+    try {
+      await ConnectivitySyncService.instance.initialize();
+    } catch (e) {
+      debugPrint("Offline sync servisi baslatilamadi: $e");
+    }
+
     // Gemini API anahtarını Remote Config'den güvenle yükle
     await _loadGeminiApiKey();
   } catch (e) {
@@ -99,10 +109,12 @@ void main() async {
 Future<void> _loadGeminiApiKey() async {
   try {
     final rc = FirebaseRemoteConfig.instance;
-    await rc.setConfigSettings(RemoteConfigSettings(
-      fetchTimeout: const Duration(seconds: 10),
-      minimumFetchInterval: const Duration(hours: 1),
-    ));
+    await rc.setConfigSettings(
+      RemoteConfigSettings(
+        fetchTimeout: const Duration(seconds: 10),
+        minimumFetchInterval: const Duration(hours: 1),
+      ),
+    );
     await rc.setDefaults({'gemini_api_key': ''});
     await rc.fetchAndActivate();
     final key = rc.getString('gemini_api_key');
@@ -110,7 +122,9 @@ Future<void> _loadGeminiApiKey() async {
       AIService.setApiKey(key);
       debugPrint('✅ Gemini API anahtarı Remote Config üzerinden yüklendi.');
     } else {
-      debugPrint('⚠️ Remote Config: gemini_api_key boş — AI özellikleri devre dışı.');
+      debugPrint(
+        '⚠️ Remote Config: gemini_api_key boş — AI özellikleri devre dışı.',
+      );
     }
   } catch (e) {
     debugPrint('⚠️ Remote Config yüklenemedi: $e — AI özellikleri devre dışı.');
@@ -146,6 +160,9 @@ class MyApp extends StatelessWidget {
         // MultiProvider, birden fazla Provider'ı bir araya getirir.
         return MultiProvider(
           providers: [
+            ChangeNotifierProvider.value(
+              value: ConnectivitySyncService.instance,
+            ),
             ChangeNotifierProvider(create: (_) => ThemeProvider(isDarkMode)),
             ChangeNotifierProvider(create: (_) => PrivacyProvider()),
             ChangeNotifierProvider(create: (_) => RolProvider()),
@@ -281,7 +298,7 @@ class _BootstrapErrorScreen extends StatelessWidget {
                 color: Colors.white,
                 borderRadius: BorderRadius.circular(28),
                 border: Border.all(
-                  color: const Color(0xFF0F7C86).withOpacity(0.12),
+                  color: const Color(0xFF0F7C86).withValues(alpha: 0.12),
                 ),
                 boxShadow: const [
                   BoxShadow(
@@ -299,7 +316,7 @@ class _BootstrapErrorScreen extends StatelessWidget {
                     width: 58,
                     height: 58,
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0F7C86).withOpacity(0.10),
+                      color: const Color(0xFF0F7C86).withValues(alpha: 0.10),
                       borderRadius: BorderRadius.circular(18),
                     ),
                     child: const Icon(
@@ -338,9 +355,7 @@ class _BootstrapErrorScreen extends StatelessWidget {
                       decoration: BoxDecoration(
                         color: const Color(0xFFF8FAFC),
                         borderRadius: BorderRadius.circular(18),
-                        border: Border.all(
-                          color: const Color(0xFFE2E8F0),
-                        ),
+                        border: Border.all(color: const Color(0xFFE2E8F0)),
                       ),
                       child: SelectableText(
                         message!,

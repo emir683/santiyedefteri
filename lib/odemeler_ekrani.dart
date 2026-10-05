@@ -47,7 +47,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Kapat',
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
@@ -61,12 +61,12 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withOpacity(0.1)),
+                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withOpacity(0.5),
+                      color: Colors.black.withValues(alpha: 0.5),
                       blurRadius: 20,
                     ),
                   ],
@@ -154,7 +154,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Kapat',
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
@@ -174,14 +174,14 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                           margin: const EdgeInsets.all(24),
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                            color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withValues(alpha: 0.1),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 blurRadius: 20,
                               ),
                             ],
@@ -212,7 +212,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                         horizontal: 16,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.05),
+                                        color: Colors.white.withValues(alpha: 0.05),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: DropdownButtonHideUnderline(
@@ -273,7 +273,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                     child: Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.05),
+                                        color: Colors.white.withValues(alpha: 0.05),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Row(
@@ -381,7 +381,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: 'Kapat',
-      barrierColor: Colors.black.withOpacity(0.8),
+      barrierColor: Colors.black.withValues(alpha: 0.8),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
@@ -401,14 +401,14 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                           margin: const EdgeInsets.all(24),
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E1E).withOpacity(0.95),
+                            color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withOpacity(0.1),
+                              color: Colors.white.withValues(alpha: 0.1),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withOpacity(0.5),
+                                color: Colors.black.withValues(alpha: 0.5),
                                 blurRadius: 20,
                               ),
                             ],
@@ -439,7 +439,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                         horizontal: 16,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.05),
+                                        color: Colors.white.withValues(alpha: 0.05),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: DropdownButtonHideUnderline(
@@ -493,7 +493,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                     child: Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withOpacity(0.05),
+                                        color: Colors.white.withValues(alpha: 0.05),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Row(
@@ -604,7 +604,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
         labelStyle: TextStyle(color: Colors.grey[400]),
         prefixIcon: Icon(icon, color: Colors.grey),
         filled: true,
-        fillColor: Colors.white.withOpacity(0.05),
+        fillColor: Colors.white.withValues(alpha: 0.05),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide.none,
@@ -801,27 +801,27 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
         end: Alignment.bottomRight,
         colors: [
           (isDark ? const Color(0xFF15181D) : const Color(0xFFEDFFFF))
-              .withOpacity(isDark ? 0.96 : 0.72),
+              .withValues(alpha: isDark ? 0.96 : 0.72),
           (isDark ? const Color(0xFF090B0F) : const Color(0xFFF7FBFD))
-              .withOpacity(isDark ? 0.98 : 0.90),
+              .withValues(alpha: isDark ? 0.98 : 0.90),
         ],
       ),
       borderRadius: BorderRadius.circular(20),
       border: Border.all(
         color:
             isDark
-                ? Colors.white.withOpacity(0.07)
-                : const Color(0xFFD8EAF0).withOpacity(0.90),
+                ? Colors.white.withValues(alpha: 0.07)
+                : const Color(0xFFD8EAF0).withValues(alpha: 0.90),
         width: 1.2,
       ),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withOpacity(isDark ? 0.28 : 0.05),
+          color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.05),
           blurRadius: isDark ? 22 : 18,
           offset: const Offset(0, 12),
         ),
         BoxShadow(
-          color: const Color(0xFF79E9D7).withOpacity(isDark ? 0.04 : 0.10),
+          color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.04 : 0.10),
           blurRadius: isDark ? 18 : 28,
           offset: const Offset(0, 14),
         ),
@@ -841,14 +841,14 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            color.withOpacity(isDark ? 0.18 : 0.14),
-            (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
+            color.withValues(alpha: isDark ? 0.18 : 0.14),
+            (isDark ? const Color(0xFF171B20) : Colors.white).withValues(alpha: 
               isDark ? 0.82 : 0.92,
             ),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(isDark ? 0.16 : 0.12)),
+        border: Border.all(color: color.withValues(alpha: isDark ? 0.16 : 0.12)),
       ),
       child: Icon(icon, color: color, size: 24),
     );

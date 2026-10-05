@@ -90,7 +90,7 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withOpacity(0.75),
+      barrierColor: Colors.black.withValues(alpha: 0.75),
       transitionDuration: const Duration(milliseconds: 200),
       pageBuilder: (ctx, anim1, anim2) {
         return Center(
@@ -101,11 +101,11 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
               color: isDark ? const Color(0xFF1E2228) : Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isDark ? Colors.white.withOpacity(0.12) : const Color(0xFFD8EAF0),
+                color: isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFD8EAF0),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withOpacity(0.35),
+                  color: Colors.black.withValues(alpha: 0.35),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -122,7 +122,7 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                       Container(
                         padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
-                          color: _kBrandTeal.withOpacity(0.16),
+                          color: _kBrandTeal.withValues(alpha: 0.16),
                           borderRadius: BorderRadius.circular(12),
                         ),
                         child: const Icon(
@@ -159,10 +159,10 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: _kBrandTeal.withOpacity(isDark ? 0.12 : 0.07),
+                        color: _kBrandTeal.withValues(alpha: isDark ? 0.12 : 0.07),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
-                          color: _kBrandTeal.withOpacity(0.25),
+                          color: _kBrandTeal.withValues(alpha: 0.25),
                         ),
                       ),
                       child: Column(
@@ -580,7 +580,7 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
   Widget _buildCakismaPanel(bool isDark) {
     final panelBg = isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD);
     final panelBorder =
-        isDark ? Colors.white.withOpacity(0.08) : const Color(0xFFD8EAF0);
+        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0);
 
     return Card(
       elevation: 2,
@@ -612,7 +612,7 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                   onPressed:
                       (_taraniyor || _duzeltiyor) ? null : _cakismalariTara,
                   style: FilledButton.styleFrom(
-                    backgroundColor: _kBrandTeal.withOpacity(0.16),
+                    backgroundColor: _kBrandTeal.withValues(alpha: 0.16),
                     foregroundColor: _kBrandTeal,
                   ),
                   child:
@@ -647,7 +647,7 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
     final tarih = DateFormat('dd MMM yyyy', 'tr_TR').format(grup.gun);
     final colorBg = isDark ? const Color(0xFF0F1720) : const Color(0xFFF8FCFE);
     final borderColor =
-        isDark ? Colors.orange.withOpacity(0.25) : const Color(0xFFF3C78A);
+        isDark ? Colors.orange.withValues(alpha: 0.25) : const Color(0xFFF3C78A);
 
     return Card(
       elevation: 0,
@@ -692,7 +692,7 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                   child: FilledButton.tonalIcon(
                     onPressed: _duzeltiyor ? null : () => _fazlalariSil(grup),
                     style: FilledButton.styleFrom(
-                      backgroundColor: Colors.red.withOpacity(0.12),
+                      backgroundColor: Colors.red.withValues(alpha: 0.12),
                       foregroundColor: Colors.red.shade400,
                     ),
                     icon: const Icon(Icons.delete_sweep_outlined),
@@ -807,7 +807,7 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                           side: BorderSide(
                             color:
                                 isDark
-                                    ? Colors.white.withOpacity(0.08)
+                                    ? Colors.white.withValues(alpha: 0.08)
                                     : const Color(0xFFD8EAF0),
                           ),
                         ),
@@ -820,7 +820,7 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                 padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
                                   color: (styleInfo['color'] as Color)
-                                      .withOpacity(0.15),
+                                      .withValues(alpha: 0.15),
                                   shape: BoxShape.circle,
                                 ),
                                 child: Icon(
@@ -871,10 +871,10 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                                 vertical: 3,
                                               ),
                                               decoration: BoxDecoration(
-                                                color: Colors.green.withOpacity(0.12),
+                                                color: Colors.green.withValues(alpha: 0.12),
                                                 borderRadius: BorderRadius.circular(8),
                                                 border: Border.all(
-                                                  color: Colors.green.withOpacity(0.35),
+                                                  color: Colors.green.withValues(alpha: 0.35),
                                                 ),
                                               ),
                                               child: Row(
@@ -904,10 +904,10 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                                 vertical: 3,
                                               ),
                                               decoration: BoxDecoration(
-                                                color: Colors.grey.withOpacity(0.12),
+                                                color: Colors.grey.withValues(alpha: 0.12),
                                                 borderRadius: BorderRadius.circular(8),
                                                 border: Border.all(
-                                                  color: Colors.grey.withOpacity(0.25),
+                                                  color: Colors.grey.withValues(alpha: 0.25),
                                                 ),
                                               ),
                                               child: Row(
@@ -968,12 +968,12 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                               style: OutlinedButton.styleFrom(
                                                 foregroundColor: _kBrandTeal,
                                                 side: BorderSide(
-                                                  color: _kBrandTeal.withOpacity(
+                                                  color: _kBrandTeal.withValues(alpha: 
                                                     0.4,
                                                   ),
                                                 ),
                                                 backgroundColor:
-                                                    _kBrandTeal.withOpacity(
+                                                    _kBrandTeal.withValues(alpha: 
                                                       0.08,
                                                     ),
                                                 padding:

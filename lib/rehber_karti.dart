@@ -97,7 +97,7 @@ class _RehberKartiState extends State<RehberKarti>
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF1565C0).withOpacity(0.35),
+              color: const Color(0xFF1565C0).withValues(alpha: 0.35),
               blurRadius: 20,
               offset: const Offset(0, 8),
             ),
@@ -129,9 +129,9 @@ class _RehberKartiState extends State<RehberKarti>
                         const SizedBox(height: 2),
                         Text(
                           'İlk günlük raporunu birlikte girelim. '
-                          '${_tamamlananSayisi}/3 adım tamamlandı.',
+                          '$_tamamlananSayisi/3 adım tamamlandı.',
                           style: TextStyle(
-                            color: Colors.white.withOpacity(0.8),
+                            color: Colors.white.withValues(alpha: 0.8),
                             fontSize: 13,
                           ),
                         ),
@@ -142,7 +142,7 @@ class _RehberKartiState extends State<RehberKarti>
                     onTap: _kapat,
                     child: Icon(
                       Icons.close,
-                      color: Colors.white.withOpacity(0.6),
+                      color: Colors.white.withValues(alpha: 0.6),
                       size: 20,
                     ),
                   ),
@@ -155,7 +155,7 @@ class _RehberKartiState extends State<RehberKarti>
                 borderRadius: BorderRadius.circular(10),
                 child: LinearProgressIndicator(
                   value: _tamamlananSayisi / 3,
-                  backgroundColor: Colors.white.withOpacity(0.2),
+                  backgroundColor: Colors.white.withValues(alpha: 0.2),
                   valueColor: const AlwaysStoppedAnimation<Color>(Colors.greenAccent),
                   minHeight: 6,
                 ),
@@ -224,13 +224,13 @@ class _RehberKartiState extends State<RehberKarti>
           padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
           decoration: BoxDecoration(
             color: tamamlandi
-                ? Colors.green.withOpacity(0.18)
-                : Colors.white.withOpacity(0.10),
+                ? Colors.green.withValues(alpha: 0.18)
+                : Colors.white.withValues(alpha: 0.10),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: tamamlandi
-                  ? Colors.greenAccent.withOpacity(0.5)
-                  : Colors.white.withOpacity(0.15),
+                  ? Colors.greenAccent.withValues(alpha: 0.5)
+                  : Colors.white.withValues(alpha: 0.15),
             ),
           ),
           child: Row(
@@ -240,8 +240,8 @@ class _RehberKartiState extends State<RehberKarti>
                 height: 36,
                 decoration: BoxDecoration(
                   color: tamamlandi
-                      ? Colors.greenAccent.withOpacity(0.25)
-                      : Colors.white.withOpacity(0.12),
+                      ? Colors.greenAccent.withValues(alpha: 0.25)
+                      : Colors.white.withValues(alpha: 0.12),
                   shape: BoxShape.circle,
                 ),
                 child: tamamlandi
@@ -271,7 +271,7 @@ class _RehberKartiState extends State<RehberKarti>
                       Text(
                         aciklama,
                         style: TextStyle(
-                          color: Colors.white.withOpacity(0.65),
+                          color: Colors.white.withValues(alpha: 0.65),
                           fontSize: 12,
                         ),
                       ),
@@ -282,13 +282,13 @@ class _RehberKartiState extends State<RehberKarti>
               if (!tamamlandi && !kilitli)
                 Icon(
                   Icons.arrow_forward_ios_rounded,
-                  color: Colors.white.withOpacity(0.7),
+                  color: Colors.white.withValues(alpha: 0.7),
                   size: 14,
                 ),
               if (kilitli)
                 Icon(
                   Icons.lock_outline,
-                  color: Colors.white.withOpacity(0.4),
+                  color: Colors.white.withValues(alpha: 0.4),
                   size: 16,
                 ),
             ],

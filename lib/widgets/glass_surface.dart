@@ -70,12 +70,12 @@ class GlassPageSurface extends StatelessWidget {
                     center: Alignment.topCenter,
                     radius: 1.2,
                     colors: [
-                      const Color(0xFF5EEAD4).withOpacity(
+                      const Color(0xFF5EEAD4).withValues(alpha: 
                         isDark
                             ? 0.08
                             : (preferSoftLightBackground ? 0.035 : 0.05),
                       ),
-                      const Color(0xFF2DD4BF).withOpacity(
+                      const Color(0xFF2DD4BF).withValues(alpha: 
                         isDark
                             ? 0.04
                             : (preferSoftLightBackground ? 0.02 : 0.03),
@@ -100,12 +100,12 @@ class GlassPageSurface extends StatelessWidget {
                     center: Alignment.bottomCenter,
                     radius: 0.95,
                     colors: [
-                      const Color(0xFF5EEAD4).withOpacity(
+                      const Color(0xFF5EEAD4).withValues(alpha: 
                         isDark
                             ? 0.10
                             : (preferSoftLightBackground ? 0.09 : 0.14),
                       ),
-                      const Color(0xFFB6F5ED).withOpacity(
+                      const Color(0xFFB6F5ED).withValues(alpha: 
                         isDark
                             ? 0.05
                             : (preferSoftLightBackground ? 0.055 : 0.08),
@@ -141,8 +141,8 @@ class GlassPageSurface extends StatelessWidget {
       chromaticAberration: performanceMode ? 0.014 : 0.028,
       glassColor:
           isDark
-              ? const Color(0xFF0A0C10).withOpacity(0.20)
-              : const Color(0xFFCDD9DD).withOpacity(0.24),
+              ? const Color(0xFF0A0C10).withValues(alpha: 0.20)
+              : const Color(0xFFCDD9DD).withValues(alpha: 0.24),
     );
   }
 }
@@ -179,26 +179,26 @@ class GlassSectionCard extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [
               (isDark ? const Color(0xFF15181D) : const Color(0xFFD7E3E7))
-                  .withOpacity(isDark ? 0.96 : 0.72),
+                  .withValues(alpha: isDark ? 0.96 : 0.72),
               (isDark ? const Color(0xFF090B0F) : const Color(0xFFC6D2D7))
-                  .withOpacity(isDark ? 0.98 : 0.90),
+                  .withValues(alpha: isDark ? 0.98 : 0.90),
             ],
           ),
           border: Border.all(
             color:
                 isDark
-                    ? Colors.white.withOpacity(0.07)
-                    : const Color(0xFFBFD0D6).withOpacity(0.92),
+                    ? Colors.white.withValues(alpha: 0.07)
+                    : const Color(0xFFBFD0D6).withValues(alpha: 0.92),
           ),
           borderRadius: BorderRadius.circular(borderRadius),
           boxShadow: [
             BoxShadow(
-              color: Colors.black.withOpacity(isDark ? 0.28 : 0.05),
+              color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.05),
               blurRadius: isDark ? 22 : 18,
               offset: const Offset(0, 12),
             ),
             BoxShadow(
-              color: const Color(0xFF79E9D7).withOpacity(isDark ? 0.04 : 0.10),
+              color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.04 : 0.10),
               blurRadius: isDark ? 18 : 28,
               offset: const Offset(0, 14),
             ),
@@ -251,18 +251,18 @@ class GlassInsetSurface extends StatelessWidget {
             end: Alignment.bottomRight,
             colors: [
               (isDark ? const Color(0xFF171A1F) : const Color(0xFFD6E1E5))
-                  .withOpacity(
+                  .withValues(alpha: 
                 isDark ? 0.88 : 0.40,
               ),
               (isDark ? const Color(0xFF0D0F13) : const Color(0xFFC7D2D7))
-                  .withOpacity(isDark ? 0.96 : 0.94),
+                  .withValues(alpha: isDark ? 0.96 : 0.94),
             ],
           ),
           border: Border.all(
             color:
                 isDark
-                    ? Colors.white.withOpacity(0.05)
-                    : const Color(0xFFBFD0D6).withOpacity(0.95),
+                    ? Colors.white.withValues(alpha: 0.05)
+                    : const Color(0xFFBFD0D6).withValues(alpha: 0.95),
           ),
           borderRadius: BorderRadius.circular(borderRadius),
         ),
@@ -306,14 +306,14 @@ class GlassIconBadge extends StatelessWidget {
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
             colors: [
-              color.withOpacity(isDark ? 0.20 : 0.16),
-              (isDark ? const Color(0xFF171B20) : Colors.white).withOpacity(
+              color.withValues(alpha: isDark ? 0.20 : 0.16),
+              (isDark ? const Color(0xFF171B20) : Colors.white).withValues(alpha: 
                 isDark ? 0.82 : 0.94,
               ),
             ],
           ),
           borderRadius: BorderRadius.circular(14),
-          border: Border.all(color: color.withOpacity(isDark ? 0.16 : 0.12)),
+          border: Border.all(color: color.withValues(alpha: isDark ? 0.16 : 0.12)),
         ),
         child: Icon(
           icon,
@@ -371,8 +371,8 @@ class GlassDialogFrame extends StatelessWidget {
       chromaticAberration: 0.028,
       glassColor:
           isDark
-              ? const Color(0xFF0A0C10).withOpacity(0.20)
-              : const Color(0xFFCDD9DD).withOpacity(0.24),
+              ? const Color(0xFF0A0C10).withValues(alpha: 0.20)
+              : const Color(0xFFCDD9DD).withValues(alpha: 0.24),
     );
   }
 }

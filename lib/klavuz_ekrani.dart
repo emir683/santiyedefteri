@@ -1,4 +1,4 @@
-﻿import 'package:flutter/material.dart';
+import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 class KlavuzEkrani extends StatefulWidget {
@@ -71,7 +71,7 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
 
     return PopScope(
       canPop: false,
-      onPopInvoked: (didPop) async {
+      onPopInvokedWithResult: (didPop, result) async {
         if (didPop) return;
         await _bitir();
       },
@@ -143,12 +143,12 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
                             color: isDark
-                                ? Colors.white.withOpacity(0.08)
+                                ? Colors.white.withValues(alpha: 0.08)
                                 : const Color(0xFFD7DFEA),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withOpacity(
+                              color: Colors.black.withValues(alpha: 
                                 isDark ? 0.24 : 0.06,
                               ),
                               blurRadius: 16,
@@ -165,7 +165,7 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
                                 width: 82,
                                 height: 82,
                                 decoration: BoxDecoration(
-                                  color: accent.withOpacity(
+                                  color: accent.withValues(alpha: 
                                     isDark ? 0.20 : 0.12,
                                   ),
                                   borderRadius: BorderRadius.circular(20),

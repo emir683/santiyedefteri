@@ -199,10 +199,10 @@ class _TeamGateState extends State<TeamGate> {
                   Container(
                     padding: const EdgeInsets.all(14),
                     decoration: BoxDecoration(
-                      color: Colors.red.withOpacity(isDark ? 0.16 : 0.10),
+                      color: Colors.red.withValues(alpha: isDark ? 0.16 : 0.10),
                       borderRadius: BorderRadius.circular(14),
                       border: Border.all(
-                        color: Colors.red.withOpacity(isDark ? 0.40 : 0.22),
+                        color: Colors.red.withValues(alpha: isDark ? 0.40 : 0.22),
                       ),
                     ),
                     child: Text(
@@ -229,7 +229,7 @@ class _TeamGateState extends State<TeamGate> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.08)
+              ? Colors.white.withValues(alpha: 0.08)
               : const Color(0xFFD8EAF0),
         ),
       ),
@@ -337,7 +337,7 @@ class _TeamGateState extends State<TeamGate> {
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: isDark
-              ? Colors.white.withOpacity(0.08)
+              ? Colors.white.withValues(alpha: 0.08)
               : const Color(0xFFD8EAF0),
         ),
       ),
@@ -378,7 +378,7 @@ class _TeamGateState extends State<TeamGate> {
                   onPressed: _kisiselDevamEt,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: accent,
-                    side: BorderSide(color: accent.withOpacity(0.35)),
+                    side: BorderSide(color: accent.withValues(alpha: 0.35)),
                     padding: const EdgeInsets.symmetric(vertical: 15),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
@@ -410,14 +410,14 @@ class _TeamGateState extends State<TeamGate> {
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
           color: secili
-              ? accent.withOpacity(isDark ? 0.18 : 0.12)
+              ? accent.withValues(alpha: isDark ? 0.18 : 0.12)
               : (isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD)),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: secili
-                ? accent.withOpacity(0.55)
+                ? accent.withValues(alpha: 0.55)
                 : (isDark
-                    ? Colors.white.withOpacity(0.08)
+                    ? Colors.white.withValues(alpha: 0.08)
                     : const Color(0xFFD8EAF0)),
             width: secili ? 1.4 : 1,
           ),
@@ -431,7 +431,7 @@ class _TeamGateState extends State<TeamGate> {
                   width: 46,
                   height: 46,
                   decoration: BoxDecoration(
-                    color: accent.withOpacity(isDark ? 0.22 : 0.14),
+                    color: accent.withValues(alpha: isDark ? 0.22 : 0.14),
                     borderRadius: BorderRadius.circular(14),
                   ),
                   child: const Icon(
@@ -489,7 +489,7 @@ class _TeamGateState extends State<TeamGate> {
                         style: TextStyle(
                           fontSize: 13,
                           color: isDark
-                              ? Colors.white.withOpacity(0.88)
+                              ? Colors.white.withValues(alpha: 0.88)
                               : const Color(0xFF31424E),
                         ),
                       ),
@@ -516,10 +516,10 @@ class _TeamGateState extends State<TeamGate> {
       child: Container(
         padding: const EdgeInsets.symmetric(vertical: 12),
         decoration: BoxDecoration(
-          color: secili ? accent : accent.withOpacity(0.08),
+          color: secili ? accent : accent.withValues(alpha: 0.08),
           borderRadius: BorderRadius.circular(12),
           border: Border.all(
-            color: secili ? accent : accent.withOpacity(0.18),
+            color: secili ? accent : accent.withValues(alpha: 0.18),
           ),
         ),
         child: Text(
@@ -539,8 +539,8 @@ class _TeamGateState extends State<TeamGate> {
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
         color: isDark
-            ? Colors.white.withOpacity(0.05)
-            : Colors.black.withOpacity(0.03),
+            ? Colors.white.withValues(alpha: 0.05)
+            : Colors.black.withValues(alpha: 0.03),
         borderRadius: BorderRadius.circular(14),
       ),
       child: Column(

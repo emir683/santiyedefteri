@@ -296,7 +296,7 @@ class _SelectedProtrusion extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final glowColor = data.color.withOpacity(isDark ? 0.18 : 0.12);
+    final glowColor = data.color.withValues(alpha: isDark ? 0.18 : 0.12);
 
     return TweenAnimationBuilder<double>(
       tween: Tween<double>(begin: 0.92, end: 1.0),
