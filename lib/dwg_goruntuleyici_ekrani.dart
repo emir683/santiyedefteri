@@ -145,10 +145,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     'xOffset': 0.0,
     'yOffset': 0.0,
     'scale': 1.0,
-    'docW': 24000.0,
-    'docH': 1968.0,
+    'docW': 1000.0,
+    'docH': 1000.0,
   });
-  Size _docPageSize = const Size(24000, 1968);
+  Size _docPageSize = const Size(1000, 1000);
   bool _isMinimapExpanded = true;
 
   // CAD Ölçüm Araçları Durumları
@@ -176,6 +176,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   bool _hasMovedFar = false;
   ui.Image? _cachedLoupeImage;
   bool _isGeneratingLoupeImage = false;
+  ui.Image? _cachedScreenshotImage;
+  bool _isCapturingScreenshot = false;
+  Size _capturedScreenSize = Size.zero;
 
   double get _effectiveScale =>
       _currentScaleNotifier.value > 0 ? _currentScaleNotifier.value : 1.0;
@@ -512,6 +515,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _snapGuideStartScreen = null;
       _snapGuideEndScreen = null;
       _cachedLoupeImage = null;
+      _cachedScreenshotImage = null;
       _holdTimer?.cancel();
     });
   }
@@ -2405,6 +2409,44 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
+  /// Büyüteç için ekrandaki gerçek CAD çizimini anlık olarak piksel piksel yakalar (100% garantili ve anlık)
+  Future<void> _captureLoupeScreenshot() async {
+    if (_pdfViewController == null || _isCapturingScreenshot) return;
+    _isCapturingScreenshot = true;
+    try {
+      final tempDir = await getTemporaryDirectory();
+      final shotPath = '${tempDir.path}/cad_loupe_${DateTime.now().millisecondsSinceEpoch}.png';
+      final path = await _pdfViewController!.getScreenshot(shotPath);
+      if (path.isNotEmpty) {
+        final file = File(path);
+        if (await file.exists()) {
+          final bytes = await file.readAsBytes();
+          try {
+            await file.delete();
+          } catch (_) {}
+
+          final codec = await ui.instantiateImageCodec(bytes);
+          final frame = await codec.getNextFrame();
+          if (mounted) {
+            final mediaQuery = MediaQuery.maybeOf(context);
+            final screenSize = mediaQuery != null && mediaQuery.size.width > 0
+                ? mediaQuery.size
+                : Size(frame.image.width.toDouble(), frame.image.height.toDouble());
+            setState(() {
+              _cachedScreenshotImage = frame.image;
+              _capturedScreenSize = screenSize;
+            });
+            _measureRepaintNotifier.value = (_measureRepaintNotifier.value + 1) % 1000000;
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Loupe screenshot capture hatası: $e');
+    } finally {
+      _isCapturingScreenshot = false;
+    }
+  }
+
   /// Büyüteç için arka planda gerçek vektörel CAD çizimini yüksek çözünürlüklü raster haline getirir
   Future<void> _prepareLoupeImage() async {
     if (_localPdfPath == null || _isGeneratingLoupeImage || _cachedLoupeImage != null) return;
@@ -2413,14 +2455,16 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       final bytes = _pdfBytes ?? await File(_localPdfPath!).readAsBytes();
       _pdfBytes = bytes;
 
-      final double maxDim = math.max(_docPageSize.width, _docPageSize.height);
-      final double targetDpi = (3200.0 / (maxDim > 0 ? maxDim : 2000.0) * 72.0).clamp(14.0, 150.0);
-
-      await for (final page in Printing.raster(bytes, pages: [0], dpi: targetDpi)) {
+      await for (final page in Printing.raster(bytes, pages: [0], dpi: 150.0)) {
         final ui.Image img = await page.toImage();
         if (mounted) {
+          final double ptsW = page.width / (150.0 / 72.0);
+          final double ptsH = page.height / (150.0 / 72.0);
           setState(() {
             _cachedLoupeImage = img;
+            if (ptsW > 0 && ptsH > 0) {
+              _docPageSize = Size(ptsW, ptsH);
+            }
           });
           _measureRepaintNotifier.value = (_measureRepaintNotifier.value + 1) % 1000000;
         }
@@ -2450,6 +2494,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       return;
     }
 
+    _captureLoupeScreenshot();
     if (_cachedLoupeImage == null) {
       _prepareLoupeImage();
     }
@@ -2736,6 +2781,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   void _handlePointerDown(PointerDownEvent event) {
     if (_measureMode == CadMeasureMode.none) return;
 
+    _captureLoupeScreenshot();
     if (_cachedLoupeImage == null) {
       _prepareLoupeImage();
     }
@@ -3376,6 +3422,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                         size: const Size(133, 133),
                         painter: _LoupeDrawingPainter(
                           repaint: _measureRepaintNotifier,
+                          screenshotImage: _cachedScreenshotImage,
+                          aimScreenPos: _aimScreenPos,
+                          capturedScreenSize: _capturedScreenSize,
                           loupeImage: _cachedLoupeImage,
                           aimDocPos: _aimDocPos,
                           docPageSize: _docPageSize,
@@ -3385,6 +3434,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                           paperMode: _isPaperMode,
                           activeDocPoints: _activeDocPoints,
                           metersPerDocUnit: _metersPerDocUnit,
+                          docToScreen: _docToScreen,
                         ),
                       ),
                     ),
@@ -3943,7 +3993,11 @@ class _BlueprintMinimapPainter extends CustomPainter {
 }
 
 /// Sol Üst Büyüteç İçinde Gerçek CAD Çizimini Yüksek Çözünürlüklü & Mıknatıslı Çizen CustomPainter
+/// Sol Üst Büyüteç İçinde Gerçek CAD Çizimini Yüksek Çözünürlüklü & Mıknatıslı Çizen CustomPainter
 class _LoupeDrawingPainter extends CustomPainter {
+  final ui.Image? screenshotImage;
+  final Offset? aimScreenPos;
+  final Size capturedScreenSize;
   final ui.Image? loupeImage;
   final Offset? aimDocPos;
   final Size docPageSize;
@@ -3953,9 +4007,13 @@ class _LoupeDrawingPainter extends CustomPainter {
   final bool paperMode;
   final List<Offset> activeDocPoints;
   final double metersPerDocUnit;
+  final Offset Function(Offset) docToScreen;
 
   _LoupeDrawingPainter({
     required super.repaint,
+    required this.screenshotImage,
+    required this.aimScreenPos,
+    required this.capturedScreenSize,
     required this.loupeImage,
     required this.aimDocPos,
     required this.docPageSize,
@@ -3965,6 +4023,7 @@ class _LoupeDrawingPainter extends CustomPainter {
     required this.paperMode,
     required this.activeDocPoints,
     required this.metersPerDocUnit,
+    required this.docToScreen,
   });
 
   @override
@@ -3978,31 +4037,46 @@ class _LoupeDrawingPainter extends CustomPainter {
       ..color = paperMode ? Colors.white : const Color(0xFF000000);
     canvas.drawRect(Offset.zero & size, bgPaint);
 
-    final aim = aimDocPos;
-    if (aim == null) return;
+    // 2. Gerçek CAD Ekran Çizimini Büyütülmüş & Hedef Odaklı Olarak Çiz
+    if (screenshotImage != null && aimScreenPos != null) {
+      final img = screenshotImage!;
+      final aim = aimScreenPos!;
 
-    final double docW = docPageSize.width > 0 ? docPageSize.width : 2000.0;
-    final double docH = docPageSize.height > 0 ? docPageSize.height : 2000.0;
+      final double sW = capturedScreenSize.width > 0
+          ? capturedScreenSize.width
+          : img.width.toDouble();
+      final double sH = capturedScreenSize.height > 0
+          ? capturedScreenSize.height
+          : img.height.toDouble();
+      const double loupeZoom = 2.8;
 
-    // Büyüteç zumu (Ekrandaki zumun en az 2.8 katı, minimum 2.5x)
-    final double loupeScale = math.max(effectiveScale * 2.8, 2.5);
+      canvas.save();
+      canvas.clipRect(Offset.zero & size);
+      canvas.translate(center.dx, center.dy);
+      canvas.scale(loupeZoom, loupeZoom);
+      canvas.translate(-aim.dx, -aim.dy);
 
-    // 2. Gerçek CAD Raster Çizimini Büyütülmüş & Hedef Odaklı Olarak Çiz
-    if (loupeImage != null) {
+      canvas.drawImageRect(
+        img,
+        Rect.fromLTWH(0, 0, img.width.toDouble(), img.height.toDouble()),
+        Rect.fromLTWH(0, 0, sW, sH),
+        Paint()..filterQuality = FilterQuality.medium,
+      );
+      canvas.restore();
+    } else if (loupeImage != null && aimDocPos != null) {
+      // Yedek (Fallback): Yüksek çözünürlüklü vektörel raster CAD çizimi
       final img = loupeImage!;
+      final aim = aimDocPos!;
+      final double docW = docPageSize.width > 0 ? docPageSize.width : 1000.0;
+      final double loupeScale = math.max(effectiveScale * 2.8, 2.5);
       final double scaleX = img.width / docW;
-      final double scaleY = img.height / docH;
-
-      final double imgCenterX = aim.dx * scaleX;
-      final double imgCenterY = aim.dy * scaleY;
-
       final double renderScale = loupeScale / scaleX;
 
       canvas.save();
       canvas.clipRect(Offset.zero & size);
       canvas.translate(center.dx, center.dy);
       canvas.scale(renderScale, renderScale);
-      canvas.translate(-imgCenterX, -imgCenterY);
+      canvas.translate(-aim.dx * scaleX, -aim.dy * scaleX);
 
       canvas.drawImage(
         img,
@@ -4011,7 +4085,7 @@ class _LoupeDrawingPainter extends CustomPainter {
       );
       canvas.restore();
     } else {
-      // Raster yüklenene kadar zarif teknik CAD ızgarası
+      // Raster / ekran görüntüsü henüz yüklenirken zarif teknik CAD ızgarası
       final gridPaint = Paint()
         ..color = (paperMode ? Colors.black12 : Colors.white12)
         ..strokeWidth = 0.8;
@@ -4024,22 +4098,23 @@ class _LoupeDrawingPainter extends CustomPainter {
     }
 
     // 3. Aktif Ölçüm Çizgisi (Bir önceki noktadan hedefe dinamik çizgi)
-    if (activeDocPoints.isNotEmpty) {
-      final lastDoc = activeDocPoints.last;
+    if (activeDocPoints.isNotEmpty && aimScreenPos != null) {
+      final lastScreen = docToScreen(activeDocPoints.last);
+      const double loupeZoom = 2.8;
       final Offset lastInLoupe = Offset(
-        center.dx + (lastDoc.dx - aim.dx) * loupeScale,
-        center.dy + (lastDoc.dy - aim.dy) * loupeScale,
+        center.dx + (lastScreen.dx - aimScreenPos!.dx) * loupeZoom,
+        center.dy + (lastScreen.dy - aimScreenPos!.dy) * loupeZoom,
       );
       final activeLinePaint = Paint()
         ..color = isSnapped ? const Color(0xFF10B981) : const Color(0xFF00E5FF)
-        ..strokeWidth = 2.2
+        ..strokeWidth = 2.4
         ..strokeCap = StrokeCap.round;
       canvas.drawLine(lastInLoupe, center, activeLinePaint);
 
       // Son noktanın kendisi
       canvas.drawCircle(
         lastInLoupe,
-        4.0,
+        4.5,
         Paint()..color = const Color(0xFF00E5FF),
       );
     }
@@ -4047,10 +4122,10 @@ class _LoupeDrawingPainter extends CustomPainter {
     // 4. Büyüteç Merkez Artı Kılı (Crosshair) - Ekran görüntüsündeki gibi net beyaz artı
     final crosshairPaint = Paint()
       ..color = isSnapped ? const Color(0xFF10B981) : Colors.white
-      ..strokeWidth = 1.8
+      ..strokeWidth = 2.0
       ..strokeCap = StrokeCap.square;
 
-    const double armLength = 24.0;
+    const double armLength = 26.0;
     // Yatay artı çizgisi
     canvas.drawLine(
       Offset(center.dx - armLength, center.dy),
@@ -4068,10 +4143,10 @@ class _LoupeDrawingPainter extends CustomPainter {
     if (isSnapped) {
       final snapBoxPaint = Paint()
         ..color = const Color(0xFF10B981)
-        ..strokeWidth = 2.0
+        ..strokeWidth = 2.2
         ..style = PaintingStyle.stroke;
       canvas.drawRect(
-        Rect.fromCenter(center: center, width: 14, height: 14),
+        Rect.fromCenter(center: center, width: 16, height: 16),
         snapBoxPaint,
       );
     }
