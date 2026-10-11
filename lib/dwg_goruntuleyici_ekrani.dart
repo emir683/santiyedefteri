@@ -30,6 +30,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       'https://durham-recommended-processing-seconds.trycloudflare.com';
 
   bool _isLoading = false;
+  int _loadingStep = 1;
   String? _errorMessage;
   late String _currentTitle;
   Uint8List? _pdfBytes;
@@ -51,8 +52,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Size _docPageSize = const Size(24000, 1968);
   bool _isMinimapExpanded = true;
 
-  String _loadingStatusText = 'CAD Vektör Motoru Başlatılıyor...';
-  String _loadingSubText = 'Oracle Cloud LibreDWG Hazırlanıyor';
+  String _loadingStatusText = 'Proje Yükleniyor...';
+  String _loadingSubText = 'Çizim dosyası hazırlanıyor';
 
   late AnimationController _animController;
 
@@ -62,37 +63,37 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       'ad': 'Gerçek Şantiye DWG Projesi',
       'url': '$_kCadServerUrl/files/gercek-dwg-projesi.pdf',
       'aciklama': 'Kapsamlı kalıp ve mimari uygulama paftası',
-      'boyut': '15.2 MB',
+      'boyut': '25 Pafta • 15.2 MB',
     },
     {
-      'ad': 'Örnek 1: Mimari Kat Planı',
+      'ad': 'Mimari Kat Planı',
       'url': '$_kCadServerUrl/files/sample-plan.pdf',
       'aciklama': 'Mimari salon, oda, kapı, pencere ve kot ölçüleri',
-      'boyut': '2.1 MB',
+      'boyut': 'Kat Planı • 2.1 MB',
     },
     {
-      'ad': 'Örnek 2: Statik Taşıyıcı Planı',
+      'ad': 'Statik Taşıyıcı Planı',
       'url': '$_kCadServerUrl/files/sample-statik.pdf',
       'aciklama': 'Akslar, kolon aplikasyon, kirişler ve kalıp detayları',
-      'boyut': '1.8 MB',
+      'boyut': 'Statik • 1.8 MB',
     },
   ];
 
   @override
   void initState() {
     super.initState();
-    _currentTitle = widget.initialProjeAdi ?? 'Gerçek Şantiye DWG Projesi';
+    _currentTitle = widget.initialProjeAdi ?? 'DWG / DXF Görüntüleyici';
 
     _animController = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 1400),
     )..repeat();
 
+    // Yalnızca harici olarak bir URL aktarılmışsa otomatik başlat
     if (widget.initialDwgUrl != null && widget.initialDwgUrl!.isNotEmpty) {
       _dwgUrlDonusturVeYukle(widget.initialDwgUrl!);
-    } else {
-      _ornekYukle(_hazirOrnekler.first['url']!, _hazirOrnekler.first['ad']!);
     }
+    // Varsayılan proje otomatik açılmaz; kullanıcı doğrudan modern CAD çalışma alanını görür.
   }
 
   @override
@@ -111,18 +112,20 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _lastSelectedFile = null;
       _errorMessage = null;
       _isLoading = false;
-      _currentTitle = 'CAD Proje Görüntüleyici';
+      _loadingStep = 1;
+      _currentTitle = 'DWG / DXF Görüntüleyici';
       _currentScaleNotifier.value = 1.0;
     });
   }
 
-  /// Uzak DWG URL'sini indirip Oracle Cloud LibreDWG motoruna aktarır
+  /// Uzak DWG URL'sini indirip sunucuya aktarır
   Future<void> _dwgUrlDonusturVeYukle(String url) async {
     setState(() {
       _isLoading = true;
+      _loadingStep = 1;
       _errorMessage = null;
-      _loadingStatusText = 'DWG Dosyası İndiriliyor...';
-      _loadingSubText = 'Proje dosyası sunucudan alınıyor';
+      _loadingStatusText = 'Proje Dosyası Yükleniyor...';
+      _loadingSubText = 'Çizim dosyası güvenli şekilde aktarılıyor';
     });
 
     try {
@@ -138,13 +141,13 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       } else {
         setState(() {
           _isLoading = false;
-          _errorMessage = 'DWG dosyası indirilemedi (${res.statusCode})';
+          _errorMessage = 'Çizim dosyası indirilemedi (${res.statusCode})';
         });
       }
     } catch (e) {
       setState(() {
         _isLoading = false;
-        _errorMessage = 'DWG indirme hatası: $e';
+        _errorMessage = 'Bağlantı hatası: $e';
       });
     }
   }
@@ -153,10 +156,11 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Future<void> _ornekYukle(String url, String ad) async {
     setState(() {
       _isLoading = true;
+      _loadingStep = 2;
       _errorMessage = null;
       _currentTitle = ad;
-      _loadingStatusText = 'Vektörel Çizim Yükleniyor...';
-      _loadingSubText = 'Flutter Native Grafik Motoru Hazırlanıyor';
+      _loadingStatusText = 'Proje Yükleniyor...';
+      _loadingSubText = 'Sunucularımızda işleniyor ve tuvale aktarılıyor';
     });
 
     try {
@@ -166,6 +170,14 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
         final localPdf = File(
             '${tempDir.path}/cad_view_${DateTime.now().millisecondsSinceEpoch}.pdf');
         await localPdf.writeAsBytes(res.bodyBytes);
+
+        setState(() {
+          _loadingStep = 3;
+          _loadingStatusText = 'Çizim Hazırlanıyor...';
+          _loadingSubText = 'Yüksek çözünürlüklü CAD tuvali oluşturuluyor';
+        });
+
+        await Future.delayed(const Duration(milliseconds: 300));
 
         setState(() {
           _pdfBytes = res.bodyBytes;
@@ -280,10 +292,11 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Future<void> _sunucuyaGonderVeDonustur(File file, String fileName) async {
     setState(() {
       _isLoading = true;
+      _loadingStep = 1;
       _errorMessage = null;
       _currentTitle = fileName;
-      _loadingStatusText = 'DWG/DXF Sunucuya Aktarılıyor...';
-      _loadingSubText = '$fileName LibreDWG 2.0 tam çizim motorunda işleniyor';
+      _loadingStatusText = 'Proje Yükleniyor...';
+      _loadingSubText = 'Çizim dosyası sunucumuza aktarılıyor';
     });
 
     try {
@@ -298,6 +311,12 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           filename: fileName,
         ),
       );
+
+      setState(() {
+        _loadingStep = 2;
+        _loadingStatusText = 'Sunucularda İşleniyor...';
+        _loadingSubText = 'Vektörel katmanlar ve paftalar optimize ediliyor';
+      });
 
       final streamedResponse = await request.send();
       final responseBody = await streamedResponse.stream.bytesToString();
@@ -315,22 +334,23 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           }
 
           setState(() {
-            _loadingStatusText = 'Sınırsız Vektör Çizimi Hazırlanıyor...';
-            _loadingSubText = 'GPU ile 120 FPS Donanım İvmeli Render';
+            _loadingStep = 3;
+            _loadingStatusText = 'Çizim Hazırlanıyor...';
+            _loadingSubText = 'Yüksek çözünürlüklü CAD tuvali oluşturuluyor';
           });
           await _ornekYukle(pdfUrl, fileName);
         } else {
           setState(() {
             _isLoading = false;
             _errorMessage =
-                'Sunucu dönüşümü tamamladı ancak vektörel çıktı üretilemedi. Lütfen dosyanın bozuk olmadığından emin olun.';
+                'Sunucu işlemi tamamladı ancak çizim çıktısı üretilemedi. Lütfen dosyanın bozuk olmadığından emin olun.';
           });
         }
       } else {
         setState(() {
           _isLoading = false;
           _errorMessage =
-              'Sunucu hatası (${streamedResponse.statusCode}): $responseBody';
+              'Sunucu hatası (${streamedResponse.statusCode})';
         });
       }
     } catch (e) {
@@ -368,13 +388,16 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   @override
   Widget build(BuildContext context) {
     final bool hasLoadedProject = _localPdfPath != null;
+    final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Scaffold(
-      backgroundColor: const Color(0xFF090D14),
+      backgroundColor: hasLoadedProject
+          ? const Color(0xFF090D14)
+          : (isDark ? const Color(0xFF0C1017) : const Color(0xFFF1F5F8)),
       appBar: _buildAppBar(hasLoadedProject),
       body: Stack(
         children: [
-          // 1. ANA ÇALIŞMA ALANI (PROJE AÇIK DEĞİLSE MODERN CAD DASHBOARD, AÇIKSA VEKTÖR ÇİZİM)
+          // 1. ANA ÇALIŞMA ALANI (PROJE AÇIK DEĞİLSE MODERN CAD ÇALIŞMA ALANI, AÇIKSA VEKTÖR ÇİZİM)
           if (!hasLoadedProject && !_isLoading)
             _buildEmptyWorkspaceHub()
           else if (hasLoadedProject)
@@ -396,7 +419,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
               child: _buildZoomControlPanel(),
             ),
 
-          // 4. PREMİUM CAD YÜKLEME EKRANI
+          // 4. PREMİUM CAD YÜKLEME EKRANI (Kullanıcı dostu, animasyonlu)
           if (_isLoading)
             _buildLoadingOverlay(),
 
@@ -408,15 +431,28 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  /// Modern Üst Bar
+  /// Uygulama Temasıyla Uyumlu Üst Bar
   PreferredSizeWidget _buildAppBar(bool hasLoadedProject) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    final bgColor = hasLoadedProject
+        ? const Color(0xFF0D131F)
+        : (isDark ? const Color(0xFF0F172A) : Colors.white);
+
+    final titleColor = hasLoadedProject
+        ? Colors.white
+        : (isDark ? Colors.white : const Color(0xFF0F172A));
+
+    final iconColor = hasLoadedProject
+        ? Colors.white
+        : (isDark ? Colors.white : const Color(0xFF1E293B));
+
     return AppBar(
-      backgroundColor: const Color(0xFF0D131F),
-      elevation: 0,
+      backgroundColor: bgColor,
+      elevation: hasLoadedProject ? 0 : 0.5,
       surfaceTintColor: Colors.transparent,
       leading: IconButton(
-        icon: const Icon(Icons.arrow_back_ios_new_rounded,
-            color: Colors.white, size: 20),
+        icon: Icon(Icons.arrow_back_ios_new_rounded, color: iconColor, size: 20),
         onPressed: () {
           if (hasLoadedProject) {
             _dosyayiKapat();
@@ -433,35 +469,35 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             _currentTitle,
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
-            style: const TextStyle(
-              color: Colors.white,
-              fontSize: 14.5,
+            style: TextStyle(
+              color: titleColor,
+              fontSize: 15,
               fontWeight: FontWeight.w700,
             ),
           ),
           Row(
             children: [
               Container(
-                width: 6,
-                height: 6,
+                width: 6.5,
+                height: 6.5,
                 decoration: BoxDecoration(
                   shape: BoxShape.circle,
                   color: hasLoadedProject
                       ? const Color(0xFF10B981)
-                      : const Color(0xFF38BDF8),
+                      : const Color(0xFF26A69A),
                 ),
               ),
               const SizedBox(width: 5),
               Text(
                 hasLoadedProject
-                    ? 'Sınırsız Vektörel CAD Engine'
-                    : 'CAD Stüdyo • Çizim Seçin',
+                    ? 'Vektörel Çizim Aktif • Sınırsız Zoom'
+                    : 'CAD Çizim Görüntüleyici',
                 style: TextStyle(
                   color: hasLoadedProject
                       ? const Color(0xFF10B981)
-                      : const Color(0xFF94A3B8),
-                  fontSize: 10.5,
-                  fontWeight: FontWeight.w600,
+                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                  fontSize: 11,
+                  fontWeight: FontWeight.w500,
                 ),
               ),
             ],
@@ -507,9 +543,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           ),
         ] else ...[
           IconButton(
-            icon: const Icon(Icons.help_outline_rounded,
-                color: Colors.white60, size: 20),
-            tooltip: 'CAD Yardım',
+            icon: Icon(Icons.help_outline_rounded,
+                color: isDark ? Colors.white70 : const Color(0xFF64748B), size: 21),
+            tooltip: 'Nasıl Kullanılır?',
             onPressed: _showHelpDialog,
           ),
         ],
@@ -518,8 +554,16 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  /// Başlangıçta açılan modern CAD Çalışma Alanı Hub'ı
+  /// Uygulama tasarım diliyle uyumlu modern CAD Çalışma Alanı Hub'ı
   Widget _buildEmptyWorkspaceHub() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final cardBg = isDark ? const Color(0xFF131B2A) : Colors.white;
+    final cardBorder = isDark
+        ? const Color(0xFF1E293B)
+        : const Color(0xFFE2E8F0);
+    final titleColor = isDark ? Colors.white : const Color(0xFF0F172A);
+    final subtitleColor = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+
     return SingleChildScrollView(
       physics: const BouncingScrollPhysics(),
       padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
@@ -530,17 +574,24 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           Container(
             padding: const EdgeInsets.all(24),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0F172A), Color(0xFF1E293B)],
+              gradient: LinearGradient(
+                colors: isDark
+                    ? const [Color(0xFF0F172A), Color(0xFF1E293B)]
+                    : const [Colors.white, Color(0xFFF8FAFC)],
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: const Color(0xFF38BDF8).withValues(alpha: 0.25)),
+              border: Border.all(
+                color: isDark
+                    ? const Color(0xFF26A69A).withValues(alpha: 0.35)
+                    : const Color(0xFF26A69A).withValues(alpha: 0.25),
+                width: 1.2,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.45),
-                  blurRadius: 20,
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.05),
+                  blurRadius: 22,
                   offset: const Offset(0, 10),
                 ),
               ],
@@ -554,35 +605,38 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                     shape: BoxShape.circle,
                     gradient: LinearGradient(
                       colors: [
+                        const Color(0xFF26A69A).withValues(alpha: 0.2),
                         const Color(0xFF38BDF8).withValues(alpha: 0.2),
-                        const Color(0xFF10B981).withValues(alpha: 0.2),
                       ],
                     ),
-                    border: Border.all(color: const Color(0xFF38BDF8), width: 1.5),
+                    border: Border.all(
+                      color: const Color(0xFF26A69A),
+                      width: 1.5,
+                    ),
                   ),
                   child: const Icon(
                     Icons.architecture_rounded,
-                    color: Color(0xFF38BDF8),
+                    color: Color(0xFF26A69A),
                     size: 38,
                   ),
                 ),
                 const SizedBox(height: 18),
-                const Text(
-                  'CAD Proje Görüntüleyici',
+                Text(
+                  'CAD Çizim Görüntüleyici',
                   style: TextStyle(
-                    fontSize: 20,
+                    fontSize: 21,
                     fontWeight: FontWeight.w800,
-                    color: Colors.white,
+                    color: titleColor,
                     letterSpacing: -0.3,
                   ),
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 8),
-                const Text(
-                  'DWG ve DXF projelerinizi sınırsız ultra zoom ile pürüzsüz inceleyin. Model ve pafta alanındaki tüm çizgiler kayıpsız çizilir.',
+                Text(
+                  'Şantiye projelerinizi, mimari ve statik paftalarınızı sınırsız yakınlaştırmayla, hiçbir detayı kaçırmadan inceleyin.',
                   style: TextStyle(
-                    fontSize: 13,
-                    color: Color(0xFF94A3B8),
+                    fontSize: 13.5,
+                    color: subtitleColor,
                     height: 1.45,
                   ),
                   textAlign: TextAlign.center,
@@ -591,32 +645,33 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                 ElevatedButton.icon(
                   onPressed: _cihazdanDwgSecVeYukle,
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
+                    backgroundColor: const Color(0xFF26A69A),
                     foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(horizontal: 26, vertical: 15),
-                    elevation: 6,
+                    padding: const EdgeInsets.symmetric(
+                        horizontal: 26, vertical: 15),
+                    elevation: 4,
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(14),
                     ),
                   ),
-                  icon: const Icon(Icons.file_upload_rounded, size: 22),
+                  icon: const Icon(Icons.folder_open_rounded, size: 22),
                   label: const Text(
-                    'Cihazdan DWG / DXF Seç & Aç',
+                    'DWG / DXF Dosyası Seç & Aç',
                     style: TextStyle(
-                      fontSize: 14.5,
+                      fontSize: 15,
                       fontWeight: FontWeight.w700,
                     ),
                   ),
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(height: 16),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    _buildFormatBadge('AutoCAD .DWG'),
+                    _buildFormatBadge('AutoCAD .DWG', isDark),
                     const SizedBox(width: 8),
-                    _buildFormatBadge('Vektör .DXF'),
+                    _buildFormatBadge('Vektör .DXF', isDark),
                     const SizedBox(width: 8),
-                    _buildFormatBadge('Sınırsız Zoom'),
+                    _buildFormatBadge('Sınırsız Zoom', isDark),
                   ],
                 ),
               ],
@@ -629,73 +684,130 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           Row(
             children: [
               const Icon(Icons.folder_special_rounded,
-                  color: Color(0xFF38BDF8), size: 20),
+                  color: Color(0xFF26A69A), size: 20),
               const SizedBox(width: 8),
-              const Text(
-                'Test İçin Hazır Örnekler',
+              Text(
+                'Örnek CAD Projeleri',
                 style: TextStyle(
                   fontSize: 16,
                   fontWeight: FontWeight.w700,
-                  color: Colors.white,
+                  color: titleColor,
                 ),
               ),
               const Spacer(),
               Text(
                 '${_hazirOrnekler.length} Örnek',
-                style: const TextStyle(fontSize: 12, color: Colors.white38),
+                style: TextStyle(fontSize: 12, color: subtitleColor),
               ),
             ],
           ),
           const SizedBox(height: 14),
 
           ..._hazirOrnekler.map((ornek) {
+            final String ad = ornek['ad']!;
+            final String aciklama = ornek['aciklama']!;
+            final String boyut = ornek['boyut']!;
+
+            IconData ornekIcon = Icons.architecture_rounded;
+            Color iconColor = const Color(0xFF26A69A);
+
+            if (ad.contains('Gerçek')) {
+              ornekIcon = Icons.apartment_rounded;
+              iconColor = const Color(0xFF38BDF8);
+            } else if (ad.contains('Mimari')) {
+              ornekIcon = Icons.meeting_room_rounded;
+              iconColor = const Color(0xFF10B981);
+            } else if (ad.contains('Statik')) {
+              ornekIcon = Icons.grid_4x4_rounded;
+              iconColor = const Color(0xFFFFB74D);
+            }
+
             return Container(
               margin: const EdgeInsets.only(bottom: 12),
               decoration: BoxDecoration(
-                color: const Color(0xFF131B2E),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: Colors.white10),
+                color: cardBg,
+                borderRadius: BorderRadius.circular(18),
+                border: Border.all(color: cardBorder),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                    blurRadius: 10,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
               ),
               child: ListTile(
                 contentPadding:
-                    const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                    const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                 leading: Container(
-                  width: 44,
-                  height: 44,
+                  width: 46,
+                  height: 46,
                   decoration: BoxDecoration(
-                    color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
+                    color: iconColor.withValues(alpha: 0.15),
+                    borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(
-                    Icons.straighten_rounded,
-                    color: Color(0xFF38BDF8),
+                  child: Icon(
+                    ornekIcon,
+                    color: iconColor,
                     size: 24,
                   ),
                 ),
                 title: Text(
-                  ornek['ad']!,
-                  style: const TextStyle(
+                  ad,
+                  style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    color: titleColor,
                   ),
                 ),
                 subtitle: Padding(
                   padding: const EdgeInsets.only(top: 4),
-                  child: Text(
-                    ornek['aciklama']!,
-                    style: const TextStyle(
-                      fontSize: 12,
-                      color: Color(0xFF94A3B8),
-                    ),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        aciklama,
+                        style: TextStyle(
+                          fontSize: 12,
+                          color: subtitleColor,
+                        ),
+                      ),
+                      const SizedBox(height: 4),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 7, vertical: 2),
+                        decoration: BoxDecoration(
+                          color: iconColor.withValues(alpha: 0.1),
+                          borderRadius: BorderRadius.circular(6),
+                        ),
+                        child: Text(
+                          boyut,
+                          style: TextStyle(
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
+                            color: iconColor,
+                          ),
+                        ),
+                      ),
+                    ],
                   ),
                 ),
-                trailing: const Icon(
-                  Icons.arrow_forward_ios_rounded,
-                  color: Colors.white38,
-                  size: 16,
+                trailing: Container(
+                  width: 32,
+                  height: 32,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : const Color(0xFFF1F5F9),
+                  ),
+                  child: Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: subtitleColor,
+                    size: 14,
+                  ),
                 ),
-                onTap: () => _ornekYukle(ornek['url']!, ornek['ad']!),
+                onTap: () => _ornekYukle(ornek['url']!, ad),
               ),
             );
           }),
@@ -706,28 +818,31 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           Container(
             padding: const EdgeInsets.all(18),
             decoration: BoxDecoration(
-              color: Colors.white.withValues(alpha: 0.03),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: Colors.white10),
+              color: cardBg,
+              borderRadius: BorderRadius.circular(18),
+              border: Border.all(color: cardBorder),
             ),
             child: Column(
               children: [
                 _buildFeatureRow(
                   Icons.zoom_in_rounded,
                   'Sınırsız Odaklı Yakınlaştırma',
-                  'En ufak kot, yazı ve kesit detaylarını kayıpsız okuyun.',
+                  'En ufak donatı çapı (Ø), kot ve kesit yazılarını kayıpsız okuyun.',
+                  isDark,
                 ),
-                const Divider(color: Colors.white10, height: 22),
+                Divider(color: cardBorder, height: 22),
                 _buildFeatureRow(
                   Icons.radar_rounded,
                   'Kuşbakışı Radar (Minimap)',
-                  'Büyük paftalarda projenin neresinde olduğunuzu anlık görün.',
+                  'Dev paftalarda projenin neresinde olduğunuzu anlık görün.',
+                  isDark,
                 ),
-                const Divider(color: Colors.white10, height: 22),
+                Divider(color: cardBorder, height: 22),
                 _buildFeatureRow(
                   Icons.layers_rounded,
-                  'Tam Çizim & Katman Koruma',
-                  'Model ve pafta alanındaki tüm nesneler kesilmeden çizilir.',
+                  'Kayıpsız Vektörel Çizim',
+                  'Model ve pafta alanındaki tüm çizgiler AutoCAD hassasiyetiyle görüntülenir.',
+                  isDark,
                 ),
               ],
             ),
@@ -738,18 +853,22 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  Widget _buildFormatBadge(String text) {
+  Widget _buildFormatBadge(String text, bool isDark) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.06),
+        color: isDark
+            ? Colors.white.withValues(alpha: 0.06)
+            : const Color(0xFFF1F5F9),
         borderRadius: BorderRadius.circular(8),
-        border: Border.all(color: Colors.white12),
+        border: Border.all(
+          color: isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+        ),
       ),
       child: Text(
         text,
-        style: const TextStyle(
-          color: Colors.white70,
+        style: TextStyle(
+          color: isDark ? Colors.white70 : const Color(0xFF475569),
           fontSize: 10.5,
           fontWeight: FontWeight.w600,
         ),
@@ -757,16 +876,17 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  Widget _buildFeatureRow(IconData icon, String title, String desc) {
+  Widget _buildFeatureRow(
+      IconData icon, String title, String desc, bool isDark) {
     return Row(
       children: [
         Container(
           padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
-            color: const Color(0xFF10B981).withValues(alpha: 0.15),
+            color: const Color(0xFF26A69A).withValues(alpha: 0.15),
             shape: BoxShape.circle,
           ),
-          child: Icon(icon, color: const Color(0xFF10B981), size: 18),
+          child: Icon(icon, color: const Color(0xFF26A69A), size: 18),
         ),
         const SizedBox(width: 12),
         Expanded(
@@ -775,8 +895,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             children: [
               Text(
                 title,
-                style: const TextStyle(
-                  color: Colors.white,
+                style: TextStyle(
+                  color: isDark ? Colors.white : const Color(0xFF0F172A),
                   fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
@@ -784,8 +904,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
               const SizedBox(height: 2),
               Text(
                 desc,
-                style: const TextStyle(
-                  color: Colors.white54,
+                style: TextStyle(
+                  color: isDark ? Colors.white54 : const Color(0xFF64748B),
                   fontSize: 11.5,
                 ),
               ),
@@ -1189,89 +1309,158 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  /// Yükleme Ekranı Overlay'i
+  /// Kullanıcı Dostu, Animasyonlu ve Aşamalı Yükleme Ekranı
   Widget _buildLoadingOverlay() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Positioned.fill(
       child: Container(
-        color: const Color(0xFF090D14),
+        color: (isDark ? const Color(0xFF090D14) : const Color(0xFFF8FAFC))
+            .withValues(alpha: 0.94),
         child: Center(
           child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 36),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                RotationTransition(
-                  turns: _animController,
-                  child: Stack(
-                    alignment: Alignment.center,
-                    children: [
-                      Container(
-                        width: 78,
-                        height: 78,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFF38BDF8)
-                                .withValues(alpha: 0.25),
-                            width: 3.5,
+            padding: const EdgeInsets.symmetric(horizontal: 28),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+              decoration: BoxDecoration(
+                color: isDark ? const Color(0xFF131B2A) : Colors.white,
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: isDark
+                      ? const Color(0xFF26A69A).withValues(alpha: 0.3)
+                      : const Color(0xFF26A69A).withValues(alpha: 0.2),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.08),
+                    blurRadius: 30,
+                    offset: const Offset(0, 14),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Animasyonlu Blueprint / CAD Pergel & Radar
+                  AnimatedBuilder(
+                    animation: _animController,
+                    builder: (context, child) {
+                      final pulseScale = 1.0 + (_animController.value * 0.14);
+                      return Stack(
+                        alignment: Alignment.center,
+                        children: [
+                          // Dış Nabız Halkası
+                          Transform.scale(
+                            scale: pulseScale,
+                            child: Container(
+                              width: 86,
+                              height: 86,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF26A69A).withValues(
+                                    alpha: (1.0 - _animController.value)
+                                        .clamp(0.0, 0.4),
+                                  ),
+                                  width: 2,
+                                ),
+                              ),
+                            ),
                           ),
-                        ),
-                      ),
-                      Container(
-                        width: 56,
-                        height: 56,
-                        decoration: BoxDecoration(
-                          shape: BoxShape.circle,
-                          border: Border.all(
-                            color: const Color(0xFF38BDF8),
-                            width: 2.5,
+                          // Dönen Çizim Halkası
+                          Transform.rotate(
+                            angle: _animController.value * 2 * 3.14159,
+                            child: Container(
+                              width: 68,
+                              height: 68,
+                              decoration: BoxDecoration(
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: const Color(0xFF38BDF8),
+                                  width: 2.2,
+                                ),
+                              ),
+                            ),
                           ),
+                          // Merkez Mimari İkon
+                          Container(
+                            width: 52,
+                            height: 52,
+                            decoration: BoxDecoration(
+                              shape: BoxShape.circle,
+                              color: const Color(0xFF26A69A)
+                                  .withValues(alpha: 0.15),
+                            ),
+                            child: const Icon(
+                              Icons.architecture_rounded,
+                              color: Color(0xFF26A69A),
+                              size: 28,
+                            ),
+                          ),
+                        ],
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 24),
+                  // Başlık & Açıklama
+                  Text(
+                    _loadingStatusText,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _loadingSubText,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                      fontSize: 13,
+                    ),
+                  ),
+                  const SizedBox(height: 22),
+                  // Yumuşak İlerleme Çubuğu
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(6),
+                    child: SizedBox(
+                      width: 220,
+                      height: 5,
+                      child: LinearProgressIndicator(
+                        backgroundColor: isDark
+                            ? Colors.white10
+                            : const Color(0xFFE2E8F0),
+                        valueColor: const AlwaysStoppedAnimation<Color>(
+                          Color(0xFF26A69A),
                         ),
-                      ),
-                      const Icon(
-                        Icons.architecture_rounded,
-                        color: Color(0xFF38BDF8),
-                        size: 30,
-                      ),
-                    ],
-                  ),
-                ),
-                const SizedBox(height: 28),
-                Text(
-                  _loadingStatusText,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 8),
-                Text(
-                  _loadingSubText,
-                  textAlign: TextAlign.center,
-                  style: const TextStyle(
-                    color: Colors.white54,
-                    fontSize: 12.5,
-                    height: 1.3,
-                  ),
-                ),
-                const SizedBox(height: 24),
-                ClipRRect(
-                  borderRadius: BorderRadius.circular(4),
-                  child: const SizedBox(
-                    width: 180,
-                    height: 4,
-                    child: LinearProgressIndicator(
-                      backgroundColor: Colors.white10,
-                      valueColor: AlwaysStoppedAnimation<Color>(
-                        Color(0xFF38BDF8),
                       ),
                     ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 22),
+                  // 3 Aşamalı Süreç Göstergesi
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      _buildStepChip('1. Aktarım', _loadingStep >= 1, isDark),
+                      const SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded,
+                          size: 13,
+                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+                      const SizedBox(width: 8),
+                      _buildStepChip('2. İşleme', _loadingStep >= 2, isDark),
+                      const SizedBox(width: 8),
+                      Icon(Icons.arrow_forward_rounded,
+                          size: 13,
+                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+                      const SizedBox(width: 8),
+                      _buildStepChip('3. Görselleştirme', _loadingStep >= 3, isDark),
+                    ],
+                  ),
+                ],
+              ),
             ),
           ),
         ),
@@ -1279,79 +1468,135 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
+  Widget _buildStepChip(String label, bool isCompletedOrActive, bool isDark) {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      decoration: BoxDecoration(
+        color: isCompletedOrActive
+            ? const Color(0xFF26A69A).withValues(alpha: 0.15)
+            : (isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : const Color(0xFFF1F5F9)),
+        borderRadius: BorderRadius.circular(8),
+        border: Border.all(
+          color: isCompletedOrActive
+              ? const Color(0xFF26A69A)
+              : (isDark ? Colors.white10 : const Color(0xFFE2E8F0)),
+          width: 1,
+        ),
+      ),
+      child: Text(
+        label,
+        style: TextStyle(
+          color: isCompletedOrActive
+              ? const Color(0xFF26A69A)
+              : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+          fontSize: 10.5,
+          fontWeight: isCompletedOrActive ? FontWeight.w700 : FontWeight.w500,
+        ),
+      ),
+    );
+  }
+
   /// Hata Ekranı Overlay'i
   Widget _buildErrorOverlay() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
     return Positioned.fill(
       child: Container(
-        color: const Color(0xFF090D14),
+        color: (isDark ? const Color(0xFF090D14) : const Color(0xFFF8FAFC))
+            .withValues(alpha: 0.95),
         padding: const EdgeInsets.all(28),
         child: Center(
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Container(
-                padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444).withValues(alpha: 0.15),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.error_outline_rounded,
-                  size: 44,
-                  color: Color(0xFFEF4444),
-                ),
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 28),
+            decoration: BoxDecoration(
+              color: isDark ? const Color(0xFF131B2A) : Colors.white,
+              borderRadius: BorderRadius.circular(22),
+              border: Border.all(
+                color: const Color(0xFFEF4444).withValues(alpha: 0.25),
               ),
-              const SizedBox(height: 18),
-              const Text(
-                'Çizim Yüklenemedi',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
+                  blurRadius: 20,
+                  offset: const Offset(0, 8),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                _errorMessage!,
-                textAlign: TextAlign.center,
-                style: const TextStyle(
-                  fontSize: 13,
-                  color: Colors.white60,
-                  height: 1.4,
-                ),
-              ),
-              const SizedBox(height: 22),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  OutlinedButton(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white70,
-                      side: const BorderSide(color: Colors.white24),
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 16, vertical: 12),
-                    ),
-                    onPressed: _dosyayiKapat,
-                    child: const Text('Geri Dön'),
+              ],
+            ),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(16),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444).withValues(alpha: 0.15),
+                    shape: BoxShape.circle,
                   ),
-                  const SizedBox(width: 12),
-                  ElevatedButton.icon(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF10B981),
-                      foregroundColor: Colors.white,
-                      padding: const EdgeInsets.symmetric(
-                          horizontal: 18, vertical: 12),
-                      shape: RoundedRectangleBorder(
-                        borderRadius: BorderRadius.circular(10),
+                  child: const Icon(
+                    Icons.error_outline_rounded,
+                    size: 40,
+                    color: Color(0xFFEF4444),
+                  ),
+                ),
+                const SizedBox(height: 18),
+                Text(
+                  'Çizim Yüklenemedi',
+                  style: TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF0F172A),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  _errorMessage!,
+                  textAlign: TextAlign.center,
+                  style: TextStyle(
+                    fontSize: 13,
+                    color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                    height: 1.4,
+                  ),
+                ),
+                const SizedBox(height: 22),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor:
+                            isDark ? Colors.white70 : const Color(0xFF475569),
+                        side: BorderSide(
+                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1),
+                        ),
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 18, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
                       ),
+                      onPressed: _dosyayiKapat,
+                      child: const Text('Geri Dön'),
                     ),
-                    icon: const Icon(Icons.file_upload_rounded, size: 18),
-                    label: const Text('Dosya Seç'),
-                    onPressed: _cihazdanDwgSecVeYukle,
-                  ),
-                ],
-              ),
-            ],
+                    const SizedBox(width: 12),
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF26A69A),
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(
+                            horizontal: 20, vertical: 12),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      icon: const Icon(Icons.folder_open_rounded, size: 18),
+                      label: const Text('Dosya Seç'),
+                      onPressed: _cihazdanDwgSecVeYukle,
+                    ),
+                  ],
+                ),
+              ],
+            ),
           ),
         ),
       ),
