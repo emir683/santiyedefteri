@@ -12,6 +12,48 @@ import 'package:path_provider/path_provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cad_intent_service.dart';
 
+/// CAD Ölçüm Modları
+enum CadMeasureMode {
+  none,
+  distance,
+  area,
+  calibrate,
+}
+
+/// CAD Tuval Etkileşim Modu (Nokta koyma veya Çizimi kaydırma/zoom)
+enum CadInteractionMode {
+  measure,
+  pan,
+}
+
+/// CAD Pafta Ölçek Tanımı
+class CadScalePreset {
+  final String label;
+  final double ratio;
+  final double metersPerDocUnit;
+
+  const CadScalePreset(this.label, this.ratio, this.metersPerDocUnit);
+}
+
+/// Tamamlanmış veya aktif CAD Ölçüm Kaydı
+class CadMeasurement {
+  final String id;
+  final CadMeasureMode type;
+  final List<Offset> docPoints;
+  final double metersPerDocUnit;
+  final Color color;
+  final String label;
+
+  CadMeasurement({
+    required this.id,
+    required this.type,
+    required this.docPoints,
+    required this.metersPerDocUnit,
+    this.color = const Color(0xFF38BDF8),
+    this.label = '',
+  });
+}
+
 /// Önbelleğe kaydedilen ve dönüştürülmüş CAD projeleri
 class SavedCadProject {
   final String id;
@@ -99,6 +141,21 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Size _docPageSize = const Size(24000, 1968);
   bool _isMinimapExpanded = true;
 
+  // CAD Ölçüm Araçları Durumları
+  CadMeasureMode _measureMode = CadMeasureMode.none;
+  CadInteractionMode _measureInteractionMode = CadInteractionMode.measure;
+  final List<CadMeasurement> _completedMeasurements = [];
+  List<Offset> _activeDocPoints = [];
+  double _metersPerDocUnit = 0.0352778; // 1:100 Varsayılan ölçek (1 pt = 0.0352778 m)
+  String _currentScaleLabel = '1:100';
+  int? _draggingPointIndex;
+  bool _showLoupe = false;
+  Offset? _loupeScreenPos;
+  final ValueNotifier<int> _measureRepaintNotifier = ValueNotifier<int>(0);
+
+  double get _effectiveScale =>
+      _currentScaleNotifier.value > 0 ? _currentScaleNotifier.value : 1.0;
+
   String _loadingStatusText = 'Proje Yükleniyor...';
   String _loadingSubText = 'Çizim dosyası hazırlanıyor';
 
@@ -170,6 +227,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     _animController.dispose();
     _currentScaleNotifier.dispose();
     _minimapNotifier.dispose();
+    _measureRepaintNotifier.dispose();
     super.dispose();
   }
 
@@ -349,6 +407,13 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _loadingStep = 1;
       _currentTitle = 'DWG / DXF Görüntüleyici';
       _currentScaleNotifier.value = 1.0;
+      _measureMode = CadMeasureMode.none;
+      _measureInteractionMode = CadInteractionMode.measure;
+      _activeDocPoints.clear();
+      _completedMeasurements.clear();
+      _draggingPointIndex = null;
+      _showLoupe = false;
+      _loupeScreenPos = null;
     });
   }
 
@@ -666,10 +731,14 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           else if (hasLoadedProject)
             _buildCadCanvas(),
 
+          // 1.5 ÖLÇÜM KATMANI (VEKTÖREL ÇİZİMİN ÜZERİNE OTURAN AKILLI ÇİZİM & ETKİLEŞİM TABAKASI)
+          if (hasLoadedProject && !_isLoading && _errorMessage == null)
+            _buildMeasureInteractiveLayer(),
+
           // 2. PROJE RADARI / MİNİMAP (Yalnızca proje açıkken)
           if (hasLoadedProject && !_isLoading && _errorMessage == null)
             Positioned(
-              top: 14,
+              top: _measureMode != CadMeasureMode.none ? 94 : 14,
               right: 14,
               child: _buildCadMinimap(),
             ),
@@ -680,6 +749,28 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
               left: 16,
               bottom: 24,
               child: _buildZoomControlPanel(),
+            ),
+
+          // 3.5 CAD ÖLÇÜM TOOLBARI (Mesafe / Alan / Ölçek / Geri Al / Temizle)
+          if (hasLoadedProject &&
+              !_isLoading &&
+              _errorMessage == null &&
+              _measureMode != CadMeasureMode.none)
+            Positioned(
+              top: 10,
+              left: 10,
+              right: 10,
+              child: _buildMeasureFloatingToolbar(),
+            ),
+
+          // 3.6 HASSAS BÜYÜTEÇ (LOUPE) - Parmağın ucunu kapatmayan optik crosshair
+          if (hasLoadedProject && _showLoupe && _loupeScreenPos != null)
+            Positioned(
+              left: (_loupeScreenPos!.dx - 45)
+                  .clamp(12.0, MediaQuery.of(context).size.width - 102),
+              top: (_loupeScreenPos!.dy - 100)
+                  .clamp(12.0, MediaQuery.of(context).size.height - 130),
+              child: _buildLoupeWidget(),
             ),
 
           // 4. PREMİUM CAD YÜKLEME EKRANI (Kullanıcı dostu, animasyonlu)
@@ -779,6 +870,33 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                 color: Color(0xFF38BDF8), size: 22),
             tooltip: 'Yeni Dosya Aç',
             onPressed: _cihazdanDwgSecVeYukle,
+          ),
+          // CETVEL & ALAN ÖLÇÜM ARACI
+          IconButton(
+            icon: Icon(
+              Icons.square_foot_rounded,
+              color: _measureMode != CadMeasureMode.none
+                  ? const Color(0xFF10B981)
+                  : Colors.white70,
+              size: 22,
+            ),
+            tooltip: _measureMode != CadMeasureMode.none
+                ? 'Ölçüm Modunu Kapat'
+                : 'Mesafe & Alan Ölçümü',
+            onPressed: () {
+              setState(() {
+                if (_measureMode == CadMeasureMode.none) {
+                  _measureMode = CadMeasureMode.distance;
+                  _measureInteractionMode = CadInteractionMode.measure;
+                } else {
+                  _measureMode = CadMeasureMode.none;
+                  _activeDocPoints.clear();
+                  _draggingPointIndex = null;
+                  _showLoupe = false;
+                  _loupeScreenPos = null;
+                }
+              });
+            },
           ),
           // KAĞIT / KARANLIK MOD
           IconButton(
@@ -1448,6 +1566,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
               'docW': _docPageSize.width,
               'docH': _docPageSize.height,
             };
+            _measureRepaintNotifier.value =
+                (_measureRepaintNotifier.value + 1) % 1000000;
           },
         ),
       );
@@ -2126,6 +2246,985 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       ),
     );
   }
+
+  // ==========================================
+  // CAD ÖLÇÜM & KALİBRASYON ENGINE METODLARI
+  // ==========================================
+
+  Offset _docToScreen(Offset docPoint) {
+    final scale = _effectiveScale;
+    return Offset(
+      _currentXOffset + docPoint.dx * scale,
+      _currentYOffset + docPoint.dy * scale,
+    );
+  }
+
+  Offset _screenToDoc(Offset screenPoint) {
+    final scale = _effectiveScale;
+    return Offset(
+      (screenPoint.dx - _currentXOffset) / scale,
+      (screenPoint.dy - _currentYOffset) / scale,
+    );
+  }
+
+  Widget _buildMeasureInteractiveLayer() {
+    final bool isInteracting = _measureMode != CadMeasureMode.none &&
+        _measureInteractionMode == CadInteractionMode.measure;
+
+    final customPaintWidget = AnimatedBuilder(
+      animation: Listenable.merge([
+        _measureRepaintNotifier,
+        _currentScaleNotifier,
+      ]),
+      builder: (context, _) {
+        return CustomPaint(
+          size: Size.infinite,
+          painter: _CadMeasurePainter(
+            completedMeasurements: _completedMeasurements,
+            activeDocPoints: _activeDocPoints,
+            activeMode: _measureMode,
+            metersPerDocUnit: _metersPerDocUnit,
+            docToScreen: _docToScreen,
+            screenToDoc: _screenToDoc,
+            draggingIndex: _draggingPointIndex,
+            scale: _effectiveScale,
+            isMeasuring: _measureMode != CadMeasureMode.none,
+            paperMode: _isPaperMode,
+          ),
+        );
+      },
+    );
+
+    if (!isInteracting) {
+      return Positioned.fill(
+        child: IgnorePointer(
+          ignoring: true,
+          child: customPaintWidget,
+        ),
+      );
+    }
+
+    return Positioned.fill(
+      child: GestureDetector(
+        behavior: HitTestBehavior.opaque,
+        onTapDown: _handleMeasureTapDown,
+        onPanStart: _handleMeasurePanStart,
+        onPanUpdate: _handleMeasurePanUpdate,
+        onPanEnd: _handleMeasurePanEnd,
+        child: customPaintWidget,
+      ),
+    );
+  }
+
+  void _handleMeasureTapDown(TapDownDetails details) {
+    final screenPos = details.localPosition;
+    final docPos = _screenToDoc(screenPos);
+
+    // 1. Mevcut aktif noktalardan birine tıklanıp tıklanmadığını kontrol et
+    for (int i = 0; i < _activeDocPoints.length; i++) {
+      final ptScreen = _docToScreen(_activeDocPoints[i]);
+      if ((ptScreen - screenPos).distance <= 32.0) {
+        setState(() {
+          _draggingPointIndex = i;
+          _showLoupe = true;
+          _loupeScreenPos = screenPos;
+        });
+        return;
+      }
+    }
+
+    // 2. Mod bazlı nokta ekleme
+    if (_measureMode == CadMeasureMode.distance) {
+      setState(() {
+        if (_activeDocPoints.isEmpty) {
+          _activeDocPoints.add(docPos);
+        } else if (_activeDocPoints.length == 1) {
+          _activeDocPoints.add(docPos);
+          _completeActiveMeasurement();
+        } else {
+          _activeDocPoints = [docPos];
+        }
+      });
+    } else if (_measureMode == CadMeasureMode.area) {
+      setState(() {
+        if (_activeDocPoints.length >= 3) {
+          final firstPtScreen = _docToScreen(_activeDocPoints.first);
+          if ((firstPtScreen - screenPos).distance <= 28.0) {
+            _completeActiveMeasurement();
+            return;
+          }
+        }
+        _activeDocPoints.add(docPos);
+      });
+    } else if (_measureMode == CadMeasureMode.calibrate) {
+      setState(() {
+        if (_activeDocPoints.length < 2) {
+          _activeDocPoints.add(docPos);
+        }
+        if (_activeDocPoints.length == 2) {
+          _showCalibrationDialog();
+        }
+      });
+    }
+  }
+
+  void _handleMeasurePanStart(DragStartDetails details) {
+    final screenPos = details.localPosition;
+    for (int i = 0; i < _activeDocPoints.length; i++) {
+      final ptScreen = _docToScreen(_activeDocPoints[i]);
+      if ((ptScreen - screenPos).distance <= 36.0) {
+        setState(() {
+          _draggingPointIndex = i;
+          _showLoupe = true;
+          _loupeScreenPos = screenPos;
+        });
+        return;
+      }
+    }
+  }
+
+  void _handleMeasurePanUpdate(DragUpdateDetails details) {
+    if (_draggingPointIndex != null &&
+        _draggingPointIndex! < _activeDocPoints.length) {
+      final screenPos = details.localPosition;
+      final docPos = _screenToDoc(screenPos);
+      setState(() {
+        _activeDocPoints[_draggingPointIndex!] = docPos;
+        _loupeScreenPos = screenPos;
+      });
+    }
+  }
+
+  void _handleMeasurePanEnd(DragEndDetails details) {
+    if (_draggingPointIndex != null) {
+      setState(() {
+        _draggingPointIndex = null;
+        _showLoupe = false;
+        _loupeScreenPos = null;
+      });
+    }
+  }
+
+  void _completeActiveMeasurement() {
+    if (_activeDocPoints.isEmpty) return;
+
+    if (_measureMode == CadMeasureMode.distance &&
+        _activeDocPoints.length >= 2) {
+      _completedMeasurements.add(
+        CadMeasurement(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          type: CadMeasureMode.distance,
+          docPoints: List.from(_activeDocPoints),
+          metersPerDocUnit: _metersPerDocUnit,
+          color: const Color(0xFF38BDF8),
+        ),
+      );
+      _activeDocPoints.clear();
+    } else if (_measureMode == CadMeasureMode.area &&
+        _activeDocPoints.length >= 3) {
+      _completedMeasurements.add(
+        CadMeasurement(
+          id: DateTime.now().millisecondsSinceEpoch.toString(),
+          type: CadMeasureMode.area,
+          docPoints: List.from(_activeDocPoints),
+          metersPerDocUnit: _metersPerDocUnit,
+          color: const Color(0xFF10B981),
+        ),
+      );
+      _activeDocPoints.clear();
+    }
+  }
+
+  void _undoLastMeasurementPoint() {
+    setState(() {
+      if (_activeDocPoints.isNotEmpty) {
+        _activeDocPoints.removeLast();
+      } else if (_completedMeasurements.isNotEmpty) {
+        _completedMeasurements.removeLast();
+      }
+    });
+  }
+
+  void _clearAllMeasurements() {
+    setState(() {
+      _activeDocPoints.clear();
+      _completedMeasurements.clear();
+      _draggingPointIndex = null;
+      _showLoupe = false;
+      _loupeScreenPos = null;
+    });
+    ScaffoldMessenger.of(context).showSnackBar(
+      const SnackBar(
+        content: Text('Tüm ölçümler temizlendi.'),
+        duration: Duration(seconds: 2),
+        backgroundColor: Color(0xFF0F172A),
+      ),
+    );
+  }
+
+  void _showScaleSelectionSheet() {
+    final presets = [
+      const CadScalePreset('1:20 (Detay)', 20, 0.000352778 * 20),
+      const CadScalePreset('1:50 (Mimari / Uygulama)', 50, 0.000352778 * 50),
+      const CadScalePreset('1:100 (Mimari / Statik - Standart)', 100, 0.000352778 * 100),
+      const CadScalePreset('1:200 (Kat & Vaziyet Planı)', 200, 0.000352778 * 200),
+      const CadScalePreset('1:500 (Vaziyet Planı)', 500, 0.000352778 * 500),
+      const CadScalePreset('1:1000 (İmar / Harita Planı)', 1000, 0.000352778 * 1000),
+    ];
+
+    showModalBottomSheet(
+      context: context,
+      backgroundColor: const Color(0xFF0F172A),
+      shape: const RoundedRectangleBorder(
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
+      ),
+      builder: (ctx) => SafeArea(
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              Center(
+                child: Container(
+                  width: 40,
+                  height: 4,
+                  decoration: BoxDecoration(
+                    color: Colors.white24,
+                    borderRadius: BorderRadius.circular(2),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 14),
+              const Row(
+                children: [
+                  Icon(Icons.architecture_rounded, color: Color(0xFF38BDF8), size: 22),
+                  SizedBox(width: 8),
+                  Text(
+                    'CAD Çizim Ölçeği & Kalibrasyon',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 6),
+              const Text(
+                'Paftanın çizim ölçeğini seçin veya bilinen bir ölçüyle (kapı, aks vb.) kalibre edin.',
+                style: TextStyle(color: Colors.white60, fontSize: 12),
+              ),
+              const SizedBox(height: 14),
+              ...presets.map((p) {
+                final isSelected = _currentScaleLabel == p.label.split(' ').first;
+                return ListTile(
+                  dense: true,
+                  contentPadding: const EdgeInsets.symmetric(horizontal: 8),
+                  title: Text(
+                    p.label,
+                    style: TextStyle(
+                      color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                      fontSize: 13.5,
+                    ),
+                  ),
+                  trailing: isSelected
+                      ? const Icon(Icons.check_circle_rounded,
+                          color: Color(0xFF38BDF8), size: 20)
+                      : null,
+                  onTap: () {
+                    setState(() {
+                      _metersPerDocUnit = p.metersPerDocUnit;
+                      _currentScaleLabel = p.label.split(' ').first;
+                      _recalculateCompletedMeasurements();
+                    });
+                    Navigator.pop(ctx);
+                  },
+                );
+              }),
+              const Divider(color: Colors.white12, height: 18),
+              ElevatedButton.icon(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1E293B),
+                  foregroundColor: const Color(0xFFF59E0B),
+                  padding: const EdgeInsets.symmetric(vertical: 12),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
+                    side: const BorderSide(color: Color(0xFFF59E0B), width: 1.2),
+                  ),
+                ),
+                icon: const Icon(Icons.adjust_rounded, size: 20),
+                label: const Text(
+                  '🎯 2 Nokta İle Referans Kalibre Et (%100 Hassasiyet)',
+                  style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  setState(() {
+                    _measureMode = CadMeasureMode.calibrate;
+                    _activeDocPoints.clear();
+                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text(
+                        'Çizim üzerinde gerçek ölçüsünü bildiğiniz iki noktaya dokunun (Örn: 90 cm kapı açıklığı).',
+                      ),
+                      backgroundColor: Color(0xFF0F172A),
+                      duration: Duration(seconds: 4),
+                    ),
+                  );
+                },
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _recalculateCompletedMeasurements() {
+    for (int i = 0; i < _completedMeasurements.length; i++) {
+      final old = _completedMeasurements[i];
+      _completedMeasurements[i] = CadMeasurement(
+        id: old.id,
+        type: old.type,
+        docPoints: old.docPoints,
+        metersPerDocUnit: _metersPerDocUnit,
+        color: old.color,
+        label: old.label,
+      );
+    }
+  }
+
+  void _showCalibrationDialog() {
+    if (_activeDocPoints.length < 2) return;
+    final p1 = _activeDocPoints[0];
+    final p2 = _activeDocPoints[1];
+    final docDist = (p2 - p1).distance;
+    final controller = TextEditingController(text: '1.00');
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        backgroundColor: const Color(0xFF0F172A),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: const Row(
+          children: [
+            Icon(Icons.tune_rounded, color: Color(0xFFF59E0B), size: 24),
+            SizedBox(width: 8),
+            Text(
+              'Referans Kalibrasyon',
+              style: TextStyle(color: Colors.white, fontSize: 16, fontWeight: FontWeight.bold),
+            ),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            const Text(
+              'Seçtiğiniz bu iki nokta arasındaki gerçek şantiye / mimari mesafeyi girin:',
+              style: TextStyle(color: Colors.white70, fontSize: 13),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: controller,
+              keyboardType: const TextInputType.numberWithOptions(decimal: true),
+              autofocus: true,
+              style: const TextStyle(color: Colors.white, fontSize: 18, fontWeight: FontWeight.bold),
+              decoration: InputDecoration(
+                filled: true,
+                fillColor: const Color(0xFF1E293B),
+                suffixText: 'Metre',
+                suffixStyle: const TextStyle(color: Color(0xFFF59E0B), fontWeight: FontWeight.bold),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFF59E0B)),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Color(0xFFF59E0B), width: 2),
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Wrap(
+              spacing: 6,
+              children: ['0.90', '1.00', '2.50', '4.00', '6.00'].map((val) {
+                return InkWell(
+                  onTap: () => controller.text = val,
+                  borderRadius: BorderRadius.circular(6),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E293B),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(color: Colors.white24),
+                    ),
+                    child: Text(
+                      '$val m',
+                      style: const TextStyle(color: Colors.white70, fontSize: 11),
+                    ),
+                  ),
+                );
+              }).toList(),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              setState(() {
+                _measureMode = CadMeasureMode.distance;
+                _activeDocPoints.clear();
+              });
+            },
+            child: const Text('İptal', style: TextStyle(color: Colors.white60)),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: const Color(0xFFF59E0B),
+              foregroundColor: Colors.black,
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+            ),
+            onPressed: () {
+              final realMeters = double.tryParse(controller.text.replaceAll(',', '.')) ?? 1.0;
+              if (docDist > 0 && realMeters > 0) {
+                setState(() {
+                  _metersPerDocUnit = realMeters / docDist;
+                  final estimatedRatio = (_metersPerDocUnit / 0.000352778).round();
+                  _currentScaleLabel = '1:$estimatedRatio (Özel)';
+                  _recalculateCompletedMeasurements();
+                  _measureMode = CadMeasureMode.distance;
+                  _activeDocPoints.clear();
+                });
+                Navigator.pop(ctx);
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text('Ölçek kalibre edildi: $_currentScaleLabel. Çizim artık milimetrik hassasiyette!'),
+                    backgroundColor: const Color(0xFF0F172A),
+                  ),
+                );
+              }
+            },
+            child: const Text('Kalibre Et', style: TextStyle(fontWeight: FontWeight.bold)),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildLoupeWidget() {
+    return Container(
+      width: 90,
+      height: 90,
+      decoration: BoxDecoration(
+        shape: BoxShape.circle,
+        color: const Color(0xFF0F172A).withValues(alpha: 0.94),
+        border: Border.all(
+          color: const Color(0xFF38BDF8),
+          width: 2.2,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+            blurRadius: 16,
+            spreadRadius: 2,
+          ),
+        ],
+      ),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 80,
+            height: 1,
+            color: const Color(0xFF38BDF8).withValues(alpha: 0.8),
+          ),
+          Container(
+            width: 1,
+            height: 80,
+            color: const Color(0xFF38BDF8).withValues(alpha: 0.8),
+          ),
+          Container(
+            width: 18,
+            height: 18,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: const Color(0xFF38BDF8),
+                width: 1.5,
+              ),
+            ),
+          ),
+          Container(
+            width: 5,
+            height: 5,
+            decoration: const BoxDecoration(
+              shape: BoxShape.circle,
+              color: Color(0xFF38BDF8),
+            ),
+          ),
+          Positioned(
+            bottom: 6,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+              decoration: BoxDecoration(
+                color: Colors.black87,
+                borderRadius: BorderRadius.circular(4),
+              ),
+              child: const Text(
+                'HEDEF',
+                style: TextStyle(
+                  color: Color(0xFF38BDF8),
+                  fontSize: 8.5,
+                  fontWeight: FontWeight.w900,
+                  letterSpacing: 0.8,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMeasureFloatingToolbar() {
+    final hasActive = _activeDocPoints.isNotEmpty;
+
+    return SafeArea(
+      top: false,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        decoration: BoxDecoration(
+          color: const Color(0xFF0F172A).withValues(alpha: 0.94),
+          borderRadius: BorderRadius.circular(16),
+          border: Border.all(
+            color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+            width: 1.2,
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: 0.5),
+              blurRadius: 16,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SingleChildScrollView(
+              scrollDirection: Axis.horizontal,
+              child: Row(
+                children: [
+                  _buildMeasureModeChip(
+                    icon: Icons.straighten_rounded,
+                    label: 'Mesafe',
+                    isActive: _measureMode == CadMeasureMode.distance,
+                    activeColor: const Color(0xFF38BDF8),
+                    onTap: () {
+                      setState(() {
+                        _measureMode = CadMeasureMode.distance;
+                        _activeDocPoints.clear();
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 6),
+                  _buildMeasureModeChip(
+                    icon: Icons.crop_square_rounded,
+                    label: 'Alan',
+                    isActive: _measureMode == CadMeasureMode.area,
+                    activeColor: const Color(0xFF10B981),
+                    onTap: () {
+                      setState(() {
+                        _measureMode = CadMeasureMode.area;
+                        _activeDocPoints.clear();
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Container(width: 1, height: 18, color: Colors.white24),
+                  const SizedBox(width: 8),
+                  _buildMeasureInteractionChip(
+                    icon: _measureInteractionMode == CadInteractionMode.measure
+                        ? Icons.touch_app_rounded
+                        : Icons.pan_tool_rounded,
+                    label: _measureInteractionMode == CadInteractionMode.measure
+                        ? 'Nokta Koy'
+                        : 'Kaydır / Gezin',
+                    isMeasuring: _measureInteractionMode == CadInteractionMode.measure,
+                    onTap: () {
+                      setState(() {
+                        _measureInteractionMode =
+                            _measureInteractionMode == CadInteractionMode.measure
+                                ? CadInteractionMode.pan
+                                : CadInteractionMode.measure;
+                      });
+                    },
+                  ),
+                  const SizedBox(width: 8),
+                  Container(width: 1, height: 18, color: Colors.white24),
+                  const SizedBox(width: 8),
+                  InkWell(
+                    onTap: _showScaleSelectionSheet,
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF1E293B),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.6),
+                          width: 1.0,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.architecture_rounded,
+                              size: 14, color: Color(0xFFF59E0B)),
+                          const SizedBox(width: 4),
+                          Text(
+                            _currentScaleLabel,
+                            style: const TextStyle(
+                              color: Colors.white,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                          const SizedBox(width: 2),
+                          const Icon(Icons.arrow_drop_down_rounded,
+                              size: 16, color: Colors.white70),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 8),
+                  Container(width: 1, height: 18, color: Colors.white24),
+                  const SizedBox(width: 6),
+                  IconButton(
+                    icon: const Icon(Icons.undo_rounded, size: 18),
+                    color: (_activeDocPoints.isNotEmpty || _completedMeasurements.isNotEmpty)
+                        ? Colors.white
+                        : Colors.white30,
+                    tooltip: 'Geri Al',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    onPressed: (_activeDocPoints.isNotEmpty || _completedMeasurements.isNotEmpty)
+                        ? _undoLastMeasurementPoint
+                        : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.delete_outline_rounded, size: 18),
+                    color: (_activeDocPoints.isNotEmpty || _completedMeasurements.isNotEmpty)
+                        ? const Color(0xFFEF4444)
+                        : Colors.white30,
+                    tooltip: 'Temizle',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    onPressed: (_activeDocPoints.isNotEmpty || _completedMeasurements.isNotEmpty)
+                        ? _clearAllMeasurements
+                        : null,
+                  ),
+                  IconButton(
+                    icon: const Icon(Icons.close_rounded, size: 20),
+                    color: Colors.white70,
+                    tooltip: 'Ölçümden Çık',
+                    padding: EdgeInsets.zero,
+                    constraints: const BoxConstraints(minWidth: 28, minHeight: 28),
+                    onPressed: () {
+                      setState(() {
+                        _measureMode = CadMeasureMode.none;
+                        _activeDocPoints.clear();
+                      });
+                    },
+                  ),
+                ],
+              ),
+            ),
+            if (_measureMode == CadMeasureMode.calibrate)
+              _buildCalibrateStatusRow()
+            else if (_measureMode == CadMeasureMode.distance && hasActive)
+              _buildDistanceStatusRow()
+            else if (_measureMode == CadMeasureMode.area && hasActive)
+              _buildAreaStatusRow()
+            else if (_measureInteractionMode == CadInteractionMode.pan)
+              _buildPanHintRow(),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeasureModeChip({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required Color activeColor,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 5),
+        decoration: BoxDecoration(
+          color: isActive ? activeColor : const Color(0xFF1E293B),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon, size: 14, color: isActive ? Colors.black87 : Colors.white70),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isActive ? Colors.black87 : Colors.white,
+                fontSize: 11.5,
+                fontWeight: isActive ? FontWeight.w800 : FontWeight.w600,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildMeasureInteractionChip({
+    required IconData icon,
+    required String label,
+    required bool isMeasuring,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+        decoration: BoxDecoration(
+          color: isMeasuring
+              ? const Color(0xFF26A69A).withValues(alpha: 0.2)
+              : const Color(0xFF38BDF8).withValues(alpha: 0.2),
+          borderRadius: BorderRadius.circular(8),
+          border: Border.all(
+            color: isMeasuring ? const Color(0xFF26A69A) : const Color(0xFF38BDF8),
+            width: 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 13,
+              color: isMeasuring ? const Color(0xFF26A69A) : const Color(0xFF38BDF8),
+            ),
+            const SizedBox(width: 4),
+            Text(
+              label,
+              style: TextStyle(
+                color: isMeasuring ? const Color(0xFF26A69A) : const Color(0xFF38BDF8),
+                fontSize: 11,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDistanceStatusRow() {
+    double dist = 0.0;
+    if (_activeDocPoints.length >= 2) {
+      dist = (_activeDocPoints[1] - _activeDocPoints[0]).distance * _metersPerDocUnit;
+    }
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.straighten_rounded, size: 16, color: Color(0xFF38BDF8)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _activeDocPoints.length == 1
+                  ? '1. Nokta seçildi. Bitiş noktasına dokunun.'
+                  : 'Mesafe: ${_formatDistance(dist)}',
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (_activeDocPoints.length >= 2)
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _completeActiveMeasurement();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF38BDF8),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  '+ Yeni Ölçü',
+                  style: TextStyle(color: Colors.black, fontSize: 10.5, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildAreaStatusRow() {
+    final area = _calculatePolygonAreaMeters(_activeDocPoints, _metersPerDocUnit);
+    final perim = _calculatePolygonPerimeterMeters(_activeDocPoints, _metersPerDocUnit);
+
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.crop_square_rounded, size: 16, color: Color(0xFF10B981)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              _activeDocPoints.length < 3
+                  ? 'Alanı kapatmak için en az 3 köşe seçin (${_activeDocPoints.length} köşe)'
+                  : 'Alan: ${_formatArea(area)} • Çevre: ${_formatDistance(perim)}',
+              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+            ),
+          ),
+          if (_activeDocPoints.length >= 3)
+            InkWell(
+              onTap: () {
+                setState(() {
+                  _completeActiveMeasurement();
+                });
+              },
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  '✓ Tamamla',
+                  style: TextStyle(color: Colors.black, fontSize: 10.5, fontWeight: FontWeight.w800),
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildCalibrateStatusRow() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(10),
+      ),
+      child: Row(
+        children: [
+          const Icon(Icons.adjust_rounded, size: 16, color: Color(0xFFF59E0B)),
+          const SizedBox(width: 8),
+          Expanded(
+            child: Text(
+              '🎯 Referans: Ölçüsü bilinen 2 nokta seçin (${_activeDocPoints.length}/2)',
+              style: const TextStyle(color: Color(0xFFF59E0B), fontSize: 12, fontWeight: FontWeight.w700),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildPanHintRow() {
+    return Container(
+      margin: const EdgeInsets.only(top: 8),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
+      decoration: BoxDecoration(
+        color: const Color(0xFF1E293B),
+        borderRadius: BorderRadius.circular(8),
+      ),
+      child: const Row(
+        children: [
+          Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF38BDF8)),
+          SizedBox(width: 6),
+          Expanded(
+            child: Text(
+              '✋ Gezinme modu aktif: Çizimi rahatça kaydırıp büyütebilirsiniz.',
+              style: TextStyle(color: Colors.white70, fontSize: 10.5),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _formatDistance(double meters) {
+    if (meters < 0.01) {
+      return '${(meters * 1000).toStringAsFixed(0)} mm';
+    } else if (meters < 1.0) {
+      return '${(meters * 100).toStringAsFixed(1)} cm';
+    } else if (meters < 1000.0) {
+      return '${meters.toStringAsFixed(2)} m';
+    } else {
+      return '${(meters / 1000).toStringAsFixed(2)} km';
+    }
+  }
+
+  static String _formatArea(double sqMeters) {
+    if (sqMeters < 0.01) {
+      return '${(sqMeters * 10000).toStringAsFixed(1)} cm²';
+    } else if (sqMeters < 10000.0) {
+      return '${sqMeters.toStringAsFixed(2)} m²';
+    } else {
+      return '${(sqMeters / 10000.0).toStringAsFixed(2)} ha';
+    }
+  }
+
+  static double _calculatePolygonAreaMeters(List<Offset> docPoints, double metersPerUnit) {
+    if (docPoints.length < 3) return 0.0;
+    double sum = 0.0;
+    for (int i = 0; i < docPoints.length; i++) {
+      final p1 = docPoints[i];
+      final p2 = docPoints[(i + 1) % docPoints.length];
+      sum += (p1.dx * p2.dy) - (p2.dx * p1.dy);
+    }
+    final double docArea = (sum.abs()) / 2.0;
+    return docArea * (metersPerUnit * metersPerUnit);
+  }
+
+  static double _calculatePolygonPerimeterMeters(List<Offset> docPoints, double metersPerUnit) {
+    if (docPoints.length < 2) return 0.0;
+    double sum = 0.0;
+    for (int i = 0; i < docPoints.length; i++) {
+      final p1 = docPoints[i];
+      final p2 = docPoints[(i + 1) % docPoints.length];
+      sum += (p2 - p1).distance;
+    }
+    return sum * metersPerUnit;
+  }
 }
 
 class _BlueprintMinimapPainter extends CustomPainter {
@@ -2153,3 +3252,295 @@ class _BlueprintMinimapPainter extends CustomPainter {
   @override
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
+
+/// CAD Vektörel Çizim Üzerinde Ölçüm & Alan Çizen CustomPainter
+class _CadMeasurePainter extends CustomPainter {
+  final List<CadMeasurement> completedMeasurements;
+  final List<Offset> activeDocPoints;
+  final CadMeasureMode activeMode;
+  final double metersPerDocUnit;
+  final Offset Function(Offset) docToScreen;
+  final Offset Function(Offset) screenToDoc;
+  final int? draggingIndex;
+  final double scale;
+  final bool isMeasuring;
+  final bool paperMode;
+
+  _CadMeasurePainter({
+    required this.completedMeasurements,
+    required this.activeDocPoints,
+    required this.activeMode,
+    required this.metersPerDocUnit,
+    required this.docToScreen,
+    required this.screenToDoc,
+    required this.draggingIndex,
+    required this.scale,
+    required this.isMeasuring,
+    required this.paperMode,
+  });
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    // 1. TAMAMLANMIŞ ÖLÇÜMLERİ ÇİZ
+    for (final m in completedMeasurements) {
+      if (m.type == CadMeasureMode.distance) {
+        _drawDistanceLine(canvas, m.docPoints, m.metersPerDocUnit, m.color);
+      } else if (m.type == CadMeasureMode.area) {
+        _drawAreaPolygon(canvas, m.docPoints, m.metersPerDocUnit, m.color);
+      }
+    }
+
+    // 2. AKTİF (ÇİZİLMEKTE OLAN) ÖLÇÜMLERİ ÇİZ
+    if (activeDocPoints.isNotEmpty) {
+      if (activeMode == CadMeasureMode.distance) {
+        _drawActiveDistance(canvas);
+      } else if (activeMode == CadMeasureMode.area) {
+        _drawActiveArea(canvas);
+      } else if (activeMode == CadMeasureMode.calibrate) {
+        _drawActiveCalibrate(canvas);
+      }
+    }
+  }
+
+  void _drawDistanceLine(Canvas canvas, List<Offset> docPoints, double unitScale, Color color) {
+    if (docPoints.length < 2) return;
+    for (int i = 0; i < docPoints.length - 1; i++) {
+      final s1 = docToScreen(docPoints[i]);
+      final s2 = docToScreen(docPoints[i + 1]);
+
+      final linePaint = Paint()
+        ..color = color
+        ..strokeWidth = 2.2
+        ..strokeCap = StrokeCap.round;
+      canvas.drawLine(s1, s2, linePaint);
+
+      _drawArchitecturalTick(canvas, s1, color);
+      _drawArchitecturalTick(canvas, s2, color);
+
+      _drawHandle(canvas, s1, color);
+      _drawHandle(canvas, s2, color);
+
+      final mid = (s1 + s2) / 2;
+      final distMeters = (docPoints[i + 1] - docPoints[i]).distance * unitScale;
+      _drawBadge(canvas, mid, '📐 ${_DwgGoruntuleyiciEkraniState._formatDistance(distMeters)}', color);
+    }
+  }
+
+  void _drawAreaPolygon(Canvas canvas, List<Offset> docPoints, double unitScale, Color color) {
+    if (docPoints.length < 3) return;
+    final screenPoints = docPoints.map(docToScreen).toList();
+
+    final path = Path()..moveTo(screenPoints[0].dx, screenPoints[0].dy);
+    for (int i = 1; i < screenPoints.length; i++) {
+      path.lineTo(screenPoints[i].dx, screenPoints[i].dy);
+    }
+    path.close();
+
+    canvas.drawPath(path, Paint()..color = color.withValues(alpha: 0.22)..style = PaintingStyle.fill);
+
+    canvas.drawPath(
+      path,
+      Paint()
+        ..color = color
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke,
+    );
+
+    for (final pt in screenPoints) {
+      _drawHandle(canvas, pt, color);
+    }
+
+    double sumX = 0.0;
+    double sumY = 0.0;
+    for (final p in screenPoints) {
+      sumX += p.dx;
+      sumY += p.dy;
+    }
+    final centroid = Offset(sumX / screenPoints.length, sumY / screenPoints.length);
+
+    final area = _DwgGoruntuleyiciEkraniState._calculatePolygonAreaMeters(docPoints, unitScale);
+    final perim = _DwgGoruntuleyiciEkraniState._calculatePolygonPerimeterMeters(docPoints, unitScale);
+    _drawBadge(
+      canvas,
+      centroid,
+      '⬡ ${_DwgGoruntuleyiciEkraniState._formatArea(area)}\nÇevre: ${_DwgGoruntuleyiciEkraniState._formatDistance(perim)}',
+      color,
+    );
+  }
+
+  void _drawActiveDistance(Canvas canvas) {
+    const color = Color(0xFF38BDF8);
+    final s1 = docToScreen(activeDocPoints[0]);
+
+    if (activeDocPoints.length == 1) {
+      _drawHandle(canvas, s1, color, isPulsing: true);
+      _drawBadge(canvas, Offset(s1.dx, s1.dy - 24), '1. Nokta', color);
+    } else if (activeDocPoints.length >= 2) {
+      _drawDistanceLine(canvas, activeDocPoints, metersPerDocUnit, color);
+    }
+  }
+
+  void _drawActiveArea(Canvas canvas) {
+    const color = Color(0xFF10B981);
+    final screenPoints = activeDocPoints.map(docToScreen).toList();
+
+    if (screenPoints.length == 1) {
+      _drawHandle(canvas, screenPoints[0], color, isPulsing: true);
+      _drawBadge(canvas, Offset(screenPoints[0].dx, screenPoints[0].dy - 24), '1. Köşe', color);
+    } else if (screenPoints.length == 2) {
+      canvas.drawLine(
+        screenPoints[0],
+        screenPoints[1],
+        Paint()
+          ..color = color
+          ..strokeWidth = 2.0,
+      );
+      _drawHandle(canvas, screenPoints[0], color);
+      _drawHandle(canvas, screenPoints[1], color);
+      final mid = (screenPoints[0] + screenPoints[1]) / 2;
+      final dist = (activeDocPoints[1] - activeDocPoints[0]).distance * metersPerDocUnit;
+      _drawBadge(canvas, mid, _DwgGoruntuleyiciEkraniState._formatDistance(dist), color);
+    } else if (screenPoints.length >= 3) {
+      final path = Path()..moveTo(screenPoints[0].dx, screenPoints[0].dy);
+      for (int i = 1; i < screenPoints.length; i++) {
+        path.lineTo(screenPoints[i].dx, screenPoints[i].dy);
+      }
+      path.close();
+
+      canvas.drawPath(
+        path,
+        Paint()..color = color.withValues(alpha: 0.18)..style = PaintingStyle.fill,
+      );
+      canvas.drawPath(
+        path,
+        Paint()
+          ..color = color
+          ..strokeWidth = 2.0
+          ..style = PaintingStyle.stroke,
+      );
+
+      for (int i = 0; i < screenPoints.length; i++) {
+        _drawHandle(canvas, screenPoints[i], color, isSelected: draggingIndex == i);
+      }
+
+      double sumX = 0.0;
+      double sumY = 0.0;
+      for (final p in screenPoints) {
+        sumX += p.dx;
+        sumY += p.dy;
+      }
+      final centroid = Offset(sumX / screenPoints.length, sumY / screenPoints.length);
+      final area = _DwgGoruntuleyiciEkraniState._calculatePolygonAreaMeters(activeDocPoints, metersPerDocUnit);
+      final perim = _DwgGoruntuleyiciEkraniState._calculatePolygonPerimeterMeters(activeDocPoints, metersPerDocUnit);
+      _drawBadge(
+        canvas,
+        centroid,
+        '⬡ ${_DwgGoruntuleyiciEkraniState._formatArea(area)}\nÇevre: ${_DwgGoruntuleyiciEkraniState._formatDistance(perim)}',
+        color,
+      );
+    }
+  }
+
+  void _drawActiveCalibrate(Canvas canvas) {
+    const color = Color(0xFFF59E0B);
+    final screenPoints = activeDocPoints.map(docToScreen).toList();
+
+    if (screenPoints.length == 1) {
+      _drawHandle(canvas, screenPoints[0], color, isPulsing: true);
+      _drawBadge(canvas, Offset(screenPoints[0].dx, screenPoints[0].dy - 24), '1. Referans Noktası', color);
+    } else if (screenPoints.length >= 2) {
+      canvas.drawLine(
+        screenPoints[0],
+        screenPoints[1],
+        Paint()
+          ..color = color
+          ..strokeWidth = 2.4,
+      );
+      _drawArchitecturalTick(canvas, screenPoints[0], color);
+      _drawArchitecturalTick(canvas, screenPoints[1], color);
+      _drawHandle(canvas, screenPoints[0], color);
+      _drawHandle(canvas, screenPoints[1], color);
+      final mid = (screenPoints[0] + screenPoints[1]) / 2;
+      _drawBadge(canvas, mid, '🎯 Kalibrasyon Hattı', color);
+    }
+  }
+
+  void _drawArchitecturalTick(Canvas canvas, Offset p, Color color) {
+    const double len = 7.0;
+    const double d = len * 0.7071;
+    canvas.drawLine(
+      Offset(p.dx - d, p.dy + d),
+      Offset(p.dx + d, p.dy - d),
+      Paint()
+        ..color = color
+        ..strokeWidth = 2.4
+        ..strokeCap = StrokeCap.square,
+    );
+  }
+
+  void _drawHandle(Canvas canvas, Offset p, Color color, {bool isPulsing = false, bool isSelected = false}) {
+    canvas.drawCircle(
+      p,
+      isSelected ? 9.0 : 6.0,
+      Paint()..color = color..style = PaintingStyle.fill,
+    );
+    canvas.drawCircle(
+      p,
+      isSelected ? 4.5 : 2.5,
+      Paint()..color = Colors.white..style = PaintingStyle.fill,
+    );
+  }
+
+  void _drawBadge(Canvas canvas, Offset center, String text, Color color) {
+    final tp = TextPainter(
+      text: TextSpan(
+        text: text,
+        style: const TextStyle(
+          color: Colors.white,
+          fontSize: 10.5,
+          fontWeight: FontWeight.w700,
+          letterSpacing: 0.3,
+          height: 1.25,
+        ),
+      ),
+      textAlign: TextAlign.center,
+      textDirection: TextDirection.ltr,
+    );
+    tp.layout();
+
+    const padH = 8.0;
+    const padV = 4.0;
+    final rect = Rect.fromCenter(
+      center: center,
+      width: tp.width + padH * 2,
+      height: tp.height + padV * 2,
+    );
+    final rrect = RRect.fromRectAndRadius(rect, const Radius.circular(6));
+
+    canvas.drawRRect(
+      rrect.shift(const Offset(0, 2)),
+      Paint()
+        ..color = Colors.black.withValues(alpha: 0.4)
+        ..maskFilter = const MaskFilter.blur(BlurStyle.normal, 4),
+    );
+
+    canvas.drawRRect(
+      rrect,
+      Paint()..color = const Color(0xFF0F172A).withValues(alpha: 0.94),
+    );
+
+    canvas.drawRRect(
+      rrect,
+      Paint()
+        ..color = color
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = 1.2,
+    );
+
+    tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+  }
+
+  @override
+  bool shouldRepaint(covariant _CadMeasurePainter oldDelegate) => true;
+}
+
