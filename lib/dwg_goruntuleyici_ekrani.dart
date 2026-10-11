@@ -179,6 +179,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   ui.Image? _cachedScreenshotImage;
   bool _isCapturingScreenshot = false;
   Size _capturedScreenSize = Size.zero;
+  Size _cadCanvasSize = Size.zero;
 
   double get _effectiveScale =>
       _currentScaleNotifier.value > 0 ? _currentScaleNotifier.value : 1.0;
@@ -2428,13 +2429,14 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           final codec = await ui.instantiateImageCodec(bytes);
           final frame = await codec.getNextFrame();
           if (mounted) {
-            final mediaQuery = MediaQuery.maybeOf(context);
-            final screenSize = mediaQuery != null && mediaQuery.size.width > 0
-                ? mediaQuery.size
-                : Size(frame.image.width.toDouble(), frame.image.height.toDouble());
+            final double pixelRatio = MediaQuery.maybeOf(context)?.devicePixelRatio ?? 1.0;
+            final canvasLogicalSize = _cadCanvasSize.width > 0 && _cadCanvasSize.height > 0
+                ? _cadCanvasSize
+                : Size(frame.image.width / pixelRatio, frame.image.height / pixelRatio);
+
             setState(() {
               _cachedScreenshotImage = frame.image;
-              _capturedScreenSize = screenSize;
+              _capturedScreenSize = canvasLogicalSize;
             });
             _measureRepaintNotifier.value = (_measureRepaintNotifier.value + 1) % 1000000;
           }
@@ -2759,21 +2761,31 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
     if (!isMeasuring) {
       return Positioned.fill(
-        child: IgnorePointer(
-          ignoring: true,
-          child: customPaintWidget,
+        child: LayoutBuilder(
+          builder: (context, constraints) {
+            _cadCanvasSize = Size(constraints.maxWidth, constraints.maxHeight);
+            return IgnorePointer(
+              ignoring: true,
+              child: customPaintWidget,
+            );
+          },
         ),
       );
     }
 
     return Positioned.fill(
-      child: Listener(
-        behavior: HitTestBehavior.opaque,
-        onPointerDown: _handlePointerDown,
-        onPointerMove: _handlePointerMove,
-        onPointerUp: _handlePointerUp,
-        onPointerCancel: _handlePointerCancel,
-        child: customPaintWidget,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          _cadCanvasSize = Size(constraints.maxWidth, constraints.maxHeight);
+          return Listener(
+            behavior: HitTestBehavior.opaque,
+            onPointerDown: _handlePointerDown,
+            onPointerMove: _handlePointerMove,
+            onPointerUp: _handlePointerUp,
+            onPointerCancel: _handlePointerCancel,
+            child: customPaintWidget,
+          );
+        },
       ),
     );
   }
@@ -3424,7 +3436,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                           repaint: _measureRepaintNotifier,
                           screenshotImage: _cachedScreenshotImage,
                           aimScreenPos: _aimScreenPos,
-                          capturedScreenSize: _capturedScreenSize,
+                          capturedScreenSize: _cadCanvasSize.width > 0 && _cadCanvasSize.height > 0
+                              ? _cadCanvasSize
+                              : _capturedScreenSize,
                           loupeImage: _cachedLoupeImage,
                           aimDocPos: _aimDocPos,
                           docPageSize: _docPageSize,
