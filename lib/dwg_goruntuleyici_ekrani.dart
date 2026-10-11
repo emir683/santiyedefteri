@@ -192,6 +192,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   bool _isUpdatingPdfTransform = false;
   double? _pendingScale;
   Offset? _pendingPosition;
+  int _lastPinchTransformMs = 0;
 
   double get _effectiveScale =>
       _currentScaleNotifier.value > 0 ? _currentScaleNotifier.value : 1.0;
@@ -684,7 +685,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Future<void> _zoomIn() async {
     if (_pdfViewController == null) return;
     final scale = _currentScaleNotifier.value;
-    final newScale = (scale * 1.6).clamp(0.1, 100000.0);
+    final newScale = (scale * 1.6).clamp(0.1, 100.0);
     if ((newScale - scale).abs() < 0.01) return;
 
     final media = MediaQuery.of(context).size;
@@ -715,7 +716,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Future<void> _zoomOut() async {
     if (_pdfViewController == null) return;
     final scale = _currentScaleNotifier.value;
-    final newScale = (scale / 1.6).clamp(0.1, 100000.0);
+    final newScale = (scale / 1.6).clamp(0.1, 100.0);
     if ((newScale - scale).abs() < 0.01) return;
 
     final media = MediaQuery.of(context).size;
@@ -746,7 +747,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Future<void> _setZoomLevel(double targetScale) async {
     if (_pdfViewController == null) return;
     final scale = _currentScaleNotifier.value;
-    final clamped = targetScale.clamp(0.1, 100000.0);
+    final clamped = targetScale.clamp(0.1, 100.0);
     final media = MediaQuery.of(context).size;
     final screenW = media.width;
     final screenH = media.height - kToolbarHeight;
@@ -1719,10 +1720,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           key: ValueKey('$_localPdfPath-$_isPaperMode'),
           filePath: _localPdfPath!,
           minZoom: 0.1,
-          maxZoom: 100000.0,
+          maxZoom: 100.0,
           enableAntialiasing: true,
-          useBestQuality: true,
-          enableRenderDuringScale: true,
+          useBestQuality: false,
+          enableRenderDuringScale: false,
           enableSwipe: true,
           swipeHorizontal: false,
           autoSpacing: false,
@@ -1735,7 +1736,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           onRender: (pages) async {
             if (_pdfViewController != null) {
               try {
-                await _pdfViewController!.setZoomLimits(0.1, 50.0, 100000.0);
+                await _pdfViewController!.setZoomLimits(0.1, 15.0, 100.0);
                 final size = await _pdfViewController!.getCurrentPageSize();
                 if (size.width > 0 && size.height > 0) {
                   _docPageSize = size;
@@ -1746,7 +1747,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           },
           onLoadComplete: (pages) async {
             try {
-              await _pdfViewController?.setZoomLimits(0.1, 50.0, 100000.0);
+              await _pdfViewController?.setZoomLimits(0.1, 15.0, 100.0);
             } catch (_) {}
             _prepareLoupeImage();
           },
@@ -1754,9 +1755,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             _pdfViewController = controller;
             try {
               const MethodChannel('com.emircf.santiyeyonetim/audio_control')
-                  .invokeMethod('setPdfMaxZoom', {'maxZoom': 100000.0, 'minZoom': 0.1});
+                  .invokeMethod('setPdfMaxZoom', {'maxZoom': 100.0, 'minZoom': 0.1});
             } catch (_) {}
-            await controller.setZoomLimits(0.1, 50.0, 100000.0);
+            await controller.setZoomLimits(0.1, 15.0, 100.0);
           },
           onDraw: (xOffset, yOffset, scale) {
             if (_wasMultiTouch || _activePointers.length > 1) return;
@@ -1924,10 +1925,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                 alignment: WrapAlignment.center,
                 children: [
                   _buildZoomPresetChip('1x (Tam)', 1.0, ctx),
-                  _buildZoomPresetChip('25x', 25.0, ctx),
-                  _buildZoomPresetChip('150x', 150.0, ctx),
-                  _buildZoomPresetChip('500x', 500.0, ctx),
-                  _buildZoomPresetChip('2000x', 2000.0, ctx),
+                  _buildZoomPresetChip('5x', 5.0, ctx),
+                  _buildZoomPresetChip('15x', 15.0, ctx),
+                  _buildZoomPresetChip('40x', 40.0, ctx),
+                  _buildZoomPresetChip('100x (Maksimum)', 100.0, ctx),
                 ],
               ),
             ],
@@ -2059,7 +2060,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
                     final xOffset = data['xOffset'] ?? 0.0;
                     final yOffset = data['yOffset'] ?? 0.0;
-                    final scale = (data['scale'] ?? 1.0).clamp(0.1, 100000.0);
+                    final scale = (data['scale'] ?? 1.0).clamp(0.1, 100.0);
                     final docW = data['docW'] ?? 24000.0;
                     final docH = data['docH'] ?? 4895.0;
 
@@ -2992,7 +2993,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
       if (_pinchStartDist != null && _pinchStartDist! > 10 && currentDist > 10 && _pinchStartMidpoint != null) {
         final scaleRatio = currentDist / _pinchStartDist!;
-        final newScale = (_pinchStartScale * scaleRatio).clamp(0.1, 100000.0);
+        final newScale = (_pinchStartScale * scaleRatio).clamp(0.1, 100.0);
 
         final docX = (_pinchStartMidpoint!.dx - _pinchStartXOffset) / _pinchStartScale;
         final docY = (_pinchStartMidpoint!.dy - _pinchStartYOffset) / _pinchStartScale;
@@ -3014,7 +3015,11 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
         _measureRepaintNotifier.value =
             (_measureRepaintNotifier.value + 1) % 1000000;
 
-        _applyPdfTransform(scale: newScale, position: Offset(targetX, targetY));
+        final now = DateTime.now().millisecondsSinceEpoch;
+        if (now - _lastPinchTransformMs > 30) {
+          _lastPinchTransformMs = now;
+          _applyPdfTransform(scale: newScale, position: Offset(targetX, targetY));
+        }
       }
       return;
     }
@@ -3053,7 +3058,12 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
     if (_activePointers.isEmpty) {
       // Tüm parmaklar kaldırıldı
-      if (!_wasMultiTouch && _isAiming) {
+      if (_wasMultiTouch) {
+        _applyPdfTransform(
+          scale: _currentScaleNotifier.value,
+          position: Offset(_currentXOffset, _currentYOffset),
+        );
+      } else if (_isAiming) {
         HapticFeedback.mediumImpact();
         _commitAimPoint();
       }
