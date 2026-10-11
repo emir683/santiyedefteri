@@ -52,6 +52,7 @@ class SavedCadProject {
 }
 
 class DwgGoruntuleyiciEkrani extends StatefulWidget {
+  static bool isScreenActive = false;
   final String? initialDwgUrl;
   final String? initialProjeAdi;
   final String? initialLocalFilePath;
@@ -131,6 +132,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   @override
   void initState() {
     super.initState();
+    DwgGoruntuleyiciEkrani.isScreenActive = true;
     _currentTitle = widget.initialProjeAdi ?? 'DWG / DXF Görüntüleyici';
 
     _animController = AnimationController(
@@ -163,6 +165,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
   @override
   void dispose() {
+    DwgGoruntuleyiciEkrani.isScreenActive = false;
     _cadStreamSub?.cancel();
     _animController.dispose();
     _currentScaleNotifier.dispose();

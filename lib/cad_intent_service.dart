@@ -100,6 +100,12 @@ class CadIntentService {
     if (payload == null) return;
     if (_isPresenting) return;
 
+    if (DwgGoruntuleyiciEkrani.isScreenActive) {
+      debugPrint('[CAD_INTENT] DWG ekrani zaten acik, akis uzerinden yuklenecek.');
+      _pendingPayload = null;
+      return;
+    }
+
     final nav = _navigatorKey?.currentState;
     if (nav == null) {
       debugPrint('[CAD_INTENT] Navigator henuz hazir degil, 500ms sonra tekrar denenecek...');
