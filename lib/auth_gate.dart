@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'app_update_service.dart';
 import 'deep_link_service.dart';
+import 'cad_intent_service.dart';
 import 'fcm_servisi.dart';
 import 'login_or_register.dart';
 import 'wrapper.dart';
@@ -55,6 +56,7 @@ class _AuthGateState extends State<AuthGate> {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   if (!mounted) return;
                   DeepLinkService.instance.tryPresentPendingInvite();
+                  CadIntentService.instance.tryPresentPendingCadFile();
                   FcmServisi().kullaniciBagla();
                 });
               }

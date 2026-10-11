@@ -11,6 +11,9 @@ class CadFilePayload {
     required this.filePath,
     required this.fileName,
   });
+
+  @override
+  String toString() => 'CadFilePayload(fileName: $fileName, filePath: $filePath)';
 }
 
 /// WhatsApp, Telegram veya Dosya Yöneticisi üzerinden gelen DWG/DXF dosyalarını dinler ve yönlendirir.
@@ -30,6 +33,9 @@ class CadIntentService {
   GlobalKey<NavigatorState>? _navigatorKey;
   bool _initialized = false;
   CadFilePayload? _pendingPayload;
+  bool _isPresenting = false;
+
+  CadFilePayload? get pendingPayload => _pendingPayload;
 
   Future<void> initialize({
     required GlobalKey<NavigatorState> navigatorKey,
@@ -38,7 +44,10 @@ class CadIntentService {
     if (_initialized) return;
     _initialized = true;
 
+    debugPrint('[CAD_INTENT] CadIntentService baslatiliyor...');
+
     _channel.setMethodCallHandler((call) async {
+      debugPrint('[CAD_INTENT] MethodChannel call: ${call.method}');
       if (call.method == 'onCadFileReceived') {
         final args = call.arguments;
         if (args is Map) {
@@ -49,6 +58,7 @@ class CadIntentService {
               filePath: filePath,
               fileName: fileName ?? 'Proje_Cizimi.dwg',
             );
+            debugPrint('[CAD_INTENT] Gelen dosya yakalandi: $payload');
             _handleIncomingCadFile(payload);
           }
         }
@@ -58,6 +68,7 @@ class CadIntentService {
     try {
       final initialData =
           await _channel.invokeMethod<dynamic>('getInitialCadFile');
+      debugPrint('[CAD_INTENT] getInitialCadFile yaniti: $initialData');
       if (initialData is Map) {
         final filePath = initialData['filePath'] as String?;
         final fileName = initialData['fileName'] as String?;
@@ -66,46 +77,56 @@ class CadIntentService {
             filePath: filePath,
             fileName: fileName ?? 'Proje_Cizimi.dwg',
           );
+          debugPrint('[CAD_INTENT] Soguk acilis CAD dosyasi mevcut: $_pendingPayload');
           WidgetsBinding.instance.addPostFrameCallback((_) {
-            _checkAndOpenPending();
+            tryPresentPendingCadFile();
           });
         }
       }
     } catch (e) {
-      debugPrint('CAD başlangıç dosyası kontrolü: $e');
+      debugPrint('[CAD_INTENT] CAD baslangic dosyasi kontrol hatasi: $e');
     }
   }
 
   void _handleIncomingCadFile(CadFilePayload payload) {
+    _pendingPayload = payload;
     _fileStreamController.add(payload);
-    _openCadScreen(payload);
+    tryPresentPendingCadFile();
   }
 
-  void _checkAndOpenPending() {
-    if (_pendingPayload != null) {
-      final payload = _pendingPayload!;
-      _pendingPayload = null;
-      _openCadScreen(payload);
-    }
-  }
+  /// Bekleyen CAD dosyasini guvenle ekrana tasir
+  void tryPresentPendingCadFile() {
+    final payload = _pendingPayload;
+    if (payload == null) return;
+    if (_isPresenting) return;
 
-  void _openCadScreen(CadFilePayload payload) {
     final nav = _navigatorKey?.currentState;
     if (nav == null) {
+      debugPrint('[CAD_INTENT] Navigator henuz hazir degil, 500ms sonra tekrar denenecek...');
       Future.delayed(
-        const Duration(milliseconds: 600),
-        () => _openCadScreen(payload),
+        const Duration(milliseconds: 500),
+        () => tryPresentPendingCadFile(),
       );
       return;
     }
 
-    nav.push(
-      MaterialPageRoute(
-        builder: (_) => DwgGoruntuleyiciEkrani(
-          initialLocalFilePath: payload.filePath,
-          initialFileName: payload.fileName,
+    _isPresenting = true;
+    _pendingPayload = null;
+
+    debugPrint('[CAD_INTENT] CAD Ekrani aciliyor: ${payload.fileName}');
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      nav.push(
+        MaterialPageRoute(
+          builder: (_) => DwgGoruntuleyiciEkrani(
+            initialLocalFilePath: payload.filePath,
+            initialFileName: payload.fileName,
+          ),
         ),
-      ),
-    );
+      ).whenComplete(() {
+        _isPresenting = false;
+        debugPrint('[CAD_INTENT] CAD ekranindan donuldu.');
+      });
+    });
   }
 }

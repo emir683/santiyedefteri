@@ -8,9 +8,11 @@ import android.content.Intent
 import android.media.AudioManager
 import android.net.Uri
 import android.provider.OpenableColumns
+import android.util.Log
 import java.io.File
 
 class MainActivity: FlutterActivity() {
+    private val TAG = "CAD_INTENT"
     private val CHANNEL = "com.emircf.santiyeyonetim/audio_control"
     private val CAD_CHANNEL = "com.emircf.santiyeyonetim/cad_intent"
     private var cadMethodChannel: MethodChannel? = null
@@ -66,6 +68,7 @@ class MainActivity: FlutterActivity() {
         cadMethodChannel?.setMethodCallHandler { call, result ->
             when (call.method) {
                 "getInitialCadFile" -> {
+                    Log.d(TAG, "Dart getInitialCadFile cagirdi. Mevcut pendingCadFile: $pendingCadFile")
                     val fileData = pendingCadFile
                     pendingCadFile = null
                     result.success(fileData)
@@ -74,18 +77,21 @@ class MainActivity: FlutterActivity() {
             }
         }
 
-        // Soğuk açılış (Cold boot) sırasında açılan dosya varsa işle
+        // Soğuk açılış (Cold boot) sırasında açılan dosya varsa hemen yakala
+        Log.d(TAG, "configureFlutterEngine intent: ${intent?.action}, data: ${intent?.data}")
         intent?.let { handleCadIntent(it) }
     }
 
     override fun onNewIntent(intent: Intent) {
         super.onNewIntent(intent)
         setIntent(intent)
+        Log.d(TAG, "onNewIntent calisti: action=${intent.action}, data=${intent.data}")
         handleCadIntent(intent)
     }
 
     private fun handleCadIntent(intent: Intent) {
         val action = intent.action
+        Log.d(TAG, "handleCadIntent: action=$action, data=${intent.data}, type=${intent.type}")
         if (action == Intent.ACTION_VIEW || action == Intent.ACTION_SEND) {
             val uri: Uri? = when (action) {
                 Intent.ACTION_SEND -> {
@@ -99,16 +105,17 @@ class MainActivity: FlutterActivity() {
                 }
             }
 
+            Log.d(TAG, "Cikarilan URI: $uri")
             if (uri != null) {
                 Thread {
                     val fileData = processIntentUri(uri)
+                    Log.d(TAG, "processIntentUri sonucu: $fileData")
                     if (fileData != null) {
+                        // pendingCadFile her durumda saklanir ki Dart getInitialCadFile cagirdiginda bulabilsin
+                        pendingCadFile = fileData
                         runOnUiThread {
-                            if (cadMethodChannel != null) {
-                                cadMethodChannel?.invokeMethod("onCadFileReceived", fileData)
-                            } else {
-                                pendingCadFile = fileData
-                            }
+                            // Eger kanal dinleniyorsa anlik da bildirilir
+                            cadMethodChannel?.invokeMethod("onCadFileReceived", fileData)
                         }
                     }
                 }.start()
@@ -118,19 +125,28 @@ class MainActivity: FlutterActivity() {
 
     private fun processIntentUri(uri: Uri): Map<String, String>? {
         return try {
+            Log.d(TAG, "processIntentUri basladi: $uri (scheme: ${uri.scheme})")
             var displayName: String? = null
 
             if (uri.scheme == "content") {
-                contentResolver.query(uri, null, null, null, null)?.use { cursor ->
-                    val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
-                    if (cursor.moveToFirst() && nameIndex != -1) {
-                        displayName = cursor.getString(nameIndex)
+                try {
+                    contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+                        val nameIndex = cursor.getColumnIndex(OpenableColumns.DISPLAY_NAME)
+                        if (cursor.moveToFirst() && nameIndex != -1) {
+                            displayName = cursor.getString(nameIndex)
+                        }
                     }
+                } catch (e: Exception) {
+                    Log.w(TAG, "DISPLAY_NAME okunamadi: ${e.message}")
                 }
             }
 
             if (displayName.isNullOrBlank()) {
                 displayName = uri.lastPathSegment ?: "proje_cizimi.dwg"
+            }
+
+            if (displayName!!.contains("/")) {
+                displayName = displayName!!.substringAfterLast("/")
             }
 
             val inboxDir = File(cacheDir, "cad_inbox")
@@ -139,6 +155,8 @@ class MainActivity: FlutterActivity() {
             val safeName = displayName!!.replace("[^a-zA-Z0-9._-]".toRegex(), "_")
             val destFile = File(inboxDir, "${System.currentTimeMillis()}_$safeName")
 
+            Log.d(TAG, "Dosya kopyalaniyor: ${destFile.absolutePath}")
+
             contentResolver.openInputStream(uri)?.use { input ->
                 destFile.outputStream().use { output ->
                     input.copyTo(output)
@@ -146,15 +164,17 @@ class MainActivity: FlutterActivity() {
             }
 
             if (destFile.exists() && destFile.length() > 0) {
+                Log.d(TAG, "Dosya basariyla kopyalandi! Boyut=${destFile.length()}, isim=$displayName")
                 mapOf(
                     "filePath" to destFile.absolutePath,
                     "fileName" to displayName!!
                 )
             } else {
+                Log.e(TAG, "destFile olusmadi veya 0 bayt!")
                 null
             }
         } catch (e: Exception) {
-            e.printStackTrace()
+            Log.e(TAG, "processIntentUri hatasi: ${e.message}", e)
             null
         }
     }
