@@ -488,16 +488,20 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                 ),
               ),
               const SizedBox(width: 5),
-              Text(
-                hasLoadedProject
-                    ? 'Vektörel Çizim Aktif • Sınırsız Zoom'
-                    : 'CAD Çizim Görüntüleyici',
-                style: TextStyle(
-                  color: hasLoadedProject
-                      ? const Color(0xFF10B981)
-                      : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
-                  fontSize: 11,
-                  fontWeight: FontWeight.w500,
+              Expanded(
+                child: Text(
+                  hasLoadedProject
+                      ? 'Vektörel Çizim Aktif • Sınırsız Zoom'
+                      : 'CAD Çizim Görüntüleyici',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    color: hasLoadedProject
+                        ? const Color(0xFF10B981)
+                        : (isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B)),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w500,
+                  ),
                 ),
               ),
             ],
@@ -642,35 +646,41 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                   textAlign: TextAlign.center,
                 ),
                 const SizedBox(height: 22),
-                ElevatedButton.icon(
-                  onPressed: _cihazdanDwgSecVeYukle,
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF26A69A),
-                    foregroundColor: Colors.white,
-                    padding: const EdgeInsets.symmetric(
-                        horizontal: 26, vertical: 15),
-                    elevation: 4,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(14),
+                SizedBox(
+                  width: double.infinity,
+                  child: ElevatedButton.icon(
+                    onPressed: _cihazdanDwgSecVeYukle,
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: const Color(0xFF26A69A),
+                      foregroundColor: Colors.white,
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 16, vertical: 14),
+                      elevation: 4,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(14),
+                      ),
                     ),
-                  ),
-                  icon: const Icon(Icons.folder_open_rounded, size: 22),
-                  label: const Text(
-                    'DWG / DXF Dosyası Seç & Aç',
-                    style: TextStyle(
-                      fontSize: 15,
-                      fontWeight: FontWeight.w700,
+                    icon: const Icon(Icons.folder_open_rounded, size: 22),
+                    label: const FittedBox(
+                      fit: BoxFit.scaleDown,
+                      child: Text(
+                        'DWG / DXF Dosyası Seç & Aç',
+                        style: TextStyle(
+                          fontSize: 15,
+                          fontWeight: FontWeight.w700,
+                        ),
+                      ),
                     ),
                   ),
                 ),
                 const SizedBox(height: 16),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 8,
+                  runSpacing: 8,
                   children: [
                     _buildFormatBadge('AutoCAD .DWG', isDark),
-                    const SizedBox(width: 8),
                     _buildFormatBadge('Vektör .DXF', isDark),
-                    const SizedBox(width: 8),
                     _buildFormatBadge('Sınırsız Zoom', isDark),
                   ],
                 ),
@@ -686,15 +696,19 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
               const Icon(Icons.folder_special_rounded,
                   color: Color(0xFF26A69A), size: 20),
               const SizedBox(width: 8),
-              Text(
-                'Örnek CAD Projeleri',
-                style: TextStyle(
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                  color: titleColor,
+              Expanded(
+                child: Text(
+                  'Örnek CAD Projeleri',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w700,
+                    color: titleColor,
+                  ),
                 ),
               ),
-              const Spacer(),
+              const SizedBox(width: 8),
               Text(
                 '${_hazirOrnekler.length} Örnek',
                 style: TextStyle(fontSize: 12, color: subtitleColor),
@@ -754,6 +768,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                 ),
                 title: Text(
                   ad,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 14.5,
                     fontWeight: FontWeight.w700,
@@ -767,6 +783,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                     children: [
                       Text(
                         aciklama,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
                         style: TextStyle(
                           fontSize: 12,
                           color: subtitleColor,
@@ -879,6 +897,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Widget _buildFeatureRow(
       IconData icon, String title, String desc, bool isDark) {
     return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Container(
           padding: const EdgeInsets.all(8),
@@ -1119,8 +1138,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                 style: TextStyle(fontSize: 12, color: Colors.white54),
               ),
               const SizedBox(height: 16),
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                alignment: WrapAlignment.center,
                 children: [
                   _buildZoomPresetChip('1x (Tam)', 1.0, ctx),
                   _buildZoomPresetChip('25x', 25.0, ctx),
@@ -1442,21 +1463,28 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                   const SizedBox(height: 22),
                   // 3 Aşamalı Süreç Göstergesi
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      _buildStepChip('1. Aktarım', _loadingStep >= 1, isDark),
-                      const SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded,
-                          size: 13,
-                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
-                      const SizedBox(width: 8),
-                      _buildStepChip('2. İşleme', _loadingStep >= 2, isDark),
-                      const SizedBox(width: 8),
-                      Icon(Icons.arrow_forward_rounded,
-                          size: 13,
-                          color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
-                      const SizedBox(width: 8),
-                      _buildStepChip('3. Görselleştirme', _loadingStep >= 3, isDark),
+                      Expanded(
+                        child: _buildStepChip('1. Aktarım', _loadingStep >= 1, isDark),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(Icons.arrow_forward_rounded,
+                            size: 12,
+                            color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+                      ),
+                      Expanded(
+                        child: _buildStepChip('2. İşleme', _loadingStep >= 2, isDark),
+                      ),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 4),
+                        child: Icon(Icons.arrow_forward_rounded,
+                            size: 12,
+                            color: isDark ? Colors.white24 : const Color(0xFFCBD5E1)),
+                      ),
+                      Expanded(
+                        child: _buildStepChip('3. Çizim', _loadingStep >= 3, isDark),
+                      ),
                     ],
                   ),
                 ],
@@ -1470,7 +1498,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
   Widget _buildStepChip(String label, bool isCompletedOrActive, bool isDark) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+      alignment: Alignment.center,
+      padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 6),
       decoration: BoxDecoration(
         color: isCompletedOrActive
             ? const Color(0xFF26A69A).withValues(alpha: 0.15)
@@ -1487,11 +1516,14 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       ),
       child: Text(
         label,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+        textAlign: TextAlign.center,
         style: TextStyle(
           color: isCompletedOrActive
               ? const Color(0xFF26A69A)
               : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
-          fontSize: 10.5,
+          fontSize: 11,
           fontWeight: isCompletedOrActive ? FontWeight.w700 : FontWeight.w500,
         ),
       ),
@@ -1559,8 +1591,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                   ),
                 ),
                 const SizedBox(height: 22),
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.center,
+                Wrap(
+                  alignment: WrapAlignment.center,
+                  spacing: 12,
+                  runSpacing: 10,
                   children: [
                     OutlinedButton(
                       style: OutlinedButton.styleFrom(
@@ -1578,7 +1612,6 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                       onPressed: _dosyayiKapat,
                       child: const Text('Geri Dön'),
                     ),
-                    const SizedBox(width: 12),
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
                         backgroundColor: const Color(0xFF26A69A),
@@ -1613,9 +1646,11 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           children: [
             Icon(Icons.info_outline_rounded, color: Color(0xFF38BDF8)),
             SizedBox(width: 10),
-            Text(
-              'CAD Görüntüleyici Rehberi',
-              style: TextStyle(color: Colors.white, fontSize: 16),
+            Expanded(
+              child: Text(
+                'CAD Görüntüleyici Rehberi',
+                style: TextStyle(color: Colors.white, fontSize: 16),
+              ),
             ),
           ],
         ),
