@@ -151,7 +151,6 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
   // CAD Ölçüm Araçları Durumları
   CadMeasureMode _measureMode = CadMeasureMode.none;
-  CadInteractionMode _measureInteractionMode = CadInteractionMode.measure;
   final List<CadMeasurement> _completedMeasurements = [];
   List<Offset> _activeDocPoints = [];
   double _metersPerDocUnit = 0.0352778; // 1:100 Varsayılan ölçek (1 pt = 0.0352778 m)
@@ -159,9 +158,20 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   int? _autoDetectedScale;
   String? _autoDetectedSource;
   int? _draggingPointIndex;
-  bool _showLoupe = false;
-  Offset? _loupeScreenPos;
   final ValueNotifier<int> _measureRepaintNotifier = ValueNotifier<int>(0);
+
+  // Basılı Tutma, Sol Üst Büyüteç & Mıknatıslı OSNAP Hedefleme Durumları
+  bool _isAiming = false;
+  Offset? _aimScreenPos;
+  Offset? _aimDocPos;
+  bool _isSnapped = false;
+  String _snapLabel = '';
+  Offset? _snapGuideStartScreen;
+  Offset? _snapGuideEndScreen;
+  Timer? _holdTimer;
+  Offset? _pointerDownScreenPos;
+  Offset? _lastPanScreenPos;
+  bool _hasMovedFar = false;
 
   double get _effectiveScale =>
       _currentScaleNotifier.value > 0 ? _currentScaleNotifier.value : 1.0;
@@ -234,6 +244,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   void dispose() {
     DwgGoruntuleyiciEkrani.isScreenActive = false;
     _cadStreamSub?.cancel();
+    _holdTimer?.cancel();
     _animController.dispose();
     _currentScaleNotifier.dispose();
     _minimapNotifier.dispose();
@@ -482,14 +493,19 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _currentTitle = 'DWG / DXF Görüntüleyici';
       _currentScaleNotifier.value = 1.0;
       _measureMode = CadMeasureMode.none;
-      _measureInteractionMode = CadInteractionMode.measure;
       _autoDetectedScale = null;
       _autoDetectedSource = null;
       _activeDocPoints.clear();
       _completedMeasurements.clear();
       _draggingPointIndex = null;
-      _showLoupe = false;
-      _loupeScreenPos = null;
+      _isAiming = false;
+      _aimScreenPos = null;
+      _aimDocPos = null;
+      _isSnapped = false;
+      _snapLabel = '';
+      _snapGuideStartScreen = null;
+      _snapGuideEndScreen = null;
+      _holdTimer?.cancel();
     });
   }
 
@@ -885,14 +901,15 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
               child: _buildMeasureFloatingToolbar(),
             ),
 
-          // 3.6 HASSAS BÜYÜTEÇ (LOUPE) - Parmağın ucunu kapatmayan optik crosshair
-          if (hasLoadedProject && _showLoupe && _loupeScreenPos != null)
+          // 3.6 HASSAS BÜYÜTEÇ (LOUPE HUD) - Ekranın sol üst köşesinde optik nişangah & mıknatıs
+          if (hasLoadedProject &&
+              _measureMode != CadMeasureMode.none &&
+              _isAiming &&
+              _aimScreenPos != null)
             Positioned(
-              left: (_loupeScreenPos!.dx - 45)
-                  .clamp(12.0, MediaQuery.of(context).size.width - 102),
-              top: (_loupeScreenPos!.dy - 100)
-                  .clamp(12.0, MediaQuery.of(context).size.height - 130),
-              child: _buildLoupeWidget(),
+              left: 14,
+              top: 86,
+              child: _buildTopLeftLoupeWidget(),
             ),
 
           // 4. PREMİUM CAD YÜKLEME EKRANI (Kullanıcı dostu, animasyonlu)
@@ -1005,20 +1022,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             tooltip: _measureMode != CadMeasureMode.none
                 ? 'Ölçüm Modunu Kapat'
                 : 'Mesafe & Alan Ölçümü',
-            onPressed: () {
-              setState(() {
-                if (_measureMode == CadMeasureMode.none) {
-                  _measureMode = CadMeasureMode.distance;
-                  _measureInteractionMode = CadInteractionMode.measure;
-                } else {
-                  _measureMode = CadMeasureMode.none;
-                  _activeDocPoints.clear();
-                  _draggingPointIndex = null;
-                  _showLoupe = false;
-                  _loupeScreenPos = null;
-                }
-              });
-            },
+            onPressed: _toggleMeasurementMode,
           ),
           // KAĞIT / KARANLIK MOD
           IconButton(
@@ -2389,9 +2393,250 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
+  Future<void> _toggleMeasurementMode() async {
+    if (_measureMode != CadMeasureMode.none) {
+      setState(() {
+        _measureMode = CadMeasureMode.none;
+        _activeDocPoints.clear();
+        _isAiming = false;
+        _aimScreenPos = null;
+        _aimDocPos = null;
+        _isSnapped = false;
+        _snapLabel = '';
+        _snapGuideStartScreen = null;
+        _snapGuideEndScreen = null;
+        _holdTimer?.cancel();
+      });
+      return;
+    }
+
+    final prefs = await SharedPreferences.getInstance();
+    final bool tutorialSeen = prefs.getBool('cad_measure_tutorial_seen') ?? false;
+
+    if (!tutorialSeen && mounted) {
+      await _showMeasurementTutorialDialog();
+    }
+
+    if (mounted) {
+      setState(() {
+        _measureMode = CadMeasureMode.distance;
+        _activeDocPoints.clear();
+        _isAiming = false;
+        _aimScreenPos = null;
+        _aimDocPos = null;
+        _isSnapped = false;
+        _snapLabel = '';
+        _snapGuideStartScreen = null;
+        _snapGuideEndScreen = null;
+      });
+    }
+  }
+
+  Future<void> _showMeasurementTutorialDialog({bool force = false}) async {
+    bool dontShowAgain = false;
+
+    await showDialog(
+      context: context,
+      barrierDismissible: true,
+      builder: (ctx) => StatefulBuilder(
+        builder: (context, setDialogState) => AlertDialog(
+          backgroundColor: const Color(0xFF0F172A),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(22),
+            side: const BorderSide(color: Color(0xFF38BDF8), width: 1.2),
+          ),
+          insetPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+          title: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(8),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(Icons.touch_app_rounded, color: Color(0xFF38BDF8), size: 24),
+              ),
+              const SizedBox(width: 10),
+              const Expanded(
+                child: Text(
+                  'Hassas CAD Ölçümü',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 16.5,
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF1E293B),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: Colors.white12),
+                ),
+                child: Column(
+                  children: [
+                    _buildTutorialStep(
+                      '1',
+                      'Nokta Belirlemek İçin Basılı Tutun',
+                      'Parmağınızı ekranda istediğiniz noktaya basılı tutun.',
+                      const Color(0xFF38BDF8),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildTutorialStep(
+                      '2',
+                      'Sol Üst Büyüteç & Mıknatıs',
+                      'Sol üstteki büyüteç parmağınızın altını gösterir ve çizgi/köşelere mıknatıs gibi yapışır.',
+                      const Color(0xFF10B981),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildTutorialStep(
+                      '3',
+                      'Parmağınızı Kaldırın (Nokta Koyulur)',
+                      'Hedef tam oturduğunda parmağınızı kaldırın. Nokta milimetrik hassasiyetle belirlenir.',
+                      const Color(0xFFF59E0B),
+                    ),
+                    const SizedBox(height: 10),
+                    _buildTutorialStep(
+                      '4',
+                      'Serbest Kaydırma ile 2. Noktayı Seçin',
+                      'Çizimi tek parmakla serbestçe kaydırabilir, 2. noktaya aynı şekilde basılı tutabilirsiniz.',
+                      const Color(0xFFA855F7),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 14),
+              InkWell(
+                onTap: () {
+                  setDialogState(() {
+                    dontShowAgain = !dontShowAgain;
+                  });
+                },
+                borderRadius: BorderRadius.circular(8),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(vertical: 4),
+                  child: Row(
+                    children: [
+                      SizedBox(
+                        width: 22,
+                        height: 22,
+                        child: Checkbox(
+                          value: dontShowAgain,
+                          activeColor: const Color(0xFF38BDF8),
+                          checkColor: Colors.black,
+                          side: const BorderSide(color: Colors.white54, width: 1.5),
+                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(4)),
+                          onChanged: (val) {
+                            setDialogState(() {
+                              dontShowAgain = val ?? false;
+                            });
+                          },
+                        ),
+                      ),
+                      const SizedBox(width: 10),
+                      const Text(
+                        'Tekrar gösterme',
+                        style: TextStyle(color: Colors.white70, fontSize: 13, fontWeight: FontWeight.w600),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ],
+          ),
+          actions: [
+            ElevatedButton(
+              style: ElevatedButton.styleFrom(
+                backgroundColor: const Color(0xFF38BDF8),
+                foregroundColor: const Color(0xFF0F172A),
+                padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 10),
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+              ),
+              onPressed: () async {
+                if (dontShowAgain) {
+                  final prefs = await SharedPreferences.getInstance();
+                  await prefs.setBool('cad_measure_tutorial_seen', true);
+                }
+                if (ctx.mounted) {
+                  Navigator.pop(ctx);
+                }
+              },
+              child: const Text('Tamam', style: TextStyle(fontWeight: FontWeight.w800, fontSize: 13.5)),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildTutorialStep(String num, String title, String desc, Color color) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Container(
+          width: 20,
+          height: 20,
+          alignment: Alignment.center,
+          decoration: BoxDecoration(
+            color: color.withValues(alpha: 0.2),
+            shape: BoxShape.circle,
+            border: Border.all(color: color, width: 1),
+          ),
+          child: Text(
+            num,
+            style: TextStyle(color: color, fontSize: 10.5, fontWeight: FontWeight.w900),
+          ),
+        ),
+        const SizedBox(width: 8),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                title,
+                style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w700),
+              ),
+              const SizedBox(height: 1),
+              Text(
+                desc,
+                style: const TextStyle(color: Colors.white60, fontSize: 11, height: 1.3),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+
+  Future<void> _panDrawing(Offset delta) async {
+    if (_pdfViewController == null) return;
+    final newX = _currentXOffset + delta.dx;
+    final newY = _currentYOffset + delta.dy;
+    _currentXOffset = newX;
+    _currentYOffset = newY;
+    try {
+      await _pdfViewController!.setPosition(Offset(newX, newY));
+    } catch (_) {}
+    _minimapNotifier.value = {
+      'xOffset': newX,
+      'yOffset': newY,
+      'scale': _effectiveScale,
+      'docW': _docPageSize.width,
+      'docH': _docPageSize.height,
+    };
+    _measureRepaintNotifier.value =
+        (_measureRepaintNotifier.value + 1) % 1000000;
+  }
+
   Widget _buildMeasureInteractiveLayer() {
-    final bool isInteracting = _measureMode != CadMeasureMode.none &&
-        _measureInteractionMode == CadInteractionMode.measure;
+    final bool isMeasuring = _measureMode != CadMeasureMode.none;
 
     final customPaintWidget = AnimatedBuilder(
       animation: Listenable.merge([
@@ -2410,14 +2655,20 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             screenToDoc: _screenToDoc,
             draggingIndex: _draggingPointIndex,
             scale: _effectiveScale,
-            isMeasuring: _measureMode != CadMeasureMode.none,
+            isMeasuring: isMeasuring,
             paperMode: _isPaperMode,
+            isAiming: _isAiming,
+            aimScreenPos: _aimScreenPos,
+            isSnapped: _isSnapped,
+            snapLabel: _snapLabel,
+            snapGuideStartScreen: _snapGuideStartScreen,
+            snapGuideEndScreen: _snapGuideEndScreen,
           ),
         );
       },
     );
 
-    if (!isInteracting) {
+    if (!isMeasuring) {
       return Positioned.fill(
         child: IgnorePointer(
           ignoring: true,
@@ -2427,35 +2678,208 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     }
 
     return Positioned.fill(
-      child: GestureDetector(
+      child: Listener(
         behavior: HitTestBehavior.opaque,
-        onTapDown: _handleMeasureTapDown,
-        onPanStart: _handleMeasurePanStart,
-        onPanUpdate: _handleMeasurePanUpdate,
-        onPanEnd: _handleMeasurePanEnd,
+        onPointerDown: _handlePointerDown,
+        onPointerMove: _handlePointerMove,
+        onPointerUp: _handlePointerUp,
+        onPointerCancel: _handlePointerCancel,
         child: customPaintWidget,
       ),
     );
   }
 
-  void _handleMeasureTapDown(TapDownDetails details) {
-    final screenPos = details.localPosition;
-    final docPos = _screenToDoc(screenPos);
+  void _handlePointerDown(PointerDownEvent event) {
+    if (_measureMode == CadMeasureMode.none) return;
 
-    // 1. Mevcut aktif noktalardan birine tıklanıp tıklanmadığını kontrol et
-    for (int i = 0; i < _activeDocPoints.length; i++) {
-      final ptScreen = _docToScreen(_activeDocPoints[i]);
-      if ((ptScreen - screenPos).distance <= 32.0) {
-        setState(() {
-          _draggingPointIndex = i;
-          _showLoupe = true;
-          _loupeScreenPos = screenPos;
-        });
-        return;
+    _holdTimer?.cancel();
+    _pointerDownScreenPos = event.localPosition;
+    _lastPanScreenPos = event.localPosition;
+    _hasMovedFar = false;
+
+    // Basılı tutma süresi: 280ms sabit tutulursa büyüteç ve nişan alma açılır
+    _holdTimer = Timer(const Duration(milliseconds: 280), () {
+      if (!mounted || _hasMovedFar) return;
+      HapticFeedback.selectionClick();
+      setState(() {
+        _isAiming = true;
+        _aimScreenPos = _pointerDownScreenPos;
+        _calculateSnap(_pointerDownScreenPos!);
+      });
+    });
+  }
+
+  void _handlePointerMove(PointerMoveEvent event) {
+    if (_measureMode == CadMeasureMode.none) return;
+
+    final currentPos = event.localPosition;
+
+    if (_isAiming) {
+      // Hedefleme ve büyüteç aktif: hedefi güncelle
+      _aimScreenPos = currentPos;
+      _calculateSnap(currentPos);
+      _measureRepaintNotifier.value =
+          (_measureRepaintNotifier.value + 1) % 1000000;
+    } else {
+      // Henüz basılı tutulmadı - hareket mesafesini kontrol et
+      final dist = (currentPos - (_pointerDownScreenPos ?? currentPos)).distance;
+      if (dist > 8.0) {
+        _hasMovedFar = true;
+        _holdTimer?.cancel();
+
+        // Serbest çizim kaydırma (Free Pan)
+        final delta = currentPos - (_lastPanScreenPos ?? currentPos);
+        _lastPanScreenPos = currentPos;
+        _panDrawing(delta);
+      }
+    }
+  }
+
+  void _handlePointerUp(PointerUpEvent event) {
+    _holdTimer?.cancel();
+
+    if (_isAiming) {
+      HapticFeedback.mediumImpact();
+      _commitAimPoint();
+    }
+
+    setState(() {
+      _isAiming = false;
+      _aimScreenPos = null;
+      _aimDocPos = null;
+      _isSnapped = false;
+      _snapLabel = '';
+      _snapGuideStartScreen = null;
+      _snapGuideEndScreen = null;
+    });
+  }
+
+  void _handlePointerCancel(PointerCancelEvent event) {
+    _holdTimer?.cancel();
+    setState(() {
+      _isAiming = false;
+      _aimScreenPos = null;
+      _aimDocPos = null;
+      _isSnapped = false;
+      _snapLabel = '';
+      _snapGuideStartScreen = null;
+      _snapGuideEndScreen = null;
+    });
+  }
+
+  void _calculateSnap(Offset screenPos) {
+    const double vertexSnapThreshold = 28.0;
+    Offset? snappedScreen;
+    Offset? snappedDoc;
+    String label = '';
+
+    // 1. Köşe / Nokta Mıknatısı
+    // Alan modunda ilk köşe
+    if (_measureMode == CadMeasureMode.area && _activeDocPoints.length >= 3) {
+      final firstScreen = _docToScreen(_activeDocPoints.first);
+      if ((screenPos - firstScreen).distance <= vertexSnapThreshold) {
+        snappedScreen = firstScreen;
+        snappedDoc = _activeDocPoints.first;
+        label = '⌖ İLK KÖŞE (ALANI KAPAT)';
       }
     }
 
-    // 2. Mod bazlı nokta ekleme
+    // Aktif noktalar
+    if (snappedDoc == null) {
+      for (int i = 0; i < _activeDocPoints.length; i++) {
+        final ptScreen = _docToScreen(_activeDocPoints[i]);
+        if ((screenPos - ptScreen).distance <= vertexSnapThreshold) {
+          snappedScreen = ptScreen;
+          snappedDoc = _activeDocPoints[i];
+          label = '⌖ KÖŞE NOKTASI';
+          break;
+        }
+      }
+    }
+
+    // Tamamlanmış ölçümlerin noktaları
+    if (snappedDoc == null) {
+      for (final m in _completedMeasurements) {
+        for (final docPt in m.docPoints) {
+          final ptScreen = _docToScreen(docPt);
+          if ((screenPos - ptScreen).distance <= vertexSnapThreshold) {
+            snappedScreen = ptScreen;
+            snappedDoc = docPt;
+            label = '⌖ ÇİZİM KÖŞESİ';
+            break;
+          }
+        }
+        if (snappedDoc != null) break;
+      }
+    }
+
+    // 2. Çizgi Hattı Mıknatısı (Line / Edge Snap)
+    if (snappedDoc == null) {
+      const double lineSnapThreshold = 18.0;
+      for (final m in _completedMeasurements) {
+        final pts = m.docPoints;
+        final count = m.type == CadMeasureMode.area ? pts.length : pts.length - 1;
+        for (int i = 0; i < count; i++) {
+          final sA = _docToScreen(pts[i]);
+          final sB = _docToScreen(pts[(i + 1) % pts.length]);
+          final v = sB - sA;
+          final lenSq = v.dx * v.dx + v.dy * v.dy;
+          if (lenSq > 0.001) {
+            final t = (((screenPos.dx - sA.dx) * v.dx + (screenPos.dy - sA.dy) * v.dy) / lenSq).clamp(0.0, 1.0);
+            final proj = Offset(sA.dx + t * v.dx, sA.dy + t * v.dy);
+            if ((screenPos - proj).distance <= lineSnapThreshold) {
+              snappedScreen = proj;
+              snappedDoc = _screenToDoc(proj);
+              label = '⌖ ÇİZGİ HATTI';
+              break;
+            }
+          }
+        }
+        if (snappedDoc != null) break;
+      }
+    }
+
+    // 3. Ortogonal Aks Mıknatısı (0° Yatay / 90° Dikey - AutoCAD ORTHO)
+    Offset? guideStart;
+    Offset? guideEnd;
+    if (snappedDoc == null && _activeDocPoints.isNotEmpty) {
+      final lastScreen = _docToScreen(_activeDocPoints.last);
+      final dx = (screenPos.dx - lastScreen.dx).abs();
+      final dy = (screenPos.dy - lastScreen.dy).abs();
+      const double orthoThreshold = 18.0;
+
+      if (dy <= orthoThreshold) {
+        snappedScreen = Offset(screenPos.dx, lastScreen.dy);
+        snappedDoc = _screenToDoc(snappedScreen);
+        label = '⌖ YATAY AKS (0°)';
+        guideStart = Offset(_currentXOffset, lastScreen.dy);
+        guideEnd = Offset(_currentXOffset + _docPageSize.width * _effectiveScale, lastScreen.dy);
+      } else if (dx <= orthoThreshold) {
+        snappedScreen = Offset(lastScreen.dx, screenPos.dy);
+        snappedDoc = _screenToDoc(snappedScreen);
+        label = '⌖ DİKEY AKS (90°)';
+        guideStart = Offset(lastScreen.dx, _currentYOffset);
+        guideEnd = Offset(lastScreen.dx, _currentYOffset + _docPageSize.height * _effectiveScale);
+      }
+    }
+
+    final bool newlySnapped = snappedDoc != null;
+    if (newlySnapped && !_isSnapped) {
+      HapticFeedback.selectionClick();
+    }
+
+    _isSnapped = newlySnapped;
+    _snapLabel = label.isNotEmpty ? label : 'HEDEF';
+    _aimScreenPos = snappedScreen ?? screenPos;
+    _aimDocPos = snappedDoc ?? _screenToDoc(screenPos);
+    _snapGuideStartScreen = guideStart;
+    _snapGuideEndScreen = guideEnd;
+  }
+
+  void _commitAimPoint() {
+    if (_aimDocPos == null) return;
+    final docPos = _aimDocPos!;
+
     if (_measureMode == CadMeasureMode.distance) {
       setState(() {
         if (_activeDocPoints.isEmpty) {
@@ -2470,8 +2894,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     } else if (_measureMode == CadMeasureMode.area) {
       setState(() {
         if (_activeDocPoints.length >= 3) {
-          final firstPtScreen = _docToScreen(_activeDocPoints.first);
-          if ((firstPtScreen - screenPos).distance <= 28.0) {
+          final firstPtDoc = _activeDocPoints.first;
+          final distToFirst = (firstPtDoc - docPos).distance * _metersPerDocUnit;
+          if (distToFirst < 0.2 || (_isSnapped && _snapLabel.contains('İLK KÖŞE'))) {
             _completeActiveMeasurement();
             return;
           }
@@ -2486,43 +2911,6 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
         if (_activeDocPoints.length == 2) {
           _showCalibrationDialog();
         }
-      });
-    }
-  }
-
-  void _handleMeasurePanStart(DragStartDetails details) {
-    final screenPos = details.localPosition;
-    for (int i = 0; i < _activeDocPoints.length; i++) {
-      final ptScreen = _docToScreen(_activeDocPoints[i]);
-      if ((ptScreen - screenPos).distance <= 36.0) {
-        setState(() {
-          _draggingPointIndex = i;
-          _showLoupe = true;
-          _loupeScreenPos = screenPos;
-        });
-        return;
-      }
-    }
-  }
-
-  void _handleMeasurePanUpdate(DragUpdateDetails details) {
-    if (_draggingPointIndex != null &&
-        _draggingPointIndex! < _activeDocPoints.length) {
-      final screenPos = details.localPosition;
-      final docPos = _screenToDoc(screenPos);
-      setState(() {
-        _activeDocPoints[_draggingPointIndex!] = docPos;
-        _loupeScreenPos = screenPos;
-      });
-    }
-  }
-
-  void _handleMeasurePanEnd(DragEndDetails details) {
-    if (_draggingPointIndex != null) {
-      setState(() {
-        _draggingPointIndex = null;
-        _showLoupe = false;
-        _loupeScreenPos = null;
       });
     }
   }
@@ -2572,8 +2960,14 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _activeDocPoints.clear();
       _completedMeasurements.clear();
       _draggingPointIndex = null;
-      _showLoupe = false;
-      _loupeScreenPos = null;
+      _isAiming = false;
+      _aimScreenPos = null;
+      _aimDocPos = null;
+      _isSnapped = false;
+      _snapLabel = '';
+      _snapGuideStartScreen = null;
+      _snapGuideEndScreen = null;
+      _holdTimer?.cancel();
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
@@ -2877,74 +3271,200 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  Widget _buildLoupeWidget() {
+  Widget _buildTopLeftLoupeWidget() {
+    final isSnapped = _isSnapped;
+    final themeColor = isSnapped ? const Color(0xFF10B981) : const Color(0xFF38BDF8);
+
+    double? liveDistanceMeters;
+    if (_activeDocPoints.isNotEmpty && _aimDocPos != null) {
+      liveDistanceMeters = (_aimDocPos! - _activeDocPoints.last).distance * _metersPerDocUnit;
+    }
+
     return Container(
-      width: 90,
-      height: 90,
+      width: 148,
       decoration: BoxDecoration(
-        shape: BoxShape.circle,
-        color: const Color(0xFF0F172A).withValues(alpha: 0.94),
-        border: Border.all(
-          color: const Color(0xFF38BDF8),
-          width: 2.2,
-        ),
+        color: const Color(0xFF090E17).withValues(alpha: 0.96),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: themeColor, width: 1.8),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
-            blurRadius: 16,
-            spreadRadius: 2,
+            color: themeColor.withValues(alpha: 0.35),
+            blurRadius: 18,
+            spreadRadius: 1,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
-      child: Stack(
-        alignment: Alignment.center,
+      child: Column(
+        mainAxisSize: MainAxisSize.min,
         children: [
+          // ÜST BAŞLIK BARI
           Container(
-            width: 80,
-            height: 1,
-            color: const Color(0xFF38BDF8).withValues(alpha: 0.8),
-          ),
-          Container(
-            width: 1,
-            height: 80,
-            color: const Color(0xFF38BDF8).withValues(alpha: 0.8),
-          ),
-          Container(
-            width: 18,
-            height: 18,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
             decoration: BoxDecoration(
-              shape: BoxShape.circle,
-              border: Border.all(
-                color: const Color(0xFF38BDF8),
-                width: 1.5,
-              ),
+              color: const Color(0xFF131D2E),
+              borderRadius: const BorderRadius.vertical(top: Radius.circular(14)),
+              border: Border(bottom: BorderSide(color: themeColor.withValues(alpha: 0.3), width: 1)),
             ),
-          ),
-          Container(
-            width: 5,
-            height: 5,
-            decoration: const BoxDecoration(
-              shape: BoxShape.circle,
-              color: Color(0xFF38BDF8),
-            ),
-          ),
-          Positioned(
-            bottom: 6,
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
-              decoration: BoxDecoration(
-                color: Colors.black87,
-                borderRadius: BorderRadius.circular(4),
-              ),
-              child: const Text(
-                'HEDEF',
-                style: TextStyle(
-                  color: Color(0xFF38BDF8),
-                  fontSize: 8.5,
-                  fontWeight: FontWeight.w900,
-                  letterSpacing: 0.8,
+            child: Row(
+              children: [
+                Icon(
+                  isSnapped ? Icons.filter_center_focus_rounded : Icons.search_rounded,
+                  size: 13,
+                  color: themeColor,
                 ),
-              ),
+                const SizedBox(width: 4),
+                Text(
+                  isSnapped ? 'MIKNATIS (OSNAP)' : 'BÜYÜTEÇ (2.5x)',
+                  style: TextStyle(
+                    color: themeColor,
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w900,
+                    letterSpacing: 0.4,
+                  ),
+                ),
+                const Spacer(),
+                Container(
+                  width: 6.5,
+                  height: 6.5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSnapped ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          // RETICLE & OPTİK HEDEF ALANI
+          SizedBox(
+            width: 148,
+            height: 86,
+            child: Stack(
+              alignment: Alignment.center,
+              children: [
+                // Arka plan grid
+                Positioned.fill(
+                  child: CustomPaint(
+                    painter: _LoupeGridPainter(themeColor: themeColor),
+                  ),
+                ),
+                // Hedef Artı Kılı (Crosshair)
+                Container(
+                  width: 120,
+                  height: 1,
+                  color: themeColor.withValues(alpha: 0.7),
+                ),
+                Container(
+                  width: 1,
+                  height: 70,
+                  color: themeColor.withValues(alpha: 0.7),
+                ),
+                // Dış Optik Çember
+                Container(
+                  width: 44,
+                  height: 44,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    border: Border.all(color: themeColor.withValues(alpha: 0.6), width: 1.2),
+                  ),
+                ),
+                // İç Hassas Çember veya Mıknatıs Kutusu
+                if (isSnapped)
+                  Container(
+                    width: 18,
+                    height: 18,
+                    decoration: BoxDecoration(
+                      border: Border.all(color: const Color(0xFF10B981), width: 2),
+                      color: const Color(0xFF10B981).withValues(alpha: 0.2),
+                    ),
+                  )
+                else
+                  Container(
+                    width: 16,
+                    height: 16,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border.all(color: themeColor, width: 1.4),
+                    ),
+                  ),
+                // Merkez Odak Noktası
+                Container(
+                  width: 4.5,
+                  height: 4.5,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: isSnapped ? const Color(0xFF10B981) : const Color(0xFF38BDF8),
+                  ),
+                ),
+                if (isSnapped)
+                  Positioned(
+                    bottom: 4,
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.9),
+                        borderRadius: BorderRadius.circular(4),
+                      ),
+                      child: Text(
+                        _snapLabel,
+                        style: const TextStyle(
+                          color: Colors.black,
+                          fontSize: 8.5,
+                          fontWeight: FontWeight.w900,
+                          letterSpacing: 0.3,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+          ),
+
+          // ALT BİLGİ VE REHBERLİK BÖLÜMÜ
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+            decoration: const BoxDecoration(
+              color: Color(0xFF0F172A),
+              borderRadius: BorderRadius.vertical(bottom: Radius.circular(14)),
+            ),
+            child: Column(
+              children: [
+                if (liveDistanceMeters != null) ...[
+                  Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      const Icon(Icons.straighten_rounded, size: 11, color: Color(0xFF38BDF8)),
+                      const SizedBox(width: 3),
+                      Text(
+                        _formatDistance(liveDistanceMeters),
+                        style: const TextStyle(
+                          color: Color(0xFF38BDF8),
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 2),
+                ],
+                const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.touch_app_rounded, size: 10, color: Color(0xFFF59E0B)),
+                    SizedBox(width: 3),
+                    Text(
+                      'Bırak: Noktayı Belirle',
+                      style: TextStyle(
+                        color: Color(0xFFF59E0B),
+                        fontSize: 9.2,
+                        fontWeight: FontWeight.w800,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
             ),
           ),
         ],
@@ -2953,8 +3473,6 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   }
 
   Widget _buildMeasureFloatingToolbar() {
-    final hasActive = _activeDocPoints.isNotEmpty;
-
     return SafeArea(
       top: false,
       child: Container(
@@ -3009,22 +3527,35 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
                   const SizedBox(width: 8),
                   Container(width: 1, height: 18, color: Colors.white24),
                   const SizedBox(width: 8),
-                  _buildMeasureInteractionChip(
-                    icon: _measureInteractionMode == CadInteractionMode.measure
-                        ? Icons.touch_app_rounded
-                        : Icons.pan_tool_rounded,
-                    label: _measureInteractionMode == CadInteractionMode.measure
-                        ? 'Nokta Koy'
-                        : 'Kaydır / Gezin',
-                    isMeasuring: _measureInteractionMode == CadInteractionMode.measure,
-                    onTap: () {
-                      setState(() {
-                        _measureInteractionMode =
-                            _measureInteractionMode == CadInteractionMode.measure
-                                ? CadInteractionMode.pan
-                                : CadInteractionMode.measure;
-                      });
-                    },
+                  InkWell(
+                    onTap: () => _showMeasurementTutorialDialog(force: true),
+                    borderRadius: BorderRadius.circular(8),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.18),
+                        borderRadius: BorderRadius.circular(8),
+                        border: Border.all(
+                          color: const Color(0xFF10B981),
+                          width: 1,
+                        ),
+                      ),
+                      child: const Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(Icons.touch_app_rounded, size: 13, color: Color(0xFF10B981)),
+                          SizedBox(width: 4),
+                          Text(
+                            'Basılı Tut & Mıknatıs',
+                            style: TextStyle(
+                              color: Color(0xFF10B981),
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                   ),
                   const SizedBox(width: 8),
                   Container(width: 1, height: 18, color: Colors.white24),
@@ -3108,12 +3639,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             ),
             if (_measureMode == CadMeasureMode.calibrate)
               _buildCalibrateStatusRow()
-            else if (_measureMode == CadMeasureMode.distance && hasActive)
+            else if (_measureMode == CadMeasureMode.distance)
               _buildDistanceStatusRow()
-            else if (_measureMode == CadMeasureMode.area && hasActive)
-              _buildAreaStatusRow()
-            else if (_measureInteractionMode == CadInteractionMode.pan)
-              _buildPanHintRow(),
+            else if (_measureMode == CadMeasureMode.area)
+              _buildAreaStatusRow(),
           ],
         ),
       ),
@@ -3155,54 +3684,30 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  Widget _buildMeasureInteractionChip({
-    required IconData icon,
-    required String label,
-    required bool isMeasuring,
-    required VoidCallback onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 5),
-        decoration: BoxDecoration(
-          color: isMeasuring
-              ? const Color(0xFF26A69A).withValues(alpha: 0.2)
-              : const Color(0xFF38BDF8).withValues(alpha: 0.2),
-          borderRadius: BorderRadius.circular(8),
-          border: Border.all(
-            color: isMeasuring ? const Color(0xFF26A69A) : const Color(0xFF38BDF8),
-            width: 1,
-          ),
-        ),
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              size: 13,
-              color: isMeasuring ? const Color(0xFF26A69A) : const Color(0xFF38BDF8),
-            ),
-            const SizedBox(width: 4),
-            Text(
-              label,
-              style: TextStyle(
-                color: isMeasuring ? const Color(0xFF26A69A) : const Color(0xFF38BDF8),
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
+
 
   Widget _buildDistanceStatusRow() {
     double dist = 0.0;
     if (_activeDocPoints.length >= 2) {
       dist = (_activeDocPoints[1] - _activeDocPoints[0]).distance * _metersPerDocUnit;
+    }
+
+    String promptText = '';
+    Color statusColor = const Color(0xFF38BDF8);
+    IconData statusIcon = Icons.touch_app_rounded;
+
+    if (_activeDocPoints.isEmpty) {
+      promptText = '1. Noktayı seçin: Parmağınızı ekrana basılı tutun';
+      statusColor = const Color(0xFF38BDF8);
+      statusIcon = Icons.touch_app_rounded;
+    } else if (_activeDocPoints.length == 1) {
+      promptText = '2. Noktayı seçin: Basılı tutun (Serbestçe kaydırabilirsiniz)';
+      statusColor = const Color(0xFF10B981);
+      statusIcon = Icons.pan_tool_alt_rounded;
+    } else {
+      promptText = 'Mesafe: ${_formatDistance(dist)}';
+      statusColor = const Color(0xFF38BDF8);
+      statusIcon = Icons.straighten_rounded;
     }
 
     return Container(
@@ -3211,17 +3716,20 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: statusColor.withValues(alpha: 0.35), width: 1),
       ),
       child: Row(
         children: [
-          const Icon(Icons.straighten_rounded, size: 16, color: Color(0xFF38BDF8)),
+          Icon(statusIcon, size: 16, color: statusColor),
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _activeDocPoints.length == 1
-                  ? '1. Nokta seçildi. Bitiş noktasına dokunun.'
-                  : 'Mesafe: ${_formatDistance(dist)}',
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+              promptText,
+              style: TextStyle(
+                color: Colors.white,
+                fontSize: 11.8,
+                fontWeight: _activeDocPoints.length >= 2 ? FontWeight.w800 : FontWeight.w600,
+              ),
             ),
           ),
           if (_activeDocPoints.length >= 2)
@@ -3252,12 +3760,24 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     final area = _calculatePolygonAreaMeters(_activeDocPoints, _metersPerDocUnit);
     final perim = _calculatePolygonPerimeterMeters(_activeDocPoints, _metersPerDocUnit);
 
+    String promptText = '';
+    if (_activeDocPoints.isEmpty) {
+      promptText = '1. Köşeyi seçin: Parmağınızı ekrana basılı tutun';
+    } else if (_activeDocPoints.length == 1) {
+      promptText = '2. Köşeyi seçin: Basılı tutun (Kaydırabilirsiniz)';
+    } else if (_activeDocPoints.length == 2) {
+      promptText = '3. Köşeyi seçin: Basılı tutun (Alan oluşturuluyor)';
+    } else {
+      promptText = 'Alan: ${_formatArea(area)} • Çevre: ${_formatDistance(perim)}';
+    }
+
     return Container(
       margin: const EdgeInsets.only(top: 8),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
       decoration: BoxDecoration(
         color: const Color(0xFF1E293B),
         borderRadius: BorderRadius.circular(10),
+        border: Border.all(color: const Color(0xFF10B981).withValues(alpha: 0.35), width: 1),
       ),
       child: Row(
         children: [
@@ -3265,10 +3785,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           const SizedBox(width: 8),
           Expanded(
             child: Text(
-              _activeDocPoints.length < 3
-                  ? 'Alanı kapatmak için en az 3 köşe seçin (${_activeDocPoints.length} köşe)'
-                  : 'Alan: ${_formatArea(area)} • Çevre: ${_formatDistance(perim)}',
-              style: const TextStyle(color: Colors.white, fontSize: 12, fontWeight: FontWeight.w600),
+              promptText,
+              style: const TextStyle(color: Colors.white, fontSize: 11.8, fontWeight: FontWeight.w600),
             ),
           ),
           if (_activeDocPoints.length >= 3)
@@ -3318,28 +3836,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  Widget _buildPanHintRow() {
-    return Container(
-      margin: const EdgeInsets.only(top: 8),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-      decoration: BoxDecoration(
-        color: const Color(0xFF1E293B),
-        borderRadius: BorderRadius.circular(8),
-      ),
-      child: const Row(
-        children: [
-          Icon(Icons.info_outline_rounded, size: 13, color: Color(0xFF38BDF8)),
-          SizedBox(width: 6),
-          Expanded(
-            child: Text(
-              '✋ Gezinme modu aktif: Çizimi rahatça kaydırıp büyütebilirsiniz.',
-              style: TextStyle(color: Colors.white70, fontSize: 10.5),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
+
 
   static String _formatDistance(double meters) {
     if (meters < 0.01) {
@@ -3413,6 +3910,27 @@ class _BlueprintMinimapPainter extends CustomPainter {
   bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
 }
 
+class _LoupeGridPainter extends CustomPainter {
+  final Color themeColor;
+  _LoupeGridPainter({required this.themeColor});
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    final p = Paint()
+      ..color = themeColor.withValues(alpha: 0.12)
+      ..strokeWidth = 0.6;
+    for (double x = 0; x < size.width; x += 14) {
+      canvas.drawLine(Offset(x, 0), Offset(x, size.height), p);
+    }
+    for (double y = 0; y < size.height; y += 14) {
+      canvas.drawLine(Offset(0, y), Offset(size.width, y), p);
+    }
+  }
+
+  @override
+  bool shouldRepaint(covariant CustomPainter oldDelegate) => false;
+}
+
 /// CAD Vektörel Çizim Üzerinde Ölçüm & Alan Çizen CustomPainter
 class _CadMeasurePainter extends CustomPainter {
   final List<CadMeasurement> completedMeasurements;
@@ -3425,6 +3943,12 @@ class _CadMeasurePainter extends CustomPainter {
   final double scale;
   final bool isMeasuring;
   final bool paperMode;
+  final bool isAiming;
+  final Offset? aimScreenPos;
+  final bool isSnapped;
+  final String snapLabel;
+  final Offset? snapGuideStartScreen;
+  final Offset? snapGuideEndScreen;
 
   _CadMeasurePainter({
     required this.completedMeasurements,
@@ -3437,6 +3961,12 @@ class _CadMeasurePainter extends CustomPainter {
     required this.scale,
     required this.isMeasuring,
     required this.paperMode,
+    required this.isAiming,
+    required this.aimScreenPos,
+    required this.isSnapped,
+    required this.snapLabel,
+    required this.snapGuideStartScreen,
+    required this.snapGuideEndScreen,
   });
 
   @override
@@ -3459,6 +3989,11 @@ class _CadMeasurePainter extends CustomPainter {
       } else if (activeMode == CadMeasureMode.calibrate) {
         _drawActiveCalibrate(canvas);
       }
+    }
+
+    // 3. BASILI TUTARAK HEDEFLEME & MIKNATIS (OSNAP) ÇİZİMİ
+    if (isAiming && aimScreenPos != null) {
+      _drawAimingAndSnapping(canvas, size);
     }
   }
 
@@ -3698,6 +4233,96 @@ class _CadMeasurePainter extends CustomPainter {
     );
 
     tp.paint(canvas, Offset(center.dx - tp.width / 2, center.dy - tp.height / 2));
+  }
+
+  void _drawAimingAndSnapping(Canvas canvas, Size size) {
+    if (!isAiming || aimScreenPos == null) return;
+    final aim = aimScreenPos!;
+    final themeColor = isSnapped ? const Color(0xFF10B981) : const Color(0xFF38BDF8);
+
+    // 1. Ortogonal aks kılavuz çizgisi (0° / 90°)
+    if (snapGuideStartScreen != null && snapGuideEndScreen != null) {
+      final guidePaint = Paint()
+        ..color = const Color(0xFF10B981).withValues(alpha: 0.6)
+        ..strokeWidth = 1.2
+        ..style = PaintingStyle.stroke;
+      _drawDashedLine(canvas, snapGuideStartScreen!, snapGuideEndScreen!, guidePaint);
+    }
+
+    // 2. Aktif son noktadan hedefe canlı dinamik çizgi
+    if (activeDocPoints.isNotEmpty) {
+      final lastScreen = docToScreen(activeDocPoints.last);
+      final dynamicLinePaint = Paint()
+        ..color = themeColor.withValues(alpha: 0.85)
+        ..strokeWidth = 1.8
+        ..style = PaintingStyle.stroke;
+      _drawDashedLine(canvas, lastScreen, aim, dynamicLinePaint);
+
+      // Dinamik mesafe etiketi
+      final mid = (lastScreen + aim) / 2;
+      final docDist = (screenToDoc(aim) - activeDocPoints.last).distance * metersPerDocUnit;
+      _drawBadge(canvas, mid, _DwgGoruntuleyiciEkraniState._formatDistance(docDist), themeColor);
+    }
+
+    // 3. Nişan Alma / Mıknatıs Göstergesi (Canvas üzerindeki artı ve OSNAP kutusu)
+    if (isSnapped) {
+      // Mıknatıslı Kenetlenme (OSNAP Yeşil Kutu)
+      final snapBoxPaint = Paint()
+        ..color = const Color(0xFF10B981)
+        ..strokeWidth = 2.0
+        ..style = PaintingStyle.stroke;
+      canvas.drawRect(Rect.fromCenter(center: aim, width: 16, height: 16), snapBoxPaint);
+
+      // Dış halka
+      canvas.drawCircle(
+        aim,
+        14.0,
+        Paint()
+          ..color = const Color(0xFF10B981).withValues(alpha: 0.25)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5,
+      );
+
+      // Etiket
+      _drawBadge(canvas, Offset(aim.dx, aim.dy - 22), snapLabel, const Color(0xFF10B981));
+    } else {
+      // Serbest Hedefleme Artı Kılı
+      final crosshairPaint = Paint()
+        ..color = const Color(0xFF38BDF8).withValues(alpha: 0.8)
+        ..strokeWidth = 1.2;
+      canvas.drawLine(Offset(aim.dx - 18, aim.dy), Offset(aim.dx + 18, aim.dy), crosshairPaint);
+      canvas.drawLine(Offset(aim.dx, aim.dy - 18), Offset(aim.dx, aim.dy + 18), crosshairPaint);
+
+      canvas.drawCircle(
+        aim,
+        10.0,
+        Paint()
+          ..color = const Color(0xFF38BDF8).withValues(alpha: 0.6)
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.2,
+      );
+    }
+
+    // Merkez minik nokta
+    canvas.drawCircle(
+      aim,
+      3.0,
+      Paint()..color = themeColor..style = PaintingStyle.fill,
+    );
+  }
+
+  void _drawDashedLine(Canvas canvas, Offset p1, Offset p2, Paint paint) {
+    const double dashWidth = 6.0;
+    const double dashSpace = 4.0;
+    final double distance = (p2 - p1).distance;
+    if (distance <= 0) return;
+    final Offset dir = (p2 - p1) / distance;
+    double currentDistance = 0.0;
+    while (currentDistance < distance) {
+      final double nextDistance = (currentDistance + dashWidth).clamp(0.0, distance);
+      canvas.drawLine(p1 + dir * currentDistance, p1 + dir * nextDistance, paint);
+      currentDistance += dashWidth + dashSpace;
+    }
   }
 
   @override
