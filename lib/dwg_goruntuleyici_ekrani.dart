@@ -181,6 +181,18 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   Size _capturedScreenSize = Size.zero;
   Size _cadCanvasSize = Size.zero;
 
+  // Çoklu Dokunma (Pinch-to-Zoom & İki Parmak Kaydırma) Durumları
+  final Map<int, Offset> _activePointers = {};
+  bool _wasMultiTouch = false;
+  double? _pinchStartDist;
+  Offset? _pinchStartMidpoint;
+  double _pinchStartScale = 1.0;
+  double _pinchStartXOffset = 0.0;
+  double _pinchStartYOffset = 0.0;
+  bool _isUpdatingPdfTransform = false;
+  double? _pendingScale;
+  Offset? _pendingPosition;
+
   double get _effectiveScale =>
       _currentScaleNotifier.value > 0 ? _currentScaleNotifier.value : 1.0;
 
@@ -518,6 +530,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _cachedLoupeImage = null;
       _cachedScreenshotImage = null;
       _holdTimer?.cancel();
+      _activePointers.clear();
+      _wasMultiTouch = false;
+      _pinchStartDist = null;
+      _pinchStartMidpoint = null;
     });
   }
 
@@ -1699,6 +1715,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             await controller.setZoomLimits(0.1, 50.0, 100000.0);
           },
           onDraw: (xOffset, yOffset, scale) {
+            if (_wasMultiTouch || _activePointers.length > 1) return;
             _currentXOffset = xOffset;
             _currentYOffset = yOffset;
             _currentScaleNotifier.value = scale;
@@ -2492,6 +2509,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
         _snapGuideStartScreen = null;
         _snapGuideEndScreen = null;
         _holdTimer?.cancel();
+        _activePointers.clear();
+        _wasMultiTouch = false;
+        _pinchStartDist = null;
+        _pinchStartMidpoint = null;
       });
       return;
     }
@@ -2706,15 +2727,40 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     );
   }
 
-  Future<void> _panDrawing(Offset delta) async {
+  Future<void> _applyPdfTransform({double? scale, Offset? position}) async {
+    if (_pdfViewController == null) return;
+    if (scale != null) _pendingScale = scale;
+    if (position != null) _pendingPosition = position;
+
+    if (_isUpdatingPdfTransform) return;
+    _isUpdatingPdfTransform = true;
+
+    while (_pendingScale != null || _pendingPosition != null) {
+      final nextScale = _pendingScale;
+      final nextPos = _pendingPosition;
+      _pendingScale = null;
+      _pendingPosition = null;
+
+      try {
+        if (nextScale != null) {
+          await _pdfViewController!.setScale(nextScale);
+        }
+        if (nextPos != null) {
+          await _pdfViewController!.setPosition(nextPos);
+        }
+      } catch (_) {}
+    }
+
+    _isUpdatingPdfTransform = false;
+  }
+
+  void _panDrawing(Offset delta) {
     if (_pdfViewController == null) return;
     final newX = _currentXOffset + delta.dx;
     final newY = _currentYOffset + delta.dy;
     _currentXOffset = newX;
     _currentYOffset = newY;
-    try {
-      await _pdfViewController!.setPosition(Offset(newX, newY));
-    } catch (_) {}
+    _applyPdfTransform(position: Offset(newX, newY));
     _minimapNotifier.value = {
       'xOffset': newX,
       'yOffset': newY,
@@ -2793,30 +2839,129 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   void _handlePointerDown(PointerDownEvent event) {
     if (_measureMode == CadMeasureMode.none) return;
 
-    _captureLoupeScreenshot();
-    if (_cachedLoupeImage == null) {
-      _prepareLoupeImage();
-    }
+    _activePointers[event.pointer] = event.localPosition;
 
-    _holdTimer?.cancel();
-    _pointerDownScreenPos = event.localPosition;
-    _lastPanScreenPos = event.localPosition;
-    _hasMovedFar = false;
+    if (_activePointers.length == 1) {
+      // Tek parmak dokunuşu: hedefleme veya tek parmak kaydırma hazırlığı
+      _wasMultiTouch = false;
+      _pointerDownScreenPos = event.localPosition;
+      _lastPanScreenPos = event.localPosition;
+      _hasMovedFar = false;
 
-    // Basılı tutma süresi: 280ms sabit tutulursa büyüteç ve nişan alma açılır
-    _holdTimer = Timer(const Duration(milliseconds: 280), () {
-      if (!mounted || _hasMovedFar) return;
-      HapticFeedback.selectionClick();
-      setState(() {
-        _isAiming = true;
-        _aimScreenPos = _pointerDownScreenPos;
-        _calculateSnap(_pointerDownScreenPos!);
+      _captureLoupeScreenshot();
+      if (_cachedLoupeImage == null) {
+        _prepareLoupeImage();
+      }
+
+      _holdTimer?.cancel();
+      // Basılı tutma süresi: 280ms sabit tutulursa büyüteç ve nişan alma açılır
+      _holdTimer = Timer(const Duration(milliseconds: 280), () {
+        if (!mounted || _hasMovedFar || _wasMultiTouch || _activePointers.length > 1) return;
+        HapticFeedback.selectionClick();
+        setState(() {
+          _isAiming = true;
+          _aimScreenPos = _pointerDownScreenPos;
+          _calculateSnap(_pointerDownScreenPos!);
+        });
       });
-    });
+    } else {
+      // 2 veya daha fazla parmak dokundu: Çoklu dokunma (Pinch-to-zoom & İki parmak kaydırma)
+      _wasMultiTouch = true;
+      _holdTimer?.cancel();
+
+      // Nişan alma ve büyüteç açıksa derhal kapat
+      if (_isAiming) {
+        setState(() {
+          _isAiming = false;
+          _aimScreenPos = null;
+          _aimDocPos = null;
+          _isSnapped = false;
+          _snapLabel = '';
+          _snapGuideStartScreen = null;
+          _snapGuideEndScreen = null;
+        });
+      }
+
+      final pList = _activePointers.values.toList();
+      final p1 = pList[0];
+      final p2 = pList[1];
+      _pinchStartDist = (p1 - p2).distance;
+      _pinchStartMidpoint = (p1 + p2) / 2;
+      _pinchStartScale = _effectiveScale;
+      _pinchStartXOffset = _currentXOffset;
+      _pinchStartYOffset = _currentYOffset;
+    }
   }
 
   void _handlePointerMove(PointerMoveEvent event) {
     if (_measureMode == CadMeasureMode.none) return;
+
+    _activePointers[event.pointer] = event.localPosition;
+
+    // Çoklu Dokunma (Pinch-to-zoom & İki parmakla kaydırma)
+    if (_activePointers.length >= 2) {
+      _wasMultiTouch = true;
+      _holdTimer?.cancel();
+
+      if (_isAiming) {
+        setState(() {
+          _isAiming = false;
+          _aimScreenPos = null;
+          _aimDocPos = null;
+          _isSnapped = false;
+          _snapLabel = '';
+          _snapGuideStartScreen = null;
+          _snapGuideEndScreen = null;
+        });
+      }
+
+      final pList = _activePointers.values.toList();
+      final p1 = pList[0];
+      final p2 = pList[1];
+      final currentDist = (p1 - p2).distance;
+      final currentMidpoint = (p1 + p2) / 2;
+
+      if (_pinchStartDist == null || _pinchStartMidpoint == null || _pinchStartDist! < 10) {
+        _pinchStartDist = currentDist;
+        _pinchStartMidpoint = currentMidpoint;
+        _pinchStartScale = _effectiveScale;
+        _pinchStartXOffset = _currentXOffset;
+        _pinchStartYOffset = _currentYOffset;
+      }
+
+      if (_pinchStartDist != null && _pinchStartDist! > 10 && currentDist > 10 && _pinchStartMidpoint != null) {
+        final scaleRatio = currentDist / _pinchStartDist!;
+        final newScale = (_pinchStartScale * scaleRatio).clamp(0.1, 100000.0);
+
+        final docX = (_pinchStartMidpoint!.dx - _pinchStartXOffset) / _pinchStartScale;
+        final docY = (_pinchStartMidpoint!.dy - _pinchStartYOffset) / _pinchStartScale;
+
+        final targetX = currentMidpoint.dx - docX * newScale;
+        final targetY = currentMidpoint.dy - docY * newScale;
+
+        _currentScaleNotifier.value = newScale;
+        _currentXOffset = targetX;
+        _currentYOffset = targetY;
+
+        _minimapNotifier.value = {
+          'xOffset': targetX,
+          'yOffset': targetY,
+          'scale': newScale,
+          'docW': _docPageSize.width,
+          'docH': _docPageSize.height,
+        };
+        _measureRepaintNotifier.value =
+            (_measureRepaintNotifier.value + 1) % 1000000;
+
+        _applyPdfTransform(scale: newScale, position: Offset(targetX, targetY));
+      }
+      return;
+    }
+
+    // Daha önce çoklu dokunma yapıldıysa tek parmak hareketinde ölçüm başlatma/nokta koyma
+    if (_wasMultiTouch) {
+      return;
+    }
 
     final currentPos = event.localPosition;
 
@@ -2833,7 +2978,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
         _hasMovedFar = true;
         _holdTimer?.cancel();
 
-        // Serbest çizim kaydırma (Free Pan)
+        // Serbest tek parmakla çizim kaydırma (Single finger Pan)
         final delta = currentPos - (_lastPanScreenPos ?? currentPos);
         _lastPanScreenPos = currentPos;
         _panDrawing(delta);
@@ -2842,35 +2987,58 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   }
 
   void _handlePointerUp(PointerUpEvent event) {
+    _activePointers.remove(event.pointer);
     _holdTimer?.cancel();
 
-    if (_isAiming) {
-      HapticFeedback.mediumImpact();
-      _commitAimPoint();
-    }
+    if (_activePointers.isEmpty) {
+      // Tüm parmaklar kaldırıldı
+      if (!_wasMultiTouch && _isAiming) {
+        HapticFeedback.mediumImpact();
+        _commitAimPoint();
+      }
 
-    setState(() {
-      _isAiming = false;
-      _aimScreenPos = null;
-      _aimDocPos = null;
-      _isSnapped = false;
-      _snapLabel = '';
-      _snapGuideStartScreen = null;
-      _snapGuideEndScreen = null;
-    });
+      setState(() {
+        _isAiming = false;
+        _aimScreenPos = null;
+        _aimDocPos = null;
+        _isSnapped = false;
+        _snapLabel = '';
+        _snapGuideStartScreen = null;
+        _snapGuideEndScreen = null;
+        _wasMultiTouch = false;
+        _pinchStartDist = null;
+        _pinchStartMidpoint = null;
+        _lastPanScreenPos = null;
+        _pointerDownScreenPos = null;
+      });
+    } else if (_activePointers.length == 1) {
+      // İki parmaktan biri kaldırıldı
+      _lastPanScreenPos = _activePointers.values.first;
+      _pinchStartDist = null;
+      _pinchStartMidpoint = null;
+    }
   }
 
   void _handlePointerCancel(PointerCancelEvent event) {
+    _activePointers.remove(event.pointer);
     _holdTimer?.cancel();
-    setState(() {
-      _isAiming = false;
-      _aimScreenPos = null;
-      _aimDocPos = null;
-      _isSnapped = false;
-      _snapLabel = '';
-      _snapGuideStartScreen = null;
-      _snapGuideEndScreen = null;
-    });
+
+    if (_activePointers.isEmpty) {
+      setState(() {
+        _isAiming = false;
+        _aimScreenPos = null;
+        _aimDocPos = null;
+        _isSnapped = false;
+        _snapLabel = '';
+        _snapGuideStartScreen = null;
+        _snapGuideEndScreen = null;
+        _wasMultiTouch = false;
+        _pinchStartDist = null;
+        _pinchStartMidpoint = null;
+        _lastPanScreenPos = null;
+        _pointerDownScreenPos = null;
+      });
+    }
   }
 
   void _calculateSnap(Offset screenPos) {
@@ -3074,6 +3242,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _snapGuideStartScreen = null;
       _snapGuideEndScreen = null;
       _holdTimer?.cancel();
+      _activePointers.clear();
+      _wasMultiTouch = false;
+      _pinchStartDist = null;
+      _pinchStartMidpoint = null;
     });
     ScaffoldMessenger.of(context).showSnackBar(
       const SnackBar(
