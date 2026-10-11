@@ -41,6 +41,33 @@ class MainActivity: FlutterActivity() {
                         result.success(false)
                     }
                 }
+                "setPdfTransform" -> {
+                    try {
+                        val zoom = call.argument<Double>("scale")?.toFloat()
+                        val xPos = call.argument<Double>("xPos")?.toFloat()
+                        val yPos = call.argument<Double>("yPos")?.toFloat()
+
+                        val pdfView = findPdfView(window.decorView)
+                        if (pdfView != null) {
+                            val density = resources.displayMetrics.density
+                            if (zoom != null && zoom > 0.001f) {
+                                val zoomMethod = pdfView.javaClass.getMethod("zoomTo", Float::class.javaPrimitiveType)
+                                zoomMethod.invoke(pdfView, zoom)
+                            }
+                            if (xPos != null && yPos != null) {
+                                val moveMethod = pdfView.javaClass.getMethod("moveTo", Float::class.javaPrimitiveType, Float::class.javaPrimitiveType)
+                                moveMethod.invoke(pdfView, xPos * density, yPos * density)
+                            }
+                            val loadMethod = pdfView.javaClass.getMethod("loadPages")
+                            loadMethod.invoke(pdfView)
+                            result.success(true)
+                        } else {
+                            result.success(false)
+                        }
+                    } catch (e: Exception) {
+                        result.success(false)
+                    }
+                }
                 "muteSystemStream" -> {
                     try {
                         audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, true)
@@ -193,5 +220,17 @@ class MainActivity: FlutterActivity() {
             audioManager.setStreamMute(AudioManager.STREAM_SYSTEM, false)
             audioManager.setStreamMute(AudioManager.STREAM_NOTIFICATION, false)
         } catch (_: Exception) {}
+    }
+
+    private fun findPdfView(root: android.view.View?): android.view.View? {
+        if (root == null) return null
+        if (root.javaClass.name == "com.github.barteksc.pdfviewer.PDFView") return root
+        if (root is android.view.ViewGroup) {
+            for (i in 0 until root.childCount) {
+                val v = findPdfView(root.getChildAt(i))
+                if (v != null) return v
+            }
+        }
+        return null
     }
 }

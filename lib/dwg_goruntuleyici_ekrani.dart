@@ -695,9 +695,20 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     final targetX = screenW / 2 - (screenW / 2 - _currentXOffset) * ratio;
     final targetY = screenH / 2 - (screenH / 2 - _currentYOffset) * ratio;
 
-    await _pdfViewController!.setScale(newScale);
-    await _pdfViewController!.setPosition(Offset(targetX, targetY));
     _currentScaleNotifier.value = newScale;
+    _currentXOffset = targetX;
+    _currentYOffset = targetY;
+    _minimapNotifier.value = {
+      'xOffset': targetX,
+      'yOffset': targetY,
+      'scale': newScale,
+      'docW': _docPageSize.width,
+      'docH': _docPageSize.height,
+    };
+    _measureRepaintNotifier.value =
+        (_measureRepaintNotifier.value + 1) % 1000000;
+
+    await _applyPdfTransform(scale: newScale, position: Offset(targetX, targetY));
   }
 
   /// Ekranın tam ortasına doğru odaklı akıllı küçültme (Center Zoom Out)
@@ -715,9 +726,20 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     final targetX = screenW / 2 - (screenW / 2 - _currentXOffset) * ratio;
     final targetY = screenH / 2 - (screenH / 2 - _currentYOffset) * ratio;
 
-    await _pdfViewController!.setScale(newScale);
-    await _pdfViewController!.setPosition(Offset(targetX, targetY));
     _currentScaleNotifier.value = newScale;
+    _currentXOffset = targetX;
+    _currentYOffset = targetY;
+    _minimapNotifier.value = {
+      'xOffset': targetX,
+      'yOffset': targetY,
+      'scale': newScale,
+      'docW': _docPageSize.width,
+      'docH': _docPageSize.height,
+    };
+    _measureRepaintNotifier.value =
+        (_measureRepaintNotifier.value + 1) % 1000000;
+
+    await _applyPdfTransform(scale: newScale, position: Offset(targetX, targetY));
   }
 
   /// Belirlenen kesin zoom seviyesine git (Sınırsız)
@@ -733,16 +755,38 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     final targetX = screenW / 2 - (screenW / 2 - _currentXOffset) * ratio;
     final targetY = screenH / 2 - (screenH / 2 - _currentYOffset) * ratio;
 
-    await _pdfViewController!.setScale(clamped);
-    await _pdfViewController!.setPosition(Offset(targetX, targetY));
     _currentScaleNotifier.value = clamped;
+    _currentXOffset = targetX;
+    _currentYOffset = targetY;
+    _minimapNotifier.value = {
+      'xOffset': targetX,
+      'yOffset': targetY,
+      'scale': clamped,
+      'docW': _docPageSize.width,
+      'docH': _docPageSize.height,
+    };
+    _measureRepaintNotifier.value =
+        (_measureRepaintNotifier.value + 1) % 1000000;
+
+    await _applyPdfTransform(scale: clamped, position: Offset(targetX, targetY));
   }
 
   Future<void> _zoomReset() async {
     if (_pdfViewController == null) return;
-    await _pdfViewController!.setScale(1.0);
-    await _pdfViewController!.setPosition(Offset.zero);
     _currentScaleNotifier.value = 1.0;
+    _currentXOffset = 0.0;
+    _currentYOffset = 0.0;
+    _minimapNotifier.value = {
+      'xOffset': 0.0,
+      'yOffset': 0.0,
+      'scale': 1.0,
+      'docW': _docPageSize.width,
+      'docH': _docPageSize.height,
+    };
+    _measureRepaintNotifier.value =
+        (_measureRepaintNotifier.value + 1) % 1000000;
+
+    await _applyPdfTransform(scale: 1.0, position: Offset.zero);
   }
 
   /// Cihazdan DWG/DXF dosyasını seçip Oracle Cloud sunucusunda Vektörel PDF'e dönüştürür
@@ -2742,11 +2786,28 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _pendingPosition = null;
 
       try {
-        if (nextScale != null) {
-          await _pdfViewController!.setScale(nextScale);
+        bool handled = false;
+        if (Platform.isAndroid) {
+          try {
+            final args = <String, dynamic>{};
+            if (nextScale != null) args['scale'] = nextScale;
+            if (nextPos != null) {
+              args['xPos'] = nextPos.dx;
+              args['yPos'] = nextPos.dy;
+            }
+            final res = await const MethodChannel('com.emircf.santiyeyonetim/audio_control')
+                .invokeMethod<bool>('setPdfTransform', args);
+            handled = res == true;
+          } catch (_) {}
         }
-        if (nextPos != null) {
-          await _pdfViewController!.setPosition(nextPos);
+
+        if (!handled) {
+          if (nextScale != null) {
+            await _pdfViewController!.setScale(nextScale);
+          }
+          if (nextPos != null) {
+            await _pdfViewController!.setPosition(nextPos);
+          }
         }
       } catch (_) {}
     }
