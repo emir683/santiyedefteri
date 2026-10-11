@@ -62,6 +62,8 @@ class SavedCadProject {
   final String? originalFilePath;
   final int fileSize;
   final DateTime savedAt;
+  final int? detectedScale;
+  final String? detectedScaleSource;
 
   SavedCadProject({
     required this.id,
@@ -70,6 +72,8 @@ class SavedCadProject {
     this.originalFilePath,
     required this.fileSize,
     required this.savedAt,
+    this.detectedScale,
+    this.detectedScaleSource,
   });
 
   Map<String, dynamic> toJson() => {
@@ -79,6 +83,8 @@ class SavedCadProject {
         'originalFilePath': originalFilePath,
         'fileSize': fileSize,
         'savedAt': savedAt.toIso8601String(),
+        'detectedScale': detectedScale,
+        'detectedScaleSource': detectedScaleSource,
       };
 
   factory SavedCadProject.fromJson(Map<String, dynamic> json) =>
@@ -90,6 +96,8 @@ class SavedCadProject {
         fileSize: (json['fileSize'] as num?)?.toInt() ?? 0,
         savedAt: DateTime.tryParse(json['savedAt'] as String? ?? '') ??
             DateTime.now(),
+        detectedScale: (json['detectedScale'] as num?)?.toInt(),
+        detectedScaleSource: json['detectedScaleSource'] as String?,
       );
 }
 
@@ -148,6 +156,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
   List<Offset> _activeDocPoints = [];
   double _metersPerDocUnit = 0.0352778; // 1:100 Varsayılan ölçek (1 pt = 0.0352778 m)
   String _currentScaleLabel = '1:100';
+  int? _autoDetectedScale;
+  String? _autoDetectedSource;
   int? _draggingPointIndex;
   bool _showLoupe = false;
   Offset? _loupeScreenPos;
@@ -256,12 +266,61 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     }
   }
 
+  /// Yerel PDF içerisindeki vektör metinlerinden Antet ve Mimari Ölçeği tespit eder
+  int? _detectScaleFromPdf(String filePath) {
+    try {
+      final file = File(filePath);
+      if (!file.existsSync()) return null;
+      final bytes = file.readAsBytesSync();
+      final text = latin1.decode(bytes, allowInvalid: true);
+
+      // 1. Antet ibaresi taraması: "ÖLÇEK: 1/50", "ÖLÇEK 1:100", "SCALE: 1/200"
+      final explicitRegex = RegExp(
+        r'(?:OLCEK|ÖLÇEK|SCALE|ölçek|Ölçek)\s*[:=]?\s*1\s*[\/:\s]\s*(\d+)',
+        caseSensitive: false,
+      );
+      final matches = explicitRegex.allMatches(text);
+      final Map<int, int> counts = {};
+      for (final m in matches) {
+        final ratio = int.tryParse(m.group(1) ?? '');
+        if (ratio != null && [20, 50, 100, 200, 500, 1000].contains(ratio)) {
+          counts[ratio] = (counts[ratio] ?? 0) + 5;
+        }
+      }
+
+      // 2. Genel ölçek kalıpları: "1/50", "1/100", "1/200", "1/20"
+      final genericRegex = RegExp(r'\b1\s*[\/:]\s*(20|50|100|200|500|1000)\b');
+      final genMatches = genericRegex.allMatches(text);
+      for (final m in genMatches) {
+        final ratio = int.tryParse(m.group(1) ?? '');
+        if (ratio != null) {
+          counts[ratio] = (counts[ratio] ?? 0) + 1;
+        }
+      }
+
+      if (counts.isNotEmpty) {
+        int best = 100;
+        int maxCount = 0;
+        counts.forEach((ratio, c) {
+          if (c > maxCount) {
+            maxCount = c;
+            best = ratio;
+          }
+        });
+        return best;
+      }
+    } catch (_) {}
+    return null;
+  }
+
   /// Başarıyla dönüştürülen çizimi cihazda kalıcı önbelleğe kaydeder
   Future<void> _saveProjectToHistory({
     required String fileName,
     required String pdfPath,
     String? originalFilePath,
     required int fileSize,
+    int? detectedScale,
+    String? detectedScaleSource,
   }) async {
     try {
       final newProj = SavedCadProject(
@@ -271,6 +330,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
         originalFilePath: originalFilePath,
         fileSize: fileSize,
         savedAt: DateTime.now(),
+        detectedScale: detectedScale,
+        detectedScaleSource: detectedScaleSource,
       );
 
       _savedProjects.removeWhere(
@@ -326,6 +387,19 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       );
       _kayitliProjeyiSil(project);
       return;
+    }
+
+    final autoRatio = project.detectedScale ?? _detectScaleFromPdf(project.pdfPath);
+    if (autoRatio != null) {
+      _metersPerDocUnit = 0.000352778 * autoRatio;
+      _currentScaleLabel = '1:$autoRatio';
+      _autoDetectedScale = autoRatio;
+      _autoDetectedSource = project.detectedScaleSource ?? 'Antet / Çizim Metinleri';
+    } else {
+      _metersPerDocUnit = 0.0352778;
+      _currentScaleLabel = '1:100';
+      _autoDetectedScale = null;
+      _autoDetectedSource = null;
     }
 
     setState(() {
@@ -409,6 +483,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       _currentScaleNotifier.value = 1.0;
       _measureMode = CadMeasureMode.none;
       _measureInteractionMode = CadInteractionMode.measure;
+      _autoDetectedScale = null;
+      _autoDetectedSource = null;
       _activeDocPoints.clear();
       _completedMeasurements.clear();
       _draggingPointIndex = null;
@@ -457,6 +533,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     String ad, {
     String? originalFilePath,
     int? fileSize,
+    int? detectedScale,
+    String? detectedScaleSource,
   }) async {
     setState(() {
       _isLoading = true;
@@ -482,11 +560,28 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
         await permanentPdf.writeAsBytes(res.bodyBytes);
 
         final actualSize = fileSize ?? res.bodyBytes.length;
+
+        // Otomatik ölçek belirleme (Sunucu dönüşü veya yerel PDF taraması)
+        final autoRatio = detectedScale ?? _detectScaleFromPdf(permanentPdf.path);
+        if (autoRatio != null) {
+          _metersPerDocUnit = 0.000352778 * autoRatio;
+          _currentScaleLabel = '1:$autoRatio';
+          _autoDetectedScale = autoRatio;
+          _autoDetectedSource = detectedScaleSource ?? 'Antet / Çizim Metinleri';
+        } else {
+          _metersPerDocUnit = 0.0352778;
+          _currentScaleLabel = '1:100';
+          _autoDetectedScale = null;
+          _autoDetectedSource = null;
+        }
+
         await _saveProjectToHistory(
           fileName: ad,
           pdfPath: permanentPdf.path,
           originalFilePath: originalFilePath,
           fileSize: actualSize,
+          detectedScale: _autoDetectedScale,
+          detectedScaleSource: _autoDetectedSource,
         );
 
         setState(() {
@@ -502,6 +597,29 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
           _localPdfPath = permanentPdf.path;
           _isLoading = false;
         });
+
+        if (_autoDetectedScale != null && mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Row(
+                children: [
+                  const Icon(Icons.architecture_rounded,
+                      color: Color(0xFF10B981), size: 20),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Paftadan otomatik ölçek algılandı: 1:$_autoDetectedScale ($_autoDetectedSource) ✓',
+                      style: const TextStyle(
+                          fontWeight: FontWeight.w600, color: Colors.white),
+                    ),
+                  ),
+                ],
+              ),
+              duration: const Duration(seconds: 3),
+              backgroundColor: const Color(0xFF0F172A),
+            ),
+          );
+        }
       } else {
         setState(() {
           _isLoading = false;
@@ -647,6 +765,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       if (streamedResponse.statusCode == 200) {
         final data = jsonDecode(responseBody) as Map<String, dynamic>;
         String? pdfUrl = data['pdfUrl'] as String?;
+        int? detectedScale = (data['detectedScale'] as num?)?.toInt();
+        String? detectedScaleSource = data['detectedScaleSource'] as String?;
 
         if (pdfUrl != null && pdfUrl.isNotEmpty) {
           if (pdfUrl.startsWith('/')) {
@@ -666,6 +786,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             fileName,
             originalFilePath: file.path,
             fileSize: await file.length(),
+            detectedScale: detectedScale,
+            detectedScaleSource: detectedScaleSource,
           );
         } else {
           setState(() {
@@ -2525,16 +2647,41 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
               const SizedBox(height: 14),
               ...presets.map((p) {
                 final isSelected = _currentScaleLabel == p.label.split(' ').first;
+                final isAuto = _autoDetectedScale == p.ratio.round();
                 return ListTile(
                   dense: true,
                   contentPadding: const EdgeInsets.symmetric(horizontal: 8),
-                  title: Text(
-                    p.label,
-                    style: TextStyle(
-                      color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
-                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
-                      fontSize: 13.5,
-                    ),
+                  title: Row(
+                    children: [
+                      Text(
+                        p.label,
+                        style: TextStyle(
+                          color: isSelected ? const Color(0xFF38BDF8) : Colors.white,
+                          fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
+                          fontSize: 13.5,
+                        ),
+                      ),
+                      if (isAuto) ...[
+                        const SizedBox(width: 8),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.18),
+                            borderRadius: BorderRadius.circular(4),
+                            border: Border.all(color: const Color(0xFF10B981), width: 0.8),
+                          ),
+                          child: const Text(
+                            'OTOMATİK ALGILANDI',
+                            style: TextStyle(
+                              color: Color(0xFF10B981),
+                              fontSize: 9,
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
                   ),
                   trailing: isSelected
                       ? const Icon(Icons.check_circle_rounded,
