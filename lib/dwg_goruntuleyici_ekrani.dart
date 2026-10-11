@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
@@ -8,15 +9,60 @@ import 'package:printing/printing.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:flutter_pdfview/flutter_pdfview.dart';
 import 'package:path_provider/path_provider.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'cad_intent_service.dart';
+
+/// Önbelleğe kaydedilen ve dönüştürülmüş CAD projeleri
+class SavedCadProject {
+  final String id;
+  final String fileName;
+  final String pdfPath;
+  final String? originalFilePath;
+  final int fileSize;
+  final DateTime savedAt;
+
+  SavedCadProject({
+    required this.id,
+    required this.fileName,
+    required this.pdfPath,
+    this.originalFilePath,
+    required this.fileSize,
+    required this.savedAt,
+  });
+
+  Map<String, dynamic> toJson() => {
+        'id': id,
+        'fileName': fileName,
+        'pdfPath': pdfPath,
+        'originalFilePath': originalFilePath,
+        'fileSize': fileSize,
+        'savedAt': savedAt.toIso8601String(),
+      };
+
+  factory SavedCadProject.fromJson(Map<String, dynamic> json) =>
+      SavedCadProject(
+        id: json['id'] as String? ?? '',
+        fileName: json['fileName'] as String? ?? 'Çizim',
+        pdfPath: json['pdfPath'] as String? ?? '',
+        originalFilePath: json['originalFilePath'] as String?,
+        fileSize: (json['fileSize'] as num?)?.toInt() ?? 0,
+        savedAt: DateTime.tryParse(json['savedAt'] as String? ?? '') ??
+            DateTime.now(),
+      );
+}
 
 class DwgGoruntuleyiciEkrani extends StatefulWidget {
   final String? initialDwgUrl;
   final String? initialProjeAdi;
+  final String? initialLocalFilePath;
+  final String? initialFileName;
 
   const DwgGoruntuleyiciEkrani({
     super.key,
     this.initialDwgUrl,
     this.initialProjeAdi,
+    this.initialLocalFilePath,
+    this.initialFileName,
   });
 
   @override
@@ -79,6 +125,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     },
   ];
 
+  List<SavedCadProject> _savedProjects = [];
+  StreamSubscription<CadFilePayload>? _cadStreamSub;
+
   @override
   void initState() {
     super.initState();
@@ -89,8 +138,24 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       duration: const Duration(milliseconds: 1400),
     )..repeat();
 
-    // Yalnızca harici olarak bir URL aktarılmışsa otomatik başlat
-    if (widget.initialDwgUrl != null && widget.initialDwgUrl!.isNotEmpty) {
+    _loadSavedProjects();
+
+    // WhatsApp veya dosya yöneticisinden ekran açıkken gelen yeni dosyaları dinle
+    _cadStreamSub = CadIntentService.instance.fileStream.listen((payload) {
+      _hariciDosyayiAcVeYukle(payload.filePath, payload.fileName);
+    });
+
+    // Harici dosya yolu verilmişse doğrudan aç ve işle
+    if (widget.initialLocalFilePath != null &&
+        widget.initialLocalFilePath!.isNotEmpty) {
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        _hariciDosyayiAcVeYukle(
+          widget.initialLocalFilePath!,
+          widget.initialFileName ?? 'Proje Çizimi.dwg',
+        );
+      });
+    } else if (widget.initialDwgUrl != null &&
+        widget.initialDwgUrl!.isNotEmpty) {
       _dwgUrlDonusturVeYukle(widget.initialDwgUrl!);
     }
     // Varsayılan proje otomatik açılmaz; kullanıcı doğrudan modern CAD çalışma alanını görür.
@@ -98,10 +163,176 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
   @override
   void dispose() {
+    _cadStreamSub?.cancel();
     _animController.dispose();
     _currentScaleNotifier.dispose();
     _minimapNotifier.dispose();
     super.dispose();
+  }
+
+  /// Yerel hafızaya kaydedilmiş önbellek projelerini yükler
+  Future<void> _loadSavedProjects() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('saved_cad_projects_list') ?? [];
+      final List<SavedCadProject> loaded = [];
+      for (final raw in list) {
+        try {
+          final map = jsonDecode(raw) as Map<String, dynamic>;
+          final proj = SavedCadProject.fromJson(map);
+          if (File(proj.pdfPath).existsSync()) {
+            loaded.add(proj);
+          }
+        } catch (_) {}
+      }
+      if (mounted) {
+        setState(() {
+          _savedProjects = loaded;
+        });
+      }
+    } catch (e) {
+      debugPrint('Kayıtlı CAD projeleri yüklenemedi: $e');
+    }
+  }
+
+  /// Başarıyla dönüştürülen çizimi cihazda kalıcı önbelleğe kaydeder
+  Future<void> _saveProjectToHistory({
+    required String fileName,
+    required String pdfPath,
+    String? originalFilePath,
+    required int fileSize,
+  }) async {
+    try {
+      final newProj = SavedCadProject(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        fileName: fileName,
+        pdfPath: pdfPath,
+        originalFilePath: originalFilePath,
+        fileSize: fileSize,
+        savedAt: DateTime.now(),
+      );
+
+      _savedProjects.removeWhere(
+          (p) => p.fileName.toLowerCase() == fileName.toLowerCase());
+      _savedProjects.insert(0, newProj);
+
+      final prefs = await SharedPreferences.getInstance();
+      final stringList =
+          _savedProjects.map((p) => jsonEncode(p.toJson())).toList();
+      await prefs.setStringList('saved_cad_projects_list', stringList);
+
+      if (mounted) setState(() {});
+    } catch (e) {
+      debugPrint('Proje geçmişe kaydedilemedi: $e');
+    }
+  }
+
+  /// Kaydedilen bir projeyi önbellekten ve listeden siler
+  Future<void> _kayitliProjeyiSil(SavedCadProject project) async {
+    try {
+      final f = File(project.pdfPath);
+      if (await f.exists()) {
+        await f.delete();
+      }
+      _savedProjects.removeWhere((p) => p.id == project.id);
+      final prefs = await SharedPreferences.getInstance();
+      final stringList =
+          _savedProjects.map((p) => jsonEncode(p.toJson())).toList();
+      await prefs.setStringList('saved_cad_projects_list', stringList);
+      if (mounted) {
+        setState(() {});
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('${project.fileName} önbellekten kaldırıldı.'),
+            duration: const Duration(seconds: 2),
+            backgroundColor: const Color(0xFF0F172A),
+          ),
+        );
+      }
+    } catch (e) {
+      debugPrint('Proje silinirken hata: $e');
+    }
+  }
+
+  /// Daha önceden işlenmiş projeyi ANINDA (sunucuya gitmeden) açar
+  void _kayitliProjeyiAc(SavedCadProject project, {bool isInstant = false}) {
+    if (!File(project.pdfPath).existsSync()) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Kayıtlı çizim dosyası bulunamadı, yeniden işlenecek.'),
+          backgroundColor: Color(0xFFEF4444),
+        ),
+      );
+      _kayitliProjeyiSil(project);
+      return;
+    }
+
+    setState(() {
+      _currentTitle = project.fileName;
+      _localPdfPath = project.pdfPath;
+      _pdfBytes = null;
+      _lastSelectedFile = project.originalFilePath != null
+          ? File(project.originalFilePath!)
+          : null;
+      _isLoading = false;
+      _errorMessage = null;
+      _currentScaleNotifier.value = 1.0;
+    });
+
+    if (isInstant && mounted) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.bolt_rounded, color: Color(0xFF38BDF8), size: 20),
+              const SizedBox(width: 8),
+              Expanded(
+                child: Text(
+                  '${project.fileName} yerel önbellekten anında açıldı ⚡',
+                  style: const TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+          backgroundColor: const Color(0xFF0F172A),
+        ),
+      );
+    }
+  }
+
+  /// Dosyanın önbellekte olup olmadığını kontrol edip varsa anında açar
+  Future<bool> _checkAndOpenFromCache(String fileName, {int? fileSize}) async {
+    for (final proj in _savedProjects) {
+      if (proj.fileName.toLowerCase() == fileName.toLowerCase()) {
+        final f = File(proj.pdfPath);
+        if (await f.exists()) {
+          _kayitliProjeyiAc(proj, isInstant: true);
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  /// Harici (WhatsApp vb.) gelen dosyayı işleme
+  Future<void> _hariciDosyayiAcVeYukle(String filePath, String fileName) async {
+    final file = File(filePath);
+    if (!await file.exists()) {
+      setState(() {
+        _errorMessage = 'Paylaşılan dosya bulunamadı: $fileName';
+        _isLoading = false;
+      });
+      return;
+    }
+
+    _lastSelectedFile = file;
+
+    final isCached =
+        await _checkAndOpenFromCache(fileName, fileSize: await file.length());
+    if (isCached) return;
+
+    await _sunucuyaGonderVeDonustur(file, fileName);
   }
 
   /// Açık olan projeyi kapatıp CAD çalışma alanına döner
@@ -152,8 +383,13 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     }
   }
 
-  /// Örnek Vektörel PDF dosyasını sunucudan indirip doğrudan yerel GPU'da açar
-  Future<void> _ornekYukle(String url, String ad) async {
+  /// Vektörel PDF dosyasını sunucudan indirip kalıcı önbelleğe kaydeder ve tuvalde açar
+  Future<void> _ornekYukle(
+    String url,
+    String ad, {
+    String? originalFilePath,
+    int? fileSize,
+  }) async {
     setState(() {
       _isLoading = true;
       _loadingStep = 2;
@@ -166,10 +402,24 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
     try {
       final res = await http.get(Uri.parse(url));
       if (res.statusCode == 200 && res.bodyBytes.isNotEmpty) {
-        final tempDir = await getTemporaryDirectory();
-        final localPdf = File(
-            '${tempDir.path}/cad_view_${DateTime.now().millisecondsSinceEpoch}.pdf');
-        await localPdf.writeAsBytes(res.bodyBytes);
+        final appDocs = await getApplicationDocumentsDirectory();
+        final cadCacheDir = Directory('${appDocs.path}/cad_cache');
+        if (!await cadCacheDir.exists()) {
+          await cadCacheDir.create(recursive: true);
+        }
+
+        final safeName = ad.replaceAll(RegExp(r'[^a-zA-Z0-9._-]'), '_');
+        final permanentPdf = File(
+            '${cadCacheDir.path}/${DateTime.now().millisecondsSinceEpoch}_$safeName.pdf');
+        await permanentPdf.writeAsBytes(res.bodyBytes);
+
+        final actualSize = fileSize ?? res.bodyBytes.length;
+        await _saveProjectToHistory(
+          fileName: ad,
+          pdfPath: permanentPdf.path,
+          originalFilePath: originalFilePath,
+          fileSize: actualSize,
+        );
 
         setState(() {
           _loadingStep = 3;
@@ -181,7 +431,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
 
         setState(() {
           _pdfBytes = res.bodyBytes;
-          _localPdfPath = localPdf.path;
+          _localPdfPath = permanentPdf.path;
           _isLoading = false;
         });
       } else {
@@ -280,6 +530,11 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
       final fileName = result.files.single.name;
       _lastSelectedFile = file;
 
+      // Önce daha önce kaydedilmiş/dönüştürülmüş mü kontrol et
+      final isCached =
+          await _checkAndOpenFromCache(fileName, fileSize: await file.length());
+      if (isCached) return;
+
       await _sunucuyaGonderVeDonustur(file, fileName);
     } catch (e) {
       setState(() {
@@ -338,7 +593,12 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             _loadingStatusText = 'Çizim Hazırlanıyor...';
             _loadingSubText = 'Yüksek çözünürlüklü CAD tuvali oluşturuluyor';
           });
-          await _ornekYukle(pdfUrl, fileName);
+          await _ornekYukle(
+            pdfUrl,
+            fileName,
+            originalFilePath: file.path,
+            fileSize: await file.length(),
+          );
         } else {
           setState(() {
             _isLoading = false;
@@ -688,9 +948,162 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
             ),
           ),
 
-          const SizedBox(height: 32),
+          const SizedBox(height: 28),
 
-          // HAZIR ÖRNEK PROJELER BÖLÜMÜ
+          // 2. SON AÇILAN VE DÖNÜŞTÜRÜLMÜŞ PROJELER BÖLÜMÜ (ÖNBELLEK)
+          if (_savedProjects.isNotEmpty) ...[
+            Row(
+              children: [
+                const Icon(Icons.history_rounded,
+                    color: Color(0xFF38BDF8), size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Son Açılan Çizimler',
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      color: titleColor,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding:
+                      const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    '${_savedProjects.length} Çizim • Anında Açılır ⚡',
+                    style: const TextStyle(
+                      fontSize: 11,
+                      fontWeight: FontWeight.w700,
+                      color: Color(0xFF38BDF8),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            ..._savedProjects.map((proj) {
+              final String boyutStr = _formatBytes(proj.fileSize);
+              final String tarihStr = _formatTarih(proj.savedAt);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 12),
+                decoration: BoxDecoration(
+                  color: cardBg,
+                  borderRadius: BorderRadius.circular(18),
+                  border: Border.all(color: cardBorder),
+                  boxShadow: [
+                    BoxShadow(
+                      color:
+                          Colors.black.withValues(alpha: isDark ? 0.2 : 0.03),
+                      blurRadius: 10,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: ListTile(
+                  contentPadding:
+                      const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
+                  leading: Container(
+                    width: 46,
+                    height: 46,
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(14),
+                    ),
+                    child: const Icon(
+                      Icons.architecture_rounded,
+                      color: Color(0xFF38BDF8),
+                      size: 24,
+                    ),
+                  ),
+                  title: Text(
+                    proj.fileName,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 14.5,
+                      fontWeight: FontWeight.w700,
+                      color: titleColor,
+                    ),
+                  ),
+                  subtitle: Padding(
+                    padding: const EdgeInsets.only(top: 4),
+                    child: Wrap(
+                      spacing: 6,
+                      runSpacing: 4,
+                      crossAxisAlignment: WrapCrossAlignment.center,
+                      children: [
+                        Text(
+                          tarihStr,
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            color: subtitleColor,
+                          ),
+                        ),
+                        Text('•',
+                            style: TextStyle(
+                                color: subtitleColor, fontSize: 11)),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                              horizontal: 6, vertical: 1.5),
+                          decoration: BoxDecoration(
+                            color:
+                                const Color(0xFF10B981).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(5),
+                          ),
+                          child: Text(
+                            '$boyutStr • Hazır ⚡',
+                            style: const TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w600,
+                              color: Color(0xFF10B981),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  trailing: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      IconButton(
+                        icon: const Icon(Icons.delete_outline_rounded,
+                            size: 20, color: Color(0xFFEF4444)),
+                        tooltip: 'Önbellekten Sil',
+                        onPressed: () => _kayitliProjeyiSil(proj),
+                      ),
+                      const SizedBox(width: 2),
+                      Container(
+                        width: 32,
+                        height: 32,
+                        decoration: BoxDecoration(
+                          shape: BoxShape.circle,
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : const Color(0xFFF1F5F9),
+                        ),
+                        child: Icon(
+                          Icons.arrow_forward_ios_rounded,
+                          color: subtitleColor,
+                          size: 14,
+                        ),
+                      ),
+                    ],
+                  ),
+                  onTap: () => _kayitliProjeyiAc(proj, isInstant: true),
+                ),
+              );
+            }),
+            const SizedBox(height: 24),
+          ],
+
+          // 3. HAZIR ÖRNEK PROJELER BÖLÜMÜ
           Row(
             children: [
               const Icon(Icons.folder_special_rounded,
@@ -892,6 +1305,46 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani>
         ),
       ),
     );
+  }
+
+  String _formatBytes(int bytes) {
+    if (bytes <= 0) return '0 B';
+    if (bytes < 1024) return '$bytes B';
+    if (bytes < 1024 * 1024) return '${(bytes / 1024).toStringAsFixed(1)} KB';
+    return '${(bytes / (1024 * 1024)).toStringAsFixed(1)} MB';
+  }
+
+  String _formatTarih(DateTime dt) {
+    final now = DateTime.now();
+    final diff = now.difference(dt);
+    if (diff.inMinutes < 60) {
+      return diff.inMinutes <= 1 ? 'Az önce' : '${diff.inMinutes} dk önce';
+    }
+    if (diff.inHours < 24 && dt.day == now.day) {
+      final hour = dt.hour.toString().padLeft(2, '0');
+      final min = dt.minute.toString().padLeft(2, '0');
+      return 'Bugün $hour:$min';
+    }
+    const aylar = [
+      '',
+      'Oca',
+      'Şub',
+      'Mar',
+      'Nis',
+      'May',
+      'Haz',
+      'Tem',
+      'Ağu',
+      'Eyl',
+      'Eki',
+      'Kas',
+      'Ara'
+    ];
+    final gun = dt.day;
+    final ay = dt.month <= 12 ? aylar[dt.month] : '';
+    final saat = dt.hour.toString().padLeft(2, '0');
+    final dakika = dt.minute.toString().padLeft(2, '0');
+    return '$gun $ay, $saat:$dakika';
   }
 
   Widget _buildFeatureRow(

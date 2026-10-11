@@ -10,6 +10,7 @@ import 'auth_gate.dart';
 import 'firebase_options.dart';
 import 'auth_servisi.dart';
 import 'deep_link_service.dart';
+import 'cad_intent_service.dart';
 import 'user_model.dart';
 import 'tema_ayarlari.dart';
 import 'bildirim_servisi.dart';
@@ -117,6 +118,13 @@ void _baslatArkaPlanServisleri() async {
       await DeepLinkService.instance.initialize(navigatorKey: navigatorKey);
     } catch (e) {
       debugPrint("Deep link servisi başlatılamadı: $e");
+    }
+
+    // 7. WhatsApp / Harici CAD Dosya Açma Servisi
+    try {
+      await CadIntentService.instance.initialize(navigatorKey: navigatorKey);
+    } catch (e) {
+      debugPrint("CAD intent servisi başlatılamadı: $e");
     }
   }
 }

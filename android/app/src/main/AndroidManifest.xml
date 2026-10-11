@@ -71,6 +71,62 @@
                     android:host="widget"
                     android:pathPrefix="/quick-report" />
             </intent-filter>
+
+            <!-- DWG & DXF Dosyalarını Açma (WhatsApp, Dosya Yöneticisi, E-posta vb.) -->
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.dwg" />
+                <data android:pathPattern=".*\\.DWG" />
+                <data android:pathPattern=".*\\.dxf" />
+                <data android:pathPattern=".*\\.DXF" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/acad" />
+                <data android:mimeType="application/x-acad" />
+                <data android:mimeType="application/autocad_dwg" />
+                <data android:mimeType="image/vnd.dwg" />
+                <data android:mimeType="image/x-dwg" />
+                <data android:mimeType="application/dwg" />
+                <data android:mimeType="application/x-dwg" />
+                <data android:mimeType="application/dxf" />
+                <data android:mimeType="image/vnd.dxf" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
+
+            <!-- Paylaşım ile DWG/DXF Gönderme -->
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.dwg" />
+                <data android:pathPattern=".*\\.DWG" />
+                <data android:pathPattern=".*\\.dxf" />
+                <data android:pathPattern=".*\\.DXF" />
+            </intent-filter>
+
+            <intent-filter>
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/acad" />
+                <data android:mimeType="application/x-acad" />
+                <data android:mimeType="application/autocad_dwg" />
+                <data android:mimeType="image/vnd.dwg" />
+                <data android:mimeType="image/x-dwg" />
+                <data android:mimeType="application/dwg" />
+                <data android:mimeType="application/dxf" />
+                <data android:mimeType="application/octet-stream" />
+            </intent-filter>
         </activity>
 
         <receiver
