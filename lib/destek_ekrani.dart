@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'app_links.dart';
+import 'puanlama_servisi.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_surface.dart';
 
@@ -34,6 +35,7 @@ class DestekEkrani extends StatelessWidget {
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
+        performanceMode: true,
         child: ListView(
           padding: EdgeInsets.fromLTRB(
             20,
@@ -43,6 +45,7 @@ class DestekEkrani extends StatelessWidget {
           ),
           children: [
             GlassSectionCard(
+              lightweight: true,
               padding: const EdgeInsets.all(22),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -71,13 +74,22 @@ class DestekEkrani extends StatelessWidget {
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Sorun, öneri veya hesap desteği için bize Instagram ya da e-posta üzerinden ulaşabilirsin.',
+                    'Sorun, öneri veya hesap desteği için bize Instagram ya da e-posta üzerinden ulaşabilir, deneyiminizi puanlayabilirsiniz.',
                     style: TextStyle(fontSize: 15, height: 1.45, color: bodyColor),
                   ),
                 ],
               ),
             ),
             const SizedBox(height: 16),
+            _SupportLinkCard(
+              icon: Icons.star_rate_rounded,
+              title: 'Uygulamayı Puanla & Geri Bildirim',
+              subtitle: 'Deneyiminizi puanlayın veya öneri iletin',
+              accentColor: const Color(0xFFFFB300),
+              trailingIcon: Icons.chevron_right_rounded,
+              onTap: () => PuanlamaServisi.diyalogGoster(context),
+            ),
+            const SizedBox(height: 12),
             _SupportLinkCard(
               icon: Icons.camera_alt_outlined,
               title: 'Instagram',
@@ -104,18 +116,24 @@ class _SupportLinkCard extends StatelessWidget {
     required this.title,
     required this.subtitle,
     required this.onTap,
+    this.accentColor,
+    this.trailingIcon,
   });
 
   final IconData icon;
   final String title;
   final String subtitle;
   final VoidCallback onTap;
+  final Color? accentColor;
+  final IconData? trailingIcon;
 
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final color = accentColor ?? _kBrandTeal;
 
     return GlassSectionCard(
+      lightweight: true,
       padding: EdgeInsets.zero,
       child: ListTile(
         onTap: onTap,
@@ -124,10 +142,10 @@ class _SupportLinkCard extends StatelessWidget {
           width: 46,
           height: 46,
           decoration: BoxDecoration(
-            color: _kBrandTeal.withValues(alpha: isDark ? 0.20 : 0.10),
+            color: color.withValues(alpha: isDark ? 0.20 : 0.10),
             borderRadius: BorderRadius.circular(15),
           ),
-          child: Icon(icon, color: _kBrandTeal),
+          child: Icon(icon, color: color),
         ),
         title: Text(
           title,
@@ -137,7 +155,7 @@ class _SupportLinkCard extends StatelessWidget {
           ),
         ),
         subtitle: Text(subtitle),
-        trailing: const Icon(Icons.open_in_new_rounded),
+        trailing: Icon(trailingIcon ?? Icons.open_in_new_rounded),
       ),
     );
   }

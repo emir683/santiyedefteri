@@ -47,6 +47,9 @@ class _HakkindaEkraniState extends State<HakkindaEkrani> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final textColor = isDark ? Colors.white : const Color(0xFF102A43);
     final subTextColor = isDark ? Colors.white70 : const Color(0xFF526772);
+    final dividerColor = isDark
+        ? Colors.white.withValues(alpha: 0.08)
+        : Colors.black.withValues(alpha: 0.06);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -57,37 +60,40 @@ class _HakkindaEkraniState extends State<HakkindaEkrani> {
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
+        performanceMode: true,
         child: ListView(
           padding: EdgeInsets.fromLTRB(
             20,
             FloatingLiquidAppBar.topPadding(context, extra: 4),
             20,
-            20,
+            24,
           ),
           children: [
+            // 1. Logo ve Başlık
             GlassSectionCard(
-              padding: const EdgeInsets.all(22),
+              lightweight: true,
+              padding: const EdgeInsets.symmetric(horizontal: 22, vertical: 26),
               child: Column(
                 children: [
                   Container(
-                    width: 88,
-                    height: 88,
+                    width: 82,
+                    height: 82,
                     decoration: BoxDecoration(
                       color: _kBrandTeal.withValues(alpha: isDark ? 0.22 : 0.12),
                       shape: BoxShape.circle,
                     ),
                     child: const Icon(
                       Icons.construction_rounded,
-                      size: 48,
+                      size: 44,
                       color: _kBrandTeal,
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 18),
                   Text(
                     'Şantiye Puantaj Defteri',
                     textAlign: TextAlign.center,
                     style: TextStyle(
-                      fontSize: 26,
+                      fontSize: 24,
                       fontWeight: FontWeight.w800,
                       color: textColor,
                     ),
@@ -96,46 +102,60 @@ class _HakkindaEkraniState extends State<HakkindaEkrani> {
                   Text(
                     'Profesyonel saha yönetimi ve puantaj takibi.',
                     textAlign: TextAlign.center,
-                    style: TextStyle(fontSize: 15, color: subTextColor),
+                    style: TextStyle(fontSize: 14.5, color: subTextColor),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 14),
+
+            // 2. Bilgiler (Versiyon, Geliştirici, İletişim)
             GlassSectionCard(
-              padding: const EdgeInsets.all(18),
+              lightweight: true,
+              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 12),
               child: Column(
                 children: [
                   _InfoRow(label: 'Versiyon', value: _version),
-                  const Divider(),
-                  _InfoRow(label: 'Geliştirici', value: 'Emir Çiftçi'),
-                  const Divider(),
-                  _InfoRow(label: 'İletişim', value: 'info@emrcore.com'),
+                  Divider(height: 1, color: dividerColor),
+                  const _InfoRow(label: 'Geliştirici', value: 'Emir Çiftçi'),
+                  Divider(height: 1, color: dividerColor),
+                  const _InfoRow(label: 'İletişim', value: 'info@emrcore.com'),
                 ],
               ),
             ),
-            const SizedBox(height: 16),
-            _LinkTile(
-              icon: Icons.privacy_tip_outlined,
-              title: 'Gizlilik Politikası',
-              subtitle: 'Verilerin nasıl işlendiğini görüntüle',
-              onTap: () => _linkAc(context, AppLinks.privacyPolicy),
+            const SizedBox(height: 14),
+
+            // 3. Bağlantılar (Tek kart altında derli toplu)
+            GlassSectionCard(
+              lightweight: true,
+              padding: EdgeInsets.zero,
+              child: Column(
+                children: [
+                  _LinkItem(
+                    icon: Icons.privacy_tip_outlined,
+                    title: 'Gizlilik Politikası',
+                    subtitle: 'Verilerin nasıl işlendiğini görüntüle',
+                    onTap: () => _linkAc(context, AppLinks.privacyPolicy),
+                  ),
+                  Divider(height: 1, color: dividerColor),
+                  _LinkItem(
+                    icon: Icons.description_outlined,
+                    title: 'Kullanım Şartları',
+                    subtitle: 'Uygulama kullanım koşullarını görüntüle',
+                    onTap: () => _linkAc(context, AppLinks.termsOfUse),
+                  ),
+                  Divider(height: 1, color: dividerColor),
+                  _LinkItem(
+                    icon: Icons.camera_alt_outlined,
+                    title: 'Instagram',
+                    subtitle: '@emr.core',
+                    onTap: () => _linkAc(context, AppLinks.instagram),
+                  ),
+                ],
+              ),
             ),
-            const SizedBox(height: 12),
-            _LinkTile(
-              icon: Icons.description_outlined,
-              title: 'Kullanım Şartları',
-              subtitle: 'Uygulama kullanım koşullarını görüntüle',
-              onTap: () => _linkAc(context, AppLinks.termsOfUse),
-            ),
-            const SizedBox(height: 12),
-            _LinkTile(
-              icon: Icons.camera_alt_outlined,
-              title: 'Instagram',
-              subtitle: '@emr.core',
-              onTap: () => _linkAc(context, AppLinks.instagram),
-            ),
-            const SizedBox(height: 28),
+            const SizedBox(height: 24),
+
             Text(
               '© 2026 Tüm Hakları Saklıdır',
               textAlign: TextAlign.center,
@@ -158,13 +178,16 @@ class _InfoRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 8),
+      padding: const EdgeInsets.symmetric(vertical: 11),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
           Text(
             label,
-            style: TextStyle(color: isDark ? Colors.white60 : Colors.black54),
+            style: TextStyle(
+              fontSize: 14,
+              color: isDark ? Colors.white60 : Colors.black54,
+            ),
           ),
           const SizedBox(width: 16),
           Flexible(
@@ -172,7 +195,8 @@ class _InfoRow extends StatelessWidget {
               value,
               textAlign: TextAlign.right,
               style: TextStyle(
-                fontWeight: FontWeight.w800,
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
                 color: isDark ? Colors.white : const Color(0xFF102A43),
               ),
             ),
@@ -183,8 +207,8 @@ class _InfoRow extends StatelessWidget {
   }
 }
 
-class _LinkTile extends StatelessWidget {
-  const _LinkTile({
+class _LinkItem extends StatelessWidget {
+  const _LinkItem({
     required this.icon,
     required this.title,
     required this.subtitle,
@@ -199,21 +223,38 @@ class _LinkTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    return GlassSectionCard(
-      padding: EdgeInsets.zero,
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
-        leading: Icon(icon, color: _kBrandTeal),
-        title: Text(
-          title,
-          style: TextStyle(
-            fontWeight: FontWeight.w800,
-            color: isDark ? Colors.white : const Color(0xFF102A43),
-          ),
+
+    return ListTile(
+      onTap: onTap,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
+      leading: Container(
+        width: 40,
+        height: 40,
+        decoration: BoxDecoration(
+          color: _kBrandTeal.withValues(alpha: isDark ? 0.18 : 0.10),
+          borderRadius: BorderRadius.circular(12),
         ),
-        subtitle: Text(subtitle),
-        trailing: const Icon(Icons.open_in_new_rounded),
+        child: Icon(icon, color: _kBrandTeal, size: 22),
+      ),
+      title: Text(
+        title,
+        style: TextStyle(
+          fontSize: 14.5,
+          fontWeight: FontWeight.w700,
+          color: isDark ? Colors.white : const Color(0xFF102A43),
+        ),
+      ),
+      subtitle: Text(
+        subtitle,
+        style: TextStyle(
+          fontSize: 12.5,
+          color: isDark ? Colors.white60 : Colors.black54,
+        ),
+      ),
+      trailing: Icon(
+        Icons.open_in_new_rounded,
+        size: 18,
+        color: isDark ? Colors.white38 : Colors.black38,
       ),
     );
   }

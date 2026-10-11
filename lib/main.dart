@@ -2,7 +2,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
-import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -16,6 +15,7 @@ import 'tema_ayarlari.dart';
 import 'bildirim_servisi.dart';
 import 'fcm_servisi.dart';
 import 'privacy_provider.dart';
+import 'performance_provider.dart';
 import 'rol_provider.dart';
 import 'services/ai/ai_service.dart';
 import 'services/connectivity_sync_service.dart';
@@ -45,63 +45,80 @@ class ThemeProvider with ChangeNotifier {
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
-
-  // Uygulama KAPALI iken FCM mesajı geldiğinde çalışacak top-level handler
-  FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
-
-  try {
-    await LiquidGlassWidgets.initialize();
-  } catch (e) {
-    _bootstrapError = e.toString();
-    debugPrint("Liquid glass baslatilamadi: $e");
-  }
   debugPrint("--- UYGULAMA BAŞLATILIYOR ---");
 
+  final prefs = await SharedPreferences.getInstance();
+  final perfProvider = PerformanceProvider.createSync(prefs);
+
+  // Firebase başlatma (Android'de options vermeden yerel google-services.json kullanılır)
   try {
     if (kIsWeb) {
       await Firebase.initializeApp(
         options: DefaultFirebaseOptions.currentPlatform,
-      );
+      ).timeout(const Duration(seconds: 4));
     } else {
-      await Firebase.initializeApp();
+      await Firebase.initializeApp().timeout(const Duration(seconds: 4));
     }
     _firebaseReady = true;
     debugPrint("✅ Firebase başarıyla başlatıldı.");
 
-    // Çevrimdışı kalıcılık ve arka plan senkronizasyonunu başlat
+    // FCM arka plan mesaj dinleyicisi Firebase BAŞLATILDIKTAN SONRA kaydedilir
     try {
-      await ConnectivitySyncService.instance.initialize();
+      FirebaseMessaging.onBackgroundMessage(firebaseMessagingBackgroundHandler);
     } catch (e) {
-      debugPrint("Offline sync servisi baslatilamadi: $e");
+      debugPrint("FCM onBackgroundMessage kaydedilemedi: $e");
     }
+  } catch (e) {
+    debugPrint("🔥 Firebase başlatılırken hata veya zaman aşımı: $e");
+    _bootstrapError = e.toString();
+    _firebaseReady = true; // Uygulamanın açılışını engelleme
+  }
 
-    // Gemini API anahtarını Remote Config'den güvenle yükle
+  // UI'ı hemen başlat (kullanıcı açılış ekranında takılı kalmasın)
+  runApp(MyApp(prefs: prefs, perfProvider: perfProvider));
+
+  // Arka plan servislerini ve shaderları UI açıldıktan hemen sonra güvenle başlat
+  _baslatArkaPlanServisleri();
+}
+
+/// Arka plan servislerini UI akışını engellemeden (non-blocking) başlatır
+void _baslatArkaPlanServisleri() async {
+  // 1. Çevrimdışı kalıcılık ve arka plan senkronizasyonu
+  try {
+    await ConnectivitySyncService.instance.initialize();
+  } catch (e) {
+    debugPrint("Offline sync servisi başlatılamadı: $e");
+  }
+
+  // 3. Gemini API anahtarını yükle
+  try {
     await _loadGeminiApiKey();
   } catch (e) {
-    debugPrint("🔥 Firebase başlatılırken KRİTİK HATA: $e");
+    debugPrint("Gemini api key yüklenemedi: $e");
   }
 
   if (!kIsWeb) {
+    // 4. Bildirim servisi
     try {
       await BildirimServisi().init();
     } catch (e) {
-      debugPrint("Bildirim servisi baslatilamadi: $e");
+      debugPrint("Bildirim servisi başlatılamadı: $e");
     }
 
-    // FCM servisi başlat (uygulama kapalıyken bildirim için)
+    // 5. FCM servisi
     try {
       await FcmServisi().init();
     } catch (e) {
-      debugPrint("FCM servisi baslatilamadi: $e");
+      debugPrint("FCM servisi başlatılamadı: $e");
     }
 
+    // 6. Deep Link servisi
     try {
       await DeepLinkService.instance.initialize(navigatorKey: navigatorKey);
     } catch (e) {
-      debugPrint("Deep link servisi baslatilamadi: $e");
+      debugPrint("Deep link servisi başlatılamadı: $e");
     }
   }
-  runApp(const MyApp());
 }
 
 /// Firebase Remote Config üzerinden Gemini API anahtarını güvenle yükler.
@@ -132,7 +149,14 @@ Future<void> _loadGeminiApiKey() async {
 }
 
 class MyApp extends StatelessWidget {
-  const MyApp({super.key});
+  final SharedPreferences prefs;
+  final PerformanceProvider perfProvider;
+
+  const MyApp({
+    super.key,
+    required this.prefs,
+    required this.perfProvider,
+  });
 
   @override
   Widget build(BuildContext context) {
@@ -144,133 +168,122 @@ class MyApp extends StatelessWidget {
       );
     }
 
-    return FutureBuilder<SharedPreferences>(
-      future: SharedPreferences.getInstance(),
-      builder: (context, snapshot) {
-        if (!snapshot.hasData) {
-          return const MaterialApp(
-            debugShowCheckedModeBanner: false,
-            home: Scaffold(body: Center(child: CircularProgressIndicator())),
-          );
-        }
-        final prefs = snapshot.data!;
-        final isDarkMode = prefs.getBool('isDarkMode') ?? false;
-        final authServisi = AuthServisi();
+    final isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    final authServisi = AuthServisi();
 
-        // MultiProvider, birden fazla Provider'ı bir araya getirir.
-        return MultiProvider(
-          providers: [
-            ChangeNotifierProvider.value(
-              value: ConnectivitySyncService.instance,
-            ),
-            ChangeNotifierProvider(create: (_) => ThemeProvider(isDarkMode)),
-            ChangeNotifierProvider(create: (_) => PrivacyProvider()),
-            ChangeNotifierProvider(create: (_) => RolProvider()),
-            StreamProvider<UserModel?>.value(
-              value: authServisi.userStream,
-              initialData: authServisi.currentUser,
-            ),
-          ],
-          child: Consumer<ThemeProvider>(
-            builder: (context, themeProvider, child) {
-              final textTheme = Theme.of(context).textTheme;
-              return MaterialApp(
-                debugShowCheckedModeBanner: false,
-                navigatorKey: navigatorKey,
-                title: 'Şantiye Puantaj Defteri',
-                themeMode: themeProvider.themeMode,
-                theme: ThemeData(
-                  useMaterial3: true,
-                  scaffoldBackgroundColor: AppColors.lightBackground,
-                  textTheme: GoogleFonts.poppinsTextTheme(textTheme),
-                  colorSchemeSeed: Colors.green,
-                  appBarTheme: AppBarTheme(
-                    surfaceTintColor: Colors.transparent,
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    centerTitle: true,
-                    iconTheme: const IconThemeData(color: Colors.black87),
-                    titleTextStyle: GoogleFonts.poppins(
-                      color: Colors.black87,
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  cardTheme: CardThemeData(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                  ),
+    // MultiProvider, birden fazla Provider'ı bir araya getirir.
+    return MultiProvider(
+      providers: [
+        ChangeNotifierProvider.value(
+          value: ConnectivitySyncService.instance,
+        ),
+        ChangeNotifierProvider(create: (_) => ThemeProvider(isDarkMode)),
+        ChangeNotifierProvider.value(value: perfProvider),
+        ChangeNotifierProvider(create: (_) => PrivacyProvider()),
+        ChangeNotifierProvider(create: (_) => RolProvider()),
+        StreamProvider<UserModel?>.value(
+          value: authServisi.userStream,
+          initialData: authServisi.currentUser,
+        ),
+      ],
+      child: Consumer<ThemeProvider>(
+        builder: (context, themeProvider, child) {
+          final textTheme = Theme.of(context).textTheme;
+          return MaterialApp(
+            debugShowCheckedModeBanner: false,
+            navigatorKey: navigatorKey,
+            title: 'Şantiye Puantaj Defteri',
+            themeMode: themeProvider.themeMode,
+            theme: ThemeData(
+              useMaterial3: true,
+              scaffoldBackgroundColor: AppColors.lightBackground,
+              textTheme: GoogleFonts.poppinsTextTheme(textTheme),
+              colorSchemeSeed: Colors.green,
+              appBarTheme: AppBarTheme(
+                surfaceTintColor: Colors.transparent,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                centerTitle: true,
+                iconTheme: const IconThemeData(color: Colors.black87),
+                titleTextStyle: GoogleFonts.poppins(
+                  color: Colors.black87,
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
                 ),
-                darkTheme: ThemeData(
-                  useMaterial3: true,
-                  brightness: Brightness.dark,
-                  scaffoldBackgroundColor: Colors.black,
-                  textTheme: GoogleFonts.poppinsTextTheme(
-                    Theme.of(context).primaryTextTheme,
-                  ),
-                  colorSchemeSeed: Colors.green,
-                  appBarTheme: AppBarTheme(
-                    surfaceTintColor: Colors.transparent,
-                    backgroundColor: Colors.transparent,
-                    elevation: 0,
-                    centerTitle: true,
-                    titleTextStyle: GoogleFonts.poppins(
-                      fontSize: 20,
-                      fontWeight: FontWeight.w600,
-                    ),
-                  ),
-                  cardTheme: CardThemeData(
-                    elevation: 0,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    color: const Color(0xFF1C1C1E),
-                  ),
-                  listTileTheme: const ListTileThemeData(
-                    iconColor: Colors.white70,
-                  ),
-                  elevatedButtonTheme: ElevatedButtonThemeData(
-                    style: ElevatedButton.styleFrom(
-                      backgroundColor: const Color(0xFF1C1C1E),
-                      foregroundColor: Colors.white,
-                    ),
-                  ),
-                  outlinedButtonTheme: OutlinedButtonThemeData(
-                    style: OutlinedButton.styleFrom(
-                      foregroundColor: Colors.white70,
-                      side: BorderSide(color: Colors.grey.shade800),
-                    ),
-                  ),
-                  textButtonTheme: TextButtonThemeData(
-                    style: TextButton.styleFrom(foregroundColor: Colors.white),
-                  ),
-                  inputDecorationTheme: InputDecorationTheme(
-                    border: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: BorderSide(color: Colors.grey.shade800),
-                    ),
-                    focusedBorder: OutlineInputBorder(
-                      borderRadius: BorderRadius.circular(12),
-                      borderSide: const BorderSide(color: Colors.white),
-                    ),
-                    labelStyle: TextStyle(color: Colors.grey.shade400),
-                  ),
+              ),
+              cardTheme: CardThemeData(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
                 ),
-                localizationsDelegates: const [
-                  GlobalMaterialLocalizations.delegate,
-                  GlobalWidgetsLocalizations.delegate,
-                  GlobalCupertinoLocalizations.delegate,
-                ],
-                supportedLocales: const [Locale('tr', 'TR')],
-                locale: const Locale('tr', 'TR'),
-                home: const AuthGate(),
-              );
-            },
-          ),
-        );
-      },
+              ),
+            ),
+            darkTheme: ThemeData(
+              useMaterial3: true,
+              brightness: Brightness.dark,
+              scaffoldBackgroundColor: Colors.black,
+              textTheme: GoogleFonts.poppinsTextTheme(
+                Theme.of(context).primaryTextTheme,
+              ),
+              colorSchemeSeed: Colors.green,
+              appBarTheme: AppBarTheme(
+                surfaceTintColor: Colors.transparent,
+                backgroundColor: Colors.transparent,
+                elevation: 0,
+                centerTitle: true,
+                titleTextStyle: GoogleFonts.poppins(
+                  fontSize: 20,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+              cardTheme: CardThemeData(
+                elevation: 0,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                color: const Color(0xFF1C1C1E),
+              ),
+              listTileTheme: const ListTileThemeData(
+                iconColor: Colors.white70,
+              ),
+              elevatedButtonTheme: ElevatedButtonThemeData(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color(0xFF1C1C1E),
+                  foregroundColor: Colors.white,
+                ),
+              ),
+              outlinedButtonTheme: OutlinedButtonThemeData(
+                style: OutlinedButton.styleFrom(
+                  foregroundColor: Colors.white70,
+                  side: BorderSide(color: Colors.grey.shade800),
+                ),
+              ),
+              textButtonTheme: TextButtonThemeData(
+                style: TextButton.styleFrom(foregroundColor: Colors.white),
+              ),
+              inputDecorationTheme: InputDecorationTheme(
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: BorderSide(color: Colors.grey.shade800),
+                ),
+                focusedBorder: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(12),
+                  borderSide: const BorderSide(color: Colors.white),
+                ),
+                labelStyle: TextStyle(color: Colors.grey.shade400),
+              ),
+            ),
+            localizationsDelegates: const [
+              GlobalMaterialLocalizations.delegate,
+              GlobalWidgetsLocalizations.delegate,
+              GlobalCupertinoLocalizations.delegate,
+            ],
+            supportedLocales: const [Locale('tr', 'TR')],
+            locale: const Locale('tr', 'TR'),
+            home: const AuthGate(),
+          );
+        },
+      ),
     );
   }
 }

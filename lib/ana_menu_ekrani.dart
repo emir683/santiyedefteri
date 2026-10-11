@@ -30,6 +30,9 @@ import 'privacy_provider.dart';
 import 'hakkinda_ekrani.dart';
 import 'klavuz_ekrani.dart';
 import 'destek_ekrani.dart';
+import 'puanlama_servisi.dart';
+import 'performance_provider.dart';
+import 'dwg_goruntuleyici_ekrani.dart';
 import 'rol_provider.dart';
 import 'tur_servisi.dart';
 import 'format_yardimcisi.dart';
@@ -2584,36 +2587,26 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   ) {
     final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
     final bool isDarkMode = themeProvider.themeMode == ThemeMode.dark;
+    final perfProvider = Provider.of<PerformanceProvider>(context);
+    final bool isPerfMode = perfProvider.isPerformanceMode;
 
-    return Drawer(
-      backgroundColor: Colors.transparent,
-      width: MediaQuery.of(context).size.width * 0.80,
-      child: ClipRRect(
-        borderRadius: const BorderRadius.only(
-          topRight: Radius.circular(20),
-          bottomRight: Radius.circular(20),
+    Widget drawerBody = Container(
+      decoration: BoxDecoration(
+        color: isPerfMode
+            ? (isDarkMode ? const Color(0xFF13171F) : Colors.white)
+            : (isDarkMode
+                ? const Color(0xFF1E1E1E).withValues(alpha: 0.15)
+                : const Color(0xFFFFFFFF).withValues(alpha: 0.25)),
+        border: Border(
+          right: BorderSide(
+            color: isDarkMode
+                ? Colors.white.withValues(alpha: isPerfMode ? 0.08 : 0.5)
+                : Colors.black.withValues(alpha: isPerfMode ? 0.06 : 0.2),
+            width: 1,
+          ),
         ),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-          child: Container(
-            decoration: BoxDecoration(
-              color:
-                  isDarkMode
-                      ? const Color(0xFF1E1E1E).withValues(alpha: 0.15)
-                      : const Color.fromARGB(
-                        255,
-                        255,
-                        255,
-                        255,
-                      ).withValues(alpha: 0.25),
-              border: Border(
-                right: BorderSide(
-                  color: Colors.white.withValues(alpha: 0.5),
-                  width: 1,
-                ),
-              ),
-            ),
-            child: Column(
+      ),
+      child: Column(
               children: [
                 // BAÅLIK
                 Container(
@@ -2753,6 +2746,19 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                           );
                         },
                       ),
+                      _buildGlassDrawerItem(
+                        context,
+                        icon: Icons.architecture_rounded,
+                        title: 'DWG / CAD Proje Aç',
+                        color: const Color(0xFF5EEAD4),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            SayfaGecisi(sayfa: const DwgGoruntuleyiciEkrani()),
+                          );
+                        },
+                      ),
 
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
@@ -2787,6 +2793,16 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       ),
                       _buildGlassDrawerItem(
                         context,
+                        icon: Icons.star_rate_rounded,
+                        title: 'Uygulamayı Puanla',
+                        color: const Color(0xFFFFB300),
+                        onTap: () {
+                          Navigator.pop(context);
+                          PuanlamaServisi.diyalogGoster(context);
+                        },
+                      ),
+                      _buildGlassDrawerItem(
+                        context,
                         icon: Icons.info_outline,
                         title: 'Hakkında',
                         onTap: () {
@@ -2802,6 +2818,59 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       const Padding(
                         padding: EdgeInsets.symmetric(vertical: 8),
                         child: Divider(),
+                      ),
+
+                      // PERFORMANS MODU ŞALTERİ
+                      Container(
+                        margin: const EdgeInsets.only(bottom: 8),
+                        decoration: BoxDecoration(
+                          color: isDarkMode
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.black.withValues(alpha: 0.03),
+                          border: Border.all(
+                            color: Colors.white.withValues(alpha: 0.1),
+                            width: 0.5,
+                          ),
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                        child: SwitchListTile(
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 2,
+                          ),
+                          title: Text(
+                            "Performans Modu",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              color: isDarkMode ? Colors.white : Colors.black87,
+                            ),
+                          ),
+                          subtitle: Text(
+                            perfProvider.isPerformanceMode
+                                ? (perfProvider.isAutoDetected
+                                    ? "Cihaza göre otomatik aktif (${perfProvider.detectionReason})"
+                                    : "Açık - Cam ve gölge efektleri kapalı")
+                                : "Kapalı - Zayıf telefonlarda açınız",
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              color: isDarkMode ? Colors.white60 : Colors.black54,
+                            ),
+                          ),
+                          value: isPerfMode,
+                          activeThumbColor: Colors.white,
+                          activeTrackColor: const Color(0xFF10B981),
+                          inactiveThumbColor: isDarkMode
+                              ? const Color(0xFF9CA3AF)
+                              : const Color(0xFF64748B),
+                          inactiveTrackColor: isDarkMode
+                              ? Colors.white12
+                              : const Color(0xFFD7E3EC),
+                          secondary: const Icon(
+                            Icons.bolt_rounded,
+                            color: Color(0xFF10B981),
+                          ),
+                          onChanged: (val) => perfProvider.togglePerformanceMode(val),
+                        ),
                       ),
 
                       Container(
@@ -2971,38 +3040,53 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 ),
               ],
             ),
-          ),
+          );
+
+    return Drawer(
+      backgroundColor: Colors.transparent,
+      width: MediaQuery.of(context).size.width * 0.80,
+      child: ClipRRect(
+        borderRadius: const BorderRadius.only(
+          topRight: Radius.circular(20),
+          bottomRight: Radius.circular(20),
         ),
+        child: isPerfMode
+            ? drawerBody
+            : BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                child: drawerBody,
+              ),
       ),
     );
   }
 
   Widget _buildQuickAccessDock(BuildContext context, bool finansalErisim) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPerfMode = PerformanceProvider.of(context);
 
-    return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: ClipRRect(
+    final dockContent = Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
+      decoration: BoxDecoration(
+        color: isPerfMode
+            ? (isDark ? const Color(0xFF141A22) : Colors.white)
+            : (isDark
+                ? Colors.black.withValues(alpha: 0.40)
+                : Colors.white.withValues(alpha: 0.70)),
         borderRadius: BorderRadius.circular(28),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-            decoration: BoxDecoration(
-              color:
-                  isDark
-                      ? Colors.black.withValues(alpha: 0.40)
-                      : Colors.white.withValues(alpha: 0.70),
-              borderRadius: BorderRadius.circular(28),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.20)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.10),
-                  blurRadius: 24,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
+        border: Border.all(
+          color: isPerfMode
+              ? (isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFD0DDE3))
+              : Colors.white.withValues(alpha: 0.20),
+          width: 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
+            blurRadius: isPerfMode ? 10 : 24,
+            offset: Offset(0, isPerfMode ? 3 : 10),
+          ),
+        ],
+      ),
             child: Row(
               children: [
                 Expanded(
@@ -3072,8 +3156,18 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 ),
               ],
             ),
-          ),
-        ),
+          );
+
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(28),
+        child: isPerfMode
+            ? dockContent
+            : BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                child: dockContent,
+              ),
       ),
     );
   }

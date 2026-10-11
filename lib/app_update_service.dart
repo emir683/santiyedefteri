@@ -38,8 +38,11 @@ class AppUpdateService {
     final currentVersion = info.version;
 
     try {
-      final doc =
-          await _db.collection('app_config').doc('version_control').get();
+      final doc = await _db
+          .collection('app_config')
+          .doc('version_control')
+          .get()
+          .timeout(const Duration(seconds: 2));
       final data = doc.data();
 
       if (data == null) {

@@ -1,5 +1,10 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/material.dart';
+import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:url_launcher/url_launcher.dart';
+import 'widgets/puanlama_diyalogu.dart';
 
 class PuanlamaServisi {
   static const String _packageName = 'com.emircf.santiyepuantaj';
@@ -9,9 +14,27 @@ class PuanlamaServisi {
   static const String _remindAfterKey = 'puanlama_tekrar_sorma_zamani';
   static const String _ratedKey = 'puanlama_verildi';
 
-  static const int _firstPromptActionCount = 5;  // 1'den 5'e (daha az agresif)
-  static const Duration _promptCooldown = Duration(days: 30);  // 21'den 30 güne
-  static const Duration _remindLaterDelay = Duration(days: 7); // 1'den 7 güne
+  static const int _firstPromptActionCount = 3; // 3 başarılı işlemden sonra
+  static const Duration _promptCooldown = Duration(days: 30); // 30 gün aralık
+  static const Duration _remindLaterDelay = Duration(days: 7); // 7 gün sonra tekrar
+
+  /// Başarılı bir işlem sonrası kontrol eder ve uygunsa diyaloğu açar
+  static Future<void> islemSonrasiKontrolEtVeGoster(BuildContext context) async {
+    try {
+      final shouldShow = await shouldShowAfterSuccessfulAction();
+      if (shouldShow && context.mounted) {
+        await markPromptShown();
+        await diyalogGoster(context);
+      }
+    } catch (e) {
+      debugPrint('Puanlama kontrolü hatası: $e');
+    }
+  }
+
+  /// Menüden veya ayarlardan kullanıcı istediği zaman direkt açar
+  static Future<void> diyalogGoster(BuildContext context) async {
+    await PuanlamaDiyalogu.goster(context);
+  }
 
   static Future<bool> shouldShowAfterSuccessfulAction() async {
     final prefs = await SharedPreferences.getInstance();
@@ -58,17 +81,48 @@ class PuanlamaServisi {
     await prefs.setBool(_ratedKey, true);
   }
 
+  /// Geri bildirim mesajını ve puanını Firestore'a kaydeder
+  static Future<void> geriBildirimKaydet({
+    required int puan,
+    String? mesaj,
+  }) async {
+    try {
+      final user = FirebaseAuth.instance.currentUser;
+      String version = 'bilinmiyor';
+      try {
+        final info = await PackageInfo.fromPlatform();
+        version = '${info.version}+${info.buildNumber}';
+      } catch (_) {}
+
+      await FirebaseFirestore.instance.collection('feedbacks').add({
+        'puan': puan,
+        'mesaj': mesaj ?? '',
+        'kullaniciId': user?.uid,
+        'email': user?.email,
+        'appVersion': version,
+        'tarih': FieldValue.serverTimestamp(),
+        'durum': 'yeni',
+      });
+    } catch (e) {
+      debugPrint('Geri bildirim Firestore kayıt hatası: $e');
+    }
+  }
+
   static Future<void> openStore() async {
     final marketUri = Uri.parse('market://details?id=$_packageName');
     final webUri = Uri.parse(
       'https://play.google.com/store/apps/details?id=$_packageName',
     );
 
-    if (await canLaunchUrl(marketUri)) {
-      await launchUrl(marketUri, mode: LaunchMode.externalApplication);
-      return;
+    try {
+      if (await canLaunchUrl(marketUri)) {
+        await launchUrl(marketUri, mode: LaunchMode.externalApplication);
+        return;
+      }
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
+    } catch (e) {
+      debugPrint('Mağaza açma hatası: $e');
+      await launchUrl(webUri, mode: LaunchMode.externalApplication);
     }
-
-    await launchUrl(webUri, mode: LaunchMode.externalApplication);
   }
 }

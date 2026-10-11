@@ -17,6 +17,7 @@ import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/offline_sync_banner.dart';
 import 'services/connectivity_sync_service.dart';
+import 'puanlama_servisi.dart';
 
 class GunlukRaporEkrani extends StatefulWidget {
   final String teamId;
@@ -1218,6 +1219,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                           ),
                         ),
                       );
+                      PuanlamaServisi.islemSonrasiKontrolEtVeGoster(context);
                     }
                   }
                 } finally {

@@ -79,5 +79,11 @@ service cloud.firestore {
         allow write: if isTeamMember(teamId);
       }
     }
+
+    // 5. GERİ BİLDİRİMLER (FEEDBACKS & PUANLAMA)
+    match /feedbacks/{feedbackId} {
+      allow create: if isAuthenticated();
+      allow read, update, delete: if false; // Sadece Firebase Console/Admin erişebilir
+    }
   }
 }

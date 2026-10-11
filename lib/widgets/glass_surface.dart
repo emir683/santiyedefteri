@@ -4,6 +4,7 @@ import 'package:liquid_glass_widgets/types/glass_quality.dart';
 import 'package:liquid_glass_widgets/widgets/containers/glass_card.dart';
 import 'package:liquid_glass_widgets/widgets/containers/glass_container.dart';
 import 'package:liquid_glass_widgets/widgets/shared/adaptive_liquid_glass_layer.dart';
+import '../performance_provider.dart';
 
 class GlassPageSurface extends StatelessWidget {
   const GlassPageSurface({
@@ -22,6 +23,15 @@ class GlassPageSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPerf = performanceMode || PerformanceProvider.of(context);
+
+    if (isPerf) {
+      return Container(
+        color: isDark ? const Color(0xFF0C1017) : const Color(0xFFF1F5F8),
+        padding: padding,
+        child: child,
+      );
+    }
 
     return Stack(
       children: [
@@ -166,13 +176,48 @@ class GlassSectionCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPerf = lightweight || PerformanceProvider.of(context);
 
-    Widget content = GlassCard(
-      padding: EdgeInsets.zero,
-      quality: lightweight ? GlassQuality.standard : GlassQuality.premium,
-      clipBehavior: Clip.antiAlias,
-      shape: LiquidRoundedSuperellipse(borderRadius: borderRadius),
-      child: DecoratedBox(
+    if (isPerf) {
+      Widget content = ClipRRect(
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF161C24) : Colors.white,
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFD8E2E7),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+                blurRadius: 8,
+                offset: const Offset(0, 2),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: padding,
+            child: child,
+          ),
+        ),
+      );
+
+      if (onTap != null) {
+        content = InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: content,
+        );
+      }
+
+      return content;
+    }
+
+    final decoratedBox = DecoratedBox(
         decoration: BoxDecoration(
           gradient: LinearGradient(
             begin: Alignment.topLeft,
@@ -208,8 +253,20 @@ class GlassSectionCard extends StatelessWidget {
           padding: padding,
           child: child,
         ),
-      ),
-    );
+      );
+
+    Widget content = lightweight
+        ? ClipRRect(
+            borderRadius: BorderRadius.circular(borderRadius),
+            child: decoratedBox,
+          )
+        : GlassCard(
+            padding: EdgeInsets.zero,
+            quality: GlassQuality.standard,
+            clipBehavior: Clip.antiAlias,
+            shape: LiquidRoundedSuperellipse(borderRadius: borderRadius),
+            child: decoratedBox,
+          );
 
     if (onTap != null) {
       content = InkWell(

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 import '../privacy_provider.dart';
+import '../performance_provider.dart';
 
 void openAppDrawer(BuildContext context) {
   ScaffoldState? state;
@@ -85,7 +86,7 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
     double extra = 2.0,
   }) {
     final top = MediaQuery.paddingOf(context).top;
-    final barHeight = toolbarHeight + (hasBottom ? bottomHeight : 0.0);
+    final barHeight = toolbarHeight + (hasBottom ? (bottomHeight + 8.0) : 0.0);
     // If Scaffold with extendBodyBehindAppBar is used, MediaQuery.paddingOf(context).top
     // already includes the status bar AND the AppBar height. Adding barHeight again
     // would double the gap!
@@ -98,7 +99,10 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
   @override
   Size get preferredSize {
     final bottomHeight = bottom?.preferredSize.height ?? 0.0;
-    return Size.fromHeight(toolbarHeight + bottomHeight + topMargin + bottomMargin);
+    final bottomExtra = bottom != null ? 8.0 : 0.0;
+    return Size.fromHeight(
+      toolbarHeight + bottomHeight + topMargin + bottomMargin + bottomExtra,
+    );
   }
 
   @override
@@ -158,7 +162,7 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
     ];
 
     Widget titleRow = SizedBox(
-      height: toolbarHeight - 8,
+      height: 40.0,
       child: Row(
         children: [
           effectiveLeading,
@@ -191,6 +195,54 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
     );
 
     final top = MediaQuery.paddingOf(context).top;
+    final isPerf = PerformanceProvider.of(context);
+
+    if (isPerf) {
+      return Padding(
+        padding: EdgeInsets.fromLTRB(
+          horizontalMargin,
+          top + topMargin,
+          horizontalMargin,
+          bottomMargin,
+        ),
+        child: Container(
+          decoration: BoxDecoration(
+            color: isDark ? const Color(0xFF141A22) : Colors.white,
+            borderRadius: BorderRadius.circular(borderRadius),
+            border: Border.all(
+              color: isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : const Color(0xFFD0DDE3),
+              width: 1.0,
+            ),
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
+              ),
+            ],
+          ),
+          child: Padding(
+            padding: EdgeInsets.fromLTRB(
+              8,
+              4,
+              8,
+              bottom != null ? 6 : 4,
+            ),
+            child: bottom == null
+                ? titleRow
+                : Column(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      titleRow,
+                      bottom!,
+                    ],
+                  ),
+          ),
+        ),
+      );
+    }
 
     return Padding(
       padding: EdgeInsets.fromLTRB(
@@ -236,7 +288,12 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
                     ],
                   ),
                   child: Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                    padding: EdgeInsets.fromLTRB(
+                      8,
+                      4,
+                      8,
+                      bottom != null ? 6 : 4,
+                    ),
                     child: bottom == null
                         ? titleRow
                         : Column(

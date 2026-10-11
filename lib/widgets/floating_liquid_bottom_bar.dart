@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
+import '../performance_provider.dart';
 
 class FloatingLiquidBottomBar extends StatelessWidget {
   const FloatingLiquidBottomBar({
@@ -78,71 +79,100 @@ class FloatingLiquidBottomBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPerf = PerformanceProvider.of(context);
     final visualIndex = _pageToVisualIndex[selectedIndex];
     final items = _buildItems(finansalErisim);
 
-    return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: RepaintBoundary(
-        child: AdaptiveLiquidGlassLayer(
-          quality: _barQuality,
-          blendAmount: 6,
-          settings: _barLayerSettings(isDark),
-          shape: const LiquidRoundedSuperellipse(borderRadius: 28),
-          child: SizedBox(
-            height: 84,
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final itemWidth = constraints.maxWidth / items.length;
-                final bubbleCenterX = itemWidth * (visualIndex + 0.5);
+    Widget barContent = SizedBox(
+      height: 84,
+      child: LayoutBuilder(
+        builder: (context, constraints) {
+          final itemWidth = constraints.maxWidth / items.length;
+          final bubbleCenterX = itemWidth * (visualIndex + 0.5);
 
-                return Stack(
-                  clipBehavior: Clip.none,
-                  children: [
-                    Positioned.fill(
-                      top: 18,
-                      child: GlassContainer(
+          final navRow = Row(
+            children: List.generate(items.length, (index) {
+              final item = items[index];
+              return Expanded(
+                child: _BarItem(
+                  data: item,
+                  isSelected: index == visualIndex,
+                  onTap: () => onSelected(_visualToPageIndex[index]),
+                ),
+              );
+            }),
+          );
+
+          return Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Positioned.fill(
+                top: 18,
+                child: isPerf
+                    ? Container(
+                        padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
+                        decoration: BoxDecoration(
+                          color: isDark ? const Color(0xFF141A22) : Colors.white,
+                          borderRadius: BorderRadius.circular(28),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.10)
+                                : const Color(0xFFD0DDE3),
+                            width: 1.0,
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.06),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
+                            ),
+                          ],
+                        ),
+                        child: navRow,
+                      )
+                    : GlassContainer(
                         quality: _barQuality,
                         clipBehavior: Clip.antiAlias,
                         shape: const LiquidRoundedSuperellipse(borderRadius: 28),
                         padding: const EdgeInsets.fromLTRB(10, 10, 10, 10),
-                        child: Row(
-                          children: List.generate(items.length, (index) {
-                            final item = items[index];
-                            return Expanded(
-                              child: _BarItem(
-                                data: item,
-                                isSelected: index == visualIndex,
-                                onTap: () => onSelected(_visualToPageIndex[index]),
-                              ),
-                            );
-                          }),
-                        ),
+                        child: navRow,
                       ),
+              ),
+              TweenAnimationBuilder<double>(
+                tween: Tween<double>(end: bubbleCenterX),
+                duration: _slideDuration,
+                curve: _slideCurve,
+                builder: (context, animatedX, _) {
+                  return Positioned(
+                    left: animatedX - 29,
+                    top: 0,
+                    child: _SelectedProtrusion(
+                      key: ValueKey<int>(visualIndex),
+                      data: items[visualIndex],
+                      isDark: isDark,
+                      onTap: () => onSelected(_visualToPageIndex[visualIndex]),
                     ),
-                    TweenAnimationBuilder<double>(
-                      tween: Tween<double>(end: bubbleCenterX),
-                      duration: _slideDuration,
-                      curve: _slideCurve,
-                      builder: (context, animatedX, _) {
-                        return Positioned(
-                          left: animatedX - 29,
-                          top: 0,
-                          child: _SelectedProtrusion(
-                            key: ValueKey<int>(visualIndex),
-                            data: items[visualIndex],
-                            isDark: isDark,
-                            onTap: () => onSelected(_visualToPageIndex[visualIndex]),
-                          ),
-                        );
-                      },
-                    ),
-                  ],
-                );
-              },
-            ),
-          ),
-        ),
+                  );
+                },
+              ),
+            ],
+          );
+        },
+      ),
+    );
+
+    return SafeArea(
+      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+      child: RepaintBoundary(
+        child: isPerf
+            ? barContent
+            : AdaptiveLiquidGlassLayer(
+                quality: _barQuality,
+                blendAmount: 6,
+                settings: _barLayerSettings(isDark),
+                shape: const LiquidRoundedSuperellipse(borderRadius: 28),
+                child: barContent,
+              ),
       ),
     );
   }

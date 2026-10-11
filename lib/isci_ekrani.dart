@@ -13,6 +13,7 @@ import 'tur_servisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_empty_state.dart';
+import 'puanlama_servisi.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -399,7 +400,10 @@ class _IsciEkraniState extends State<IsciEkrani>
                                       } else {
                                         await servisi.isciEkle(widget.teamId, isci);
                                       }
-                                      if (mounted && ctx.mounted) Navigator.pop(ctx);
+                                      if (mounted && ctx.mounted) {
+                                        Navigator.pop(ctx);
+                                        PuanlamaServisi.islemSonrasiKontrolEtVeGoster(context);
+                                      }
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
