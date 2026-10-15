@@ -14,7 +14,8 @@
         android:name="${applicationName}"
         android:icon="@mipmap/launcher_icon"
         android:allowBackup="false"
-        android:fullBackupOnly="false">
+        android:fullBackupOnly="false"
+        android:usesCleartextTraffic="true">
 
         <activity
             android:name=".MainActivity"

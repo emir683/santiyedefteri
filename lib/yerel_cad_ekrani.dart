@@ -2,6 +2,7 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
@@ -65,6 +66,8 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       'https://durham-recommended-processing-seconds.trycloudflare.com';
 
   WebViewController? _webViewController;
+  HttpServer? _localCadServer;
+  int? _localCadServerPort;
   bool _isWebViewReady = false;
   bool _isViewingDrawing = false;
   bool _isParsing = false;
@@ -85,6 +88,12 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
         _openLocalFile(widget.initialFilePath!, widget.initialFileName);
       });
     }
+  }
+
+  @override
+  void dispose() {
+    _localCadServer?.close(force: true);
+    super.dispose();
   }
 
   Future<void> _loadRecentFiles() async {
@@ -144,6 +153,71 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
     } catch (_) {}
   }
 
+  Future<void> _startLocalCadServer() async {
+    if (_localCadServer != null) return;
+    try {
+      final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
+      _localCadServer = server;
+      _localCadServerPort = server.port;
+
+      server.listen((HttpRequest request) async {
+        try {
+          var path = request.uri.path;
+          if (path == '/' || path.isEmpty) {
+            path = 'index.html';
+          } else if (path.startsWith('/')) {
+            path = path.substring(1);
+          }
+
+          String mime = 'text/plain';
+          if (path.endsWith('.html')) {
+            mime = 'text/html; charset=utf-8';
+          } else if (path.endsWith('.js')) {
+            mime = 'application/javascript; charset=utf-8';
+          } else if (path.endsWith('.wasm')) {
+            mime = 'application/wasm';
+          } else if (path.endsWith('.css')) {
+            mime = 'text/css; charset=utf-8';
+          } else if (path.endsWith('.json')) {
+            mime = 'application/json; charset=utf-8';
+          }
+
+          final assetKey = 'assets/yerel_cad/$path';
+          final byteData = await rootBundle.load(assetKey);
+          final bytes = byteData.buffer.asUint8List(
+            byteData.offsetInBytes,
+            byteData.lengthInBytes,
+          );
+
+          request.response.headers.set('Content-Type', mime);
+          request.response.headers.set('Access-Control-Allow-Origin', '*');
+          request.response.headers.set('Cache-Control', 'no-cache');
+          request.response.statusCode = HttpStatus.ok;
+          request.response.add(bytes);
+          await request.response.close();
+        } catch (e) {
+          request.response.statusCode = HttpStatus.notFound;
+          request.response.write('404: $e');
+          await request.response.close();
+        }
+      });
+      debugPrint('[Yerel CAD] Localhost sunucu aktif: http://127.0.0.1:$_localCadServerPort');
+    } catch (e) {
+      debugPrint('[Yerel CAD] Localhost sunucu başlatılamadı: $e');
+    }
+  }
+
+  Future<void> _loadCadHtml() async {
+    await _startLocalCadServer();
+    if (_localCadServerPort != null) {
+      await _webViewController?.loadRequest(
+        Uri.parse('http://127.0.0.1:$_localCadServerPort/index.html'),
+      );
+    } else {
+      await _webViewController?.loadFlutterAsset('assets/yerel_cad/index.html');
+    }
+  }
+
   void _initWebViewController() {
     final controller = WebViewController();
     controller
@@ -161,8 +235,13 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                 });
               }
             } else if (data['type'] == 'dwg_wasm_failed') {
-              // Yerel WASM çözemezse otomatik olarak bulut dönüştürücüyü dene
+              debugPrint('[Yerel CAD] Yerel WASM çözemedi, buluta aktarılıyor: ${data['error']}');
               if (_pendingDwgFile != null && _pendingDwgFileName != null) {
+                if (mounted) {
+                  setState(() {
+                    _parsingStatusText = 'Bulut CAD motoruna aktarılıyor...';
+                  });
+                }
                 _convertAndOpenDwg(_pendingDwgFile!, _pendingDwgFileName!);
               }
             }
@@ -185,8 +264,8 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
         ),
       );
 
-    controller.loadFlutterAsset('assets/yerel_cad/index.html');
     _webViewController = controller;
+    _loadCadHtml();
   }
 
   Future<void> _pickAndOpenFile() async {
@@ -266,8 +345,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       _pendingDwgFileName = fileName;
 
       if (!_isWebViewReady) {
-        await _webViewController
-            ?.loadFlutterAsset('assets/yerel_cad/index.html');
+        await _loadCadHtml();
         await Future.delayed(const Duration(milliseconds: 300));
       }
 
@@ -285,8 +363,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
     } else {
       // Standart DXF dosyası - Tamamen internetsiz, doğrudan telefonun GPU'sunda çalışır
       if (!_isWebViewReady) {
-        await _webViewController
-            ?.loadFlutterAsset('assets/yerel_cad/index.html');
+        await _loadCadHtml();
         await Future.delayed(const Duration(milliseconds: 300));
       }
       final content = utf8.decode(bytes, allowMalformed: true);
@@ -394,7 +471,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       _isViewingDrawing = true;
       _activeDrawingName = 'HASAN AKTAŞ STATİK (DEMO)';
     });
-    _webViewController?.loadFlutterAsset('assets/yerel_cad/index.html');
+    _loadCadHtml();
     _webViewController?.runJavaScript('window.loadDemoPlan();');
   }
 
@@ -507,23 +584,31 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
 
     // Eğer çizim görüntüleniyorsa tam ekran WebGL CAD motorunu göster
     if (_isViewingDrawing) {
-      return Scaffold(
-        backgroundColor: Colors.black,
-        appBar: AppBar(
+      return PopScope(
+        canPop: false,
+        onPopInvokedWithResult: (didPop, result) {
+          if (didPop) return;
+          setState(() {
+            _isViewingDrawing = false;
+          });
+          _loadCadHtml();
+        },
+        child: Scaffold(
           backgroundColor: Colors.black,
-          elevation: 0,
-          leading: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded,
-                color: Colors.white, size: 19),
-            onPressed: () {
-              setState(() {
-                _isViewingDrawing = false;
-              });
-              _webViewController
-                  ?.loadFlutterAsset('assets/yerel_cad/index.html');
-            },
-            tooltip: 'Dosyalara Dön',
-          ),
+          appBar: AppBar(
+            backgroundColor: Colors.black,
+            elevation: 0,
+            leading: IconButton(
+              icon: const Icon(Icons.arrow_back_ios_new_rounded,
+                  color: Colors.white, size: 19),
+              onPressed: () {
+                setState(() {
+                  _isViewingDrawing = false;
+                });
+                _loadCadHtml();
+              },
+              tooltip: 'Dosyalara Dön',
+            ),
           title: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             mainAxisSize: MainAxisSize.min,
@@ -605,8 +690,9 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
               ),
           ],
         ),
-      );
-    }
+      ),
+    );
+  }
 
     // Ana Dosya Seçim & Çevrimdışı Bilgi Ekranı
     return Scaffold(

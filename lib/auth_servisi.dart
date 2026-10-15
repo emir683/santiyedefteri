@@ -157,7 +157,8 @@ class AuthServisi {
     if (!kIsWeb) {
       try {
         final currentUser = _auth.currentUser;
-        final isGoogleUser = currentUser?.providerData.any(
+        final isGoogleUser =
+            currentUser?.providerData.any(
               (p) => p.providerId == 'google.com',
             ) ??
             false;

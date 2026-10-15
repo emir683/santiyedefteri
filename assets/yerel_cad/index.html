@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Şantiye Çevrimdışı CAD Motoru</title>
-  <script type="module" src="libredwg-web.js"></script>
+  <script src="libredwg-web.js"></script>
   <style>
     :root {
       --bg-main: #000000;
@@ -1875,25 +1875,43 @@
     };
 
     let wasmModule = null;
+    let wasmLoadingPromise = null;
+
     async function getWasmModule() {
       if (wasmModule) return wasmModule;
-      if (!window.createModule) {
-        try {
-          const mod = await import('./libredwg-web.js');
-          window.createModule = mod.default || mod.createModule;
-        } catch (e) {
-          console.warn('Import failed, checking global createModule:', e);
+      if (wasmLoadingPromise) return wasmLoadingPromise;
+
+      wasmLoadingPromise = (async () => {
+        let retries = 0;
+        while (typeof window.createModule !== 'function' && retries < 15) {
+          await new Promise(r => setTimeout(r, 100));
+          retries++;
         }
-      }
-      if (typeof window.createModule !== 'function') {
-        throw new Error('WebAssembly modülü yüklenemedi.');
-      }
-      loaderSub.innerText = 'C++ WebAssembly Motoru Başlatılıyor...';
-      loaderProgress.style.width = '30%';
-      wasmModule = await window.createModule({
-        locateFile: (f) => f.endsWith('.wasm') ? 'libredwg-web.wasm' : f
-      });
-      return wasmModule;
+
+        if (typeof window.createModule !== 'function') {
+          try {
+            const mod = await import('./libredwg-web.js');
+            window.createModule = mod.default || mod.createModule || window.createModule;
+          } catch (e) {
+            console.warn('Dynamic import fallback:', e);
+          }
+        }
+
+        if (typeof window.createModule !== 'function') {
+          throw new Error('WebAssembly kütüphanesi başlatılamadı.');
+        }
+
+        loaderSub.innerText = 'C++ WebAssembly Çekirdeği Başlatılıyor...';
+        loaderProgress.style.width = '35%';
+
+        const mod = await window.createModule({
+          locateFile: (f) => f.endsWith('.wasm') ? 'libredwg-web.wasm' : f
+        });
+        wasmModule = mod;
+        return mod;
+      })();
+
+      return wasmLoadingPromise;
     }
 
     window.loadDwgFileBase64 = async function(base64Data, fileName) {
@@ -1936,7 +1954,8 @@
           window.loadDxfString(dxfStr, fileName);
         } catch (e) {
           console.error('WASM DWG Error:', e);
-          loaderSub.innerText = 'Yerel DWG çözümleme hatası: ' + e.message;
+          loaderSub.innerText = 'Çizim CAD motoruna aktarılıyor...';
+          loaderProgress.style.width = "55%";
           if (window.YerelCadBridge) {
             window.YerelCadBridge.postMessage(JSON.stringify({
               type: 'dwg_wasm_failed',
@@ -1953,6 +1972,10 @@
       resize();
       // Load demo plan by default until Flutter sends file data
       loadDemoPlan();
+      // Pre-warm WASM in background
+      setTimeout(() => {
+        getWasmModule().catch(e => console.log('WASM background pre-warm:', e.message));
+      }, 300);
     };
   </script>
 </body>
