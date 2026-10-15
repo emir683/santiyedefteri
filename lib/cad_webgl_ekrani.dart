@@ -10,13 +10,11 @@ import 'tema_ayarlari.dart';
 class CadWebglEkrani extends StatefulWidget {
   final String webglUrl;
   final String projeAdi;
-  final String? localPdfPath;
 
   const CadWebglEkrani({
     super.key,
     required this.webglUrl,
     required this.projeAdi,
-    this.localPdfPath,
   });
 
   @override
@@ -158,29 +156,7 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
                     ),
                   ),
                 ),
-                if (widget.localPdfPath != null)
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 4),
-                    child: TextButton.icon(
-                      onPressed: () => Navigator.of(context).pop(),
-                      icon: Icon(Icons.picture_as_pdf_rounded, color: accentColor, size: 15),
-                      label: Text(
-                        'PDF',
-                        style: GoogleFonts.poppins(
-                          color: accentColor,
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      style: TextButton.styleFrom(
-                        backgroundColor: accentColor.withValues(alpha: 0.12),
-                        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                        minimumSize: Size.zero,
-                        tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                      ),
-                    ),
-                  ),
+
                 IconButton(
                   icon: Icon(Icons.open_in_browser_rounded, color: appBarFg.withValues(alpha: 0.7), size: 19),
                   tooltip: 'Tarayıcıda Aç',
