@@ -74,8 +74,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   String _parsingStatusText = 'Vektörler çözümleniyor...';
   String _activeDrawingName = '';
   List<YerelCadDosya> _recentFiles = [];
-  File? _pendingDwgFile;
-  String? _pendingDwgFileName;
 
   @override
   void initState() {
@@ -235,14 +233,43 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                 });
               }
             } else if (data['type'] == 'dwg_wasm_failed') {
-              debugPrint('[Yerel CAD] Yerel WASM çözemedi, buluta aktarılıyor: ${data['error']}');
-              if (_pendingDwgFile != null && _pendingDwgFileName != null) {
+              final errStr = data['error'] as String? ?? 'Bilinmeyen hata';
+              debugPrint('[Yerel CAD] Yerel DWG çözümlenemedi (Ana sunucuya gönderilmiyor): $errStr');
+              if (mounted) {
+                setState(() {
+                  _isParsing = false;
+                });
+                ScaffoldMessenger.of(context).showSnackBar(
+                  SnackBar(
+                    content: Text(
+                      'Yerel DWG Çözümleme Hatası: $errStr',
+                    ),
+                    backgroundColor: Colors.redAccent.shade700,
+                    duration: const Duration(seconds: 10),
+                    action: SnackBarAction(
+                      label: 'Hata Ayıkla',
+                      textColor: Colors.white,
+                      onPressed: () {
+                        _webViewController?.runJavaScript(
+                            'window.openDebugger ? window.openDebugger() : CADDebugger.open();');
+                      },
+                    ),
+                  ),
+                );
+              }
+            } else if (data['type'] == 'copy_clipboard') {
+              final text = data['text'] as String? ?? '';
+              if (text.isNotEmpty) {
+                Clipboard.setData(ClipboardData(text: text));
                 if (mounted) {
-                  setState(() {
-                    _parsingStatusText = 'Bulut CAD motoruna aktarılıyor...';
-                  });
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Hata ayıklama raporu panoya kopyalandı.'),
+                      backgroundColor: Color(0xFF10B981),
+                      duration: Duration(seconds: 3),
+                    ),
+                  );
                 }
-                _convertAndOpenDwg(_pendingDwgFile!, _pendingDwgFileName!);
               }
             }
           } catch (_) {}
@@ -341,9 +368,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
 
     // DWG ise doğrudan yerel WebAssembly motoruyla çöz (sıfır internet)
     if (extension == 'dwg') {
-      _pendingDwgFile = file;
-      _pendingDwgFileName = fileName;
-
       if (!_isWebViewReady) {
         await _loadCadHtml();
         await Future.delayed(const Duration(milliseconds: 300));
@@ -649,6 +673,15 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
             ],
           ),
           actions: [
+            IconButton(
+              icon: const Icon(Icons.bug_report_outlined,
+                  color: Color(0xFFF87171), size: 21),
+              tooltip: 'Hata Ayıklayıcı (Debugger)',
+              onPressed: () {
+                _webViewController?.runJavaScript(
+                    'window.openDebugger ? window.openDebugger() : CADDebugger.open();');
+              },
+            ),
             IconButton(
               icon: const Icon(Icons.file_open_outlined,
                   color: Color(0xFF38BDF8), size: 21),

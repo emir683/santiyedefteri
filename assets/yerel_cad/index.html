@@ -553,6 +553,98 @@
       outline: none;
       cursor: pointer;
     }
+
+    /* Loader Error State */
+    #loader.has-error {
+      border-color: rgba(239, 68, 68, 0.65) !important;
+      box-shadow: 0 20px 50px rgba(220, 38, 38, 0.4) !important;
+      width: 340px;
+    }
+
+    #loader.has-error #loader-ring {
+      display: none !important;
+    }
+
+    #loader.has-error #loader-icon {
+      display: block !important;
+    }
+
+    #loader.has-error #loader-title {
+      color: #f87171 !important;
+    }
+
+    #loader.has-error #loader-sub {
+      color: #fca5a5 !important;
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.3);
+      border-radius: 10px;
+      padding: 10px 12px;
+      font-family: monospace;
+      font-size: 11px;
+      max-height: 140px;
+      overflow-y: auto;
+      text-align: left;
+      word-break: break-all;
+      user-select: text;
+      -webkit-user-select: text;
+    }
+
+    #loader.has-error .progress-bar-bg {
+      display: none !important;
+    }
+
+    #loader.has-error #loader-error-actions {
+      display: flex !important;
+    }
+
+    /* Debugger Modal */
+    #debugger-modal {
+      display: none;
+      position: fixed;
+      inset: 10px;
+      z-index: 99999;
+      background: rgba(10, 15, 29, 0.97);
+      backdrop-filter: blur(24px);
+      -webkit-backdrop-filter: blur(24px);
+      border: 1px solid rgba(239, 68, 68, 0.4);
+      border-radius: 18px;
+      box-shadow: 0 24px 70px rgba(0, 0, 0, 0.9);
+      flex-direction: column;
+      overflow: hidden;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, monospace;
+      color: #f8fafc;
+      animation: popIn 0.2s ease;
+    }
+
+    .debug-step-row {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      padding: 7px 10px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.03);
+      border-left: 3px solid #64748b;
+    }
+
+    .debug-step-row.status-ok {
+      border-left-color: #10b981;
+      background: rgba(16, 185, 129, 0.06);
+    }
+
+    .debug-step-row.status-error {
+      border-left-color: #ef4444;
+      background: rgba(239, 68, 68, 0.14);
+    }
+
+    .debug-step-row.status-warn {
+      border-left-color: #f59e0b;
+      background: rgba(245, 158, 11, 0.08);
+    }
+
+    .debug-step-row.status-running {
+      border-left-color: #38bdf8;
+      background: rgba(56, 189, 248, 0.08);
+    }
   </style>
 </head>
 <body>
@@ -571,6 +663,23 @@
 
   <!-- Top Right Actions -->
   <div id="hud-actions">
+    <button class="action-btn" id="btn-debug" title="Hata Ayıklayıcı (Debugger)" style="border-color: rgba(239, 68, 68, 0.45); color: #f87171; background: rgba(239, 68, 68, 0.1);">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="m8 2 1.88 1.88"></path>
+        <path d="M14.12 3.88 16 2"></path>
+        <path d="M9 7.13v-1a3.003 3.003 0 1 1 6 0v1"></path>
+        <path d="M12 20c-3.3 0-6-2.7-6-6v-3a4 4 0 0 1 4-4h4a4 4 0 0 1 4 4v3c0 3.3-2.7 6-6 6"></path>
+        <path d="M12 20v-9"></path>
+        <path d="M6.53 9C4.6 8.8 3 7.1 3 5"></path>
+        <path d="M6 13H2"></path>
+        <path d="M3 21c0-2.1 1.7-3.9 3.8-4"></path>
+        <path d="M20.97 5c0 2.1-1.6 3.8-3.5 4"></path>
+        <path d="M22 13h-4"></path>
+        <path d="M17.2 17c2.1.1 3.8 1.9 3.8 4"></path>
+      </svg>
+      <span>Hata Ayıkla</span>
+    </button>
+
     <button class="action-btn" id="btn-layers" title="Katmanlar">
       <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
         <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
@@ -680,11 +789,70 @@
 
   <!-- Loader -->
   <div id="loader">
-    <div class="loader-ring"></div>
+    <div class="loader-ring" id="loader-ring"></div>
+    <div id="loader-icon" style="display:none; font-size:32px; line-height:1;">⚠️</div>
     <div id="loader-title">Çevrimdışı CAD Çözümleniyor</div>
     <div id="loader-sub">Vektör katmanları ve bloklar yerel GPU'ya hazırlanıyor...</div>
-    <div class="progress-bar-bg">
+    <div class="progress-bar-bg" id="loader-progress-bar">
       <div id="loader-progress"></div>
+    </div>
+    <div id="loader-error-actions" style="display:none; flex-direction:column; gap:8px; width:100%; margin-top:6px;">
+      <button class="action-btn" id="btn-open-debugger-from-loader" style="width:100%; justify-content:center; background:#dc2626; border-color:#ef4444; color:#fff; font-weight:700;">
+        🐞 Hata Ayıklayıcıyı Aç (Debugger)
+      </button>
+      <button class="action-btn" id="btn-copy-report-from-loader" style="width:100%; justify-content:center; background:rgba(255,255,255,0.08); border-color:rgba(255,255,255,0.2);">
+        📋 Hata Raporunu Kopyala
+      </button>
+    </div>
+  </div>
+
+  <!-- Debugger Modal -->
+  <div id="debugger-modal">
+    <div style="display:flex; justify-content:space-between; align-items:center; padding:14px 18px; border-bottom:1px solid rgba(255,255,255,0.1); background:rgba(239, 68, 68, 0.08); flex-shrink:0;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:18px;">🐞</span>
+        <div>
+          <div style="font-size:14px; font-weight:700; color:#fca5a5;">Yerel CAD Hata Ayıklayıcı</div>
+          <div style="font-size:10.5px; color:#94a3b8;" id="debug-file-info">Dosya: Bekleniyor...</div>
+        </div>
+      </div>
+      <div style="display:flex; gap:8px;">
+        <button id="btn-copy-debug-modal" style="background:#0284c7; border:none; color:#fff; border-radius:8px; padding:6px 12px; font-size:12px; font-weight:600; cursor:pointer;">
+          📋 Raporu Kopyala
+        </button>
+        <button id="btn-close-debug-modal" style="background:rgba(255,255,255,0.15); border:none; color:#fff; border-radius:8px; padding:6px 12px; font-size:13px; font-weight:700; cursor:pointer;">
+          ✕
+        </button>
+      </div>
+    </div>
+
+    <div style="flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:14px; touch-action:pan-y;">
+      <!-- Diagnostic Checklist -->
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px;">
+        <div style="font-size:11.5px; font-weight:700; color:#38bdf8; text-transform:uppercase; margin-bottom:8px; letter-spacing:0.5px;">
+          Adım Adım Çalışma Durumu
+        </div>
+        <div id="debug-checklist" style="display:flex; flex-direction:column; gap:6px; font-size:12px;">
+          <!-- Dynamically filled -->
+        </div>
+      </div>
+
+      <!-- Environment Details -->
+      <div style="background:rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.08); border-radius:12px; padding:12px; font-size:11px; line-height:1.6; color:#cbd5e1;">
+        <div style="font-size:11.5px; font-weight:700; color:#38bdf8; text-transform:uppercase; margin-bottom:6px; letter-spacing:0.5px;">
+          Sistem ve Motor Bilgileri
+        </div>
+        <div id="debug-env-info">Yükleniyor...</div>
+      </div>
+
+      <!-- Live Log Stream / Stack Trace -->
+      <div style="background:#050811; border:1px solid rgba(255,255,255,0.12); border-radius:12px; padding:12px; flex:1; min-height:160px; display:flex; flex-direction:column;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+          <span style="font-size:11px; font-weight:700; color:#94a3b8; text-transform:uppercase;">Konsol Logları & Hata İncelemesi</span>
+          <span style="font-size:10px; color:#64748b;" id="debug-log-count">0 kayıt</span>
+        </div>
+        <pre id="debug-console-log" style="flex:1; overflow-y:auto; font-family:monospace; font-size:11px; color:#e2e8f0; white-space:pre-wrap; word-break:break-all; user-select:text; -webkit-user-select:text; touch-action:pan-y;"></pre>
+      </div>
     </div>
   </div>
 
@@ -1874,6 +2042,154 @@
       window.loadDxfString(raw, fileName);
     };
 
+    /* ========================================================================
+       YEREL CAD HATA AYIKLAYICI (DEBUGGER) MOTORU
+       ======================================================================== */
+    const CADDebugger = {
+      entries: [],
+      steps: {},
+      currentFile: null,
+
+      init() {
+        window.addEventListener('error', (e) => {
+          this.log('WINDOW', (e.message || 'Bilinmeyen hata') + ' (' + (e.filename || '') + ':' + (e.lineno || 0) + ')', 'error');
+        });
+        window.addEventListener('unhandledrejection', (e) => {
+          const reason = (e.reason && e.reason.stack) ? e.reason.stack : String(e.reason);
+          this.log('PROMISE', reason, 'error');
+        });
+
+        let envHtml = '';
+        envHtml += '<div><b>Sayfa Konumu:</b> ' + window.location.href + '</div>';
+        envHtml += '<div><b>Protokol:</b> ' + window.location.protocol + '</div>';
+        envHtml += '<div><b>WebAssembly:</b> ' + (typeof WebAssembly !== 'undefined' ? 'Destekleniyor ✅' : 'DESTEKLENMİYOR ❌') + '</div>';
+        envHtml += '<div><b>createModule (JS):</b> ' + (typeof window.createModule === 'function' ? 'Hazır ✅' : 'Tanımsız / Yüklenmedi ⚠️') + '</div>';
+        envHtml += '<div><b>YerelCadBridge (Flutter):</b> ' + (typeof window.YerelCadBridge !== 'undefined' ? 'Aktif ✅' : 'Bağlı Değil ⚠️') + '</div>';
+        envHtml += '<div><b>Tarayıcı User-Agent:</b> ' + navigator.userAgent + '</div>';
+
+        const envEl = document.getElementById('debug-env-info');
+        if (envEl) envEl.innerHTML = envHtml;
+
+        const btnDebug = document.getElementById('btn-debug');
+        if (btnDebug) btnDebug.onclick = () => this.open();
+
+        const btnClose = document.getElementById('btn-close-debug-modal');
+        if (btnClose) btnClose.onclick = () => this.close();
+
+        const btnCopy = document.getElementById('btn-copy-debug-modal');
+        if (btnCopy) btnCopy.onclick = () => this.copyReport();
+
+        const btnOpenFromLoader = document.getElementById('btn-open-debugger-from-loader');
+        if (btnOpenFromLoader) btnOpenFromLoader.onclick = () => this.open();
+
+        const btnCopyFromLoader = document.getElementById('btn-copy-report-from-loader');
+        if (btnCopyFromLoader) btnCopyFromLoader.onclick = () => this.copyReport();
+
+        this.log('SYSTEM', 'Hata ayıklayıcı aktif. Ortam: ' + (window.location.origin || window.location.href), 'info');
+      },
+
+      log(cat, msg, level = 'info') {
+        const time = new Date().toTimeString().split(' ')[0] + '.' + String(Date.now() % 1000).padStart(3, '0');
+        this.entries.push({ time, cat, msg, level });
+
+        const countEl = document.getElementById('debug-log-count');
+        if (countEl) countEl.innerText = this.entries.length + ' kayıt';
+
+        const pre = document.getElementById('debug-console-log');
+        if (pre) {
+          const color = level === 'error' ? '#f87171' : (level === 'warn' ? '#fbbf24' : (level === 'ok' ? '#34d399' : '#93c5fd'));
+          pre.innerHTML += `<span style="color:#64748b;">[${time}]</span> <span style="color:${color}; font-weight:700;">[${cat}]</span> ${escapeHtml(msg)}\n`;
+          pre.scrollTop = pre.scrollHeight;
+        }
+      },
+
+      setStep(id, title, status, details = '') {
+        this.steps[id] = { id, title, status, details, time: new Date().toTimeString().split(' ')[0] };
+        this.renderChecklist();
+        this.log(id.toUpperCase(), title + (details ? ': ' + details : ''), status);
+      },
+
+      renderChecklist() {
+        const container = document.getElementById('debug-checklist');
+        if (!container) return;
+        let html = '';
+        for (const key in this.steps) {
+          const s = this.steps[key];
+          const icon = s.status === 'ok' ? '✅' : (s.status === 'error' ? '❌' : (s.status === 'warn' ? '⚠️' : '⏳'));
+          html += `
+            <div class="debug-step-row status-${s.status}">
+              <span style="font-size:14px; flex-shrink:0;">${icon}</span>
+              <div style="flex:1;">
+                <div style="font-weight:700; color:#f8fafc;">${s.title}</div>
+                ${s.details ? `<div style="font-size:11px; color:#cbd5e1; margin-top:2px;">${escapeHtml(s.details)}</div>` : ''}
+              </div>
+              <span style="font-size:10px; color:#64748b;">${s.time}</span>
+            </div>
+          `;
+        }
+        container.innerHTML = html;
+      },
+
+      open() {
+        const modal = document.getElementById('debugger-modal');
+        if (modal) modal.style.display = 'flex';
+      },
+
+      close() {
+        const modal = document.getElementById('debugger-modal');
+        if (modal) modal.style.display = 'none';
+      },
+
+      getReport() {
+        let r = '================ YEREL CAD HATA AYIKLAMA RAPORU ================\n';
+        r += 'Tarih: ' + new Date().toISOString() + '\n';
+        r += 'Dosya: ' + (this.currentFile || 'Belirtilmedi') + '\n';
+        r += 'URL: ' + window.location.href + '\n';
+        r += 'User-Agent: ' + navigator.userAgent + '\n';
+        r += 'WebAssembly Desteği: ' + (typeof WebAssembly !== 'undefined') + '\n';
+        r += 'window.createModule Tipi: ' + (typeof window.createModule) + '\n\n';
+
+        r += '--- ADIM ADIM TEŞHİS KONTROLÜ ---\n';
+        for (const k in this.steps) {
+          const s = this.steps[k];
+          r += `[${s.status.toUpperCase()}] ${s.title} -> ${s.details} (${s.time})\n`;
+        }
+        r += '\n--- KONSOL LOGLARI & AYRINTILI HATA GEÇMİŞİ ---\n';
+        for (const e of this.entries) {
+          r += `[${e.time}] [${e.level.toUpperCase()}] [${e.cat}] ${e.msg}\n`;
+        }
+        r += '================================================================\n';
+        return r;
+      },
+
+      copyReport() {
+        const report = this.getReport();
+        if (window.YerelCadBridge) {
+          window.YerelCadBridge.postMessage(JSON.stringify({
+            type: 'copy_clipboard',
+            text: report
+          }));
+        }
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+          navigator.clipboard.writeText(report).catch(() => {});
+        }
+        const btn = document.getElementById('btn-copy-debug-modal');
+        if (btn) {
+          const orig = btn.innerText;
+          btn.innerText = '✅ Kopyalandı!';
+          setTimeout(() => { btn.innerText = orig; }, 2000);
+        }
+      }
+    };
+
+    window.openDebugger = () => CADDebugger.open();
+    window.closeDebugger = () => CADDebugger.close();
+
+    function escapeHtml(str) {
+      if (!str) return '';
+      return String(str).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    }
+
     let wasmModule = null;
     let wasmLoadingPromise = null;
 
@@ -1882,8 +2198,9 @@
       if (wasmLoadingPromise) return wasmLoadingPromise;
 
       wasmLoadingPromise = (async () => {
+        CADDebugger.setStep('wasm_init', 'C++ WebAssembly Çekirdeği', 'running', 'Modül başlatılıyor...');
         let retries = 0;
-        while (typeof window.createModule !== 'function' && retries < 15) {
+        while (typeof window.createModule !== 'function' && retries < 20) {
           await new Promise(r => setTimeout(r, 100));
           retries++;
         }
@@ -1893,21 +2210,24 @@
             const mod = await import('./libredwg-web.js');
             window.createModule = mod.default || mod.createModule || window.createModule;
           } catch (e) {
-            console.warn('Dynamic import fallback:', e);
+            CADDebugger.log('WASM_IMPORT', 'Dynamic import denendi ancak başarısız: ' + e.message, 'warn');
           }
         }
 
         if (typeof window.createModule !== 'function') {
-          throw new Error('WebAssembly kütüphanesi başlatılamadı.');
+          CADDebugger.setStep('wasm_init', 'C++ WebAssembly Çekirdeği', 'error', 'createModule fonksiyonu tanımlanamadı (libredwg-web.js yüklenemedi).');
+          throw new Error('WebAssembly kütüphanesi başlatılamadı: window.createModule bulunamadı.');
         }
 
         loaderSub.innerText = 'C++ WebAssembly Çekirdeği Başlatılıyor...';
         loaderProgress.style.width = '35%';
 
+        CADDebugger.log('WASM_INST', 'window.createModule çalıştırılıyor (locateFile: libredwg-web.wasm)...', 'info');
         const mod = await window.createModule({
           locateFile: (f) => f.endsWith('.wasm') ? 'libredwg-web.wasm' : f
         });
         wasmModule = mod;
+        CADDebugger.setStep('wasm_init', 'C++ WebAssembly Çekirdeği', 'ok', 'WebAssembly çekirdeği aktif. FS ve dwg_write_dxf fonksiyonları hazır.');
         return mod;
       })();
 
@@ -1916,16 +2236,23 @@
 
     window.loadDwgFileBase64 = async function(base64Data, fileName) {
       if (fileName) projectTitle.innerText = fileName;
+      CADDebugger.currentFile = fileName;
+      const fileInfoEl = document.getElementById('debug-file-info');
+      if (fileInfoEl) fileInfoEl.innerText = 'Dosya: ' + (fileName || 'Bilinmiyor');
+
+      // Loader'ı aktif duruma getir, hata stilini temizle
+      loader.classList.remove('has-error');
       loader.style.display = 'flex';
-      loaderSub.innerText = "DWG dosyası yerel C++ motoruyla çözümleniyor (0 internet)...";
-      loaderProgress.style.width = "40%";
+      loaderTitle.innerText = "DWG Dosyası Çözümleniyor";
+      loaderSub.innerText = "Yerel C++ WebAssembly motoruyla çözümleniyor (0 internet)...";
+      loaderProgress.style.width = "20%";
+
+      CADDebugger.setStep('input', 'DWG Dosya Verisi', 'ok', fileName + ' (' + Math.round(base64Data.length * 0.75 / 1024) + ' KB)');
 
       setTimeout(async () => {
         try {
-          const mod = await getWasmModule();
-          loaderProgress.style.width = "65%";
-          loaderSub.innerText = "Vektör geometrisi ve katmanlar çıkarılıyor...";
-
+          // 1. Base64 Dönüşümü
+          CADDebugger.setStep('base64', 'Base64 Binary Dönüşümü', 'running', 'Base64 verisi byte dizisine çevriliyor...');
           const binaryStr = atob(base64Data);
           const len = binaryStr.length;
           const bytes = new Uint8Array(len);
@@ -1933,33 +2260,90 @@
             bytes[i] = binaryStr.charCodeAt(i);
           }
 
+          // AutoCAD DWG Sürüm Başlığı Denetimi (İlk 6 byte)
+          let header = '';
+          for (let i = 0; i < Math.min(6, len); i++) {
+            header += String.fromCharCode(bytes[i]);
+          }
+          const versions = {
+            'AC1015': 'AutoCAD 2000 (AC1015)',
+            'AC1018': 'AutoCAD 2004 (AC1018)',
+            'AC1021': 'AutoCAD 2007 (AC1021)',
+            'AC1024': 'AutoCAD 2010 (AC1024)',
+            'AC1027': 'AutoCAD 2013 (AC1027)',
+            'AC1032': 'AutoCAD 2018/2021/2024 (AC1032)'
+          };
+          const verName = versions[header] || ('Özel / Bilinmeyen Başlık: ' + header);
+          CADDebugger.setStep('header', 'AutoCAD DWG Başlık Sürümü', header.startsWith('AC') ? 'ok' : 'warn', verName);
+          CADDebugger.setStep('base64', 'Base64 Binary Dönüşümü', 'ok', len + ' bayt binary bellek hazırlandı.');
+
+          // 2. WebAssembly Modülünü Al
+          loaderProgress.style.width = "40%";
+          loaderSub.innerText = "C++ WebAssembly Çekirdeği Başlatılıyor...";
+          const mod = await getWasmModule();
+
+          // 3. Sanal Dosya Sistemine Yaz
+          loaderProgress.style.width = "60%";
+          loaderSub.innerText = "Sanal dosya sistemine yazılıyor...";
           const inName = 'in_' + Date.now() + '.dwg';
           const outName = 'out_' + Date.now() + '.dxf';
 
+          CADDebugger.setStep('fs_write', 'Sanal Bellek Dosya Yazımı', 'running', inName + ' dosyası oluşturuluyor...');
           mod.FS.writeFile(inName, bytes);
+          const inExists = mod.FS.analyzePath(inName).exists;
+          if (!inExists) {
+            throw new Error('Sanal FS içerisine giriş DWG dosyası yazılamadı.');
+          }
+          CADDebugger.setStep('fs_write', 'Sanal Bellek Dosya Yazımı', 'ok', inName + ' (' + bytes.length + ' bayt) sanal belleğe yazıldı.');
+
+          // 4. LibreDWG C++ Çözümleyici
+          loaderProgress.style.width = "75%";
+          loaderSub.innerText = "Vektör geometrisi ve katmanlar çıkarılıyor...";
+          CADDebugger.setStep('cpp_convert', 'LibreDWG C++ Motoru (dwg_write_dxf)', 'running', 'C++ dönüştürme fonksiyonu çalıştırılıyor...');
+
+          const startTime = performance.now();
           const err = mod.dwg_write_dxf(inName, outName);
+          const elapsed = Math.round(performance.now() - startTime);
 
           const hasOut = mod.FS.analyzePath(outName).exists;
           if (!hasOut) {
-            throw new Error('LibreDWG çözümleme hatası (Kod: ' + err + ')');
+            throw new Error('LibreDWG DWG dosyasını DXF formatına dönüştüremedi. (C++ Hata Kodu: ' + err + ')');
           }
 
           const dxfBytes = mod.FS.readFile(outName);
-          const dxfStr = new TextDecoder('utf-8').decode(dxfBytes);
+          CADDebugger.setStep('cpp_convert', 'LibreDWG C++ Motoru (dwg_write_dxf)', 'ok', 'Dönüştürme tamamlandı: ' + elapsed + ' ms. Çıktı boyutu: ' + Math.round(dxfBytes.length / 1024) + ' KB (Kod: ' + err + ')');
 
           try { mod.FS.unlink(inName); } catch (_) {}
           try { mod.FS.unlink(outName); } catch (_) {}
 
-          loaderProgress.style.width = "85%";
+          // 5. DXF Render
+          loaderProgress.style.width = "90%";
+          loaderSub.innerText = "WebGL ile çizim GPU'ya aktarılıyor...";
+          CADDebugger.setStep('render', 'DXF Vektör Geometrisi & WebGL', 'running', 'Vektörler ve yazılar çiziliyor...');
+          const dxfStr = new TextDecoder('utf-8').decode(dxfBytes);
           window.loadDxfString(dxfStr, fileName);
+          CADDebugger.setStep('render', 'DXF Vektör Geometrisi & WebGL', 'ok', 'Çizim GPU üzerinde WebGL ile başarıyla oluşturuldu.');
+
         } catch (e) {
           console.error('WASM DWG Error:', e);
-          loaderSub.innerText = 'Çizim CAD motoruna aktarılıyor...';
-          loaderProgress.style.width = "55%";
+          CADDebugger.log('EXCEPTION', e.message + (e.stack ? '\n' + e.stack : ''), 'error');
+
+          for (const k in CADDebugger.steps) {
+            if (CADDebugger.steps[k].status === 'running') {
+              CADDebugger.setStep(k, CADDebugger.steps[k].title, 'error', e.message);
+            }
+          }
+
+          // Loader ekranında hatayı ve debugger açma butonunu göster (Kullanıcı isteği: Hata mesajı kalsın, ana sunucuya gitmesin!)
+          loader.classList.add('has-error');
+          loaderTitle.innerText = "Yerel DWG Çözümleme Hatası";
+          loaderSub.innerText = e.message;
+
           if (window.YerelCadBridge) {
             window.YerelCadBridge.postMessage(JSON.stringify({
               type: 'dwg_wasm_failed',
-              error: e.message
+              error: e.message,
+              report: CADDebugger.getReport()
             }));
           }
         }
@@ -1968,13 +2352,14 @@
 
     // Initialize on page load
     window.onload = () => {
+      CADDebugger.init();
       initGL();
       resize();
       // Load demo plan by default until Flutter sends file data
       loadDemoPlan();
       // Pre-warm WASM in background
       setTimeout(() => {
-        getWasmModule().catch(e => console.log('WASM background pre-warm:', e.message));
+        getWasmModule().catch(e => CADDebugger.log('PREWARM', 'WASM arka plan pre-warm: ' + e.message, 'warn'));
       }, 300);
     };
   </script>
