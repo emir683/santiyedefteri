@@ -902,14 +902,68 @@
     }
 
     /* ========================================================================
-       OFFLINE DXF HIGH-FIDELITY PARSER (ZERO EXTERNAL DEPENDENCY)
+       OFFLINE DXF HIGH-FIDELITY PARSER & FAST STREAMING SCANNER
        ======================================================================== */
+    class FastDxfScanner {
+      constructor(str) {
+        this.str = str;
+        this.pos = 0;
+        this.len = str.length;
+        this.pushed = null;
+      }
+
+      pushBack(pair) {
+        this.pushed = pair;
+      }
+
+      nextPair() {
+        if (this.pushed) {
+          const p = this.pushed;
+          this.pushed = null;
+          return p;
+        }
+
+        while (this.pos < this.len) {
+          let nl = this.str.indexOf('\n', this.pos);
+          if (nl === -1) nl = this.len;
+          let line = this.str.substring(this.pos, nl).trim();
+          this.pos = nl + 1;
+          if (!line) continue;
+
+          const code = parseInt(line, 10);
+          if (isNaN(code)) continue;
+
+          let vnl = this.str.indexOf('\n', this.pos);
+          if (vnl === -1) vnl = this.len;
+          let val = this.str.substring(this.pos, vnl).trim();
+          this.pos = vnl + 1;
+
+          return { code, value: val };
+        }
+        return null;
+      }
+    }
+
+    function cleanCadText(str) {
+      if (!str) return '';
+      return str
+        .replace(/%%c/gi, 'Ø')
+        .replace(/%%d/gi, '°')
+        .replace(/%%p/gi, '±')
+        .replace(/\\A[0-9];/g, '')
+        .replace(/\\P/g, ' ')
+        .replace(/\\[A-Za-z0-9]+;?/g, '')
+        .replace(/\{|\}/g, '')
+        .replace(/\s+/g, ' ')
+        .trim();
+    }
+
     class OfflineDxfParser {
       constructor() {
         this.layers = new Map();
         this.blocks = new Map();
-        this.lines = []; // [x1, y1, x2, y2, color, layerIndex]
-        this.triangles = []; // [x1,y1, x2,y2, x3,y3, color, layerIndex]
+        this.lines = []; // [x1, y1, x2, y2, color]
+        this.triangles = []; // [x1,y1, x2,y2, x3,y3, color]
         this.texts = []; // [{text, x, y, size, color, rot, layer}]
         this.bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
       }
@@ -923,26 +977,16 @@
       }
 
       parse(dxfString) {
-        const lines = dxfString.split(/\r?\n/);
-        let i = 0;
-        const total = lines.length;
-
-        function nextPair() {
-          if (i >= total - 1) return null;
-          const code = parseInt(lines[i++].trim(), 10);
-          const value = lines[i++].trim();
-          return { code, value };
-        }
-
+        const scanner = new FastDxfScanner(dxfString);
         let currentSection = null;
         let currentBlock = null;
 
-        while (i < total) {
-          const pair = nextPair();
+        while (true) {
+          const pair = scanner.nextPair();
           if (!pair) break;
 
           if (pair.code === 0 && pair.value === 'SECTION') {
-            const next = nextPair();
+            const next = scanner.nextPair();
             if (next && next.code === 2) currentSection = next.value;
             continue;
           }
@@ -954,23 +998,23 @@
 
           if (currentSection === 'TABLES') {
             if (pair.code === 0 && pair.value === 'LAYER') {
-              this.parseLayer(nextPair);
+              this.parseLayer(scanner);
             }
           } else if (currentSection === 'BLOCKS') {
             if (pair.code === 0 && pair.value === 'BLOCK') {
-              currentBlock = this.parseBlockHeader(nextPair);
+              currentBlock = this.parseBlockHeader(scanner);
               if (currentBlock && currentBlock.name) {
                 this.blocks.set(currentBlock.name, currentBlock);
               }
             } else if (pair.code === 0 && pair.value === 'ENDBLK') {
               currentBlock = null;
             } else if (currentBlock && pair.code === 0) {
-              const entity = this.parseEntity(pair.value, nextPair);
+              const entity = this.parseEntity(pair.value, scanner);
               if (entity) currentBlock.entities.push(entity);
             }
           } else if (currentSection === 'ENTITIES') {
             if (pair.code === 0) {
-              const entity = this.parseEntity(pair.value, nextPair);
+              const entity = this.parseEntity(pair.value, scanner);
               if (entity) this.instantiateEntity(entity);
             }
           }
@@ -993,12 +1037,12 @@
         };
       }
 
-      parseLayer(nextPair) {
+      parseLayer(scanner) {
         let name = '0', color = 0xFFFFFF, visible = true;
         while (true) {
-          const p = nextPair();
+          const p = scanner.nextPair();
           if (!p || p.code === 0) {
-            if (p) i -= 2;
+            if (p) scanner.pushBack(p);
             break;
           }
           if (p.code === 2) name = p.value;
@@ -1006,17 +1050,19 @@
             const aci = parseInt(p.value, 10);
             if (aci < 0) { visible = false; color = aciToRgb(-aci); }
             else color = aciToRgb(aci);
+          } else if (p.code === 420) {
+            color = parseInt(p.value, 10) & 0xFFFFFF;
           }
         }
         this.layers.set(name, { name, color, visible, count: 0 });
       }
 
-      parseBlockHeader(nextPair) {
+      parseBlockHeader(scanner) {
         let name = '', bx = 0, by = 0;
         while (true) {
-          const p = nextPair();
+          const p = scanner.nextPair();
           if (!p || p.code === 0) {
-            if (p) i -= 2;
+            if (p) scanner.pushBack(p);
             break;
           }
           if (p.code === 2) name = p.value;
@@ -1026,21 +1072,22 @@
         return { name, bx, by, entities: [] };
       }
 
-      parseEntity(type, nextPair) {
+      parseEntity(type, scanner) {
         let e = { type, layer: '0', color: null };
         let vertices = [];
         let currV = null;
 
         while (true) {
-          const p = nextPair();
+          const p = scanner.nextPair();
           if (!p || p.code === 0) {
-            if (p) i -= 2;
+            if (p) scanner.pushBack(p);
             break;
           }
 
           const c = p.code, v = p.value;
           if (c === 8) e.layer = v;
           else if (c === 62) e.color = aciToRgb(parseInt(v, 10));
+          else if (c === 420) e.color = parseInt(v, 10) & 0xFFFFFF;
 
           switch (type) {
             case 'LINE':
@@ -1085,6 +1132,17 @@
                 currV.bulge = parseFloat(v) || 0;
               }
               break;
+            case 'POLYLINE':
+              if (c === 70) e.closed = (parseInt(v, 10) & 1) === 1;
+              break;
+            case 'SPLINE':
+              if (c === 10) {
+                currV = { x: parseFloat(v), y: 0 };
+                vertices.push(currV);
+              } else if (c === 20 && currV) {
+                currV.y = parseFloat(v);
+              }
+              break;
             case 'SOLID':
             case '3DFACE':
               if (c === 10) e.x1 = parseFloat(v);
@@ -1096,6 +1154,7 @@
               else if (c === 13) e.x4 = parseFloat(v);
               else if (c === 23) e.y4 = parseFloat(v);
               break;
+            case 'DIMENSION':
             case 'INSERT':
               if (c === 2) e.block = v;
               else if (c === 10) e.ix = parseFloat(v);
@@ -1106,12 +1165,45 @@
               break;
             case 'TEXT':
             case 'MTEXT':
-              if (c === 1) e.text = v.replace(/\\A1;|\\P|\{[^}]*\}|\\[A-Za-z0-9]+;/g, ' ').trim();
+              if (c === 1) e.text = cleanCadText(v);
               else if (c === 10) e.x = parseFloat(v);
               else if (c === 20) e.y = parseFloat(v);
               else if (c === 40) e.size = parseFloat(v);
               else if (c === 50) e.rot = parseFloat(v);
               break;
+          }
+        }
+
+        if (type === 'POLYLINE') {
+          while (true) {
+            const p = scanner.nextPair();
+            if (!p) break;
+            if (p.code === 0 && p.value === 'VERTEX') {
+              let vx = 0, vy = 0, bulge = 0;
+              while (true) {
+                const vp = scanner.nextPair();
+                if (!vp || vp.code === 0) {
+                  if (vp) scanner.pushBack(vp);
+                  break;
+                }
+                if (vp.code === 10) vx = parseFloat(vp.value) || 0;
+                else if (vp.code === 20) vy = parseFloat(vp.value) || 0;
+                else if (vp.code === 42) bulge = parseFloat(vp.value) || 0;
+              }
+              vertices.push({ x: vx, y: vy, bulge });
+            } else if (p.code === 0 && p.value === 'SEQEND') {
+              while (true) {
+                const sp = scanner.nextPair();
+                if (!sp || sp.code === 0) {
+                  if (sp) scanner.pushBack(sp);
+                  break;
+                }
+              }
+              break;
+            } else if (p.code === 0) {
+              scanner.pushBack(p);
+              break;
+            }
           }
         }
 
@@ -1210,7 +1302,8 @@
             }
             break;
           }
-          case 'LWPOLYLINE': {
+          case 'LWPOLYLINE':
+          case 'POLYLINE': {
             const verts = e.vertices || [];
             if (verts.length < 2) break;
             const count = e.closed ? verts.length : verts.length - 1;
@@ -1258,6 +1351,17 @@
             }
             break;
           }
+          case 'SPLINE': {
+            const verts = e.vertices || [];
+            if (verts.length < 2) break;
+            let prevP = transformPoint(verts[0].x, verts[0].y);
+            for (let s = 1; s < verts.length; s++) {
+              const p = transformPoint(verts[s].x, verts[s].y);
+              addLine(prevP.x, prevP.y, p.x, p.y);
+              prevP = p;
+            }
+            break;
+          }
           case 'SOLID':
           case '3DFACE': {
             const p1 = transformPoint(e.x1 || 0, e.y1 || 0);
@@ -1270,6 +1374,7 @@
             }
             break;
           }
+          case 'DIMENSION':
           case 'INSERT': {
             if (depth > 6) break; // guard recursion
             const block = this.blocks.get(e.block);
@@ -2006,43 +2111,71 @@
     /* ========================================================================
        EXTERNAL FLUTTER BRIDGE API
        ======================================================================== */
-    window.loadDxfString = function(dxfString, fileName) {
+    window.loadDxfString = async function(dxfString, fileName) {
       if (fileName) projectTitle.innerText = fileName;
-      loader.style.display = 'flex';
-      loaderSub.innerText = "DXF varlıkları çözümleniyor...";
-      loaderProgress.style.width = "30%";
+      CADDebugger.currentFile = fileName;
+      const fileInfoEl = document.getElementById('debug-file-info');
+      if (fileInfoEl) fileInfoEl.innerText = 'Dosya: ' + (fileName || 'Bilinmiyor');
 
-      setTimeout(() => {
-        try {
-          const parser = new OfflineDxfParser();
-          const result = parser.parse(dxfString);
-          bounds = result.bounds;
-          cadTexts = result.texts;
-          loaderProgress.style.width = "80%";
+      if (loader) {
+        loader.classList.remove('has-error');
+        loader.style.display = 'flex';
+      }
+      if (loaderTitle) loaderTitle.innerText = "Vektör Çizimi Hazırlanıyor";
+      if (loaderSub) loaderSub.innerText = "DXF varlıkları çözümleniyor...";
+      if (loaderProgress) loaderProgress.style.width = "40%";
 
-          uploadGeometry(result.lines, result.triangles);
-          populateLayers(result.layers);
-          loaderProgress.style.width = "100%";
-          setTimeout(() => { loader.style.display = 'none'; }, 200);
+      // Yield briefly to let WebView paint progress bar
+      await new Promise(r => setTimeout(r, 20));
 
-          if (window.YerelCadBridge) {
-            window.YerelCadBridge.postMessage(JSON.stringify({
-              type: 'loaded',
-              totalLines: result.lines.length / 5,
-              totalTriangles: result.triangles.length / 7,
-              layersCount: result.layers.length
-            }));
-          }
-        } catch (err) {
-          loaderSub.innerText = "Hata: " + err.message;
-          console.error(err);
+      try {
+        CADDebugger.setStep('render', 'DXF Vektör Geometrisi & WebGL', 'running', 'DXF varlıkları çözümleniyor...');
+        const parser = new OfflineDxfParser();
+        const result = parser.parse(dxfString);
+        bounds = result.bounds;
+        cadTexts = result.texts;
+
+        if (loaderProgress) loaderProgress.style.width = "80%";
+        if (loaderSub) loaderSub.innerText = "GPU WebGL tamponlarına yükleniyor...";
+
+        uploadGeometry(result.lines, result.triangles);
+        populateLayers(result.layers);
+
+        if (loaderProgress) loaderProgress.style.width = "100%";
+        setTimeout(() => { if (loader) loader.style.display = 'none'; }, 200);
+
+        const totalLinesCount = Math.round(result.lines.length / 5);
+        const totalTrianglesCount = Math.round(result.triangles.length / 7);
+
+        CADDebugger.setStep(
+          'render',
+          'DXF Vektör Geometrisi & WebGL',
+          'ok',
+          `Başarılı: ${totalLinesCount.toLocaleString()} çizgi, ${totalTrianglesCount.toLocaleString()} dolgu, ${result.texts.length.toLocaleString()} yazı, ${result.layers.length} katman.`
+        );
+
+        if (window.YerelCadBridge) {
+          window.YerelCadBridge.postMessage(JSON.stringify({
+            type: 'loaded',
+            totalLines: totalLinesCount,
+            totalTriangles: totalTrianglesCount,
+            layersCount: result.layers.length
+          }));
         }
-      }, 50);
+      } catch (err) {
+        console.error('DXF Render Error:', err);
+        if (loaderSub) loaderSub.innerText = "Hata: " + err.message;
+        if (loaderTitle) loaderTitle.innerText = "Vektör Çözümleme Hatası";
+        if (loader) loader.classList.add('has-error');
+        CADDebugger.setStep('render', 'DXF Vektör Geometrisi & WebGL', 'error', err.message);
+        CADDebugger.log('RENDER_ERR', err.message + (err.stack ? '\n' + err.stack : ''), 'error');
+        throw err;
+      }
     };
 
-    window.loadDxfFileBase64 = function(base64Data, fileName) {
+    window.loadDxfFileBase64 = async function(base64Data, fileName) {
       const raw = atob(base64Data);
-      window.loadDxfString(raw, fileName);
+      await window.loadDxfString(raw, fileName);
     };
 
     /* ========================================================================
@@ -2326,8 +2459,7 @@
           loaderSub.innerText = "WebGL ile çizim GPU'ya aktarılıyor...";
           CADDebugger.setStep('render', 'DXF Vektör Geometrisi & WebGL', 'running', 'Vektörler ve yazılar çiziliyor...');
           const dxfStr = new TextDecoder('utf-8').decode(dxfBytes);
-          window.loadDxfString(dxfStr, fileName);
-          CADDebugger.setStep('render', 'DXF Vektör Geometrisi & WebGL', 'ok', 'Çizim GPU üzerinde WebGL ile başarıyla oluşturuldu.');
+          await window.loadDxfString(dxfStr, fileName);
 
         } catch (e) {
           console.error('WASM DWG Error:', e);
