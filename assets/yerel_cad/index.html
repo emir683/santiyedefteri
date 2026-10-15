@@ -1333,8 +1333,11 @@
     const textCanvas = document.getElementById('textCanvas');
     const coordsText = document.getElementById('coords-text');
     const loader = document.getElementById('loader');
-    const loaderProgress = document.getElementById('loader-progress');
+    const loaderTitle = document.getElementById('loader-title');
     const loaderSub = document.getElementById('loader-sub');
+    const loaderProgress = document.getElementById('loader-progress');
+    const loaderIcon = document.getElementById('loader-icon');
+    const loaderErrorActions = document.getElementById('loader-error-actions');
     const projectTitle = document.getElementById('project-title');
 
     // Loupe Elements
@@ -2241,11 +2244,13 @@
       if (fileInfoEl) fileInfoEl.innerText = 'Dosya: ' + (fileName || 'Bilinmiyor');
 
       // Loader'ı aktif duruma getir, hata stilini temizle
-      loader.classList.remove('has-error');
-      loader.style.display = 'flex';
-      loaderTitle.innerText = "DWG Dosyası Çözümleniyor";
-      loaderSub.innerText = "Yerel C++ WebAssembly motoruyla çözümleniyor (0 internet)...";
-      loaderProgress.style.width = "20%";
+      if (loader) {
+        loader.classList.remove('has-error');
+        loader.style.display = 'flex';
+      }
+      if (loaderTitle) loaderTitle.innerText = "DWG Dosyası Çözümleniyor";
+      if (loaderSub) loaderSub.innerText = "Yerel C++ WebAssembly motoruyla çözümleniyor (0 internet)...";
+      if (loaderProgress) loaderProgress.style.width = "20%";
 
       CADDebugger.setStep('input', 'DWG Dosya Verisi', 'ok', fileName + ' (' + Math.round(base64Data.length * 0.75 / 1024) + ' KB)');
 
@@ -2335,9 +2340,9 @@
           }
 
           // Loader ekranında hatayı ve debugger açma butonunu göster (Kullanıcı isteği: Hata mesajı kalsın, ana sunucuya gitmesin!)
-          loader.classList.add('has-error');
-          loaderTitle.innerText = "Yerel DWG Çözümleme Hatası";
-          loaderSub.innerText = e.message;
+          if (loader) loader.classList.add('has-error');
+          if (loaderTitle) loaderTitle.innerText = "Yerel DWG Çözümleme Hatası";
+          if (loaderSub) loaderSub.innerText = e.message;
 
           if (window.YerelCadBridge) {
             window.YerelCadBridge.postMessage(JSON.stringify({
