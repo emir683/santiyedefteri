@@ -113,6 +113,44 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
     }
   }
 
+  DateTime? _lastBackPressTime;
+
+  void _handleBackPress() {
+    final now = DateTime.now();
+    if (_lastBackPressTime == null || now.difference(_lastBackPressTime!) > const Duration(seconds: 2)) {
+      _lastBackPressTime = now;
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Row(
+            children: [
+              const Icon(Icons.touch_app_rounded, color: Colors.white, size: 18),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  'Çıkmak için tekrar geri kaydırın veya basın',
+                  style: GoogleFonts.poppins(
+                    fontSize: 12.5,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white,
+                  ),
+                ),
+              ),
+            ],
+          ),
+          duration: const Duration(seconds: 2),
+          behavior: SnackBarBehavior.floating,
+          backgroundColor: const Color(0xFF0F172A).withValues(alpha: 0.94),
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+          margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+        ),
+      );
+    } else {
+      ScaffoldMessenger.of(context).removeCurrentSnackBar();
+      Navigator.of(context).pop();
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -123,26 +161,32 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
     final accentColor = isDark ? const Color(0xFF38BDF8) : const Color(0xFF0284C7);
     final borderColor = isDark ? Colors.white.withValues(alpha: 0.1) : Colors.black.withValues(alpha: 0.08);
 
-    return Scaffold(
-      backgroundColor: scaffoldBg,
-      appBar: PreferredSize(
-        preferredSize: const Size.fromHeight(48),
-        child: Container(
-          decoration: BoxDecoration(
-            color: appBarBg,
-            border: Border(bottom: BorderSide(color: borderColor, width: 1)),
-          ),
-          child: SafeArea(
-            bottom: false,
-            child: Row(
-              children: [
-                IconButton(
-                  icon: Icon(Icons.arrow_back_ios_new_rounded, color: appBarFg, size: 18),
-                  onPressed: () => Navigator.of(context).pop(),
-                  tooltip: 'Geri Dön',
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  constraints: const BoxConstraints(),
-                ),
+    return PopScope(
+      canPop: false,
+      onPopInvokedWithResult: (bool didPop, dynamic result) {
+        if (didPop) return;
+        _handleBackPress();
+      },
+      child: Scaffold(
+        backgroundColor: scaffoldBg,
+        appBar: PreferredSize(
+          preferredSize: const Size.fromHeight(48),
+          child: Container(
+            decoration: BoxDecoration(
+              color: appBarBg,
+              border: Border(bottom: BorderSide(color: borderColor, width: 1)),
+            ),
+            child: SafeArea(
+              bottom: false,
+              child: Row(
+                children: [
+                  IconButton(
+                    icon: Icon(Icons.arrow_back_ios_new_rounded, color: appBarFg, size: 18),
+                    onPressed: _handleBackPress,
+                    tooltip: 'Geri Dön',
+                    padding: const EdgeInsets.symmetric(horizontal: 12),
+                    constraints: const BoxConstraints(),
+                  ),
                 Expanded(
                   child: Text(
                     widget.projeAdi,
@@ -278,6 +322,7 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
             ),
         ],
       ),
-    );
-  }
+    ),
+  );
+}
 }

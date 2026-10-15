@@ -8,7 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cad_intent_service.dart';
 import 'cad_webgl_ekrani.dart';
-import 'tema_ayarlari.dart';
+import 'widgets/glass_surface.dart';
 
 /// Önbelleğe kaydedilen ve son açılan CAD projeleri modeli
 class SavedCadProject {
@@ -51,7 +51,7 @@ class SavedCadProject {
 }
 
 /// CAD & DWG Görüntüleyici Ekranı
-/// Saf WebGL Donanım Hızlandırmalı CAD Motoru (GPU Render, Dolgulu ve Kesintisiz)
+/// Saf WebGL Donanım Hızlandırmalı CAD Motoru (GPU Render, Kesintisiz)
 class DwgGoruntuleyiciEkrani extends StatefulWidget {
   static bool isScreenActive = false;
   final String? initialDwgUrl;
@@ -91,7 +91,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       'url':
           '$_kCadServerUrl/webgl-cad.html?id=bc00f9c7-d593-49d7-9f4e-ceefb57f27b8&title=Kapal%C4%B1%20Spor%20Salonu%20Statik%20Projesi',
       'aciklama': 'Temel aplikasyon, kolon, kiriş ve donatı detayları',
-      'boyut': '1.487 Dolgu • 846K Çizgi',
+      'boyut': '846K Çizim Detayı',
       'colorHex': '0xFF38BDF8',
     },
     {
@@ -100,7 +100,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       'url':
           '$_kCadServerUrl/webgl-cad.html?id=5d6e89b2-bdac-4ff9-8e7c-c129c1fc68e2&title=HASAN%20AKTA%C5%9E%20STAT%C4%B0K%20PROJES%C4%B0',
       'aciklama': 'Tüm katlar, kiriş açılımları ve kalıp planları',
-      'boyut': '1.246 Dolgu • 589K Çizgi',
+      'boyut': '589K Çizim Detayı',
       'colorHex': '0xFF10B981',
     },
     {
@@ -109,7 +109,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       'url':
           '$_kCadServerUrl/webgl-cad.html?id=a6003203-6143-414a-bc21-5929f5e8c61e&title=Ya%C4%9Fmur%20Suyu%20Deposu%20Mimari',
       'aciklama': 'Mimari kesit, plan ve kot detayları',
-      'boyut': '102K Çizgi',
+      'boyut': '102K Çizim Detayı',
       'colorHex': '0xFFF59E0B',
     },
   ];
@@ -475,20 +475,15 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final scaffoldBg =
-        isDark ? AppColors.darkBackground : AppColors.lightBackground;
-    final cardBg = isDark ? AppColors.darkCard : AppColors.lightCard;
     final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
     final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
-    final borderColor =
-        isDark ? Colors.white.withValues(alpha: 0.08) : Colors.black.withValues(alpha: 0.06);
 
     return Scaffold(
-      backgroundColor: scaffoldBg,
+      extendBodyBehindAppBar: true,
       appBar: AppBar(
-        backgroundColor: cardBg,
+        backgroundColor: Colors.transparent,
         elevation: 0,
-        scrolledUnderElevation: 0.5,
+        scrolledUnderElevation: 0,
         leading: IconButton(
           icon: Icon(
             Icons.arrow_back_ios_new_rounded,
@@ -523,7 +518,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  'WebGL GPU Donanım Motoru',
+                  'WebGL Motoru',
                   style: GoogleFonts.poppins(
                     color: textSecondary,
                     fontSize: 11,
@@ -556,181 +551,152 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           ),
         ],
       ),
-      body: Stack(
-        children: [
-          // Ana Kaydırılabilir İçerik (RenderFlex / Overpixel Garantili Güvenli Düzen)
-          SingleChildScrollView(
-            physics: const BouncingScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(16, 16, 16, 32),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                // 1. Hero / Hızlı Eylem Kartı (Yeni Çizim Seç)
-                _buildHeroUploadCard(isDark, cardBg, textPrimary, textSecondary),
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: SafeArea(
+          bottom: false,
+          child: Stack(
+            children: [
+              // Ana Kaydırılabilir İçerik (RenderFlex / Overpixel Korumalı)
+              SingleChildScrollView(
+                physics: const BouncingScrollPhysics(),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    // 1. Hero / Hızlı Eylem Kartı (Yeni Çizim Seç)
+                    _buildHeroUploadCard(isDark, textPrimary, textSecondary),
 
-                const SizedBox(height: 24),
+                    const SizedBox(height: 22),
 
-                // 2. Son Açılan Çizimler Bölümü
-                _buildRecentProjectsSection(
-                  isDark,
-                  cardBg,
-                  textPrimary,
-                  textSecondary,
-                  borderColor,
+                    // 2. Son Açılan Çizimler Bölümü
+                    _buildRecentProjectsSection(
+                      isDark,
+                      textPrimary,
+                      textSecondary,
+                    ),
+
+                    const SizedBox(height: 24),
+
+                    // 3. Hazır Örnek CAD Çizimleri Bölümü
+                    _buildSampleProjectsSection(
+                      isDark,
+                      textPrimary,
+                      textSecondary,
+                    ),
+                  ],
                 ),
+              ),
 
-                const SizedBox(height: 28),
-
-                // 3. Hazır Örnek CAD Çizimleri Bölümü
-                _buildSampleProjectsSection(
-                  isDark,
-                  cardBg,
-                  textPrimary,
-                  textSecondary,
-                  borderColor,
-                ),
-
-                const SizedBox(height: 24),
-
-                // 4. Donanım & Yetenek Rozetleri
-                _buildEngineFeatureBadges(isDark, cardBg, textSecondary, borderColor),
-              ],
-            ),
+              // Yükleme / Dönüştürme Göstergesi
+              if (_isLoading)
+                _buildLoadingOverlay(isDark, textPrimary, textSecondary),
+            ],
           ),
-
-          // Yükleme / Dönüştürme Göstergesi
-          if (_isLoading)
-            _buildLoadingOverlay(isDark, cardBg, textPrimary, textSecondary),
-        ],
+        ),
       ),
     );
   }
 
-  /// 1. Hero / Hızlı Dosya Yükleme Kartı
+  /// 1. Hero / Hızlı Dosya Yükleme Kartı (Uygulama İçi Cam Tasarımı)
   Widget _buildHeroUploadCard(
     bool isDark,
-    Color cardBg,
     Color textPrimary,
     Color textSecondary,
   ) {
-    return Container(
-      width: double.infinity,
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(
-          color: const Color(0xFF38BDF8).withValues(alpha: isDark ? 0.25 : 0.4),
-          width: 1.5,
-        ),
-        boxShadow: [
-          BoxInsets.boxShadow(
-            color: const Color(0xFF0284C7).withValues(alpha: isDark ? 0.08 : 0.06),
-            blurRadius: 20,
-            offset: const Offset(0, 8),
+    return GlassSectionCard(
+      lightweight: true,
+      borderRadius: 20,
+      onTap: _pickFileAndOpen,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
+      child: Column(
+        children: [
+          Container(
+            width: 56,
+            height: 56,
+            decoration: BoxDecoration(
+              gradient: const LinearGradient(
+                colors: [Color(0xFF0284C7), Color(0xFF38BDF8)],
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: const Color(0xFF0284C7).withValues(alpha: 0.35),
+                  blurRadius: 16,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: const Icon(
+              Icons.file_open_rounded,
+              color: Colors.white,
+              size: 26,
+            ),
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(20),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(20),
-          onTap: _pickFileAndOpen,
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-            child: Column(
+          const SizedBox(height: 12),
+          Text(
+            'Yeni CAD Çizimi Aç',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: textPrimary,
+              fontSize: 16,
+              fontWeight: FontWeight.w700,
+              letterSpacing: -0.2,
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'Cihazınızdan .dwg veya .dxf dosyası seçin',
+            textAlign: TextAlign.center,
+            style: GoogleFonts.poppins(
+              color: textSecondary,
+              fontSize: 12,
+              fontWeight: FontWeight.w400,
+            ),
+          ),
+          const SizedBox(height: 12),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+            decoration: BoxDecoration(
+              color: isDark
+                  ? const Color(0xFF0F172A).withValues(alpha: 0.7)
+                  : const Color(0xFFF1F5F9),
+              borderRadius: BorderRadius.circular(30),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Container(
-                  width: 58,
-                  height: 58,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF0284C7), Color(0xFF38BDF8)],
-                      begin: Alignment.topLeft,
-                      end: Alignment.bottomRight,
-                    ),
-                    shape: BoxShape.circle,
-                    boxShadow: [
-                      BoxShadow(
-                        color: const Color(0xFF0284C7).withValues(alpha: 0.35),
-                        blurRadius: 16,
-                        offset: const Offset(0, 6),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.file_open_rounded,
-                    color: Colors.white,
-                    size: 28,
-                  ),
+                const Icon(
+                  Icons.layers_outlined,
+                  color: Color(0xFF0284C7),
+                  size: 13,
                 ),
-                const SizedBox(height: 14),
+                const SizedBox(width: 5),
                 Text(
-                  'Yeni CAD Çizimi Aç',
-                  textAlign: TextAlign.center,
+                  'DWG & DXF Format Desteği',
                   style: GoogleFonts.poppins(
-                    color: textPrimary,
-                    fontSize: 16,
-                    fontWeight: FontWeight.w700,
-                    letterSpacing: -0.2,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Cihazınızdan .dwg veya .dxf dosyası seçin',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: textSecondary,
-                    fontSize: 12,
-                    fontWeight: FontWeight.w400,
-                  ),
-                ),
-                const SizedBox(height: 14),
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
-                  decoration: BoxDecoration(
                     color: isDark
-                        ? const Color(0xFF0F172A)
-                        : const Color(0xFFF1F5F9),
-                    borderRadius: BorderRadius.circular(30),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const Icon(
-                        Icons.bolt_rounded,
-                        color: Color(0xFF10B981),
-                        size: 14,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Katı Dolgulu • 60 FPS GPU Motoru',
-                        style: GoogleFonts.poppins(
-                          color: isDark
-                              ? const Color(0xFF38BDF8)
-                              : const Color(0xFF0284C7),
-                          fontSize: 11,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
+                        ? const Color(0xFF38BDF8)
+                        : const Color(0xFF0284C7),
+                    fontSize: 11,
+                    fontWeight: FontWeight.w600,
                   ),
                 ),
               ],
             ),
           ),
-        ),
+        ],
       ),
     );
   }
 
-  /// 2. Son Açılan Çizimler Bölümü
+  /// 2. Son Açılan Çizimler Bölümü (Glass Tasarım)
   Widget _buildRecentProjectsSection(
     bool isDark,
-    Color cardBg,
     Color textPrimary,
     Color textSecondary,
-    Color borderColor,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -791,40 +757,38 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         const SizedBox(height: 10),
 
         if (_savedProjects.isEmpty)
-          Container(
-            width: double.infinity,
-            padding: const EdgeInsets.symmetric(vertical: 28, horizontal: 20),
-            decoration: BoxDecoration(
-              color: cardBg,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(color: borderColor),
-            ),
-            child: Column(
-              children: [
-                Icon(
-                  Icons.history_rounded,
-                  color: textSecondary.withValues(alpha: 0.4),
-                  size: 34,
-                ),
-                const SizedBox(height: 10),
-                Text(
-                  'Henüz açılan bir CAD çizimi yok',
-                  style: GoogleFonts.poppins(
-                    color: textSecondary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
+          GlassSectionCard(
+            lightweight: true,
+            borderRadius: 16,
+            padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
+            child: Center(
+              child: Column(
+                children: [
+                  Icon(
+                    Icons.history_rounded,
+                    color: textSecondary.withValues(alpha: 0.4),
+                    size: 32,
                   ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Açtığınız tüm projeler burada listelenir ve bir daha beklemeden anında açılır.',
-                  textAlign: TextAlign.center,
-                  style: GoogleFonts.poppins(
-                    color: textSecondary.withValues(alpha: 0.7),
-                    fontSize: 11,
+                  const SizedBox(height: 8),
+                  Text(
+                    'Henüz açılan bir CAD çizimi yok',
+                    style: GoogleFonts.poppins(
+                      color: textSecondary,
+                      fontSize: 13,
+                      fontWeight: FontWeight.w500,
+                    ),
                   ),
-                ),
-              ],
+                  const SizedBox(height: 4),
+                  Text(
+                    'Açtığınız projeler buraya kaydedilir ve bir daha beklemeden açılır.',
+                    textAlign: TextAlign.center,
+                    style: GoogleFonts.poppins(
+                      color: textSecondary.withValues(alpha: 0.7),
+                      fontSize: 11,
+                    ),
+                  ),
+                ],
+              ),
             ),
           )
         else
@@ -832,16 +796,14 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
             itemCount: _savedProjects.length,
-            separatorBuilder: (_, __) => const SizedBox(height: 10),
+            separatorBuilder: (_, __) => const SizedBox(height: 8),
             itemBuilder: (context, index) {
               final project = _savedProjects[index];
               return _buildRecentProjectItem(
                 project,
                 isDark,
-                cardBg,
                 textPrimary,
                 textSecondary,
-                borderColor,
               );
             },
           ),
@@ -849,204 +811,119 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     );
   }
 
-  /// Tekil Son Açılan Proje Kartı
+  /// Tekil Son Açılan Proje Kartı (GlassSectionCard)
   Widget _buildRecentProjectItem(
     SavedCadProject project,
     bool isDark,
-    Color cardBg,
     Color textPrimary,
     Color textSecondary,
-    Color borderColor,
   ) {
     final sizeFormatted = _formatFileSize(project.fileSize);
     final dateFormatted = _formatDate(project.savedAt);
 
-    return Container(
-      decoration: BoxDecoration(
-        color: cardBg,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-        boxShadow: [
-          BoxInsets.boxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.15 : 0.03),
-            blurRadius: 8,
-            offset: const Offset(0, 2),
+    return GlassSectionCard(
+      lightweight: true,
+      borderRadius: 16,
+      onTap: () => _openSavedProject(project),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+      child: Row(
+        children: [
+          // İkon
+          Container(
+            width: 42,
+            height: 42,
+            decoration: BoxDecoration(
+              color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: const Icon(
+              Icons.architecture_rounded,
+              color: Color(0xFF0284C7),
+              size: 22,
+            ),
           ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        borderRadius: BorderRadius.circular(16),
-        child: InkWell(
-          borderRadius: BorderRadius.circular(16),
-          onTap: () {
-            _openSavedProject(project);
-          },
-          child: Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-            child: Row(
+          const SizedBox(width: 12),
+
+          // Metin Alanı (Overpixel Engellemek için Expanded)
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                // İkon
-                Container(
-                  width: 44,
-                  height: 44,
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0284C7).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: const Icon(
-                    Icons.architecture_rounded,
-                    color: Color(0xFF0284C7),
-                    size: 24,
+                Text(
+                  project.fileName,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: GoogleFonts.poppins(
+                    color: textPrimary,
+                    fontSize: 13,
+                    fontWeight: FontWeight.w600,
+                    letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(width: 12),
-
-                // Metin Alanı (Overpixel Engellemek için Expanded)
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        project.fileName,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
-                          color: textPrimary,
-                          fontSize: 13,
-                          fontWeight: FontWeight.w600,
-                          letterSpacing: -0.2,
-                        ),
+                const SizedBox(height: 3),
+                Row(
+                  children: [
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 1.5,
                       ),
-                      const SizedBox(height: 3),
-                      Row(
-                        children: [
-                          Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 6,
-                              vertical: 1.5,
-                            ),
-                            decoration: BoxDecoration(
-                              color: const Color(0xFF10B981).withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(6),
-                            ),
-                            child: Row(
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Icon(
-                                  Icons.flash_on_rounded,
-                                  color: Color(0xFF10B981),
-                                  size: 11,
-                                ),
-                                const SizedBox(width: 2),
-                                Text(
-                                  'Anında Aç',
-                                  style: GoogleFonts.poppins(
-                                    color: const Color(0xFF10B981),
-                                    fontSize: 9.5,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                          if (sizeFormatted.isNotEmpty) ...[
-                            const SizedBox(width: 6),
-                            Text(
-                              '•',
-                              style: TextStyle(color: textSecondary, fontSize: 10),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              sizeFormatted,
-                              style: GoogleFonts.poppins(
-                                color: textSecondary,
-                                fontSize: 11,
-                                fontWeight: FontWeight.w500,
-                              ),
-                            ),
-                          ],
-                          const SizedBox(width: 6),
-                          Text(
-                            '•',
-                            style: TextStyle(color: textSecondary, fontSize: 10),
-                          ),
-                          const SizedBox(width: 6),
-                          Flexible(
-                            child: Text(
-                              dateFormatted,
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: GoogleFonts.poppins(
-                                color: textSecondary,
-                                fontSize: 11,
-                              ),
-                            ),
-                          ),
-                        ],
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF10B981).withValues(alpha: 0.14),
+                        borderRadius: BorderRadius.circular(6),
                       ),
-                    ],
-                  ),
-                ),
-
-                // Aksiyon Menüsü
-                PopupMenuButton<String>(
-                  icon: Icon(
-                    Icons.more_vert_rounded,
-                    color: textSecondary,
-                    size: 20,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
-                  onSelected: (val) {
-                    if (val == 'open') {
-                      _openSavedProject(project);
-                    } else if (val == 'delete') {
-                      _removeProjectFromRecent(project);
-                    }
-                  },
-                  itemBuilder: (ctx) => [
-                    PopupMenuItem(
-                      value: 'open',
                       child: Row(
+                        mainAxisSize: MainAxisSize.min,
                         children: [
                           const Icon(
-                            Icons.open_in_new_rounded,
-                            size: 16,
-                            color: Color(0xFF0284C7),
+                            Icons.flash_on_rounded,
+                            color: Color(0xFF10B981),
+                            size: 11,
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 2),
                           Text(
-                            'Projeyi Aç',
+                            'Anında Aç',
                             style: GoogleFonts.poppins(
-                              fontSize: 12.5,
-                              color: textPrimary,
+                              color: const Color(0xFF10B981),
+                              fontSize: 9.5,
+                              fontWeight: FontWeight.w700,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    PopupMenuItem(
-                      value: 'delete',
-                      child: Row(
-                        children: [
-                          const Icon(
-                            Icons.delete_outline_rounded,
-                            size: 16,
-                            color: Color(0xFFEF4444),
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Listeden Kaldır',
-                            style: GoogleFonts.poppins(
-                              fontSize: 12.5,
-                              color: const Color(0xFFEF4444),
-                            ),
-                          ),
-                        ],
+                    if (sizeFormatted.isNotEmpty) ...[
+                      const SizedBox(width: 6),
+                      Text(
+                        '•',
+                        style: TextStyle(color: textSecondary, fontSize: 10),
+                      ),
+                      const SizedBox(width: 6),
+                      Text(
+                        sizeFormatted,
+                        style: GoogleFonts.poppins(
+                          color: textSecondary,
+                          fontSize: 11,
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                    const SizedBox(width: 6),
+                    Text(
+                      '•',
+                      style: TextStyle(color: textSecondary, fontSize: 10),
+                    ),
+                    const SizedBox(width: 6),
+                    Flexible(
+                      child: Text(
+                        dateFormatted,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: GoogleFonts.poppins(
+                          color: textSecondary,
+                          fontSize: 11,
+                        ),
                       ),
                     ),
                   ],
@@ -1054,18 +931,78 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
               ],
             ),
           ),
-        ),
+
+          // Aksiyon Menüsü
+          PopupMenuButton<String>(
+            icon: Icon(
+              Icons.more_vert_rounded,
+              color: textSecondary,
+              size: 20,
+            ),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            onSelected: (val) {
+              if (val == 'open') {
+                _openSavedProject(project);
+              } else if (val == 'delete') {
+                _removeProjectFromRecent(project);
+              }
+            },
+            itemBuilder: (ctx) => [
+              PopupMenuItem(
+                value: 'open',
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.open_in_new_rounded,
+                      size: 16,
+                      color: Color(0xFF0284C7),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Projeyi Aç',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        color: textPrimary,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              PopupMenuItem(
+                value: 'delete',
+                child: Row(
+                  children: [
+                    const Icon(
+                      Icons.delete_outline_rounded,
+                      size: 16,
+                      color: Color(0xFFEF4444),
+                    ),
+                    const SizedBox(width: 8),
+                    Text(
+                      'Listeden Kaldır',
+                      style: GoogleFonts.poppins(
+                        fontSize: 12.5,
+                        color: const Color(0xFFEF4444),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+        ],
       ),
     );
   }
 
-  /// 3. Hazır Örnek CAD Çizimleri Bölümü
+  /// 3. Hazır Örnek CAD Çizimleri Bölümü (GlassSectionCard)
   Widget _buildSampleProjectsSection(
     bool isDark,
-    Color cardBg,
     Color textPrimary,
     Color textSecondary,
-    Color borderColor,
   ) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1084,88 +1021,76 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           shrinkWrap: true,
           physics: const NeverScrollableScrollPhysics(),
           itemCount: _hazirOrnekler.length,
-          separatorBuilder: (_, __) => const SizedBox(height: 10),
+          separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (context, index) {
             final sample = _hazirOrnekler[index];
             final colorInt = int.tryParse(sample['colorHex'] ?? '') ?? 0xFF0284C7;
             final itemColor = Color(colorInt);
 
-            return Container(
-              decoration: BoxDecoration(
-                color: cardBg,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: borderColor),
-              ),
-              child: Material(
-                color: Colors.transparent,
-                borderRadius: BorderRadius.circular(16),
-                child: InkWell(
-                  borderRadius: BorderRadius.circular(16),
-                  onTap: () => _openSampleProject(sample),
-                  child: Padding(
-                    padding: const EdgeInsets.all(14),
-                    child: Row(
+            return GlassSectionCard(
+              lightweight: true,
+              borderRadius: 16,
+              onTap: () => _openSampleProject(sample),
+              padding: const EdgeInsets.all(13),
+              child: Row(
+                children: [
+                  Container(
+                    width: 40,
+                    height: 40,
+                    decoration: BoxDecoration(
+                      color: itemColor.withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: Icon(
+                      Icons.view_in_ar_rounded,
+                      color: itemColor,
+                      size: 21,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      mainAxisSize: MainAxisSize.min,
                       children: [
-                        Container(
-                          width: 42,
-                          height: 42,
-                          decoration: BoxDecoration(
-                            color: itemColor.withValues(alpha: 0.12),
-                            borderRadius: BorderRadius.circular(12),
+                        Text(
+                          sample['ad'] ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: textPrimary,
+                            fontSize: 13,
+                            fontWeight: FontWeight.w600,
                           ),
-                          child: Icon(
-                            Icons.view_in_ar_rounded,
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          sample['aciklama'] ?? '',
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          style: GoogleFonts.poppins(
+                            color: textSecondary,
+                            fontSize: 11,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          sample['boyut'] ?? '',
+                          style: GoogleFonts.poppins(
                             color: itemColor,
-                            size: 22,
+                            fontSize: 10.5,
+                            fontWeight: FontWeight.w600,
                           ),
-                        ),
-                        const SizedBox(width: 12),
-                        Expanded(
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                sample['ad'] ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: textPrimary,
-                                  fontSize: 13,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                              const SizedBox(height: 2),
-                              Text(
-                                sample['aciklama'] ?? '',
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  color: textSecondary,
-                                  fontSize: 11,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                sample['boyut'] ?? '',
-                                style: GoogleFonts.poppins(
-                                  color: itemColor,
-                                  fontSize: 10.5,
-                                  fontWeight: FontWeight.w600,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-                        Icon(
-                          Icons.arrow_forward_ios_rounded,
-                          color: textSecondary.withValues(alpha: 0.5),
-                          size: 13,
                         ),
                       ],
                     ),
                   ),
-                ),
+                  Icon(
+                    Icons.arrow_forward_ios_rounded,
+                    color: textSecondary.withValues(alpha: 0.4),
+                    size: 13,
+                  ),
+                ],
               ),
             );
           },
@@ -1174,93 +1099,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     );
   }
 
-  /// 4. Donanım & Yetenek Rozetleri
-  Widget _buildEngineFeatureBadges(
-    bool isDark,
-    Color cardBg,
-    Color textSecondary,
-    Color borderColor,
-  ) {
-    final features = [
-      {'icon': Icons.speed_rounded, 'label': '60 FPS Donanım Render'},
-      {'icon': Icons.straighten_rounded, 'label': 'Mesafe ve Alan Ölçümü'},
-      {'icon': Icons.colorize_rounded, 'label': 'Kiriş & Kolon Katı Dolgu'},
-      {'icon': Icons.zoom_in_rounded, 'label': 'Hassas Büyüteç ve OSNAP'},
-    ];
-
-    return Container(
-      width: double.infinity,
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      decoration: BoxDecoration(
-        color: cardBg.withValues(alpha: 0.6),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              const Icon(
-                Icons.memory_rounded,
-                color: Color(0xFF10B981),
-                size: 16,
-              ),
-              const SizedBox(width: 6),
-              Text(
-                'Şantiye CAD Donanım Yetenekleri',
-                style: GoogleFonts.poppins(
-                  color: isDark ? Colors.white70 : const Color(0xFF334155),
-                  fontSize: 12,
-                  fontWeight: FontWeight.w600,
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 10),
-          Wrap(
-            spacing: 8,
-            runSpacing: 8,
-            children: features.map((f) {
-              return Container(
-                padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
-                decoration: BoxDecoration(
-                  color: isDark
-                      ? const Color(0xFF0F172A)
-                      : const Color(0xFFF1F5F9),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      f['icon'] as IconData,
-                      color: const Color(0xFF0284C7),
-                      size: 13,
-                    ),
-                    const SizedBox(width: 5),
-                    Text(
-                      f['label'] as String,
-                      style: GoogleFonts.poppins(
-                        color: textSecondary,
-                        fontSize: 10.5,
-                        fontWeight: FontWeight.w500,
-                      ),
-                    ),
-                  ],
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
-
   /// Yükleme Ekranı Overlay
   Widget _buildLoadingOverlay(
     bool isDark,
-    Color cardBg,
     Color textPrimary,
     Color textSecondary,
   ) {
@@ -1268,11 +1109,11 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       color: Colors.black.withValues(alpha: 0.65),
       child: Center(
         child: Container(
-          width: 290,
-          padding: const EdgeInsets.all(24),
+          width: 280,
+          padding: const EdgeInsets.all(22),
           decoration: BoxDecoration(
-            color: cardBg,
-            borderRadius: BorderRadius.circular(24),
+            color: isDark ? const Color(0xFF1E293B) : Colors.white,
+            borderRadius: BorderRadius.circular(20),
             boxShadow: const [
               BoxShadow(
                 color: Colors.black38,
@@ -1285,24 +1126,24 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
             mainAxisSize: MainAxisSize.min,
             children: [
               const SizedBox(
-                width: 48,
-                height: 48,
+                width: 44,
+                height: 44,
                 child: CircularProgressIndicator(
-                  strokeWidth: 3.5,
+                  strokeWidth: 3.2,
                   valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0284C7)),
                 ),
               ),
-              const SizedBox(height: 18),
+              const SizedBox(height: 16),
               Text(
                 _loadingStatusText,
                 textAlign: TextAlign.center,
                 style: GoogleFonts.poppins(
                   color: textPrimary,
-                  fontSize: 15,
+                  fontSize: 14.5,
                   fontWeight: FontWeight.w700,
                 ),
               ),
-              const SizedBox(height: 6),
+              const SizedBox(height: 5),
               Text(
                 _loadingSubText,
                 textAlign: TextAlign.center,
