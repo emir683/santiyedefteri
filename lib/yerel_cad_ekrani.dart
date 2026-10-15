@@ -71,7 +71,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   bool _isWebViewReady = false;
   bool _isViewingDrawing = false;
   bool _isParsing = false;
-  String _parsingStatusText = 'Vektörler çözümleniyor...';
   String _activeDrawingName = '';
   List<YerelCadDosya> _recentFiles = [];
 
@@ -331,7 +330,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       setState(() {
         _isViewingDrawing = true;
         _isParsing = true;
-        _parsingStatusText = 'Önbellekten Yükleniyor...';
         _activeDrawingName = fileName;
       });
       final isDark = Theme.of(context).brightness == Brightness.dark;
@@ -358,9 +356,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
     setState(() {
       _isViewingDrawing = true;
       _isParsing = true;
-      _parsingStatusText = extension == 'dwg'
-          ? 'AutoCAD DWG Çözümleniyor...'
-          : 'DXF Vektörleri Çözümleniyor...';
       _activeDrawingName = fileName;
     });
 
@@ -407,7 +402,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   Future<void> _convertAndOpenDwg(File file, String fileName) async {
     setState(() {
       _isParsing = true;
-      _parsingStatusText = 'AutoCAD DWG Vektörleri Çözümleniyor...';
     });
 
     try {
@@ -695,30 +689,14 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
             if (_webViewController != null)
               WebViewWidget(controller: _webViewController!),
             if (_isParsing)
-              Container(
-                color: Colors.black.withValues(alpha: 0.75),
-                child: Center(
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      const CircularProgressIndicator(
-                          color: Color(0xFF38BDF8)),
-                      const SizedBox(height: 16),
-                      Text(
-                        _parsingStatusText,
-                        style: const TextStyle(
-                          color: Colors.white,
-                          fontSize: 14,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                      const SizedBox(height: 6),
-                      const Text(
-                        'Vektör katmanları ve koordinatlar hazırlanıyor...',
-                        style: TextStyle(color: Colors.white60, fontSize: 11.5),
-                      ),
-                    ],
-                  ),
+              const Positioned(
+                top: 0,
+                left: 0,
+                right: 0,
+                child: LinearProgressIndicator(
+                  minHeight: 2.5,
+                  backgroundColor: Colors.transparent,
+                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
                 ),
               ),
           ],
