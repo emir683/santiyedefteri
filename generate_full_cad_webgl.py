@@ -549,6 +549,8 @@ try:
     else:
         out_meta = out_json.replace('.json', '_meta.json')
         out_bin = out_json.replace('.json', '_vertices.bin')
+        alt_meta = out_json.replace('_cad_data.json', '_cad_meta.json')
+        alt_bin = out_json.replace('_cad_data.json', '_cad_vertices.bin')
         
     out_meta_gz = out_meta + '.gz'
     out_bin_gz = out_bin + '.gz'
@@ -565,6 +567,13 @@ try:
     with open(out_meta, 'rb') as f_in, gzip.open(out_meta_gz, 'wb', compresslevel=6) as f_out:
         f_out.writelines(f_in)
         
+    if alt_meta != out_meta:
+        try:
+            with open(alt_meta, 'w', encoding='utf-8') as f:
+                json.dump(meta_payload, f)
+        except Exception:
+            pass
+        
     if lines_data:
         arr = np.array(lines_data, dtype=np.float32).reshape(-1, 5)
         x1 = arr[:, 0]; y1 = arr[:, 1]; x2 = arr[:, 2]; y2 = arr[:, 3]
@@ -579,6 +588,12 @@ try:
         vertices.tofile(out_bin)
         with open(out_bin, 'rb') as f_in, gzip.open(out_bin_gz, 'wb', compresslevel=6) as f_out:
             f_out.write(f_in.read())
+            
+        if alt_bin != out_bin:
+            try:
+                vertices.tofile(alt_bin)
+            except Exception:
+                pass
             
         bin_sz = os.path.getsize(out_bin)
         bin_gz_sz = os.path.getsize(out_bin_gz)

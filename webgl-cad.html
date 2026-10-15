@@ -1569,10 +1569,19 @@
           }
           loadedFromBinary = true;
         } else {
-          const cacheBust = `?v=5.2&t=${Date.now()}`;
-          const metaUrl = `/files/${fileId}_cad_meta.json${cacheBust}`;
-          const binUrl = `/files/${fileId}_cad_vertices.bin${cacheBust}`;
-          const jsonUrl = `/files/${fileId}_cad_data.json${cacheBust}`;
+          const cacheBust = `?v=5.4&t=${Date.now()}`;
+          const candidateMetaUrls = [
+            `/files/${fileId}_cad_meta.json${cacheBust}`,
+            `/files/${fileId}_cad_data_meta.json${cacheBust}`
+          ];
+          const candidateBinUrls = [
+            `/files/${fileId}_cad_vertices.bin${cacheBust}`,
+            `/files/${fileId}_cad_data_vertices.bin${cacheBust}`
+          ];
+          const candidateJsonUrls = [
+            `/files/${fileId}_cad_data.json${cacheBust}`,
+            `/files/${fileId}.json${cacheBust}`
+          ];
           let attempts = 0;
           const maxAttempts = 90;
 
@@ -1580,58 +1589,75 @@
             attempts++;
             try {
               if (attempts > 1) {
-                const pct = Math.min(68, 20 + Math.round(attempts * 0.7));
+                const pct = Math.min(85, 20 + Math.round(attempts * 0.75));
                 updateLoader(1, 'Vektör Katmanları İşleniyor', `Büyük CAD projesi çözümleniyor (${attempts}/${maxAttempts})`, pct);
               }
 
-              // 1. ÖNCELİK: Ultra hızlı ikili buffer (Zero-Copy ArrayBuffer)
-              const [metaRes, binRes] = await Promise.all([
-                fetch(metaUrl),
-                fetch(binUrl)
-              ]);
+              // 1. ÖNCELİK: Ultra hızlı ikili buffer (Zero-Copy ArrayBuffer) - Tüm olası URL'leri dene
+              let foundBinary = false;
+              for (let u = 0; u < candidateMetaUrls.length; u++) {
+                try {
+                  const [metaRes, binRes] = await Promise.all([
+                    fetch(candidateMetaUrls[u]),
+                    fetch(candidateBinUrls[u])
+                  ]);
 
-              if (metaRes.ok && binRes.ok) {
-                updateLoader(2, 'GPU Doğrudan Akışı', 'İkili geometri paketi GPU belleğine akıtılıyor...', 78);
-                const meta = await metaRes.json();
-                const buf = await binRes.arrayBuffer();
+                  if (metaRes.ok && binRes.ok) {
+                    updateLoader(2, 'GPU Doğrudan Akışı', 'İkili geometri paketi GPU belleğine akıtılıyor...', 82);
+                    const meta = await metaRes.json();
+                    const buf = await binRes.arrayBuffer();
 
-                vertexData = new Float32Array(buf);
-                bounds = meta.bounds || bounds;
-                cadTexts = meta.texts || [];
-                totalLines = meta.totalLines || Math.floor(vertexData.length / 10);
-                if (meta.triangles) {
-                  buildTriangleBuffer(meta.triangles);
-                }
-                loadedFromBinary = true;
-                setCachedDrawing(fileId, meta, vertexData);
-                break;
-              } else {
-                // 2. İKİNCİ ÖNCELİK: Standart JSON kontrolü
-                const jsonRes = await fetch(jsonUrl);
-                if (jsonRes.ok) {
-                  updateLoader(2, 'Vektörler Çözümleniyor', 'Geometri verisi çözümleniyor...', 65);
-                  const data = await jsonRes.json();
-                  bounds = data.bounds || bounds;
-                  cadTexts = data.texts || [];
-                  const lines = data.lines || [];
-                  totalLines = Math.floor(lines.length / 5);
-                  rawLinesArray = lines;
-                  if (data.triangles) {
-                    buildTriangleBuffer(data.triangles);
+                    vertexData = new Float32Array(buf);
+                    bounds = meta.bounds || bounds;
+                    cadTexts = meta.texts || [];
+                    totalLines = meta.totalLines || Math.floor(vertexData.length / 10);
+                    if (meta.triangles) {
+                      buildTriangleBuffer(meta.triangles);
+                    }
+                    loadedFromBinary = true;
+                    setCachedDrawing(fileId, meta, vertexData);
+                    foundBinary = true;
+                    break;
                   }
-
-                  // Vertex buffer oluştur
-                  vertexData = new Float32Array(totalLines * 10);
-                  for (let i = 0, vi = 0; i < lines.length; i += 5) {
-                    const x1 = lines[i], y1 = lines[i+1], x2 = lines[i+2], y2 = lines[i+3], c = lines[i+4];
-                    const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
-                    vertexData[vi++] = x1; vertexData[vi++] = y1; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
-                    vertexData[vi++] = x2; vertexData[vi++] = y2; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
-                  }
-                  setCachedDrawing(fileId, { bounds, texts: cadTexts, totalLines, triangles: data.triangles }, vertexData);
-                  break;
-                }
+                } catch (_) {}
               }
+
+              if (foundBinary) break;
+
+              // 2. İKİNCİ ÖNCELİK: Standart JSON kontrolü
+              let foundJson = false;
+              for (const jUrl of candidateJsonUrls) {
+                try {
+                  const jsonRes = await fetch(jUrl);
+                  if (jsonRes.ok) {
+                    updateLoader(2, 'Vektörler Çözümleniyor', 'Geometri verisi çözümleniyor...', 75);
+                    const data = await jsonRes.json();
+                    bounds = data.bounds || bounds;
+                    cadTexts = data.texts || [];
+                    const lines = data.lines || [];
+                    totalLines = Math.floor(lines.length / 5);
+                    rawLinesArray = lines;
+                    if (data.triangles) {
+                      buildTriangleBuffer(data.triangles);
+                    }
+
+                    // Vertex buffer oluştur
+                    vertexData = new Float32Array(totalLines * 10);
+                    for (let i = 0, vi = 0; i < lines.length; i += 5) {
+                      const x1 = lines[i], y1 = lines[i+1], x2 = lines[i+2], y2 = lines[i+3], c = lines[i+4];
+                      const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
+                      vertexData[vi++] = x1; vertexData[vi++] = y1; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+                      vertexData[vi++] = x2; vertexData[vi++] = y2; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+                    }
+                    setCachedDrawing(fileId, { bounds, texts: cadTexts, totalLines, triangles: data.triangles }, vertexData);
+                    foundJson = true;
+                    break;
+                  }
+                } catch (_) {}
+              }
+
+              if (foundJson) break;
+
               await new Promise(r => setTimeout(r, 1200));
             } catch (e) {
               await new Promise(r => setTimeout(r, 1200));
@@ -1686,7 +1712,7 @@
       }
 
       if (!vertexData || vertexData.length === 0) {
-        updateLoader(1, 'Çizim Dosyası Hazırlanıyor', 'Sunucudaki CAD vektör işlemi devam ediyor. Lütfen butona basarak tekrar kontrol edin.', 0);
+        updateLoader(1, 'Çizim Dosyası Hazırlanıyor', 'Sunucudaki CAD vektör işlemi devam ediyor. Lütfen butona basarak tekrar kontrol edin.', 90);
         let existingBtn = document.getElementById('cad-retry-btn');
         if (!existingBtn) {
           const retryBtn = document.createElement('button');
