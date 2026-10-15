@@ -3,6 +3,7 @@ import 'dart:convert';
 import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
+import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'widgets/glass_surface.dart';
@@ -13,12 +14,14 @@ class YerelCadDosya {
   final String dosyaYolu;
   final int dosyaBoyutu;
   final DateTime acilmaTarihi;
+  final String? webglUrl;
 
   YerelCadDosya({
     required this.dosyaAdi,
     required this.dosyaYolu,
     required this.dosyaBoyutu,
     required this.acilmaTarihi,
+    this.webglUrl,
   });
 
   Map<String, dynamic> toJson() => {
@@ -26,6 +29,7 @@ class YerelCadDosya {
         'dosyaYolu': dosyaYolu,
         'dosyaBoyutu': dosyaBoyutu,
         'acilmaTarihi': acilmaTarihi.toIso8601String(),
+        'webglUrl': webglUrl,
       };
 
   factory YerelCadDosya.fromJson(Map<String, dynamic> json) => YerelCadDosya(
@@ -35,6 +39,7 @@ class YerelCadDosya {
         acilmaTarihi:
             DateTime.tryParse(json['acilmaTarihi'] as String? ?? '') ??
                 DateTime.now(),
+        webglUrl: json['webglUrl'] as String?,
       );
 }
 
@@ -56,11 +61,14 @@ class YerelCadEkrani extends StatefulWidget {
 class _YerelCadEkraniState extends State<YerelCadEkrani> {
   static const Color _kBrandTeal = Color(0xFF0F7C86);
   static const Color _kTitleDark = Color(0xFF102A43);
+  static const String _kCadServerUrl =
+      'https://durham-recommended-processing-seconds.trycloudflare.com';
 
   WebViewController? _webViewController;
   bool _isWebViewReady = false;
   bool _isViewingDrawing = false;
   bool _isParsing = false;
+  String _parsingStatusText = 'Vektörler çözümleniyor...';
   String _activeDrawingName = '';
   List<YerelCadDosya> _recentFiles = [];
 
@@ -106,10 +114,12 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   Future<void> _saveRecentFile(YerelCadDosya file) async {
     try {
       final prefs = await SharedPreferences.getInstance();
-      _recentFiles.removeWhere((item) => item.dosyaYolu == file.dosyaYolu);
+      _recentFiles.removeWhere((item) =>
+          (item.dosyaYolu.isNotEmpty && item.dosyaYolu == file.dosyaYolu) ||
+          item.dosyaAdi == file.dosyaAdi);
       _recentFiles.insert(0, file);
-      if (_recentFiles.length > 15) {
-        _recentFiles = _recentFiles.sublist(0, 15);
+      if (_recentFiles.length > 20) {
+        _recentFiles = _recentFiles.sublist(0, 20);
       }
 
       final listJson =
@@ -158,8 +168,12 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
             if (mounted) {
               setState(() {
                 _isWebViewReady = true;
+                _isParsing = false;
               });
             }
+          },
+          onWebResourceError: (error) {
+            debugPrint('[Yerel CAD Webview Error] ${error.description}');
           },
         ),
       );
@@ -193,8 +207,29 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
     }
   }
 
-  Future<void> _openLocalFile(String filePath, [String? displayName]) async {
+  Future<void> _openLocalFile(String filePath,
+      [String? displayName, String? cachedWebglUrl]) async {
     final file = File(filePath);
+    final fileName = displayName ?? file.uri.pathSegments.last;
+    final extension = fileName.toLowerCase().split('.').last;
+
+    // 1. Eğer daha önce dönüştürülmüş ve webglUrl varsa doğrudan yükle
+    if (cachedWebglUrl != null && cachedWebglUrl.isNotEmpty) {
+      setState(() {
+        _isViewingDrawing = true;
+        _isParsing = true;
+        _parsingStatusText = 'Önbellekten Yükleniyor...';
+        _activeDrawingName = fileName;
+      });
+      final isDark = Theme.of(context).brightness == Brightness.dark;
+      String url = cachedWebglUrl;
+      if (!url.contains('theme=')) {
+        url += '&theme=${isDark ? 'dark' : 'light'}';
+      }
+      await _webViewController?.loadRequest(Uri.parse(url));
+      return;
+    }
+
     if (!await file.exists()) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
@@ -207,29 +242,18 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       return;
     }
 
-    final fileName = displayName ?? file.uri.pathSegments.last;
-    final extension = fileName.toLowerCase().split('.').last;
-
     setState(() {
       _isViewingDrawing = true;
       _isParsing = true;
+      _parsingStatusText = extension == 'dwg'
+          ? 'AutoCAD DWG Çözümleniyor...'
+          : 'DXF Vektörleri Çözümleniyor...';
       _activeDrawingName = fileName;
     });
 
     final bytes = await file.readAsBytes();
-    await _saveRecentFile(YerelCadDosya(
-      dosyaAdi: fileName,
-      dosyaYolu: filePath,
-      dosyaBoyutu: bytes.length,
-      acilmaTarihi: DateTime.now(),
-    ));
 
-    // Webview hazır değilse kısa bekle
-    if (!_isWebViewReady) {
-      await Future.delayed(const Duration(milliseconds: 500));
-    }
-
-    // DWG kontrolü
+    // DWG ise otomatik dönüştür ve aç (asla kullanıcıyı engelleme)
     if (extension == 'dwg') {
       final isBinaryDwg = bytes.length >= 6 &&
           bytes[0] == 0x41 && // 'A'
@@ -237,148 +261,132 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
           bytes[2] == 0x31; // '1'
 
       if (isBinaryDwg) {
-        // İkili AutoCAD DWG dosyası - Kullanıcıya bilgi ver ve varsa metin/DXF akışını dene
-        String? extractedDxf;
-        try {
-          final content = utf8.decode(bytes, allowMalformed: true);
-          if (content.contains('SECTION') && content.contains('ENTITIES')) {
-            extractedDxf = content;
-          }
-        } catch (_) {}
-
-        if (extractedDxf != null) {
-          final escapedJson = jsonEncode(extractedDxf);
-          final titleJson = jsonEncode(fileName);
-          await _webViewController?.runJavaScript(
-              'window.loadDxfString($escapedJson, $titleJson);');
-        } else {
-          setState(() {
-            _isParsing = false;
-          });
-
-          if (mounted) {
-            _showDwgNoticeDialog(fileName);
-          }
-          return;
-        }
+        // İkili DWG dosyasını sunucuda dönüştür ve anında aç
+        await _convertAndOpenDwg(file, fileName);
       } else {
-        // Metin tabanlı format
+        // Metin tabanlı DXF/DWG formatı - Doğrudan yerel WebGL motoruna aktar
+        if (!_isWebViewReady) {
+          await _webViewController
+              ?.loadFlutterAsset('assets/yerel_cad/index.html');
+          await Future.delayed(const Duration(milliseconds: 300));
+        }
         final content = utf8.decode(bytes, allowMalformed: true);
         final escapedJson = jsonEncode(content);
         final titleJson = jsonEncode(fileName);
         await _webViewController?.runJavaScript(
             'window.loadDxfString($escapedJson, $titleJson);');
+        await _saveRecentFile(YerelCadDosya(
+          dosyaAdi: fileName,
+          dosyaYolu: filePath,
+          dosyaBoyutu: bytes.length,
+          acilmaTarihi: DateTime.now(),
+        ));
       }
     } else {
-      // Standart DXF dosyası
+      // Standart DXF dosyası - Tamamen internetsiz, doğrudan telefonun GPU'sunda çalışır
+      if (!_isWebViewReady) {
+        await _webViewController
+            ?.loadFlutterAsset('assets/yerel_cad/index.html');
+        await Future.delayed(const Duration(milliseconds: 300));
+      }
       final content = utf8.decode(bytes, allowMalformed: true);
       final escapedJson = jsonEncode(content);
       final titleJson = jsonEncode(fileName);
       await _webViewController
           ?.runJavaScript('window.loadDxfString($escapedJson, $titleJson);');
+      await _saveRecentFile(YerelCadDosya(
+        dosyaAdi: fileName,
+        dosyaYolu: filePath,
+        dosyaBoyutu: bytes.length,
+        acilmaTarihi: DateTime.now(),
+      ));
     }
   }
 
-  void _showDwgNoticeDialog(String fileName) {
-    showDialog(
-      context: context,
-      builder: (ctx) => AlertDialog(
-        backgroundColor: const Color(0xFF0F172A),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF1E293B)),
-        ),
-        title: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(8),
-              decoration: BoxDecoration(
-                color: Colors.amber.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(10),
-              ),
-              child: const Icon(Icons.info_outline, color: Colors.amber, size: 24),
+  Future<void> _convertAndOpenDwg(File file, String fileName) async {
+    setState(() {
+      _isParsing = true;
+      _parsingStatusText = 'AutoCAD DWG Vektörleri Çözümleniyor...';
+    });
+
+    try {
+      final request = http.MultipartRequest(
+        'POST',
+        Uri.parse('$_kCadServerUrl/api/convert'),
+      );
+      request.files.add(
+        await http.MultipartFile.fromPath('file', file.path,
+            filename: fileName),
+      );
+
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 50));
+      final responseBody = await streamedResponse.stream.bytesToString();
+
+      if (streamedResponse.statusCode == 200) {
+        final data = jsonDecode(responseBody) as Map<String, dynamic>;
+        final String? webglUrl = data['webglUrl'] as String?;
+        final String? fileId = data['id'] as String?;
+
+        String resolvedWebglUrl;
+        if (webglUrl != null && webglUrl.isNotEmpty) {
+          resolvedWebglUrl =
+              webglUrl.startsWith('/') ? '$_kCadServerUrl$webglUrl' : webglUrl;
+          if (!resolvedWebglUrl.contains('title=')) {
+            resolvedWebglUrl += '&title=${Uri.encodeComponent(fileName)}';
+          }
+        } else if (fileId != null && fileId.isNotEmpty) {
+          resolvedWebglUrl =
+              '$_kCadServerUrl/webgl-cad.html?id=$fileId&title=${Uri.encodeComponent(fileName)}';
+        } else {
+          throw Exception('Geçerli bir CAD bağlantısı alınamadı.');
+        }
+
+        final isDark = Theme.of(context).brightness == Brightness.dark;
+        resolvedWebglUrl += '&theme=${isDark ? 'dark' : 'light'}';
+
+        // Son dosyalara webglUrl ile kaydet
+        await _saveRecentFile(YerelCadDosya(
+          dosyaAdi: fileName,
+          dosyaYolu: file.path,
+          dosyaBoyutu: file.existsSync() ? file.lengthSync() : 0,
+          acilmaTarihi: DateTime.now(),
+          webglUrl: resolvedWebglUrl,
+        ));
+
+        await _webViewController?.loadRequest(Uri.parse(resolvedWebglUrl));
+        if (mounted) {
+          setState(() {
+            _isParsing = false;
+          });
+        }
+      } else {
+        throw Exception(
+            'Dönüştürme sunucusu yanıt vermedi (${streamedResponse.statusCode})');
+      }
+    } catch (e) {
+      if (mounted) {
+        setState(() {
+          _isParsing = false;
+          _isViewingDrawing = false;
+        });
+
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              'DWG dosyası açılamadı: ${e.toString().replaceAll('Exception: ', '')}',
             ),
-            const SizedBox(width: 12),
-            const Expanded(
-              child: Text(
-                'AutoCAD DWG Dosyası',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
+            backgroundColor: Colors.redAccent,
+            duration: const Duration(seconds: 6),
+            action: SnackBarAction(
+              label: 'Tekrar Dene',
+              textColor: Colors.white,
+              onPressed: () => _openLocalFile(file.path, fileName),
             ),
-          ],
-        ),
-        content: Column(
-          mainAxisSize: MainAxisSize.min,
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            Text(
-              '$fileName dosyası ikili (binary) AutoCAD formatındadır.',
-              style: const TextStyle(color: Color(0xFFCBD5E1), fontSize: 13),
-            ),
-            const SizedBox(height: 12),
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.04),
-                borderRadius: BorderRadius.circular(12),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.08)),
-              ),
-              child: const Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    '💡 %100 Çevrimdışı Açma İpucu:',
-                    style: TextStyle(
-                      color: Color(0xFF38BDF8),
-                      fontWeight: FontWeight.w700,
-                      fontSize: 12,
-                    ),
-                  ),
-                  SizedBox(height: 6),
-                  Text(
-                    'AutoCAD, Netcad veya IdeCAD içinde:\n'
-                    'Dosya > Farklı Kaydet > ".DXF" seçeneğini kullanarak kaydettiğinizde, projeniz telefonunuzda internetsiz ve saniyede sıfır bekleme ile doğrudan GPU donanımında açılır.',
-                    style: TextStyle(color: Colors.white70, fontSize: 11.5, height: 1.45),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 12),
-            const Text(
-              'Ayrıca ana menüdeki "DWG / CAD Proje Aç" ekranından sunucu destekli otomatik DWG dönüştürücüyü de dilediğiniz zaman kullanabilirsiniz.',
-              style: TextStyle(color: Color(0xFF94A3B8), fontSize: 11),
-            ),
-          ],
-        ),
-        actions: [
-          TextButton(
-            onPressed: () {
-              Navigator.pop(ctx);
-              setState(() {
-                _isViewingDrawing = false;
-              });
-            },
-            child: const Text('Anladım', style: TextStyle(color: Color(0xFF38BDF8))),
           ),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(
-              backgroundColor: _kBrandTeal,
-              foregroundColor: Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-            ),
-            onPressed: () {
-              Navigator.pop(ctx);
-              _openDemoPlan();
-            },
-            child: const Text('Örnek Planı Gör'),
-          ),
-        ],
-      ),
-    );
+        );
+      }
+    }
   }
 
   void _openDemoPlan() {
@@ -386,6 +394,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       _isViewingDrawing = true;
       _activeDrawingName = 'HASAN AKTAŞ STATİK (DEMO)';
     });
+    _webViewController?.loadFlutterAsset('assets/yerel_cad/index.html');
     _webViewController?.runJavaScript('window.loadDemoPlan();');
   }
 
@@ -510,6 +519,8 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
               setState(() {
                 _isViewingDrawing = false;
               });
+              _webViewController
+                  ?.loadFlutterAsset('assets/yerel_cad/index.html');
             },
             tooltip: 'Dosyalara Dön',
           ),
@@ -541,7 +552,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                   ),
                   const SizedBox(width: 5),
                   const Text(
-                    'İnternetsiz Yerel GPU Motoru',
+                    'Donanım Hızlandırmalı GPU Motoru',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 10.5,
@@ -567,16 +578,26 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
               WebViewWidget(controller: _webViewController!),
             if (_isParsing)
               Container(
-                color: Colors.black.withValues(alpha: 0.6),
-                child: const Center(
+                color: Colors.black.withValues(alpha: 0.75),
+                child: Center(
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      CircularProgressIndicator(color: Color(0xFF38BDF8)),
-                      SizedBox(height: 14),
+                      const CircularProgressIndicator(
+                          color: Color(0xFF38BDF8)),
+                      const SizedBox(height: 16),
                       Text(
-                        'Vektörler çözümleniyor...',
-                        style: TextStyle(color: Colors.white, fontSize: 13),
+                        _parsingStatusText,
+                        style: const TextStyle(
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      const SizedBox(height: 6),
+                      const Text(
+                        'Vektör katmanları ve koordinatlar hazırlanıyor...',
+                        style: TextStyle(color: Colors.white60, fontSize: 11.5),
                       ),
                     ],
                   ),
@@ -660,7 +681,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Sıfır Sunucu, %100 Çevrimdışı',
+                      'Doğrudan Cihazdan CAD Aç',
                       style: TextStyle(
                         color: textPrimary,
                         fontSize: 17,
@@ -671,8 +692,8 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                     ),
                     const SizedBox(height: 8),
                     Text(
-                      'Çizimleriniz internete veya sunucuya gönderilmez. '
-                      'Tamamen telefonunuzun kendi GPU çipinde donanım hızlandırmasıyla çalışır.',
+                      '.dwg veya .dxf projelerinizi doğrudan seçin. '
+                      'Donanım hızlandırmalı WebGL motoruyla yüksek hızda görüntülenir.',
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: 12.5,
@@ -826,7 +847,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                         ),
                         const SizedBox(height: 10),
                         Text(
-                          'Henüz yerel bir çizim açılmadı',
+                          'Henüz bir çizim açılmadı',
                           style: TextStyle(
                             color: textPrimary,
                             fontSize: 13,
@@ -835,7 +856,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                         ),
                         const SizedBox(height: 4),
                         Text(
-                          'Cihazınızdaki .dxf çizimlerini açtığınızda burada hızlı erişim için listelenecektir.',
+                          'Cihazınızdaki .dwg veya .dxf çizimlerini açtığınızda burada hızlı erişim için listelenecektir.',
                           style: TextStyle(
                             color: textSecondary,
                             fontSize: 11.5,
@@ -849,18 +870,22 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
               else
                 ...List.generate(_recentFiles.length, (index) {
                   final f = _recentFiles[index];
+                  final isReady = f.webglUrl != null && f.webglUrl!.isNotEmpty;
                   return Padding(
                     padding: const EdgeInsets.only(bottom: 10),
                     child: _buildPanelGlassCard(
                       borderRadius: 16,
                       padding: const EdgeInsets.symmetric(
                           horizontal: 14, vertical: 12),
-                      onTap: () => _openLocalFile(f.dosyaYolu, f.dosyaAdi),
+                      onTap: () => _openLocalFile(
+                          f.dosyaYolu, f.dosyaAdi, f.webglUrl),
                       child: Row(
                         children: [
                           _buildPanelGlassIconBadge(
                             icon: Icons.architecture_rounded,
-                            accentColor: const Color(0xFF0F7C86),
+                            accentColor: isReady
+                                ? const Color(0xFF10B981)
+                                : const Color(0xFF0F7C86),
                             size: 42,
                             iconSize: 22,
                             borderRadius: 12,
@@ -870,15 +895,46 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
-                                Text(
-                                  f.dosyaAdi,
-                                  style: TextStyle(
-                                    color: textPrimary,
-                                    fontSize: 13,
-                                    fontWeight: FontWeight.w700,
-                                  ),
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
+                                Row(
+                                  children: [
+                                    Expanded(
+                                      child: Text(
+                                        f.dosyaAdi,
+                                        style: TextStyle(
+                                          color: textPrimary,
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                        ),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                      ),
+                                    ),
+                                    if (isReady)
+                                      Container(
+                                        margin:
+                                            const EdgeInsets.only(left: 6),
+                                        padding: const EdgeInsets.symmetric(
+                                            horizontal: 6, vertical: 2),
+                                        decoration: BoxDecoration(
+                                          color: const Color(0xFF10B981)
+                                              .withValues(alpha: 0.15),
+                                          borderRadius:
+                                              BorderRadius.circular(6),
+                                          border: Border.all(
+                                            color: const Color(0xFF10B981)
+                                                .withValues(alpha: 0.3),
+                                          ),
+                                        ),
+                                        child: const Text(
+                                          'GPU Hazır',
+                                          style: TextStyle(
+                                            color: Color(0xFF10B981),
+                                            fontSize: 9.5,
+                                            fontWeight: FontWeight.w700,
+                                          ),
+                                        ),
+                                      ),
+                                  ],
                                 ),
                                 const SizedBox(height: 3),
                                 Row(
