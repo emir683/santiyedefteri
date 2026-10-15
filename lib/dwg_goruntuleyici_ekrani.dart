@@ -471,12 +471,104 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     return '${dt.day}.${dt.month}.${dt.year}';
   }
 
+  // Ana Menü Tasarım Sistemi Renkleri ve Yardımcıları
+  static const Color _kBrandTeal = Color(0xFF0F7C86);
+  static const Color _kTitleDark = Color(0xFF102A43);
+
+  Widget _buildPanelGlassCard({
+    required Widget child,
+    EdgeInsetsGeometry padding = const EdgeInsets.all(18),
+    VoidCallback? onTap,
+    double borderRadius = 22,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    Widget card = Container(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            (isDark ? const Color(0xFF15181D) : const Color(0xFFE7EEF1))
+                .withValues(alpha: isDark ? 0.96 : 0.90),
+            (isDark ? const Color(0xFF090B0F) : const Color(0xFFD6E1E6))
+                .withValues(alpha: isDark ? 0.98 : 0.94),
+          ],
+        ),
+        border: Border.all(
+          color: isDark
+              ? Colors.white.withValues(alpha: 0.07)
+              : const Color(0xFFBFD0D6).withValues(alpha: 0.92),
+        ),
+        borderRadius: BorderRadius.circular(borderRadius),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
+            blurRadius: isDark ? 18 : 12,
+            offset: const Offset(0, 8),
+          ),
+          BoxShadow(
+            color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.03 : 0.08),
+            blurRadius: isDark ? 12 : 18,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Padding(padding: padding, child: child),
+    );
+
+    if (onTap != null) {
+      card = Material(
+        color: Colors.transparent,
+        borderRadius: BorderRadius.circular(borderRadius),
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(borderRadius),
+          child: card,
+        ),
+      );
+    }
+
+    return card;
+  }
+
+  Widget _buildPanelGlassIconBadge({
+    required IconData icon,
+    Color accentColor = _kBrandTeal,
+    double size = 48,
+    double iconSize = 24,
+    double borderRadius = 14,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return Container(
+      width: size,
+      height: size,
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            accentColor.withValues(alpha: isDark ? 0.20 : 0.18),
+            (isDark ? const Color(0xFF15313A) : const Color(0xFFE9F8FA))
+                .withValues(alpha: isDark ? 0.72 : 0.96),
+          ],
+        ),
+        borderRadius: BorderRadius.circular(borderRadius),
+        border: Border.all(
+          color: accentColor.withValues(alpha: isDark ? 0.20 : 0.14),
+        ),
+      ),
+      child: Icon(icon, color: accentColor, size: iconSize),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
-    final textPrimary = isDark ? Colors.white : const Color(0xFF0F172A);
-    final textSecondary = isDark ? const Color(0xFF94A3B8) : const Color(0xFF64748B);
+    final textPrimary = isDark ? Colors.white : _kTitleDark;
+    final textSecondary = isDark ? Colors.white60 : Colors.black54;
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -499,10 +591,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           children: [
             Text(
               'CAD Görüntüleyici',
-              style: GoogleFonts.poppins(
+              style: TextStyle(
                 color: textPrimary,
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
+                fontSize: 18,
+                fontWeight: FontWeight.w800,
                 letterSpacing: -0.3,
               ),
             ),
@@ -518,8 +610,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  'WebGL Motoru',
-                  style: GoogleFonts.poppins(
+                  'WebGL Çizim Motoru',
+                  style: TextStyle(
                     color: textSecondary,
                     fontSize: 11,
                     fontWeight: FontWeight.w500,
@@ -533,17 +625,11 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           Padding(
             padding: const EdgeInsets.only(right: 8),
             child: IconButton(
-              icon: Container(
-                padding: const EdgeInsets.all(7),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF38BDF8).withValues(alpha: 0.12),
-                  shape: BoxShape.circle,
-                ),
-                child: const Icon(
-                  Icons.add_rounded,
-                  color: Color(0xFF0284C7),
-                  size: 20,
-                ),
+              icon: _buildPanelGlassIconBadge(
+                icon: Icons.add_rounded,
+                size: 36,
+                iconSize: 20,
+                borderRadius: 18,
               ),
               tooltip: 'Yeni Çizim Seç',
               onPressed: _pickFileAndOpen,
@@ -560,11 +646,11 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
               // Ana Kaydırılabilir İçerik (RenderFlex / Overpixel Korumalı)
               SingleChildScrollView(
                 physics: const BouncingScrollPhysics(),
-                padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+                padding: const EdgeInsets.fromLTRB(16, 12, 16, 36),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    // 1. Hero / Hızlı Eylem Kartı (Yeni Çizim Seç)
+                    // 1. Hero / Hızlı Eylem Kartı (Tam Ortalanmış & Ana Menü Cam Tasarımı)
                     _buildHeroUploadCard(isDark, textPrimary, textSecondary),
 
                     const SizedBox(height: 22),
@@ -598,101 +684,97 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     );
   }
 
-  /// 1. Hero / Hızlı Dosya Yükleme Kartı (Uygulama İçi Cam Tasarımı)
+  /// 1. Hero / Hızlı Dosya Yükleme Kartı (Ana Ekrandaki Birebir Cam Kart Tasarımı, Kusursuz Ortalanmış)
   Widget _buildHeroUploadCard(
     bool isDark,
     Color textPrimary,
     Color textSecondary,
   ) {
-    return GlassSectionCard(
-      lightweight: true,
-      borderRadius: 20,
+    return _buildPanelGlassCard(
       onTap: _pickFileAndOpen,
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 22),
-      child: Column(
-        children: [
-          Container(
-            width: 56,
-            height: 56,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF0284C7), Color(0xFF38BDF8)],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 24),
+      borderRadius: 22,
+      child: Center(
+        child: SizedBox(
+          width: double.infinity,
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.center,
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              _buildPanelGlassIconBadge(
+                icon: Icons.file_open_rounded,
+                accentColor: _kBrandTeal,
+                size: 58,
+                iconSize: 28,
+                borderRadius: 18,
               ),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: const Color(0xFF0284C7).withValues(alpha: 0.35),
-                  blurRadius: 16,
-                  offset: const Offset(0, 6),
+              const SizedBox(height: 14),
+              Text(
+                'Yeni CAD Çizimi Aç',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: textPrimary,
+                  fontSize: 17,
+                  fontWeight: FontWeight.w800,
+                  letterSpacing: -0.2,
                 ),
-              ],
-            ),
-            child: const Icon(
-              Icons.file_open_rounded,
-              color: Colors.white,
-              size: 26,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            'Yeni CAD Çizimi Aç',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: textPrimary,
-              fontSize: 16,
-              fontWeight: FontWeight.w700,
-              letterSpacing: -0.2,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Cihazınızdan .dwg veya .dxf dosyası seçin',
-            textAlign: TextAlign.center,
-            style: GoogleFonts.poppins(
-              color: textSecondary,
-              fontSize: 12,
-              fontWeight: FontWeight.w400,
-            ),
-          ),
-          const SizedBox(height: 12),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-            decoration: BoxDecoration(
-              color: isDark
-                  ? const Color(0xFF0F172A).withValues(alpha: 0.7)
-                  : const Color(0xFFF1F5F9),
-              borderRadius: BorderRadius.circular(30),
-            ),
-            child: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const Icon(
-                  Icons.layers_outlined,
-                  color: Color(0xFF0284C7),
-                  size: 13,
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Cihazınızdan .dwg veya .dxf dosyası seçin',
+                textAlign: TextAlign.center,
+                style: TextStyle(
+                  color: textSecondary,
+                  fontSize: 12.5,
+                  fontWeight: FontWeight.w400,
                 ),
-                const SizedBox(width: 5),
-                Text(
-                  'DWG & DXF Format Desteği',
-                  style: GoogleFonts.poppins(
-                    color: isDark
-                        ? const Color(0xFF38BDF8)
-                        : const Color(0xFF0284C7),
-                    fontSize: 11,
-                    fontWeight: FontWeight.w600,
+              ),
+              const SizedBox(height: 14),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      _kBrandTeal.withValues(alpha: isDark ? 0.16 : 0.10),
+                      (isDark ? const Color(0xFF15313A) : const Color(0xFFE9F8FA))
+                          .withValues(alpha: isDark ? 0.6 : 0.8),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(20),
+                  border: Border.all(
+                    color: _kBrandTeal.withValues(alpha: isDark ? 0.22 : 0.18),
                   ),
                 ),
-              ],
-            ),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(
+                      Icons.layers_outlined,
+                      color: _kBrandTeal,
+                      size: 14,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'DWG & DXF Format Desteği',
+                      style: TextStyle(
+                        color: isDark ? const Color(0xFF5EEAD4) : _kBrandTeal,
+                        fontSize: 11.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
 
-  /// 2. Son Açılan Çizimler Bölümü (Glass Tasarım)
+  /// 2. Son Açılan Çizimler Bölümü (Ana Menü Tasarım Dili)
   Widget _buildRecentProjectsSection(
     bool isDark,
     Color textPrimary,
@@ -708,27 +790,27 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
               children: [
                 Text(
                   'Son Açılan Çizimler',
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     color: textPrimary,
-                    fontSize: 15,
-                    fontWeight: FontWeight.w700,
+                    fontSize: 17,
+                    fontWeight: FontWeight.w800,
                     letterSpacing: -0.2,
                   ),
                 ),
                 if (_savedProjects.isNotEmpty) ...[
                   const SizedBox(width: 8),
                   Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF0284C7).withValues(alpha: 0.12),
+                      color: _kBrandTeal.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${_savedProjects.length}',
-                      style: GoogleFonts.poppins(
-                        color: const Color(0xFF0284C7),
+                      style: const TextStyle(
+                        color: _kBrandTeal,
                         fontSize: 11,
-                        fontWeight: FontWeight.w700,
+                        fontWeight: FontWeight.w800,
                       ),
                     ),
                   ),
@@ -743,12 +825,12 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                   minimumSize: Size.zero,
                   tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
-                child: Text(
+                child: const Text(
                   'Temizle',
-                  style: GoogleFonts.poppins(
-                    color: const Color(0xFFEF4444),
+                  style: TextStyle(
+                    color: Color(0xFFEF4444),
                     fontSize: 12,
-                    fontWeight: FontWeight.w600,
+                    fontWeight: FontWeight.w700,
                   ),
                 ),
               ),
@@ -757,9 +839,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         const SizedBox(height: 10),
 
         if (_savedProjects.isEmpty)
-          GlassSectionCard(
-            lightweight: true,
-            borderRadius: 16,
+          _buildPanelGlassCard(
+            borderRadius: 18,
             padding: const EdgeInsets.symmetric(vertical: 24, horizontal: 18),
             child: Center(
               child: Column(
@@ -772,19 +853,19 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                   const SizedBox(height: 8),
                   Text(
                     'Henüz açılan bir CAD çizimi yok',
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       color: textSecondary,
                       fontSize: 13,
-                      fontWeight: FontWeight.w500,
+                      fontWeight: FontWeight.w600,
                     ),
                   ),
                   const SizedBox(height: 4),
                   Text(
                     'Açtığınız projeler buraya kaydedilir ve bir daha beklemeden açılır.',
                     textAlign: TextAlign.center,
-                    style: GoogleFonts.poppins(
+                    style: TextStyle(
                       color: textSecondary.withValues(alpha: 0.7),
-                      fontSize: 11,
+                      fontSize: 11.5,
                     ),
                   ),
                 ],
@@ -811,7 +892,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     );
   }
 
-  /// Tekil Son Açılan Proje Kartı (GlassSectionCard)
+  /// Tekil Son Açılan Proje Kartı (Ana Menü Cam Kartı)
   Widget _buildRecentProjectItem(
     SavedCadProject project,
     bool isDark,
@@ -821,26 +902,19 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     final sizeFormatted = _formatFileSize(project.fileSize);
     final dateFormatted = _formatDate(project.savedAt);
 
-    return GlassSectionCard(
-      lightweight: true,
-      borderRadius: 16,
+    return _buildPanelGlassCard(
       onTap: () => _openSavedProject(project),
+      borderRadius: 18,
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          // İkon
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: const Color(0xFF0284C7).withValues(alpha: 0.12),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: const Icon(
-              Icons.architecture_rounded,
-              color: Color(0xFF0284C7),
-              size: 22,
-            ),
+          // İkon Rozeti (Ana Menü Teal)
+          _buildPanelGlassIconBadge(
+            icon: Icons.architecture_rounded,
+            accentColor: _kBrandTeal,
+            size: 42,
+            iconSize: 22,
+            borderRadius: 12,
           ),
           const SizedBox(width: 12),
 
@@ -854,40 +928,40 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                   project.fileName,
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
-                  style: GoogleFonts.poppins(
+                  style: TextStyle(
                     color: textPrimary,
-                    fontSize: 13,
-                    fontWeight: FontWeight.w600,
+                    fontSize: 13.5,
+                    fontWeight: FontWeight.w700,
                     letterSpacing: -0.2,
                   ),
                 ),
-                const SizedBox(height: 3),
+                const SizedBox(height: 4),
                 Row(
                   children: [
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 6,
-                        vertical: 1.5,
+                        vertical: 2,
                       ),
                       decoration: BoxDecoration(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.14),
+                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
                         borderRadius: BorderRadius.circular(6),
                       ),
-                      child: Row(
+                      child: const Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(
+                          Icon(
                             Icons.flash_on_rounded,
                             color: Color(0xFF10B981),
                             size: 11,
                           ),
-                          const SizedBox(width: 2),
+                          SizedBox(width: 2),
                           Text(
                             'Anında Aç',
-                            style: GoogleFonts.poppins(
-                              color: const Color(0xFF10B981),
+                            style: TextStyle(
+                              color: Color(0xFF10B981),
                               fontSize: 9.5,
-                              fontWeight: FontWeight.w700,
+                              fontWeight: FontWeight.w800,
                             ),
                           ),
                         ],
@@ -902,7 +976,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                       const SizedBox(width: 6),
                       Text(
                         sizeFormatted,
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           color: textSecondary,
                           fontSize: 11,
                           fontWeight: FontWeight.w500,
@@ -920,7 +994,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                         dateFormatted,
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
-                        style: GoogleFonts.poppins(
+                        style: TextStyle(
                           color: textSecondary,
                           fontSize: 11,
                         ),
@@ -958,34 +1032,36 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                     const Icon(
                       Icons.open_in_new_rounded,
                       size: 16,
-                      color: Color(0xFF0284C7),
+                      color: _kBrandTeal,
                     ),
                     const SizedBox(width: 8),
                     Text(
                       'Projeyi Aç',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 12.5,
                         color: textPrimary,
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
                 ),
               ),
-              PopupMenuItem(
+              const PopupMenuItem(
                 value: 'delete',
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.delete_outline_rounded,
                       size: 16,
                       color: Color(0xFFEF4444),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: 8),
                     Text(
                       'Listeden Kaldır',
-                      style: GoogleFonts.poppins(
+                      style: TextStyle(
                         fontSize: 12.5,
-                        color: const Color(0xFFEF4444),
+                        color: Color(0xFFEF4444),
+                        fontWeight: FontWeight.w600,
                       ),
                     ),
                   ],
@@ -998,7 +1074,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     );
   }
 
-  /// 3. Hazır Örnek CAD Çizimleri Bölümü (GlassSectionCard)
+  /// 3. Hazır Örnek CAD Çizimleri Bölümü (Ana Menü Cam Kartları)
   Widget _buildSampleProjectsSection(
     bool isDark,
     Color textPrimary,
@@ -1009,10 +1085,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       children: [
         Text(
           'Hazır Örnek CAD Çizimleri',
-          style: GoogleFonts.poppins(
+          style: TextStyle(
             color: textPrimary,
-            fontSize: 15,
-            fontWeight: FontWeight.w700,
+            fontSize: 17,
+            fontWeight: FontWeight.w800,
             letterSpacing: -0.2,
           ),
         ),
@@ -1024,28 +1100,21 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           separatorBuilder: (_, __) => const SizedBox(height: 8),
           itemBuilder: (context, index) {
             final sample = _hazirOrnekler[index];
-            final colorInt = int.tryParse(sample['colorHex'] ?? '') ?? 0xFF0284C7;
+            final colorInt = int.tryParse(sample['colorHex'] ?? '') ?? 0xFF0F7C86;
             final itemColor = Color(colorInt);
 
-            return GlassSectionCard(
-              lightweight: true,
-              borderRadius: 16,
+            return _buildPanelGlassCard(
               onTap: () => _openSampleProject(sample),
+              borderRadius: 18,
               padding: const EdgeInsets.all(13),
               child: Row(
                 children: [
-                  Container(
-                    width: 40,
-                    height: 40,
-                    decoration: BoxDecoration(
-                      color: itemColor.withValues(alpha: 0.12),
-                      borderRadius: BorderRadius.circular(12),
-                    ),
-                    child: Icon(
-                      Icons.view_in_ar_rounded,
-                      color: itemColor,
-                      size: 21,
-                    ),
+                  _buildPanelGlassIconBadge(
+                    icon: Icons.view_in_ar_rounded,
+                    accentColor: itemColor,
+                    size: 42,
+                    iconSize: 22,
+                    borderRadius: 12,
                   ),
                   const SizedBox(width: 12),
                   Expanded(
@@ -1057,10 +1126,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                           sample['ad'] ?? '',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             color: textPrimary,
-                            fontSize: 13,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                         const SizedBox(height: 2),
@@ -1068,18 +1137,18 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                           sample['aciklama'] ?? '',
                           maxLines: 1,
                           overflow: TextOverflow.ellipsis,
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             color: textSecondary,
-                            fontSize: 11,
+                            fontSize: 11.5,
                           ),
                         ),
                         const SizedBox(height: 4),
                         Text(
                           sample['boyut'] ?? '',
-                          style: GoogleFonts.poppins(
+                          style: TextStyle(
                             color: itemColor,
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w600,
+                            fontSize: 11,
+                            fontWeight: FontWeight.w700,
                           ),
                         ),
                       ],
@@ -1088,7 +1157,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                   Icon(
                     Icons.arrow_forward_ios_rounded,
                     color: textSecondary.withValues(alpha: 0.4),
-                    size: 13,
+                    size: 14,
                   ),
                 ],
               ),
@@ -1130,16 +1199,16 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                 height: 44,
                 child: CircularProgressIndicator(
                   strokeWidth: 3.2,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0284C7)),
+                  valueColor: AlwaysStoppedAnimation<Color>(_kBrandTeal),
                 ),
               ),
               const SizedBox(height: 16),
               Text(
                 _loadingStatusText,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   color: textPrimary,
-                  fontSize: 14.5,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                 ),
               ),
@@ -1147,7 +1216,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
               Text(
                 _loadingSubText,
                 textAlign: TextAlign.center,
-                style: GoogleFonts.poppins(
+                style: TextStyle(
                   color: textSecondary,
                   fontSize: 11.5,
                 ),
