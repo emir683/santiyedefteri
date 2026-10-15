@@ -24,7 +24,6 @@ class CadWebglEkrani extends StatefulWidget {
 class _CadWebglEkraniState extends State<CadWebglEkrani> {
   late final WebViewController _controller;
   bool _isLoading = true;
-  int _loadingProgress = 0;
   String? _errorMessage;
   bool _urlLoaded = false;
 
@@ -34,22 +33,27 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
     _initWebView();
   }
 
+  final ValueNotifier<double?> _progressNotifier = ValueNotifier<double?>(null);
+
+  @override
+  void dispose() {
+    _progressNotifier.dispose();
+    super.dispose();
+  }
+
   void _initWebView() {
     final WebViewController controller = WebViewController();
 
     controller
       ..setJavaScriptMode(JavaScriptMode.unrestricted)
-      ..setBackgroundColor(Colors.transparent)
-      ..clearCache()
-      ..clearLocalStorage()
+      ..setBackgroundColor(const Color(0xFF000000))
+      ..setOnConsoleMessage((JavaScriptConsoleMessage message) {
+        debugPrint('[WebGL CAD Console] [${message.level.name.toUpperCase()}]: ${message.message}');
+      })
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
-            if (mounted) {
-              setState(() {
-                _loadingProgress = progress;
-              });
-            }
+            _progressNotifier.value = progress > 0 && progress < 100 ? progress / 100.0 : null;
           },
           onPageStarted: (String url) {
             if (mounted) {
@@ -232,11 +236,16 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
               top: 0,
               left: 0,
               right: 0,
-              child: LinearProgressIndicator(
-                value: _loadingProgress > 0 ? _loadingProgress / 100.0 : null,
-                backgroundColor: Colors.transparent,
-                color: accentColor,
-                minHeight: 2.5,
+              child: ValueListenableBuilder<double?>(
+                valueListenable: _progressNotifier,
+                builder: (context, val, _) {
+                  return LinearProgressIndicator(
+                    value: val,
+                    backgroundColor: Colors.transparent,
+                    color: accentColor,
+                    minHeight: 2.5,
+                  );
+                },
               ),
             ),
 
