@@ -1,0 +1,1885 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Şantiye Çevrimdışı CAD Motoru</title>
+  <style>
+    :root {
+      --bg-main: #000000;
+      --canvas-bg: #000000;
+      --hud-bg: rgba(15, 23, 42, 0.88);
+      --hud-border: rgba(255, 255, 255, 0.12);
+      --hud-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-accent: #38bdf8;
+      --primary: #0f7c86;
+      --btn-bg: rgba(15, 23, 42, 0.85);
+      --btn-border: rgba(255, 255, 255, 0.14);
+      --btn-hover: rgba(56, 189, 248, 0.2);
+      --popup-bg: rgba(15, 23, 42, 0.95);
+      --divider: rgba(255, 255, 255, 0.08);
+      --item-hover: rgba(255, 255, 255, 0.07);
+      --status-pill-bg: rgba(255, 255, 255, 0.08);
+      --status-pill-color: #94a3b8;
+      --accent-cyan: #00f0ff;
+      --accent-green: #10b981;
+    }
+
+    body.theme-light {
+      --bg-main: #000000;
+      --canvas-bg: #000000;
+      --hud-bg: rgba(255, 255, 255, 0.94);
+      --hud-border: rgba(226, 232, 240, 0.95);
+      --hud-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --text-accent: #0f7c86;
+      --primary: #0f7c86;
+      --btn-bg: rgba(255, 255, 255, 0.9);
+      --btn-border: rgba(203, 213, 225, 0.85);
+      --btn-hover: rgba(15, 124, 134, 0.12);
+      --popup-bg: rgba(255, 255, 255, 0.98);
+      --divider: rgba(226, 232, 240, 0.9);
+      --item-hover: rgba(241, 245, 249, 0.95);
+      --status-pill-bg: rgba(241, 245, 249, 0.95);
+      --status-pill-color: #64748b;
+      --accent-cyan: #0f7c86;
+      --accent-green: #059669;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-overscroll-behavior: none;
+      background-color: #000000 !important;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-primary);
+    }
+
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000000 !important;
+      cursor: grab;
+      touch-action: none;
+    }
+
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    #glCanvas { z-index: 1; }
+    #textCanvas { z-index: 2; pointer-events: none; }
+
+    /* Top Left Status Badge */
+    #project-badge {
+      position: absolute;
+      top: 14px;
+      left: 14px;
+      z-index: 20;
+      padding: 7px 14px;
+      background: var(--hud-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--hud-border);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      box-shadow: var(--hud-shadow);
+      max-width: calc(100vw - 160px);
+    }
+
+    .badge-icon {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: #10b981;
+      box-shadow: 0 0 10px #10b981;
+      flex-shrink: 0;
+    }
+
+    #project-title {
+      font-size: 13px;
+      font-weight: 700;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      color: var(--text-primary);
+    }
+
+    .badge-tag {
+      font-size: 10px;
+      padding: 2px 6px;
+      border-radius: 5px;
+      background: rgba(15, 124, 134, 0.25);
+      color: #38bdf8;
+      border: 1px solid rgba(56, 189, 248, 0.3);
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+    }
+
+    /* Top Right Actions */
+    #hud-actions {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .action-btn {
+      height: 38px;
+      padding: 0 13px;
+      border-radius: 12px;
+      background: var(--btn-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--btn-border);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 12.5px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    .action-btn:hover {
+      background: var(--btn-hover);
+      border-color: var(--text-accent);
+      color: var(--text-accent);
+    }
+
+    .action-btn:active {
+      transform: scale(0.96);
+    }
+
+    .action-btn.active-tool {
+      border-color: #06b6d4 !important;
+      color: #38bdf8 !important;
+      background: rgba(6, 182, 212, 0.22) !important;
+      box-shadow: 0 0 14px rgba(56, 189, 248, 0.3);
+    }
+
+    /* Floating Navigation Controls */
+    #nav-controls {
+      position: absolute;
+      bottom: 24px;
+      right: 18px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 20;
+    }
+
+    .nav-btn {
+      width: 42px;
+      height: 42px;
+      border-radius: 13px;
+      background: var(--btn-bg);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid var(--btn-border);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--hud-shadow);
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+
+    .nav-btn:hover {
+      background: var(--btn-hover);
+      border-color: var(--text-accent);
+      color: var(--text-accent);
+    }
+
+    .nav-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* Bottom Left Coordinates HUD */
+    #coords-hud {
+      position: absolute;
+      bottom: 24px;
+      left: 18px;
+      z-index: 20;
+      padding: 8px 14px;
+      background: var(--hud-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--hud-border);
+      border-radius: 12px;
+      font-family: monospace;
+      font-size: 11.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      box-shadow: var(--hud-shadow);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    #coords-text {
+      color: var(--text-primary);
+    }
+
+    /* Precision Loupe */
+    #loupe-container {
+      position: absolute;
+      top: -300px;
+      left: -300px;
+      width: 150px;
+      height: 150px;
+      border-radius: 50%;
+      border: 2.5px solid #38bdf8;
+      box-shadow: 0 10px 30px rgba(0, 0, 0, 0.8), 0 0 15px rgba(56, 189, 248, 0.4);
+      overflow: hidden;
+      z-index: 50;
+      pointer-events: none;
+      background: #000000;
+      display: none;
+    }
+
+    #loupeCanvas {
+      width: 100%;
+      height: 100%;
+    }
+
+    .loupe-crosshair-h {
+      position: absolute;
+      top: 50%;
+      left: 0;
+      width: 100%;
+      height: 1px;
+      background: rgba(56, 189, 248, 0.7);
+      transform: translateY(-50%);
+    }
+
+    .loupe-crosshair-v {
+      position: absolute;
+      left: 50%;
+      top: 0;
+      width: 1px;
+      height: 100%;
+      background: rgba(56, 189, 248, 0.7);
+      transform: translateX(-50%);
+    }
+
+    .loupe-dot {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: #00f0ff;
+      box-shadow: 0 0 6px #00f0ff;
+      transform: translate(-50%, -50%);
+    }
+
+    .loupe-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(15, 23, 42, 0.9);
+      border: 1px solid #38bdf8;
+      color: #38bdf8;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 7px;
+      border-radius: 5px;
+      letter-spacing: 0.5px;
+    }
+
+    /* Dropdown Menus */
+    .popup-menu {
+      position: absolute;
+      top: 60px;
+      right: 14px;
+      width: 270px;
+      max-height: calc(100vh - 120px);
+      overflow-y: auto;
+      background: var(--popup-bg);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--hud-border);
+      border-radius: 16px;
+      box-shadow: var(--hud-shadow);
+      padding: 10px;
+      display: none;
+      flex-direction: column;
+      gap: 5px;
+      z-index: 30;
+      animation: popIn 0.15s ease;
+    }
+
+    @keyframes popIn {
+      from { opacity: 0; transform: translateY(-8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .popup-header {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.6px;
+      color: var(--text-secondary);
+      padding: 6px 8px 4px 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+
+    .menu-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 12px;
+      border-radius: 10px;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+
+    .menu-item:hover {
+      background: var(--item-hover);
+      color: var(--text-accent);
+    }
+
+    .menu-item.active {
+      background: var(--btn-hover);
+      color: var(--text-accent);
+      font-weight: 600;
+    }
+
+    .menu-item-left {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .layer-color-dot {
+      width: 11px;
+      height: 11px;
+      border-radius: 3px;
+      flex-shrink: 0;
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .layer-count {
+      font-size: 10.5px;
+      color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.08);
+      padding: 2px 6px;
+      border-radius: 5px;
+    }
+
+    /* Measure Result Box */
+    #measure-box {
+      position: absolute;
+      top: 60px;
+      left: 14px;
+      z-index: 25;
+      padding: 12px 16px;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 220px;
+      background: var(--popup-bg);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 14px;
+      box-shadow: var(--hud-shadow);
+      animation: popIn 0.15s ease;
+    }
+
+    .measure-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-accent);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .measure-value {
+      font-size: 22px;
+      font-weight: 800;
+      color: #ffffff;
+      font-family: monospace;
+      letter-spacing: -0.5px;
+    }
+
+    .measure-sub {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .measure-actions {
+      display: flex;
+      gap: 6px;
+      margin-top: 4px;
+    }
+
+    .btn-sm {
+      background: var(--item-hover);
+      border: 1px solid var(--btn-border);
+      color: var(--text-primary);
+      padding: 5px 10px;
+      border-radius: 7px;
+      font-size: 11px;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    .btn-sm:hover {
+      background: var(--btn-hover);
+      border-color: var(--text-accent);
+    }
+
+    /* Fullscreen Overlay Loader */
+    #loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 60;
+      background: rgba(15, 23, 42, 0.94);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border: 1px solid var(--hud-border);
+      border-radius: 20px;
+      padding: 24px 28px;
+      width: 320px;
+      max-width: calc(100vw - 32px);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      text-align: center;
+    }
+
+    .loader-ring {
+      width: 50px;
+      height: 50px;
+      border: 3px solid rgba(56, 189, 248, 0.2);
+      border-top-color: #38bdf8;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    #loader-title {
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    #loader-sub {
+      font-size: 12px;
+      color: var(--text-secondary);
+      line-height: 1.5;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: rgba(255, 255, 255, 0.1);
+      overflow: hidden;
+    }
+
+    #loader-progress {
+      width: 0%;
+      height: 100%;
+      background: linear-gradient(90deg, #0f7c86, #38bdf8);
+      transition: width 0.15s ease;
+    }
+
+    /* Scale Dropdown */
+    #scale-select {
+      background: var(--hud-bg);
+      border: 1px solid var(--btn-border);
+      color: var(--text-accent);
+      border-radius: 8px;
+      padding: 3px 6px;
+      font-size: 11px;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+  <div id="canvas-container">
+    <canvas id="glCanvas"></canvas>
+    <canvas id="textCanvas"></canvas>
+  </div>
+
+  <!-- Status Badge -->
+  <div id="project-badge">
+    <div class="badge-icon"></div>
+    <span id="project-title">Çevrimdışı CAD Motoru</span>
+    <span class="badge-tag">YEREL GPU</span>
+  </div>
+
+  <!-- Top Right Actions -->
+  <div id="hud-actions">
+    <button class="action-btn" id="btn-layers" title="Katmanlar">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polygon points="12 2 2 7 12 12 22 7 12 2"></polygon>
+        <polyline points="2 17 12 22 22 17"></polyline>
+        <polyline points="2 12 12 17 22 12"></polyline>
+      </svg>
+      <span>Katmanlar</span>
+    </button>
+
+    <button class="action-btn" id="btn-tools" title="Ölçüm Araçları">
+      <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"></path>
+        <path d="m14.5 12.5 2-2"></path>
+        <path d="m11.5 9.5 2-2"></path>
+        <path d="m8.5 6.5 2-2"></path>
+      </svg>
+      <span>Ölçüm</span>
+    </button>
+  </div>
+
+  <!-- Layers Popup -->
+  <div class="popup-menu" id="layers-popup">
+    <div class="popup-header">
+      <span>Çizim Katmanları</span>
+      <button class="btn-sm" id="btn-toggle-all-layers">Tümünü Aç/Kapa</button>
+    </div>
+    <div id="layers-list"></div>
+  </div>
+
+  <!-- Tools Popup -->
+  <div class="popup-menu" id="tools-popup">
+    <div class="popup-header">
+      <span>Ölçüm ve Araçlar</span>
+    </div>
+    <button class="menu-item" id="tool-measure-dist">
+      <div class="menu-item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/></svg>
+        <span>Mesafe Ölç</span>
+      </div>
+    </button>
+    <button class="menu-item" id="tool-measure-area">
+      <div class="menu-item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polygon points="12 2 22 8.5 22 15.5 12 22 2 15.5 2 8.5 12 2"/></svg>
+        <span>Alan Hesapla (m²)</span>
+      </div>
+    </button>
+    <div style="height: 1px; background: var(--divider); margin: 4px 0;"></div>
+    <div style="display:flex; justify-content:space-between; align-items:center; padding: 6px 12px;">
+      <span style="font-size:12px; color:var(--text-secondary);">Ölçek:</span>
+      <select id="scale-select">
+        <option value="1">1:1 (m)</option>
+        <option value="0.05">1:20</option>
+        <option value="0.02">1:50</option>
+        <option value="0.01" selected>1:100 (cm)</option>
+        <option value="0.005">1:200</option>
+        <option value="0.002">1:500</option>
+        <option value="0.001">1:1000 (mm)</option>
+      </select>
+    </div>
+    <button class="menu-item" id="tool-toggle-text">
+      <div class="menu-item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="4 7 4 4 20 4 20 7"/><line x1="9" y1="20" x2="15" y2="20"/><line x1="12" y1="4" x2="12" y2="20"/></svg>
+        <span>Yazıları Göster/Gizle</span>
+      </div>
+    </button>
+  </div>
+
+  <!-- Measure Floating Card -->
+  <div id="measure-box">
+    <div class="measure-title" id="measure-type-label">Mesafe Ölçümü</div>
+    <div class="measure-value" id="measure-main-val">0.00 m</div>
+    <div class="measure-sub" id="measure-sub-val">2 nokta seçin</div>
+    <div class="measure-actions">
+      <button class="btn-sm" id="btn-measure-clear">Sıfırla</button>
+      <button class="btn-sm" id="btn-measure-close">Kapat</button>
+    </div>
+  </div>
+
+  <!-- Nav Controls -->
+  <div id="nav-controls">
+    <button class="nav-btn" id="btn-fit" title="Tümünü Göster">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <polyline points="15 3 21 3 21 9"></polyline>
+        <polyline points="9 21 3 21 3 15"></polyline>
+        <line x1="21" y1="3" x2="14" y2="10"></line>
+        <line x1="3" y1="21" x2="10" y2="14"></line>
+      </svg>
+    </button>
+    <button class="nav-btn" id="btn-zoom-in" title="Yaklaş">+</button>
+    <button class="nav-btn" id="btn-zoom-out" title="Uzaklaş">-</button>
+  </div>
+
+  <!-- Coordinates HUD -->
+  <div id="coords-hud">
+    <span>X/Y:</span>
+    <span id="coords-text">0.0 , 0.0</span>
+  </div>
+
+  <!-- Precision Loupe -->
+  <div id="loupe-container">
+    <canvas id="loupeCanvas" width="150" height="150"></canvas>
+    <div class="loupe-crosshair-h"></div>
+    <div class="loupe-crosshair-v"></div>
+    <div class="loupe-dot"></div>
+    <div class="loupe-badge" id="loupeBadge">OSNAP</div>
+  </div>
+
+  <!-- Loader -->
+  <div id="loader">
+    <div class="loader-ring"></div>
+    <div id="loader-title">Çevrimdışı CAD Çözümleniyor</div>
+    <div id="loader-sub">Vektör katmanları ve bloklar yerel GPU'ya hazırlanıyor...</div>
+    <div class="progress-bar-bg">
+      <div id="loader-progress"></div>
+    </div>
+  </div>
+
+  <script>
+    /* ========================================================================
+       AUTOCAD COLOR INDEX (ACI 1-255) TO RGB LOOKUP TABLE
+       ======================================================================== */
+    const ACI_TABLE = [
+      0x000000, 0xFF0000, 0xFFFF00, 0x00FF00, 0x00FFFF, 0x0000FF, 0xFF00FF, 0xFFFFFF,
+      0x808080, 0xC0C0C0, 0xFF0000, 0xFF7F7F, 0xCC0000, 0xCC6666, 0x990000, 0x994C4C,
+      0x7F0000, 0x7F3F3F, 0x4C0000, 0x4C2626, 0xFF3F00, 0xFF9F7F, 0xCC3300, 0xCC7F66,
+      0x992600, 0x995F4C, 0x7F1F00, 0x7F4F3F, 0x4C1300, 0x4C2F26, 0xFF7F00, 0xFFBF7F,
+      0xCC6600, 0xCC9966, 0x994C00, 0x99734C, 0x7F3F00, 0x7F5F3F, 0x4C2600, 0x4C3926,
+      0xFFBF00, 0xFFDF7F, 0xCC9900, 0xCCB366, 0x997300, 0x99864C, 0x7F5F00, 0x7F6F3F,
+      0x4C3900, 0x4C4326, 0xFFFF00, 0xFFFF7F, 0xCCCC00, 0xCCCC66, 0x999900, 0x99994C,
+      0x7F7F00, 0x7F7F3F, 0x4C4C00, 0x4C4C26, 0xBFFF00, 0xDFFF7F, 0x99CC00, 0xB3CC66,
+      0x739900, 0x86994C, 0x5F7F00, 0x6F7F3F, 0x394C00, 0x434C26, 0x7FFF00, 0xBFFF7F,
+      0x66CC00, 0x99CC66, 0x4C9900, 0x73994C, 0x3F7F00, 0x5F7F3F, 0x264C00, 0x394C26,
+      0x3FFF00, 0x9FFF7F, 0x33CC00, 0x7FCC66, 0x269900, 0x5F994C, 0x1F7F00, 0x4F7F3F,
+      0x134C00, 0x2F4C26, 0x00FF00, 0x7FFF7F, 0x00CC00, 0x66CC66, 0x009900, 0x4C994C,
+      0x007F00, 0x3F7F3F, 0x004C00, 0x264C26, 0x00FF3F, 0x7FFF9F, 0x00CC33, 0x66CC7F,
+      0x009926, 0x4C995F, 0x007F1F, 0x3F7F4F, 0x004C13, 0x264C2F, 0x00FF7F, 0x7FFFBF,
+      0x00CC66, 0x66CC99, 0x00994C, 0x4C9973, 0x007F3F, 0x3F7F5F, 0x004C26, 0x264C39,
+      0x00FFBF, 0x7FFFDF, 0x00CC99, 0x66CCB3, 0x009973, 0x4C9986, 0x007F5F, 0x3F7F6F,
+      0x004C39, 0x264C43, 0x00FFFF, 0x7FFFFF, 0x00CCCC, 0x66CCCC, 0x009999, 0x4C9999,
+      0x007F7F, 0x3F7F7F, 0x004C4C, 0x264C4C, 0x00BFFF, 0x7FDFFF, 0x0099CC, 0x66B3CC,
+      0x007399, 0x4C8699, 0x005F7F, 0x3F6F7F, 0x00394C, 0x26434C, 0x007FFF, 0x7FBFFF,
+      0x0066CC, 0x6699CC, 0x004C99, 0x4C7399, 0x003F7F, 0x3F5F7F, 0x00264C, 0x26394C,
+      0x003FFF, 0x7F9FFF, 0x0033CC, 0x667FCC, 0x002699, 0x4C5F99, 0x001F7F, 0x3F4F7F,
+      0x00134C, 0x262F4C, 0x0000FF, 0x7F7FFF, 0x0000CC, 0x6666CC, 0x000099, 0x4C4C99,
+      0x00007F, 0x3F3F7F, 0x00004C, 0x26264C, 0x3F00FF, 0x9F7FFF, 0x3300CC, 0x7F66CC,
+      0x260099, 0x5F4C99, 0x1F007F, 0x4F3F7F, 0x13004C, 0x2F264C, 0x7F00FF, 0xBF7FFF,
+      0x6600CC, 0x9966CC, 0x4C0099, 0x734C99, 0x3F007F, 0x5F3F7F, 0x26004C, 0x39264C,
+      0xBF00FF, 0xDF7FFF, 0x9900CC, 0xB366CC, 0x730099, 0x864C99, 0x5F007F, 0x6F3F7F,
+      0x39004C, 0x43264C, 0xFF00FF, 0xFF7FFF, 0xCC00CC, 0xCC66CC, 0x990099, 0x994C99,
+      0x7F007F, 0x7F3F7F, 0x4C004C, 0x4C264C, 0xFF00BF, 0xFF7FDF, 0xCC0099, 0xCC66B3,
+      0x990073, 0x994C86, 0x7F005F, 0x7F3F6F, 0x4C0039, 0x4C2643, 0xFF007F, 0xFF7FBF,
+      0xCC0066, 0xCC6699, 0x99004C, 0x994C73, 0x7F003F, 0x7F3F5F, 0x4C0026, 0x4C2639,
+      0xFF003F, 0xFF7F9F, 0xCC0033, 0xCC667F, 0x990026, 0x994C5F, 0x7F001F, 0x7F3F4F,
+      0x4C0013, 0x4C262F, 0x333333, 0x505050, 0x696969, 0x828282, 0xBEBEBE, 0xFFFFFF
+    ];
+
+    function aciToRgb(aci) {
+      if (aci === 7 || aci === 0) return 0xFFFFFF; // Dark CAD canvas uses white for 7
+      if (aci > 0 && aci < ACI_TABLE.length) return ACI_TABLE[aci];
+      return 0xFFFFFF;
+    }
+
+    /* ========================================================================
+       OFFLINE DXF HIGH-FIDELITY PARSER (ZERO EXTERNAL DEPENDENCY)
+       ======================================================================== */
+    class OfflineDxfParser {
+      constructor() {
+        this.layers = new Map();
+        this.blocks = new Map();
+        this.lines = []; // [x1, y1, x2, y2, color, layerIndex]
+        this.triangles = []; // [x1,y1, x2,y2, x3,y3, color, layerIndex]
+        this.texts = []; // [{text, x, y, size, color, rot, layer}]
+        this.bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+      }
+
+      updateBounds(x, y) {
+        if (!isFinite(x) || !isFinite(y)) return;
+        if (x < this.bounds.minX) this.bounds.minX = x;
+        if (x > this.bounds.maxX) this.bounds.maxX = x;
+        if (y < this.bounds.minY) this.bounds.minY = y;
+        if (y > this.bounds.maxY) this.bounds.maxY = y;
+      }
+
+      parse(dxfString) {
+        const lines = dxfString.split(/\r?\n/);
+        let i = 0;
+        const total = lines.length;
+
+        function nextPair() {
+          if (i >= total - 1) return null;
+          const code = parseInt(lines[i++].trim(), 10);
+          const value = lines[i++].trim();
+          return { code, value };
+        }
+
+        let currentSection = null;
+        let currentBlock = null;
+
+        while (i < total) {
+          const pair = nextPair();
+          if (!pair) break;
+
+          if (pair.code === 0 && pair.value === 'SECTION') {
+            const next = nextPair();
+            if (next && next.code === 2) currentSection = next.value;
+            continue;
+          }
+
+          if (pair.code === 0 && pair.value === 'ENDSEC') {
+            currentSection = null;
+            continue;
+          }
+
+          if (currentSection === 'TABLES') {
+            if (pair.code === 0 && pair.value === 'LAYER') {
+              this.parseLayer(nextPair);
+            }
+          } else if (currentSection === 'BLOCKS') {
+            if (pair.code === 0 && pair.value === 'BLOCK') {
+              currentBlock = this.parseBlockHeader(nextPair);
+              if (currentBlock && currentBlock.name) {
+                this.blocks.set(currentBlock.name, currentBlock);
+              }
+            } else if (pair.code === 0 && pair.value === 'ENDBLK') {
+              currentBlock = null;
+            } else if (currentBlock && pair.code === 0) {
+              const entity = this.parseEntity(pair.value, nextPair);
+              if (entity) currentBlock.entities.push(entity);
+            }
+          } else if (currentSection === 'ENTITIES') {
+            if (pair.code === 0) {
+              const entity = this.parseEntity(pair.value, nextPair);
+              if (entity) this.instantiateEntity(entity);
+            }
+          }
+        }
+
+        // Finalize bounds
+        if (!isFinite(this.bounds.minX) || !isFinite(this.bounds.minY)) {
+          this.bounds = { minX: 0, minY: 0, w: 1000, h: 1000 };
+        } else {
+          this.bounds.w = Math.max(1, this.bounds.maxX - this.bounds.minX);
+          this.bounds.h = Math.max(1, this.bounds.maxY - this.bounds.minY);
+        }
+
+        return {
+          lines: this.lines,
+          triangles: this.triangles,
+          texts: this.texts,
+          layers: Array.from(this.layers.values()),
+          bounds: this.bounds
+        };
+      }
+
+      parseLayer(nextPair) {
+        let name = '0', color = 0xFFFFFF, visible = true;
+        while (true) {
+          const p = nextPair();
+          if (!p || p.code === 0) {
+            if (p) i -= 2;
+            break;
+          }
+          if (p.code === 2) name = p.value;
+          else if (p.code === 62) {
+            const aci = parseInt(p.value, 10);
+            if (aci < 0) { visible = false; color = aciToRgb(-aci); }
+            else color = aciToRgb(aci);
+          }
+        }
+        this.layers.set(name, { name, color, visible, count: 0 });
+      }
+
+      parseBlockHeader(nextPair) {
+        let name = '', bx = 0, by = 0;
+        while (true) {
+          const p = nextPair();
+          if (!p || p.code === 0) {
+            if (p) i -= 2;
+            break;
+          }
+          if (p.code === 2) name = p.value;
+          else if (p.code === 10) bx = parseFloat(p.value) || 0;
+          else if (p.code === 20) by = parseFloat(p.value) || 0;
+        }
+        return { name, bx, by, entities: [] };
+      }
+
+      parseEntity(type, nextPair) {
+        let e = { type, layer: '0', color: null };
+        let vertices = [];
+        let currV = null;
+
+        while (true) {
+          const p = nextPair();
+          if (!p || p.code === 0) {
+            if (p) i -= 2;
+            break;
+          }
+
+          const c = p.code, v = p.value;
+          if (c === 8) e.layer = v;
+          else if (c === 62) e.color = aciToRgb(parseInt(v, 10));
+
+          switch (type) {
+            case 'LINE':
+              if (c === 10) e.x1 = parseFloat(v);
+              else if (c === 20) e.y1 = parseFloat(v);
+              else if (c === 11) e.x2 = parseFloat(v);
+              else if (c === 21) e.y2 = parseFloat(v);
+              break;
+            case 'POINT':
+              if (c === 10) e.x = parseFloat(v);
+              else if (c === 20) e.y = parseFloat(v);
+              break;
+            case 'CIRCLE':
+              if (c === 10) e.cx = parseFloat(v);
+              else if (c === 20) e.cy = parseFloat(v);
+              else if (c === 40) e.r = parseFloat(v);
+              break;
+            case 'ARC':
+              if (c === 10) e.cx = parseFloat(v);
+              else if (c === 20) e.cy = parseFloat(v);
+              else if (c === 40) e.r = parseFloat(v);
+              else if (c === 50) e.startA = parseFloat(v);
+              else if (c === 51) e.endA = parseFloat(v);
+              break;
+            case 'ELLIPSE':
+              if (c === 10) e.cx = parseFloat(v);
+              else if (c === 20) e.cy = parseFloat(v);
+              else if (c === 11) e.mx = parseFloat(v);
+              else if (c === 21) e.my = parseFloat(v);
+              else if (c === 40) e.ratio = parseFloat(v);
+              else if (c === 41) e.startP = parseFloat(v);
+              else if (c === 42) e.endP = parseFloat(v);
+              break;
+            case 'LWPOLYLINE':
+              if (c === 70) e.closed = (parseInt(v, 10) & 1) === 1;
+              else if (c === 10) {
+                currV = { x: parseFloat(v), y: 0, bulge: 0 };
+                vertices.push(currV);
+              } else if (c === 20 && currV) {
+                currV.y = parseFloat(v);
+              } else if (c === 42 && currV) {
+                currV.bulge = parseFloat(v) || 0;
+              }
+              break;
+            case 'SOLID':
+            case '3DFACE':
+              if (c === 10) e.x1 = parseFloat(v);
+              else if (c === 20) e.y1 = parseFloat(v);
+              else if (c === 11) e.x2 = parseFloat(v);
+              else if (c === 21) e.y2 = parseFloat(v);
+              else if (c === 12) e.x3 = parseFloat(v);
+              else if (c === 22) e.y3 = parseFloat(v);
+              else if (c === 13) e.x4 = parseFloat(v);
+              else if (c === 23) e.y4 = parseFloat(v);
+              break;
+            case 'INSERT':
+              if (c === 2) e.block = v;
+              else if (c === 10) e.ix = parseFloat(v);
+              else if (c === 20) e.iy = parseFloat(v);
+              else if (c === 41) e.sx = parseFloat(v);
+              else if (c === 42) e.sy = parseFloat(v);
+              else if (c === 50) e.rot = parseFloat(v);
+              break;
+            case 'TEXT':
+            case 'MTEXT':
+              if (c === 1) e.text = v.replace(/\\A1;|\\P|\{[^}]*\}|\\[A-Za-z0-9]+;/g, ' ').trim();
+              else if (c === 10) e.x = parseFloat(v);
+              else if (c === 20) e.y = parseFloat(v);
+              else if (c === 40) e.size = parseFloat(v);
+              else if (c === 50) e.rot = parseFloat(v);
+              break;
+          }
+        }
+
+        if (vertices.length > 0) e.vertices = vertices;
+        return e;
+      }
+
+      instantiateEntity(e, matrix = [1, 0, 0, 1, 0, 0], depth = 0) {
+        if (!e) return;
+        const color = e.color || (this.layers.get(e.layer) ? this.layers.get(e.layer).color : 0xFFFFFF);
+        const transformPoint = (x, y) => ({
+          x: matrix[0] * x + matrix[2] * y + matrix[4],
+          y: matrix[1] * x + matrix[3] * y + matrix[5]
+        });
+
+        // Add line to buffer
+        const addLine = (p1x, p1y, p2x, p2y) => {
+          this.lines.push(p1x, p1y, p2x, p2y, color);
+          this.updateBounds(p1x, p1y);
+          this.updateBounds(p2x, p2y);
+          if (this.layers.has(e.layer)) this.layers.get(e.layer).count++;
+        };
+
+        // Add triangle to buffer
+        const addTri = (ax, ay, bx, by, cx, cy) => {
+          this.triangles.push(ax, ay, bx, by, cx, cy, color);
+          this.updateBounds(ax, ay);
+          this.updateBounds(bx, by);
+          this.updateBounds(cx, cy);
+        };
+
+        switch (e.type) {
+          case 'LINE': {
+            const p1 = transformPoint(e.x1 || 0, e.y1 || 0);
+            const p2 = transformPoint(e.x2 || 0, e.y2 || 0);
+            addLine(p1.x, p1.y, p2.x, p2.y);
+            break;
+          }
+          case 'POINT': {
+            const p = transformPoint(e.x || 0, e.y || 0);
+            const s = 1.0;
+            addLine(p.x - s, p.y, p.x + s, p.y);
+            addLine(p.x, p.y - s, p.x, p.y + s);
+            break;
+          }
+          case 'CIRCLE': {
+            const cx = e.cx || 0, cy = e.cy || 0, r = e.r || 10;
+            const segments = Math.max(16, Math.min(64, Math.round(r * 0.8)));
+            let prev = null, first = null;
+            for (let s = 0; s <= segments; s++) {
+              const theta = (s / segments) * Math.PI * 2;
+              const p = transformPoint(cx + r * Math.cos(theta), cy + r * Math.sin(theta));
+              if (s === 0) first = p;
+              if (prev) addLine(prev.x, prev.y, p.x, p.y);
+              prev = p;
+            }
+            if (prev && first) addLine(prev.x, prev.y, first.x, first.y);
+            break;
+          }
+          case 'ARC': {
+            const cx = e.cx || 0, cy = e.cy || 0, r = e.r || 10;
+            let startRad = ((e.startA || 0) * Math.PI) / 180;
+            let endRad = ((e.endA || 0) * Math.PI) / 180;
+            if (endRad < startRad) endRad += Math.PI * 2;
+            const span = endRad - startRad;
+            const segments = Math.max(8, Math.min(48, Math.round(span * 8)));
+            let prev = null;
+            for (let s = 0; s <= segments; s++) {
+              const theta = startRad + (s / segments) * span;
+              const p = transformPoint(cx + r * Math.cos(theta), cy + r * Math.sin(theta));
+              if (prev) addLine(prev.x, prev.y, p.x, p.y);
+              prev = p;
+            }
+            break;
+          }
+          case 'ELLIPSE': {
+            const cx = e.cx || 0, cy = e.cy || 0;
+            const mx = e.mx || 10, my = e.my || 0;
+            const majorLen = Math.hypot(mx, my);
+            const majorAngle = Math.atan2(my, mx);
+            const minorLen = majorLen * (e.ratio || 0.5);
+            let startP = e.startP || 0;
+            let endP = e.endP || (Math.PI * 2);
+            if (endP < startP) endP += Math.PI * 2;
+            const segments = 32;
+            let prev = null;
+            for (let s = 0; s <= segments; s++) {
+              const t = startP + (s / segments) * (endP - startP);
+              const ex = majorLen * Math.cos(t);
+              const ey = minorLen * Math.sin(t);
+              const rx = cx + ex * Math.cos(majorAngle) - ey * Math.sin(majorAngle);
+              const ry = cy + ex * Math.sin(majorAngle) + ey * Math.cos(majorAngle);
+              const p = transformPoint(rx, ry);
+              if (prev) addLine(prev.x, prev.y, p.x, p.y);
+              prev = p;
+            }
+            break;
+          }
+          case 'LWPOLYLINE': {
+            const verts = e.vertices || [];
+            if (verts.length < 2) break;
+            const count = e.closed ? verts.length : verts.length - 1;
+            for (let v = 0; v < count; v++) {
+              const v1 = verts[v];
+              const v2 = verts[(v + 1) % verts.length];
+              const bulge = v1.bulge || 0;
+
+              if (Math.abs(bulge) < 1e-4) {
+                const p1 = transformPoint(v1.x, v1.y);
+                const p2 = transformPoint(v2.x, v2.y);
+                addLine(p1.x, p1.y, p2.x, p2.y);
+              } else {
+                // Curved bulge arc segment
+                const dx = v2.x - v1.x;
+                const dy = v2.y - v1.y;
+                const chord = Math.hypot(dx, dy);
+                if (chord < 1e-4) continue;
+                const theta = 4 * Math.atan(bulge);
+                const radius = chord / (2 * Math.sin(theta / 2));
+                const midX = (v1.x + v2.x) / 2;
+                const midY = (v1.y + v2.y) / 2;
+                const sagitta = (chord / 2) * Math.abs(bulge);
+                const distToCenter = Math.sqrt(Math.max(0, radius * radius - (chord / 2) * (chord / 2)));
+                const normX = -dy / chord;
+                const normY = dx / chord;
+                const sign = bulge > 0 ? 1 : -1;
+                const arcCenterX = midX + sign * (radius > 0 ? distToCenter : -distToCenter) * normX;
+                const arcCenterY = midY + sign * (radius > 0 ? distToCenter : -distToCenter) * normY;
+
+                let startAngle = Math.atan2(v1.y - arcCenterY, v1.x - arcCenterX);
+                let endAngle = Math.atan2(v2.y - arcCenterY, v2.x - arcCenterX);
+                if (bulge > 0 && endAngle < startAngle) endAngle += Math.PI * 2;
+                if (bulge < 0 && endAngle > startAngle) endAngle -= Math.PI * 2;
+
+                const segs = Math.max(6, Math.min(24, Math.round(Math.abs(theta) * 6)));
+                let prevP = transformPoint(v1.x, v1.y);
+                for (let s = 1; s <= segs; s++) {
+                  const a = startAngle + (s / segs) * (endAngle - startAngle);
+                  const p = transformPoint(arcCenterX + Math.abs(radius) * Math.cos(a), arcCenterY + Math.abs(radius) * Math.sin(a));
+                  addLine(prevP.x, prevP.y, p.x, p.y);
+                  prevP = p;
+                }
+              }
+            }
+            break;
+          }
+          case 'SOLID':
+          case '3DFACE': {
+            const p1 = transformPoint(e.x1 || 0, e.y1 || 0);
+            const p2 = transformPoint(e.x2 || 0, e.y2 || 0);
+            const p3 = transformPoint(e.x3 || 0, e.y3 || 0);
+            const p4 = transformPoint(e.x4 || e.x3 || 0, e.y4 || e.y3 || 0);
+            addTri(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
+            if (e.x4 !== undefined && (e.x4 !== e.x3 || e.y4 !== e.y3)) {
+              addTri(p1.x, p1.y, p3.x, p3.y, p4.x, p4.y);
+            }
+            break;
+          }
+          case 'INSERT': {
+            if (depth > 6) break; // guard recursion
+            const block = this.blocks.get(e.block);
+            if (!block) break;
+
+            const ix = e.ix || 0, iy = e.iy || 0;
+            const sx = e.sx !== undefined ? e.sx : 1;
+            const sy = e.sy !== undefined ? e.sy : 1;
+            const rotDeg = e.rot || 0;
+            const rad = (rotDeg * Math.PI) / 180;
+            const cosA = Math.cos(rad);
+            const sinA = Math.sin(rad);
+
+            // Local block affine matrix: M_local = [sx*cos, sx*sin, -sy*sin, sy*cos, ix, iy]
+            const mLocal = [
+              sx * cosA, sx * sinA,
+              -sy * sinA, sy * cosA,
+              ix - (block.bx || 0) * sx,
+              iy - (block.by || 0) * sy
+            ];
+
+            // Multiply with parent matrix: M_world = M_parent * M_local
+            const mWorld = [
+              matrix[0] * mLocal[0] + matrix[2] * mLocal[1],
+              matrix[1] * mLocal[0] + matrix[3] * mLocal[1],
+              matrix[0] * mLocal[2] + matrix[2] * mLocal[3],
+              matrix[1] * mLocal[2] + matrix[3] * mLocal[3],
+              matrix[0] * mLocal[4] + matrix[2] * mLocal[5] + matrix[4],
+              matrix[1] * mLocal[4] + matrix[3] * mLocal[5] + matrix[5]
+            ];
+
+            for (const subEntity of block.entities) {
+              this.instantiateEntity(subEntity, mWorld, depth + 1);
+            }
+            break;
+          }
+          case 'TEXT':
+          case 'MTEXT': {
+            if (!e.text) break;
+            const p = transformPoint(e.x || 0, e.y || 0);
+            this.texts.push({
+              text: e.text,
+              x: p.x,
+              y: p.y,
+              size: Math.max(8, (e.size || 20) * Math.hypot(matrix[0], matrix[1])),
+              color,
+              rot: (e.rot || 0),
+              layer: e.layer
+            });
+            this.updateBounds(p.x, p.y);
+            break;
+          }
+        }
+      }
+    }
+
+    /* ========================================================================
+       WEBGL RENDERER & SPATIAL INTERACTION SYSTEM
+       ======================================================================== */
+    const glCanvas = document.getElementById('glCanvas');
+    const textCanvas = document.getElementById('textCanvas');
+    const coordsText = document.getElementById('coords-text');
+    const loader = document.getElementById('loader');
+    const loaderProgress = document.getElementById('loader-progress');
+    const loaderSub = document.getElementById('loader-sub');
+    const projectTitle = document.getElementById('project-title');
+
+    // Loupe Elements
+    const loupeContainer = document.getElementById('loupe-container');
+    const loupeCanvas = document.getElementById('loupeCanvas');
+    const loupeCtx = loupeCanvas.getContext('2d');
+    const loupeBadge = document.getElementById('loupeBadge');
+
+    // Measure Elements
+    const measureBox = document.getElementById('measure-box');
+    const measureTypeLabel = document.getElementById('measure-type-label');
+    const measureMainVal = document.getElementById('measure-main-val');
+    const measureSubVal = document.getElementById('measure-sub-val');
+    const scaleSelect = document.getElementById('scale-select');
+
+    let gl, textCtx;
+    let lineProgram, triProgram;
+    let lineBuffer = null, triBuffer = null;
+    let totalLines = 0, totalTriangles = 0;
+    let rawLines = null;
+    let cadTexts = [];
+    let cadLayers = [];
+    let hiddenLayers = new Set();
+    let bounds = { minX: 0, minY: 0, w: 1000, h: 1000 };
+    let showTexts = true;
+
+    // Camera
+    let zoom = 0.005;
+    let offsetX = 0.0;
+    let offsetY = 0.0;
+
+    // Measurement & Snapping
+    let measureMode = 'none'; // 'none', 'dist', 'area'
+    let measurePts = [];
+    let activeSnap = null;
+    let scaleRatio = 0.01; // default 1:100 (1 unit = 1 cm = 0.01 m)
+
+    // Fast Spatial Hash for Snapping
+    const spatialGrid = new Map();
+    const GRID_SIZE = 1500;
+
+    function buildSpatialGrid(lines) {
+      spatialGrid.clear();
+      if (!lines) return;
+      const len = lines.length;
+      for (let i = 0; i < len; i += 5) {
+        const x1 = lines[i], y1 = lines[i+1];
+        const x2 = lines[i+2], y2 = lines[i+3];
+        const gx1 = Math.floor(x1 / GRID_SIZE);
+        const gy1 = Math.floor(y1 / GRID_SIZE);
+        const gx2 = Math.floor(x2 / GRID_SIZE);
+        const gy2 = Math.floor(y2 / GRID_SIZE);
+
+        const addPoint = (gx, gy, x, y, type) => {
+          const key = `${gx}_${gy}`;
+          if (!spatialGrid.has(key)) spatialGrid.set(key, { pts: [], lines: [] });
+          const cell = spatialGrid.get(key);
+          if (cell.pts.length < 60) cell.pts.push({ x, y, type });
+        };
+
+        addPoint(gx1, gy1, x1, y1, 'KÖŞE');
+        addPoint(gx2, gy2, x2, y2, 'KÖŞE');
+        addPoint(Math.floor((x1 + x2) / 2 / GRID_SIZE), Math.floor((y1 + y2) / 2 / GRID_SIZE), (x1 + x2) / 2, (y1 + y2) / 2, 'ORTA');
+
+        const keyL = `${gx1}_${gy1}`;
+        if (!spatialGrid.has(keyL)) spatialGrid.set(keyL, { pts: [], lines: [] });
+        const cellL = spatialGrid.get(keyL);
+        if (cellL.lines.length < 40) cellL.lines.push(i);
+      }
+    }
+
+    function findSnapPoint(worldX, worldY) {
+      const snapRadius = 24 / zoom;
+      const gx = Math.floor(worldX / GRID_SIZE);
+      const gy = Math.floor(worldY / GRID_SIZE);
+      let bestPt = null, bestDistSq = snapRadius * snapRadius;
+
+      for (let dx = -1; dx <= 1; dx++) {
+        for (let dy = -1; dy <= 1; dy++) {
+          const cell = spatialGrid.get(`${gx + dx}_${gy + dy}`);
+          if (!cell) continue;
+          for (let i = 0; i < cell.pts.length; i++) {
+            const p = cell.pts[i];
+            const dSq = (p.x - worldX) ** 2 + (p.y - worldY) ** 2;
+            if (dSq < bestDistSq) {
+              bestDistSq = dSq;
+              bestPt = { x: p.x, y: p.y, type: p.type };
+            }
+          }
+        }
+      }
+      return bestPt;
+    }
+
+    // WebGL Shaders
+    const vsSource = `
+      attribute vec2 a_pos;
+      attribute vec3 a_color;
+      uniform vec2 u_res;
+      uniform vec2 u_offset;
+      uniform float u_zoom;
+      varying vec3 v_color;
+      void main() {
+        vec2 d = a_pos - u_offset;
+        vec2 clip = vec2(d.x, -d.y) * (2.0 * u_zoom / u_res);
+        gl_Position = vec4(clip.x, clip.y, 0.0, 1.0);
+        v_color = a_color;
+      }
+    `;
+
+    const fsSource = `
+      precision mediump float;
+      varying vec3 v_color;
+      void main() {
+        gl_FragColor = vec4(v_color, 1.0);
+      }
+    `;
+
+    function initGL() {
+      gl = glCanvas.getContext('webgl', { antialias: true, alpha: false });
+      if (!gl) return false;
+      textCtx = textCanvas.getContext('2d');
+
+      const createShader = (src, type) => {
+        const s = gl.createShader(type);
+        gl.shaderSource(s, src);
+        gl.compileShader(s);
+        return s;
+      };
+
+      const vs = createShader(vsSource, gl.VERTEX_SHADER);
+      const fs = createShader(fsSource, gl.FRAGMENT_SHADER);
+
+      lineProgram = gl.createProgram();
+      gl.attachShader(lineProgram, vs);
+      gl.attachShader(lineProgram, fs);
+      gl.linkProgram(lineProgram);
+
+      triProgram = lineProgram; // Shared shader
+      gl.useProgram(lineProgram);
+      gl.clearColor(0.0, 0.0, 0.0, 1.0);
+      return true;
+    }
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      glCanvas.width = Math.round(w * dpr);
+      glCanvas.height = Math.round(h * dpr);
+      textCanvas.width = Math.round(w * dpr);
+      textCanvas.height = Math.round(h * dpr);
+      if (gl) gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+      render();
+    }
+    window.addEventListener('resize', resize);
+
+    function uploadGeometry(lines, triangles) {
+      rawLines = lines;
+      totalLines = Math.floor(lines.length / 5);
+      const lineData = new Float32Array(totalLines * 10);
+      for (let i = 0, vi = 0; i < lines.length; i += 5) {
+        const x1 = lines[i], y1 = lines[i+1], x2 = lines[i+2], y2 = lines[i+3], c = lines[i+4];
+        const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
+        lineData[vi++] = x1; lineData[vi++] = y1; lineData[vi++] = r; lineData[vi++] = g; lineData[vi++] = b;
+        lineData[vi++] = x2; lineData[vi++] = y2; lineData[vi++] = r; lineData[vi++] = g; lineData[vi++] = b;
+      }
+      lineBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, lineData, gl.STATIC_DRAW);
+
+      if (triangles && triangles.length > 0) {
+        totalTriangles = Math.floor(triangles.length / 7);
+        const triData = new Float32Array(totalTriangles * 15);
+        for (let i = 0, vi = 0; i < triangles.length; i += 7) {
+          const x1 = triangles[i], y1 = triangles[i+1];
+          const x2 = triangles[i+2], y2 = triangles[i+3];
+          const x3 = triangles[i+4], y3 = triangles[i+5];
+          const c = triangles[i+6];
+          const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
+          triData[vi++] = x1; triData[vi++] = y1; triData[vi++] = r; triData[vi++] = g; triData[vi++] = b;
+          triData[vi++] = x2; triData[vi++] = y2; triData[vi++] = r; triData[vi++] = g; triData[vi++] = b;
+          triData[vi++] = x3; triData[vi++] = y3; triData[vi++] = r; triData[vi++] = g; triData[vi++] = b;
+        }
+        triBuffer = gl.createBuffer();
+        gl.bindBuffer(gl.ARRAY_BUFFER, triBuffer);
+        gl.bufferData(gl.ARRAY_BUFFER, triData, gl.STATIC_DRAW);
+      }
+
+      buildSpatialGrid(lines);
+      fitToScreen();
+    }
+
+    function fitToScreen() {
+      if (!bounds || bounds.w <= 0) return;
+      const dpr = window.devicePixelRatio || 1;
+      const screenW = glCanvas.width / dpr;
+      const screenH = glCanvas.height / dpr;
+      const padding = 40;
+      const zX = (screenW - padding * 2) / bounds.w;
+      const zY = (screenH - padding * 2) / bounds.h;
+      zoom = Math.min(zX, zY);
+      offsetX = bounds.minX + bounds.w / 2;
+      offsetY = bounds.minY + bounds.h / 2;
+      render();
+    }
+
+    function render() {
+      if (!gl || !lineBuffer) return;
+
+      const dpr = window.devicePixelRatio || 1;
+      gl.clear(gl.COLOR_BUFFER_BIT);
+      gl.useProgram(lineProgram);
+
+      const uRes = gl.getUniformLocation(lineProgram, 'u_res');
+      const uOffset = gl.getUniformLocation(lineProgram, 'u_offset');
+      const uZoom = gl.getUniformLocation(lineProgram, 'u_zoom');
+      const aPos = gl.getAttribLocation(lineProgram, 'a_pos');
+      const aColor = gl.getAttribLocation(lineProgram, 'a_color');
+
+      gl.uniform2f(uRes, glCanvas.width / dpr, glCanvas.height / dpr);
+      gl.uniform2f(uOffset, offsetX, offsetY);
+      gl.uniform1f(uZoom, zoom);
+
+      // Draw Triangles (Solid fills/Hatch)
+      if (triBuffer && totalTriangles > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, triBuffer);
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 20, 0);
+        gl.enableVertexAttribArray(aColor);
+        gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 20, 8);
+        gl.drawArrays(gl.TRIANGLES, 0, totalTriangles * 3);
+      }
+
+      // Draw Lines
+      if (lineBuffer && totalLines > 0) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 20, 0);
+        gl.enableVertexAttribArray(aColor);
+        gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 20, 8);
+        gl.drawArrays(gl.LINES, 0, totalLines * 2);
+      }
+
+      renderOverlay();
+    }
+
+    function renderOverlay() {
+      if (!textCtx) return;
+      const dpr = window.devicePixelRatio || 1;
+      textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+      textCtx.save();
+      textCtx.scale(dpr, dpr);
+
+      const screenW = glCanvas.width / dpr;
+      const screenH = glCanvas.height / dpr;
+      const toScreen = (wx, wy) => ({
+        x: screenW / 2 + (wx - offsetX) * zoom,
+        y: screenH / 2 - (wy - offsetY) * zoom
+      });
+
+      // 1. Texts
+      if (showTexts && cadTexts.length > 0) {
+        for (let i = 0; i < cadTexts.length; i++) {
+          const t = cadTexts[i];
+          if (hiddenLayers.has(t.layer)) continue;
+          const sPos = toScreen(t.x, t.y);
+          if (sPos.x < -100 || sPos.x > screenW + 100 || sPos.y < -100 || sPos.y > screenH + 100) continue;
+
+          const screenFontSize = Math.max(9, Math.min(48, t.size * zoom));
+          if (screenFontSize < 6) continue;
+
+          textCtx.save();
+          textCtx.translate(sPos.x, sPos.y);
+          if (t.rot) textCtx.rotate(-t.rot * Math.PI / 180);
+          textCtx.font = `600 ${screenFontSize}px monospace`;
+          textCtx.fillStyle = `#${((t.color || 0xFFFFFF) & 0xFFFFFF).toString(16).padStart(6, '0')}`;
+          textCtx.fillText(t.text, 0, 0);
+          textCtx.restore();
+        }
+      }
+
+      // 2. Measure Overlay
+      if (measurePts.length > 0) {
+        textCtx.strokeStyle = '#06b6d4';
+        textCtx.lineWidth = 2;
+        textCtx.setLineDash([4, 4]);
+
+        textCtx.beginPath();
+        for (let i = 0; i < measurePts.length; i++) {
+          const sp = toScreen(measurePts[i].x, measurePts[i].y);
+          if (i === 0) textCtx.moveTo(sp.x, sp.y);
+          else textCtx.lineTo(sp.x, sp.y);
+        }
+        if (measureMode === 'area' && measurePts.length >= 3) {
+          textCtx.closePath();
+          textCtx.fillStyle = 'rgba(6, 182, 212, 0.15)';
+          textCtx.fill();
+        }
+        textCtx.stroke();
+        textCtx.setLineDash([]);
+
+        // Points
+        for (let i = 0; i < measurePts.length; i++) {
+          const sp = toScreen(measurePts[i].x, measurePts[i].y);
+          textCtx.beginPath();
+          textCtx.arc(sp.x, sp.y, 5, 0, Math.PI * 2);
+          textCtx.fillStyle = '#00f0ff';
+          textCtx.fill();
+          textCtx.strokeStyle = '#ffffff';
+          textCtx.stroke();
+        }
+      }
+
+      // 3. Snap Indicator
+      if (activeSnap) {
+        const sp = toScreen(activeSnap.x, activeSnap.y);
+        textCtx.beginPath();
+        textCtx.rect(sp.x - 7, sp.y - 7, 14, 14);
+        textCtx.strokeStyle = '#00f0ff';
+        textCtx.lineWidth = 2.5;
+        textCtx.stroke();
+      }
+
+      textCtx.restore();
+    }
+
+    // Touch & Mouse Handling
+    let isDragging = false;
+    let lastX = 0, lastY = 0;
+    let initialPinchDist = null;
+    let initialZoom = 1;
+
+    const screenToWorld = (sx, sy) => {
+      const dpr = window.devicePixelRatio || 1;
+      const screenW = glCanvas.width / dpr;
+      const screenH = glCanvas.height / dpr;
+      return {
+        x: offsetX + (sx - screenW / 2) / zoom,
+        y: offsetY - (sy - screenH / 2) / zoom
+      };
+    };
+
+    window.addEventListener('pointerdown', (e) => {
+      if (e.target.closest('#hud-actions, #nav-controls, #project-badge, .popup-menu, #measure-box')) return;
+      isDragging = true;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      if (measureMode !== 'none') {
+        const wp = screenToWorld(e.clientX, e.clientY);
+        const snap = findSnapPoint(wp.x, wp.y);
+        const pt = snap ? { x: snap.x, y: snap.y } : wp;
+        measurePts.push(pt);
+        updateMeasurement();
+        render();
+      }
+    });
+
+    window.addEventListener('pointermove', (e) => {
+      const wp = screenToWorld(e.clientX, e.clientY);
+      coordsText.innerText = `${wp.x.toFixed(1)} , ${wp.y.toFixed(1)}`;
+
+      if (measureMode !== 'none') {
+        activeSnap = findSnapPoint(wp.x, wp.y);
+        updateLoupe(e.clientX, e.clientY, wp, activeSnap);
+        render();
+      } else {
+        loupeContainer.style.display = 'none';
+      }
+
+      if (!isDragging) return;
+      const dx = e.clientX - lastX;
+      const dy = e.clientY - lastY;
+      lastX = e.clientX;
+      lastY = e.clientY;
+
+      offsetX -= dx / zoom;
+      offsetY += dy / zoom;
+      render();
+    });
+
+    window.addEventListener('pointerup', () => {
+      isDragging = false;
+      initialPinchDist = null;
+    });
+
+    // Touch Pinch Zoom
+    window.addEventListener('touchmove', (e) => {
+      if (e.touches.length === 2) {
+        e.preventDefault();
+        const t1 = e.touches[0];
+        const t2 = e.touches[1];
+        const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
+        if (!initialPinchDist) {
+          initialPinchDist = dist;
+          initialZoom = zoom;
+        } else {
+          const factor = dist / initialPinchDist;
+          zoom = initialZoom * factor;
+          render();
+        }
+      }
+    }, { passive: false });
+
+    // Wheel Zoom
+    window.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      const wp = screenToWorld(e.clientX, e.clientY);
+      zoom *= zoomFactor;
+      offsetX = wp.x - (e.clientX - window.innerWidth / 2) / zoom;
+      offsetY = wp.y + (e.clientY - window.innerHeight / 2) / zoom;
+      render();
+    }, { passive: false });
+
+    function updateLoupe(screenX, screenY, worldPt, snap) {
+      loupeContainer.style.display = 'block';
+      loupeContainer.style.left = `${Math.min(window.innerWidth - 160, Math.max(10, screenX - 75))}px`;
+      loupeContainer.style.top = `${Math.max(10, screenY - 170)}px`;
+
+      loupeCtx.clearRect(0, 0, 150, 150);
+      loupeCtx.save();
+      loupeCtx.fillStyle = '#000000';
+      loupeCtx.fillRect(0, 0, 150, 150);
+
+      const targetX = snap ? snap.x : worldPt.x;
+      const targetY = snap ? snap.y : worldPt.y;
+      const lZoom = zoom * 3.5;
+
+      loupeCtx.translate(75, 75);
+      loupeCtx.scale(1, -1);
+
+      if (rawLines) {
+        loupeCtx.lineWidth = 1.5;
+        for (let i = 0; i < rawLines.length; i += 5) {
+          const x1 = rawLines[i], y1 = rawLines[i+1], x2 = rawLines[i+2], y2 = rawLines[i+3], c = rawLines[i+4];
+          if (Math.abs(x1 - targetX) > 2000 / zoom && Math.abs(x2 - targetX) > 2000 / zoom) continue;
+          loupeCtx.beginPath();
+          loupeCtx.moveTo((x1 - targetX) * lZoom, (y1 - targetY) * lZoom);
+          loupeCtx.lineTo((x2 - targetX) * lZoom, (y2 - targetY) * lZoom);
+          loupeCtx.strokeStyle = `#${((c || 0xFFFFFF) & 0xFFFFFF).toString(16).padStart(6, '0')}`;
+          loupeCtx.stroke();
+        }
+      }
+
+      loupeCtx.restore();
+      loupeBadge.innerText = snap ? `${snap.type} KİLİDİ` : 'SERBEST';
+    }
+
+    function updateMeasurement() {
+      if (measureMode === 'dist') {
+        let total = 0;
+        for (let i = 1; i < measurePts.length; i++) {
+          total += Math.hypot(measurePts[i].x - measurePts[i-1].x, measurePts[i].y - measurePts[i-1].y);
+        }
+        const meters = total * scaleRatio;
+        measureMainVal.innerText = `${meters.toFixed(2)} m`;
+        measureSubVal.innerText = `${measurePts.length} nokta | ${(meters * 100).toFixed(0)} cm`;
+      } else if (measureMode === 'area') {
+        if (measurePts.length < 3) {
+          measureMainVal.innerText = `0.00 m²`;
+          measureSubVal.innerText = `${measurePts.length}/3 nokta seçildi`;
+        } else {
+          // Shoelace formula
+          let area = 0;
+          for (let i = 0; i < measurePts.length; i++) {
+            const j = (i + 1) % measurePts.length;
+            area += measurePts[i].x * measurePts[j].y;
+            area -= measurePts[j].x * measurePts[i].y;
+          }
+          area = Math.abs(area) / 2.0;
+          const sqMeters = area * (scaleRatio * scaleRatio);
+          measureMainVal.innerText = `${sqMeters.toFixed(2)} m²`;
+          measureSubVal.innerText = `${measurePts.length} köşeli kapalı alan`;
+        }
+      }
+    }
+
+    // UI Buttons
+    document.getElementById('btn-fit').onclick = fitToScreen;
+    document.getElementById('btn-zoom-in').onclick = () => { zoom *= 1.3; render(); };
+    document.getElementById('btn-zoom-out').onclick = () => { zoom /= 1.3; render(); };
+
+    const layersPopup = document.getElementById('layers-popup');
+    const toolsPopup = document.getElementById('tools-popup');
+
+    document.getElementById('btn-layers').onclick = (e) => {
+      e.stopPropagation();
+      layersPopup.style.display = layersPopup.style.display === 'flex' ? 'none' : 'flex';
+      toolsPopup.style.display = 'none';
+    };
+
+    document.getElementById('btn-tools').onclick = (e) => {
+      e.stopPropagation();
+      toolsPopup.style.display = toolsPopup.style.display === 'flex' ? 'none' : 'flex';
+      layersPopup.style.display = 'none';
+    };
+
+    window.addEventListener('click', (e) => {
+      if (!e.target.closest('#hud-actions, .popup-menu')) {
+        layersPopup.style.display = 'none';
+        toolsPopup.style.display = 'none';
+      }
+    });
+
+    document.getElementById('tool-measure-dist').onclick = () => {
+      measureMode = 'dist';
+      measurePts = [];
+      measureBox.style.display = 'flex';
+      measureTypeLabel.innerText = 'Mesafe Ölçümü';
+      updateMeasurement();
+      toolsPopup.style.display = 'none';
+      document.getElementById('btn-tools').classList.add('active-tool');
+    };
+
+    document.getElementById('tool-measure-area').onclick = () => {
+      measureMode = 'area';
+      measurePts = [];
+      measureBox.style.display = 'flex';
+      measureTypeLabel.innerText = 'Alan Hesaplama (m²)';
+      updateMeasurement();
+      toolsPopup.style.display = 'none';
+      document.getElementById('btn-tools').classList.add('active-tool');
+    };
+
+    document.getElementById('btn-measure-clear').onclick = () => {
+      measurePts = [];
+      updateMeasurement();
+      render();
+    };
+
+    document.getElementById('btn-measure-close').onclick = () => {
+      measureMode = 'none';
+      measurePts = [];
+      measureBox.style.display = 'none';
+      loupeContainer.style.display = 'none';
+      document.getElementById('btn-tools').classList.remove('active-tool');
+      render();
+    };
+
+    scaleSelect.onchange = () => {
+      scaleRatio = parseFloat(scaleSelect.value) || 0.01;
+      updateMeasurement();
+    };
+
+    document.getElementById('tool-toggle-text').onclick = () => {
+      showTexts = !showTexts;
+      toolsPopup.style.display = 'none';
+      render();
+    };
+
+    function populateLayers(layers) {
+      cadLayers = layers;
+      const container = document.getElementById('layers-list');
+      container.innerHTML = '';
+      layers.forEach(l => {
+        const item = document.createElement('div');
+        item.className = 'menu-item';
+        item.innerHTML = `
+          <div class="menu-item-left">
+            <span class="layer-color-dot" style="background:#${(l.color & 0xFFFFFF).toString(16).padStart(6, '0')}"></span>
+            <span>${l.name}</span>
+          </div>
+          <span class="layer-count">${l.count}</span>
+        `;
+        item.onclick = () => {
+          if (hiddenLayers.has(l.name)) {
+            hiddenLayers.delete(l.name);
+            item.style.opacity = '1';
+          } else {
+            hiddenLayers.add(l.name);
+            item.style.opacity = '0.35';
+          }
+          render();
+        };
+        container.appendChild(item);
+      });
+    }
+
+    /* ========================================================================
+       DEMO STATIK & MIMARI KAT PLANI GEOMETRISI (ANINDA TEST ICIN)
+       ======================================================================== */
+    function loadDemoPlan() {
+      loaderSub.innerText = "Demo mimari ve statik proje yükleniyor...";
+      loaderProgress.style.width = "40%";
+
+      const lines = [];
+      const triangles = [];
+      const texts = [];
+      const layers = [
+        { name: 'KOLONLAR', color: 0xFF3B30, count: 12, visible: true },
+        { name: 'KIRISLER', color: 0x00F0FF, count: 24, visible: true },
+        { name: 'DUVARLAR', color: 0xFFFFFF, count: 36, visible: true },
+        { name: 'AKSLAR', color: 0xFF9500, count: 8, visible: true },
+        { name: 'OLCULER', color: 0x38BDF8, count: 16, visible: true }
+      ];
+
+      // Kolonlar (Solid fill triangles + bounding lines)
+      const cols = [
+        [0, 0], [400, 0], [800, 0],
+        [0, 500], [400, 500], [800, 500],
+        [0, 1000], [400, 1000], [800, 1000],
+        [0, 1500], [400, 1500], [800, 1500]
+      ];
+
+      cols.forEach(([cx, cy], idx) => {
+        const w = 30, h = 60;
+        const x1 = cx - w/2, y1 = cy - h/2;
+        const x2 = cx + w/2, y2 = cy + h/2;
+
+        // Triangles (Solid Fill)
+        triangles.push(x1, y1, x2, y1, x2, y2, 0xFF3B30);
+        triangles.push(x1, y1, x2, y2, x1, y2, 0xFF3B30);
+
+        // Lines
+        lines.push(x1, y1, x2, y1, 0xFF3B30);
+        lines.push(x2, y1, x2, y2, 0xFF3B30);
+        lines.push(x2, y2, x1, y2, 0xFF3B30);
+        lines.push(x1, y2, x1, y1, 0xFF3B30);
+
+        texts.push({ text: `S${idx + 1}`, x: cx - 12, y: cy + 35, size: 14, color: 0xFFFFFF, rot: 0, layer: 'KOLONLAR' });
+      });
+
+      // Kirişler (Beam lines)
+      for (let r = 0; r < 4; r++) {
+        const y = r * 500;
+        lines.push(0, y - 12, 800, y - 12, 0x00F0FF);
+        lines.push(0, y + 12, 800, y + 12, 0x00F0FF);
+        texts.push({ text: `K${r+1}01 (25/50)`, x: 180, y: y + 2, size: 11, color: 0x00F0FF, rot: 0, layer: 'KIRISLER' });
+        texts.push({ text: `K${r+1}02 (25/50)`, x: 580, y: y + 2, size: 11, color: 0x00F0FF, rot: 0, layer: 'KIRISLER' });
+      }
+
+      for (let c = 0; c < 3; c++) {
+        const x = c * 400;
+        lines.push(x - 12, 0, x - 12, 1500, 0x00F0FF);
+        lines.push(x + 12, 0, x + 12, 1500, 0x00F0FF);
+      }
+
+      // Akslar
+      ['A', 'B', 'C'].forEach((lbl, i) => {
+        const x = i * 400;
+        lines.push(x, -100, x, 1600, 0xFF9500);
+        texts.push({ text: lbl, x: x - 6, y: -120, size: 18, color: 0xFF9500, rot: 0, layer: 'AKSLAR' });
+        texts.push({ text: lbl, x: x - 6, y: 1620, size: 18, color: 0xFF9500, rot: 0, layer: 'AKSLAR' });
+      });
+
+      ['1', '2', '3', '4'].forEach((lbl, i) => {
+        const y = i * 500;
+        lines.push(-100, y, 900, y, 0xFF9500);
+        texts.push({ text: lbl, x: -130, y: y - 8, size: 18, color: 0xFF9500, rot: 0, layer: 'AKSLAR' });
+        texts.push({ text: lbl, x: 920, y: y - 8, size: 18, color: 0xFF9500, rot: 0, layer: 'AKSLAR' });
+      });
+
+      bounds = { minX: -150, minY: -150, maxX: 950, maxY: 1650, w: 1100, h: 1800 };
+      cadTexts = texts;
+
+      setTimeout(() => {
+        loaderProgress.style.width = "100%";
+        uploadGeometry(lines, triangles);
+        populateLayers(layers);
+        setTimeout(() => { loader.style.display = 'none'; }, 200);
+      }, 300);
+    }
+
+    /* ========================================================================
+       EXTERNAL FLUTTER BRIDGE API
+       ======================================================================== */
+    window.loadDxfString = function(dxfString, fileName) {
+      if (fileName) projectTitle.innerText = fileName;
+      loader.style.display = 'flex';
+      loaderSub.innerText = "DXF varlıkları çözümleniyor...";
+      loaderProgress.style.width = "30%";
+
+      setTimeout(() => {
+        try {
+          const parser = new OfflineDxfParser();
+          const result = parser.parse(dxfString);
+          bounds = result.bounds;
+          cadTexts = result.texts;
+          loaderProgress.style.width = "80%";
+
+          uploadGeometry(result.lines, result.triangles);
+          populateLayers(result.layers);
+          loaderProgress.style.width = "100%";
+          setTimeout(() => { loader.style.display = 'none'; }, 200);
+
+          if (window.YerelCadBridge) {
+            window.YerelCadBridge.postMessage(JSON.stringify({
+              type: 'loaded',
+              totalLines: result.lines.length / 5,
+              totalTriangles: result.triangles.length / 7,
+              layersCount: result.layers.length
+            }));
+          }
+        } catch (err) {
+          loaderSub.innerText = "Hata: " + err.message;
+          console.error(err);
+        }
+      }, 50);
+    };
+
+    window.loadDxfFileBase64 = function(base64Data, fileName) {
+      const raw = atob(base64Data);
+      window.loadDxfString(raw, fileName);
+    };
+
+    // Initialize on page load
+    window.onload = () => {
+      initGL();
+      resize();
+      // Load demo plan by default until Flutter sends file data
+      loadDemoPlan();
+    };
+  </script>
+</body>
+</html>

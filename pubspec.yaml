@@ -72,6 +72,7 @@ flutter:
     - assets/fonts/
     - assets/google_logo.png
     - assets/audio/
+    - assets/yerel_cad/
   fonts:
     - family: Roboto
       fonts:
