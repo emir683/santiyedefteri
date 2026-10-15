@@ -1,0 +1,2704 @@
+<!DOCTYPE html>
+<html lang="tr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Şantiye CAD - Donanım Motoru</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700;800&family=JetBrains+Mono:wght@500;600&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --bg-main: #000000;
+      --canvas-bg: #000000;
+      --hud-bg: rgba(15, 23, 42, 0.88);
+      --hud-border: rgba(255, 255, 255, 0.12);
+      --hud-shadow: 0 12px 32px rgba(0, 0, 0, 0.65);
+      --text-primary: #f8fafc;
+      --text-secondary: #94a3b8;
+      --text-accent: #38bdf8;
+      --primary: #2563eb;
+      --btn-bg: rgba(15, 23, 42, 0.85);
+      --btn-border: rgba(255, 255, 255, 0.14);
+      --btn-hover: rgba(56, 189, 248, 0.2);
+      --popup-bg: rgba(15, 23, 42, 0.95);
+      --divider: rgba(255, 255, 255, 0.08);
+      --item-hover: rgba(255, 255, 255, 0.07);
+      --status-pill-bg: rgba(255, 255, 255, 0.08);
+      --status-pill-color: #94a3b8;
+      --accent-cyan: #00f0ff;
+      --accent-green: #10b981;
+      --radar-ring: rgba(56, 189, 248, 0.25);
+      --radar-sweep: rgba(56, 189, 248, 0.35);
+    }
+
+    body.theme-light {
+      --bg-main: #000000;
+      --canvas-bg: #000000;
+      --hud-bg: rgba(255, 255, 255, 0.94);
+      --hud-border: rgba(226, 232, 240, 0.95);
+      --hud-shadow: 0 10px 28px rgba(0, 0, 0, 0.35);
+      --text-primary: #0f172a;
+      --text-secondary: #64748b;
+      --text-accent: #0284c7;
+      --primary: #2563eb;
+      --btn-bg: rgba(255, 255, 255, 0.9);
+      --btn-border: rgba(203, 213, 225, 0.85);
+      --btn-hover: rgba(2, 132, 199, 0.12);
+      --popup-bg: rgba(255, 255, 255, 0.98);
+      --divider: rgba(226, 232, 240, 0.9);
+      --item-hover: rgba(241, 245, 249, 0.95);
+      --status-pill-bg: rgba(241, 245, 249, 0.95);
+      --status-pill-color: #64748b;
+      --accent-cyan: #0284c7;
+      --accent-green: #059669;
+      --radar-ring: rgba(2, 132, 199, 0.25);
+      --radar-sweep: rgba(2, 132, 199, 0.28);
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+      user-select: none;
+      -webkit-user-select: none;
+      touch-action: none;
+    }
+    body, html {
+      width: 100%;
+      height: 100%;
+      overflow: hidden;
+      background-color: #000000 !important;
+      font-family: 'Poppins', -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+      color: var(--text-primary);
+    }
+    #canvas-container {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      background-color: #000000 !important;
+      cursor: grab;
+    }
+    #canvas-container:active {
+      cursor: grabbing;
+    }
+    #canvas-container.crosshair-cursor {
+      cursor: crosshair !important;
+    }
+    canvas {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+    #glCanvas {
+      z-index: 1;
+    }
+    #textCanvas {
+      z-index: 2;
+      pointer-events: none;
+    }
+
+    /* Modern Glass HUD Panel */
+    .hud-panel {
+      position: absolute;
+      z-index: 10;
+      background: var(--hud-bg);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+      border: 1px solid var(--hud-border);
+      border-radius: 14px;
+      color: var(--text-primary);
+      box-shadow: var(--hud-shadow);
+      transition: background 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    /* Top Left Project Badge */
+    #project-badge {
+      top: 14px;
+      left: 14px;
+      padding: 6px 14px;
+      height: 36px;
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      max-width: calc(100vw - 160px);
+      overflow: hidden;
+    }
+    #project-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-accent);
+      letter-spacing: -0.2px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      flex-shrink: 1;
+      min-width: 0;
+    }
+    .badge-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      flex-shrink: 0;
+    }
+    .badge-stats {
+      font-size: 11px;
+      color: var(--text-secondary);
+      font-family: 'JetBrains Mono', monospace;
+      white-space: nowrap;
+      flex-shrink: 0;
+    }
+
+    /* Top Right Floating Actions */
+    #hud-actions {
+      position: absolute;
+      top: 14px;
+      right: 14px;
+      z-index: 20;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .icon-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 11px;
+      background: var(--btn-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--btn-border);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      touch-action: manipulation;
+    }
+    .icon-btn:hover {
+      background: var(--btn-hover);
+      border-color: var(--text-accent);
+      color: var(--text-accent);
+    }
+    .icon-btn:active {
+      transform: scale(0.94);
+    }
+
+    .action-btn {
+      height: 36px;
+      padding: 0 13px;
+      border-radius: 11px;
+      background: var(--btn-bg);
+      backdrop-filter: blur(12px);
+      border: 1px solid var(--btn-border);
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 12px;
+      font-weight: 600;
+      display: flex;
+      align-items: center;
+      gap: 7px;
+      cursor: pointer;
+      transition: all 0.15s ease;
+      position: relative;
+      touch-action: manipulation;
+    }
+    .action-btn:hover {
+      background: var(--btn-hover);
+      border-color: var(--text-accent);
+      color: var(--text-accent);
+    }
+    .action-btn:active {
+      transform: scale(0.96);
+    }
+    .mode-indicator {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 8px var(--accent-cyan);
+    }
+    .action-btn.active-dist {
+      border-color: #06b6d4 !important;
+      color: #0891b2 !important;
+      background: rgba(6, 182, 212, 0.18) !important;
+    }
+    .action-btn.active-area {
+      border-color: #10b981 !important;
+      color: #059669 !important;
+      background: rgba(16, 185, 129, 0.18) !important;
+    }
+
+    /* Tools Dropdown Popup */
+    #tools-popup {
+      position: absolute;
+      top: 56px;
+      right: 14px;
+      width: 250px;
+      padding: 8px;
+      display: none;
+      flex-direction: column;
+      gap: 4px;
+      z-index: 30;
+      background: var(--popup-bg);
+      backdrop-filter: blur(20px);
+      border: 1px solid var(--hud-border);
+      border-radius: 16px;
+      box-shadow: var(--hud-shadow);
+      animation: fadeInPopup 0.15s ease;
+    }
+    @keyframes fadeInPopup {
+      from { opacity: 0; transform: translateY(-6px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+    .popup-title {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      padding: 6px 8px 4px 8px;
+    }
+    .popup-item {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 9px 10px;
+      border-radius: 10px;
+      background: transparent;
+      border: none;
+      color: var(--text-primary);
+      font-family: inherit;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .popup-item:hover {
+      background: var(--item-hover);
+      color: var(--text-accent);
+    }
+    .popup-item.item-active {
+      background: var(--btn-hover);
+      color: var(--text-accent);
+      font-weight: 600;
+    }
+    .popup-item .item-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+    }
+    .popup-divider {
+      height: 1px;
+      background: var(--divider);
+      margin: 4px 6px;
+    }
+    .popup-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+    }
+    .popup-row .item-left {
+      display: flex;
+      align-items: center;
+      gap: 9px;
+      font-size: 13px;
+      color: var(--text-primary);
+      font-weight: 500;
+    }
+    .status-pill {
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 7px;
+      border-radius: 6px;
+      background: var(--status-pill-bg);
+      color: var(--status-pill-color);
+    }
+    .status-pill.active-pill {
+      background: rgba(56, 189, 248, 0.2);
+      color: var(--text-accent);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+    }
+    .status-pill.active-pill-green {
+      background: rgba(16, 185, 129, 0.2);
+      color: var(--accent-green);
+      border: 1px solid rgba(16, 185, 129, 0.4);
+    }
+
+    /* Scale Dropdown */
+    #scale-select {
+      background: var(--hud-bg);
+      border: 1px solid var(--btn-border);
+      color: var(--text-accent);
+      border-radius: 8px;
+      padding: 4px 8px;
+      font-family: inherit;
+      font-size: 11px;
+      font-weight: 600;
+      outline: none;
+      cursor: pointer;
+    }
+    #scale-select option {
+      background: var(--hud-bg);
+      color: var(--text-primary);
+    }
+
+    /* Floating Measure Action Card */
+    #measure-card {
+      position: absolute;
+      top: 56px;
+      left: 14px;
+      z-index: 25;
+      padding: 12px 14px;
+      display: none;
+      flex-direction: column;
+      gap: 6px;
+      min-width: 220px;
+      background: var(--popup-bg);
+      backdrop-filter: blur(16px);
+      border: 1px solid rgba(56, 189, 248, 0.35);
+      border-radius: 14px;
+      box-shadow: var(--hud-shadow);
+      animation: fadeInPopup 0.15s ease;
+    }
+    .measure-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+    .measure-title-group {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--text-accent);
+    }
+    .icon-btn-sm {
+      width: 24px;
+      height: 24px;
+      border-radius: 7px;
+      background: transparent;
+      border: none;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: all 0.12s ease;
+    }
+    .icon-btn-sm:hover {
+      background: var(--item-hover);
+      color: var(--text-primary);
+    }
+    .measure-result-val {
+      font-size: 21px;
+      font-weight: 800;
+      color: var(--text-primary);
+      font-family: 'JetBrains Mono', monospace;
+      letter-spacing: -0.5px;
+    }
+    .measure-sub-val {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+    }
+    .measure-actions {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      margin-top: 4px;
+    }
+    .btn {
+      background: var(--item-hover);
+      border: 1px solid var(--btn-border);
+      color: var(--text-primary);
+      padding: 6px 11px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 11.5px;
+      font-weight: 600;
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      transition: all 0.12s ease;
+    }
+    .btn:hover {
+      background: var(--btn-hover);
+    }
+    .btn-danger-soft:hover {
+      background: rgba(239, 68, 68, 0.18);
+      border-color: #ef4444;
+      color: #ef4444;
+    }
+
+    /* Floating Navigation Controls */
+    #zoom-tools {
+      bottom: 24px;
+      right: 20px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      z-index: 10;
+    }
+    .tool-btn {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: var(--hud-bg);
+      backdrop-filter: blur(10px);
+      border: 1px solid var(--hud-border);
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      box-shadow: var(--hud-shadow);
+      touch-action: manipulation;
+      transition: all 0.15s ease;
+    }
+    .tool-btn:hover {
+      background: var(--btn-hover);
+      color: var(--text-accent);
+    }
+    .tool-btn:active {
+      transform: scale(0.94);
+    }
+
+    /* Bottom Coordinate Bar */
+    #bottom-info {
+      bottom: 24px;
+      left: 20px;
+      padding: 6px 14px;
+      font-size: 11px;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-secondary);
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      border-radius: 10px;
+    }
+    .status-dot {
+      width: 7px;
+      height: 7px;
+      border-radius: 50%;
+      background: var(--accent-green);
+      box-shadow: 0 0 6px var(--accent-green);
+    }
+
+    /* Precision Magnifier Loupe */
+    #loupe-container {
+      position: absolute;
+      width: 140px;
+      height: 140px;
+      border-radius: 50%;
+      border: 2.5px solid var(--text-accent);
+      box-shadow: 0 0 20px rgba(56, 189, 248, 0.4), var(--hud-shadow);
+      background: var(--bg-main);
+      overflow: hidden;
+      pointer-events: none;
+      z-index: 50;
+      display: none;
+      transform: translate(-50%, -50%);
+    }
+    #loupeCanvas {
+      width: 100%;
+      height: 100%;
+      display: block;
+    }
+    .loupe-crosshair {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 22px;
+      height: 22px;
+      transform: translate(-50%, -50%);
+      pointer-events: none;
+    }
+    .loupe-crosshair::before, .loupe-crosshair::after {
+      content: '';
+      position: absolute;
+      background: var(--accent-cyan);
+      box-shadow: 0 0 4px var(--accent-cyan);
+    }
+    .loupe-crosshair::before {
+      top: 10px;
+      left: 0;
+      width: 22px;
+      height: 2px;
+    }
+    .loupe-crosshair::after {
+      top: 0;
+      left: 10px;
+      width: 2px;
+      height: 22px;
+    }
+    .loupe-center-dot {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      width: 4px;
+      height: 4px;
+      background: #ef4444;
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+      box-shadow: 0 0 4px #ef4444;
+    }
+    .loupe-snap-badge {
+      position: absolute;
+      bottom: 8px;
+      left: 50%;
+      transform: translateX(-50%);
+      background: rgba(16, 185, 129, 0.92);
+      color: #ffffff;
+      font-size: 9px;
+      font-weight: 700;
+      padding: 1px 6px;
+      border-radius: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.3px;
+      display: none;
+    }
+
+    /* Customized CAD Blueprint Stage Loader */
+    #loader {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      z-index: 100;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 16px;
+      background: var(--popup-bg);
+      padding: 28px 36px;
+      border-radius: 20px;
+      border: 1px solid var(--hud-border);
+      box-shadow: var(--hud-shadow);
+      text-align: center;
+      width: 360px;
+      max-width: calc(100vw - 32px);
+      box-sizing: border-box;
+      animation: fadeInPopup 0.2s ease;
+    }
+
+    .cad-radar-box {
+      position: relative;
+      width: 68px;
+      height: 68px;
+      border-radius: 50%;
+      border: 1.5px solid var(--radar-ring);
+      background: radial-gradient(circle, var(--radar-sweep) 0%, transparent 70%);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      flex-shrink: 0;
+    }
+    .cad-radar-sweep {
+      position: absolute;
+      width: 100%;
+      height: 100%;
+      background: conic-gradient(from 0deg, transparent 0deg, transparent 270deg, var(--text-accent) 360deg);
+      border-radius: 50%;
+      animation: radarSweep 1.6s linear infinite;
+      opacity: 0.7;
+    }
+    @keyframes radarSweep {
+      to { transform: rotate(360deg); }
+    }
+    .cad-radar-ring {
+      position: absolute;
+      border-radius: 50%;
+      border: 1px dashed var(--radar-ring);
+    }
+    .ring-1 { width: 46px; height: 46px; }
+    .ring-2 { width: 24px; height: 24px; }
+    .cad-radar-cross-h {
+      position: absolute;
+      width: 100%;
+      height: 1px;
+      background: var(--radar-ring);
+    }
+    .cad-radar-cross-v {
+      position: absolute;
+      width: 1px;
+      height: 100%;
+      background: var(--radar-ring);
+    }
+    .cad-radar-center {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--text-accent);
+      box-shadow: 0 0 8px var(--text-accent);
+      z-index: 2;
+    }
+
+    .loader-content {
+      width: 100%;
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+    .loader-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 8px;
+    }
+    #loader-title {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      text-align: left;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .loader-percent-badge {
+      font-size: 12px;
+      font-weight: 700;
+      font-family: 'JetBrains Mono', monospace;
+      color: var(--text-accent);
+      background: var(--item-hover);
+      padding: 2px 7px;
+      border-radius: 6px;
+      flex-shrink: 0;
+    }
+    #loader-sub {
+      font-size: 11.5px;
+      color: var(--text-secondary);
+      text-align: left;
+      line-height: 1.4;
+      min-height: 16px;
+    }
+    .loader-progress-track {
+      width: 100%;
+      height: 6px;
+      border-radius: 3px;
+      background: var(--item-hover);
+      overflow: hidden;
+      margin-top: 2px;
+    }
+    .loader-progress-bar {
+      height: 100%;
+      width: 10%;
+      background: linear-gradient(90deg, #2563eb, #38bdf8);
+      border-radius: 3px;
+      transition: width 0.3s ease;
+    }
+
+    .loader-stages {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 6px;
+      margin-top: 6px;
+    }
+    .stage-step {
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      padding: 5px 6px;
+      border-radius: 8px;
+      background: var(--item-hover);
+      font-size: 10px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: all 0.2s ease;
+      justify-content: center;
+    }
+    .stage-dot {
+      width: 5px;
+      height: 5px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      transition: all 0.2s ease;
+      flex-shrink: 0;
+    }
+    .stage-step.active {
+      background: var(--btn-hover);
+      color: var(--text-accent);
+      border: 1px solid var(--text-accent);
+    }
+    .stage-step.active .stage-dot {
+      background: var(--text-accent);
+      box-shadow: 0 0 6px var(--text-accent);
+      animation: pulseDot 1s infinite alternate;
+    }
+    .stage-step.done {
+      background: rgba(16, 185, 129, 0.12);
+      color: var(--accent-green);
+    }
+    .stage-step.done .stage-dot {
+      background: var(--accent-green);
+    }
+    @keyframes pulseDot {
+      from { transform: scale(0.9); opacity: 0.6; }
+      to { transform: scale(1.3); opacity: 1; }
+    }
+    .cad-retry-btn {
+      margin-top: 10px;
+      padding: 9px 22px;
+      border-radius: 11px;
+      background: var(--text-accent);
+      color: #ffffff;
+      font-weight: 600;
+      font-size: 13px;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 14px rgba(2, 132, 199, 0.35);
+      transition: all 0.2s ease;
+      touch-action: manipulation;
+    }
+    .cad-retry-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 18px rgba(2, 132, 199, 0.5);
+    }
+    .cad-retry-btn:active {
+      transform: scale(0.96);
+    }
+
+    /* Small Screen Over-Pixel Safeguards */
+    @media (max-width: 480px) {
+      #project-badge {
+        max-width: calc(100vw - 110px);
+        padding: 5px 10px;
+        height: 32px;
+        gap: 6px;
+      }
+      #project-title {
+        font-size: 11.5px;
+        max-width: 130px;
+      }
+      .badge-stats {
+        display: none;
+      }
+      #tools-popup {
+        right: 10px;
+        left: 10px;
+        width: auto;
+        max-width: calc(100vw - 20px);
+      }
+      #measure-card {
+        right: 10px;
+        left: 10px;
+        min-width: 0;
+        max-width: calc(100vw - 20px);
+      }
+      #loader {
+        width: calc(100vw - 32px);
+        padding: 22px 18px;
+      }
+      .loader-stages {
+        grid-template-columns: 1fr 1fr;
+      }
+    }
+  </style>
+</head>
+<body>
+
+  <div id="canvas-container">
+    <canvas id="glCanvas"></canvas>
+    <canvas id="textCanvas"></canvas>
+  </div>
+
+  <!-- Precision Magnifier Loupe -->
+  <div id="loupe-container">
+    <canvas id="loupeCanvas" width="160" height="160"></canvas>
+    <div class="loupe-crosshair"></div>
+    <div class="loupe-center-dot"></div>
+    <div class="loupe-snap-badge" id="loupeSnapBadge">OSNAP</div>
+  </div>
+
+  <!-- Customized CAD Blueprint Stage Loader -->
+  <div id="loader">
+    <div class="cad-radar-box">
+      <div class="cad-radar-sweep"></div>
+      <div class="cad-radar-ring ring-1"></div>
+      <div class="cad-radar-ring ring-2"></div>
+      <div class="cad-radar-cross-h"></div>
+      <div class="cad-radar-cross-v"></div>
+      <div class="cad-radar-center"></div>
+    </div>
+    
+    <div class="loader-content">
+      <div class="loader-header">
+        <div id="loader-title">CAD Çizim Motoru Başlatılıyor</div>
+        <div id="loader-percent" class="loader-percent-badge">0%</div>
+      </div>
+      <div id="loader-sub">Vektör katmanları ve koordinatlar hazırlanıyor</div>
+      
+      <div class="loader-progress-track">
+        <div id="loader-progress-bar" class="loader-progress-bar"></div>
+      </div>
+      
+      <div class="loader-stages">
+        <div class="stage-step" id="step-1">
+          <span class="stage-dot"></span>
+          <span class="stage-name">1. Veri</span>
+        </div>
+        <div class="stage-step" id="step-2">
+          <span class="stage-dot"></span>
+          <span class="stage-name">2. Katman</span>
+        </div>
+        <div class="stage-step" id="step-3">
+          <span class="stage-dot"></span>
+          <span class="stage-name">3. GPU</span>
+        </div>
+        <div class="stage-step" id="step-4">
+          <span class="stage-dot"></span>
+          <span class="stage-name">4. Mıknatıs</span>
+        </div>
+      </div>
+    </div>
+  </div>
+
+    <!-- Top Left Project Badge -->
+  <div id="project-badge" class="hud-panel">
+    <span id="project-title">Çizim Projesi</span>
+    <span class="badge-dot"></span>
+    <span id="stats" class="badge-stats">Yükleniyor...</span>
+  </div>
+
+  <!-- Top Right Action Controls -->
+  <div id="hud-actions">
+    <button class="icon-btn" id="fit-btn" title="Ekrana Sığdır">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <path d="M8 3H5a2 2 0 0 0-2 2v3"/>
+        <path d="M21 8V5a2 2 0 0 0-2-2h-3"/>
+        <path d="M3 16v3a2 2 0 0 0 2 2h3"/>
+        <path d="M16 21h3a2 2 0 0 0 2-2v-3"/>
+      </svg>
+    </button>
+    <button class="action-btn" id="tools-menu-btn" title="Çizim Araçları">
+      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="6" cy="12" r="3"/>
+        <circle cx="18" cy="6" r="3"/>
+        <circle cx="18" cy="18" r="3"/>
+        <path d="M8.7 10.7 15.3 7.3"/>
+        <path d="M8.7 13.3l6.6 3.4"/>
+      </svg>
+      <span>Araçlar</span>
+      <span id="active-mode-dot" class="mode-indicator" style="display:none;"></span>
+    </button>
+  </div>
+
+  <!-- Tools Dropdown Popup -->
+  <div id="tools-popup" class="hud-panel">
+    <div class="popup-title">Çizim Araçları</div>
+    
+    <button class="popup-item" id="btn-measure-dist">
+      <div class="item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/>
+          <path d="m14.5 12.5 2-2"/>
+          <path d="m11.5 9.5 2-2"/>
+          <path d="m8.5 6.5 2-2"/>
+        </svg>
+        <span>Mesafe Ölçümü</span>
+      </div>
+      <span class="status-pill" id="pill-dist">Kapalı</span>
+    </button>
+
+    <button class="popup-item" id="btn-measure-area">
+      <div class="item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 2 2 7l4 12h12l4-12Z"/>
+        </svg>
+        <span>Alan Hesaplama</span>
+      </div>
+      <span class="status-pill" id="pill-area">Kapalı</span>
+    </button>
+
+    <div class="popup-divider"></div>
+
+    <div class="popup-row">
+      <div class="item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m16 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
+          <path d="m2 16 3-8 3 8c-.87.65-1.92 1-3 1s-2.13-.35-3-1Z"/>
+          <path d="M7 21h10"/>
+          <path d="M12 3v18"/>
+        </svg>
+        <span>Ölçek & Birim</span>
+      </div>
+      <select id="scale-select" title="Çizim Ölçeği">
+        <option value="0.01" selected>1:100 (cm)</option>
+        <option value="0.02">1:50 (2 cm)</option>
+        <option value="1.0">1:1000 (m)</option>
+        <option value="0.001">1:10 (mm)</option>
+      </select>
+    </div>
+
+    <button class="popup-item" id="toggle-texts">
+      <div class="item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="4 7 4 4 20 4 20 7"/>
+          <line x1="9" x2="15" y1="20" y2="20"/>
+          <line x1="12" x2="12" y1="4" y2="20"/>
+        </svg>
+        <span>Çizim Metinleri</span>
+      </div>
+      <span class="status-pill active-pill" id="pill-texts">Açık</span>
+    </button>
+
+    <div class="popup-divider"></div>
+
+    <button class="popup-item" id="btn-toggle-y">
+      <div class="item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m7 15 5 5 5-5"/>
+          <path d="m7 9 5-5 5 5"/>
+        </svg>
+        <span>Y Eksen Yönü (Dikey)</span>
+      </div>
+      <span class="status-pill active-pill" id="pill-y-axis">Kuzey ↑</span>
+    </button>
+
+    <button class="popup-item" id="btn-swap-xy">
+      <div class="item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="m16 3 4 4-4 4"/>
+          <path d="M20 7H4"/>
+          <path d="m8 21-4-4 4-4"/>
+          <path d="M4 17h16"/>
+        </svg>
+        <span>X / Y Eksen Değişimi</span>
+      </div>
+      <span class="status-pill" id="pill-swap-xy">Standart</span>
+    </button>
+
+    <div class="popup-divider"></div>
+
+    <button class="popup-item" id="btn-force-reload" style="color: #38bdf8;">
+      <div class="item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67"/>
+        </svg>
+        <span>Önbelleği Sıfırla & Canlı Çek</span>
+      </div>
+      <span class="status-pill active-pill" style="color: #38bdf8;">Yenile</span>
+    </button>
+  </div>
+
+  <!-- Active Measurement Floating Result Card -->
+  <div id="measure-card" class="hud-panel">
+    <div class="measure-header">
+      <div class="measure-title-group">
+        <span id="measure-card-icon">
+          <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/></svg>
+        </span>
+        <span id="measure-card-title">Mesafe Ölçümü</span>
+      </div>
+      <button class="icon-btn-sm" id="btn-measure-close" title="Kapat">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><line x1="18" y1="6" x2="6" y2="18"/><line x1="6" y1="6" x2="18" y2="18"/></svg>
+      </button>
+    </div>
+    <div class="measure-result-val" id="measure-primary-val">0.00 m</div>
+    <div class="measure-sub-val" id="measure-sub-val">Nokta koymak için çizime dokunun</div>
+    <div class="measure-actions">
+      <button class="btn" id="btn-measure-undo" title="Geri Al">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7v6h6"/><path d="M21 17a9 9 0 0 0-9-9 9 9 0 0 0-6 2.3L3 13"/></svg>
+        <span>Geri Al</span>
+      </button>
+      <button class="btn btn-danger-soft" id="btn-measure-clear" title="Sıfırla">
+        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18"/><path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6"/></svg>
+        <span>Sıfırla</span>
+      </button>
+    </div>
+  </div>
+
+  <!-- Floating Navigation Controls -->
+  <div id="zoom-tools">
+    <button class="tool-btn" id="zoom-in" title="Yakınlaş">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+    <button class="tool-btn" id="zoom-out" title="Uzaklaş">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="5" y1="12" x2="19" y2="12"/></svg>
+    </button>
+  </div>
+
+  <!-- Bottom Coordinate Bar (Clean, No FPS values) -->
+  <div id="bottom-info" class="hud-panel">
+    <div class="status-dot"></div>
+    <span id="coords">X: 0.00  Y: 0.00</span>
+    <span>|</span>
+    <span id="zoom-level">Zoom: 100%</span>
+  </div>
+
+  <script>
+    // WebGL CAD Engine Implementation
+    // Theme Management (Light & Dark Mode)
+    const urlParams = new URLSearchParams(window.location.search);
+    const themeParam = urlParams.get('theme');
+    const isLight = themeParam === 'light' || (!themeParam && window.matchMedia && window.matchMedia('(prefers-color-scheme: light)').matches);
+    if (isLight) {
+      document.body.classList.add('theme-light');
+    }
+
+    const glCanvas = document.getElementById('glCanvas');
+    const textCanvas = document.getElementById('textCanvas');
+    const container = document.getElementById('canvas-container');
+    const coordsEl = document.getElementById('coords');
+    const zoomLevelEl = document.getElementById('zoom-level');
+    const statsEl = document.getElementById('stats');
+    const loader = document.getElementById('loader');
+
+    // Customized CAD Blueprint Stage Loader Helper
+    const loaderTitleEl = document.getElementById('loader-title');
+    const loaderSubEl = document.getElementById('loader-sub');
+    const loaderPercentEl = document.getElementById('loader-percent');
+    const loaderProgressBar = document.getElementById('loader-progress-bar');
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const step3 = document.getElementById('step-3');
+    const step4 = document.getElementById('step-4');
+
+    function updateLoader(stepNum, title, sub, percent) {
+      if (loaderTitleEl) loaderTitleEl.innerText = title;
+      if (loaderSubEl) loaderSubEl.innerText = sub;
+      if (loaderPercentEl) loaderPercentEl.innerText = `${percent}%`;
+      if (loaderProgressBar) loaderProgressBar.style.width = `${percent}%`;
+
+      const steps = [step1, step2, step3, step4];
+      for (let i = 0; i < steps.length; i++) {
+        if (!steps[i]) continue;
+        if (i + 1 < stepNum) {
+          steps[i].className = 'stage-step done';
+        } else if (i + 1 === stepNum) {
+          steps[i].className = 'stage-step active';
+        } else {
+          steps[i].className = 'stage-step';
+        }
+      }
+    }
+
+    // Loupe Elements
+    const loupeContainer = document.getElementById('loupe-container');
+    const loupeCanvas = document.getElementById('loupeCanvas');
+    const loupeCtx = loupeCanvas.getContext('2d');
+    const loupeSnapBadge = document.getElementById('loupeSnapBadge');
+
+    // Measure Card Elements
+    const measureCard = document.getElementById('measure-card');
+    const measureCardTitle = document.getElementById('measure-card-title');
+    const measurePrimaryVal = document.getElementById('measure-primary-val');
+    const measureSubVal = document.getElementById('measure-sub-val');
+    const scaleSelect = document.getElementById('scale-select');
+
+    let gl, textCtx;
+    let lineProgram;
+    let lineBuffer = null;
+    let triangleBuffer = null;
+    let totalLines = 0;
+    let totalTriangles = 0;
+    let showTexts = true;
+    let rawLinesArray = null;
+
+    // Measurement & Loupe State
+    let measureMode = 'none'; // 'none', 'distance', 'area'
+    let measurePoints = []; // [{x, y}] in world coordinates
+    let activeSnapPoint = null; // {x, y, dist}
+    let metersPerUnit = 0.01; // default 1:100 (1 unit = 1 cm = 0.01 m)
+
+    // Camera Transformation (World to Screen)
+    let zoom = 0.006;
+    let offsetX = 0.0;
+    let offsetY = 0.0;
+    let bounds = { minX: 0, minY: 0, w: 1000, h: 1000 };
+    let cadTexts = [];
+
+    // Coordinate System Configuration (CAD Y-Up / Netcad Şantiye)
+    let flipY = localStorage.getItem('cad_flip_y') !== 'false'; // default TRUE (Dikeyde Y yönünü düzeltir)
+    let swapXY = localStorage.getItem('cad_swap_xy') === 'true'; // default false (X/Y değişimi)
+
+    function toProjectCoords(wx, wy) {
+      let px = wx;
+      // Proje koordinatlarında yukarı (kuzeye) gittikçe Y artar
+      let py = flipY ? ((bounds && bounds.h) ? (bounds.minY + bounds.h - wy) : -wy) : wy;
+      if (swapXY) {
+        return { x: py, y: px, labelX: 'Y', labelY: 'X' };
+      }
+      return { x: px, y: py, labelX: 'X', labelY: 'Y' };
+    }
+
+    function updateCoordsDisplay(wx, wy) {
+      if (!coordsEl) return;
+      const p = toProjectCoords(wx, wy);
+      coordsEl.innerText = `${p.labelX}: ${p.x.toFixed(1)}  ${p.labelY}: ${p.y.toFixed(1)}`;
+    }
+
+    // Fast Spatial Hash Index for Multi-Feature OSNAP (Endpoints, Midpoints, Line Segments)
+    let spatialGrid = new Map();
+    const GRID_SIZE = 1200;
+
+    function buildSpatialGrid(lines, stride = 5) {
+      if (!lines) return;
+      spatialGrid.clear();
+      const len = lines.length;
+      for (let i = 0; i < len; i += stride) {
+        const x1 = lines[i];
+        const y1 = lines[i+1];
+        const x2 = lines[i+2];
+        const y2 = lines[i+3];
+
+        // 1. Endpoints
+        insertPointToGrid(x1, y1, 'endpoint');
+        insertPointToGrid(x2, y2, 'endpoint');
+
+        // 2. Midpoints
+        const mx = (x1 + x2) * 0.5;
+        const my = (y1 + y2) * 0.5;
+        insertPointToGrid(mx, my, 'midpoint');
+
+        // 3. Line segments
+        insertLineToGrid(x1, y1, x2, y2, i);
+      }
+    }
+
+    function addToCell(gx, gy, lineIndex) {
+      const key = `${gx}_${gy}`;
+      let cell = spatialGrid.get(key);
+      if (!cell) {
+        cell = { pts: [], lines: [] };
+        spatialGrid.set(key, cell);
+      }
+      if (cell.lines.length < 300) {
+        cell.lines.push(lineIndex);
+      }
+    }
+
+    function insertPointToGrid(x, y, type) {
+      const gx = Math.floor(x / GRID_SIZE);
+      const gy = Math.floor(y / GRID_SIZE);
+      const key = `${gx}_${gy}`;
+      let cell = spatialGrid.get(key);
+      if (!cell) {
+        cell = { pts: [], lines: [] };
+        spatialGrid.set(key, cell);
+      }
+      if (cell.pts.length < 300) {
+        cell.pts.push({ x, y, type });
+      }
+    }
+
+    function insertLineToGrid(x1, y1, x2, y2, lineIndex) {
+      const minGx = Math.floor(Math.min(x1, x2) / GRID_SIZE);
+      const maxGx = Math.floor(Math.max(x1, x2) / GRID_SIZE);
+      const minGy = Math.floor(Math.min(y1, y2) / GRID_SIZE);
+      const maxGy = Math.floor(Math.max(y1, y2) / GRID_SIZE);
+
+      const spanX = maxGx - minGx;
+      const spanY = maxGy - minGy;
+
+      if (spanX <= 3 && spanY <= 3) {
+        for (let gx = minGx; gx <= maxGx; gx++) {
+          for (let gy = minGy; gy <= maxGy; gy++) {
+            addToCell(gx, gy, lineIndex);
+          }
+        }
+      } else {
+        // Long lines: sample points along line so cells are accurately populated without memory blowout
+        const len = Math.hypot(x2 - x1, y2 - y1);
+        const steps = Math.min(Math.ceil(len / (GRID_SIZE * 0.7)), 60);
+        const added = new Set();
+        for (let s = 0; s <= steps; s++) {
+          const t = s / steps;
+          const px = x1 + t * (x2 - x1);
+          const py = y1 + t * (y2 - y1);
+          const gx = Math.floor(px / GRID_SIZE);
+          const gy = Math.floor(py / GRID_SIZE);
+          const key = `${gx}_${gy}`;
+          if (!added.has(key)) {
+            added.add(key);
+            addToCell(gx, gy, lineIndex);
+          }
+        }
+      }
+    }
+
+    // Comprehensive CAD OSNAP: Köşe, Orta Nokta, Çizgi Hattı ve Aks Kilidi
+    function findNearestSnap(worldX, worldY) {
+      // Screen magnet attraction radius in CSS pixels
+      const screenRadiusVertex = 34;   // Köşe mıknatısı
+      const screenRadiusMidpoint = 28; // Orta nokta mıknatısı
+      const screenRadiusLine = 24;     // Çizgi hattı mıknatısı (çizgiye yapışma)
+      const maxScreenRadius = Math.max(screenRadiusVertex, screenRadiusMidpoint, screenRadiusLine);
+      const maxWorldDist = maxScreenRadius / zoom;
+
+      const minGx = Math.floor((worldX - maxWorldDist) / GRID_SIZE);
+      const maxGx = Math.floor((worldX + maxWorldDist) / GRID_SIZE);
+      const minGy = Math.floor((worldY - maxWorldDist) / GRID_SIZE);
+      const maxGy = Math.floor((worldY + maxWorldDist) / GRID_SIZE);
+
+      let bestVertex = null;
+      let bestVertexDistSq = (screenRadiusVertex / zoom) ** 2;
+
+      let bestMidpoint = null;
+      let bestMidDistSq = (screenRadiusMidpoint / zoom) ** 2;
+
+      let bestLineProj = null;
+      let bestLineDistSq = (screenRadiusLine / zoom) ** 2;
+
+      // 0. İlk köşe snap (alanı kapatma için)
+      if (measureMode === 'area' && measurePoints.length >= 3) {
+        const first = measurePoints[0];
+        const dsq = (first.x - worldX) ** 2 + (first.y - worldY) ** 2;
+        if (dsq < (screenRadiusVertex / zoom) ** 2) {
+          return { x: first.x, y: first.y, type: 'İLK KÖŞE (ALANI KAPAT)' };
+        }
+      }
+
+      const visitedLines = new Set();
+
+      for (let gx = minGx; gx <= maxGx; gx++) {
+        for (let gy = minGy; gy <= maxGy; gy++) {
+          const cell = spatialGrid.get(`${gx}_${gy}`);
+          if (!cell) continue;
+
+          // A) Uç Noktalar ve Orta Noktalar
+          for (let i = 0; i < cell.pts.length; i++) {
+            const p = cell.pts[i];
+            const dx = p.x - worldX;
+            const dy = p.y - worldY;
+            const distSq = dx * dx + dy * dy;
+
+            if (p.type === 'endpoint') {
+              if (distSq < bestVertexDistSq) {
+                bestVertexDistSq = distSq;
+                bestVertex = { x: p.x, y: p.y, type: 'KÖŞE' };
+              }
+            } else if (p.type === 'midpoint') {
+              if (distSq < bestMidDistSq) {
+                bestMidDistSq = distSq;
+                bestMidpoint = { x: p.x, y: p.y, type: 'ORTA NOKTA' };
+              }
+            }
+          }
+
+          // B) Çizgi Parçaları Üzerine İzdüşüm (Nearest on Line - Çizgi Mıknatısı)
+          if (rawLinesArray) {
+            for (let j = 0; j < cell.lines.length; j++) {
+              const li = cell.lines[j];
+              if (visitedLines.has(li)) continue;
+              visitedLines.add(li);
+
+              const x1 = rawLinesArray[li];
+              const y1 = rawLinesArray[li+1];
+              const x2 = rawLinesArray[li+2];
+              const y2 = rawLinesArray[li+3];
+
+              const vx = x2 - x1;
+              const vy = y2 - y1;
+              const lenSq = vx * vx + vy * vy;
+              if (lenSq < 0.001) continue;
+
+              const t = Math.max(0, Math.min(1, ((worldX - x1) * vx + (worldY - y1) * vy) / lenSq));
+              const projX = x1 + t * vx;
+              const projY = y1 + t * vy;
+              const distSq = (worldX - projX) ** 2 + (worldY - projY) ** 2;
+
+              if (distSq < bestLineDistSq) {
+                bestLineDistSq = distSq;
+                bestLineProj = { x: projX, y: projY, type: 'ÇİZGİ HATTI' };
+              }
+            }
+          }
+        }
+      }
+
+      // Öncelik Sıralaması:
+      // 1. Köşe Noktası (en yüksek öncelik)
+      if (bestVertex) return bestVertex;
+      // 2. Orta Nokta
+      if (bestMidpoint) return bestMidpoint;
+      // 3. Çizgi Hattı (Mıknatıs gibi çizgiye yapışma)
+      if (bestLineProj) return bestLineProj;
+
+      // 4. Ortogonal Aks Kilidi (Önceki nokta varsa 0° veya 90° düz aks)
+      if (measurePoints.length > 0) {
+        const lastPt = measurePoints[measurePoints.length - 1];
+        const screenDy = Math.abs(worldY - lastPt.y) * zoom;
+        const screenDx = Math.abs(worldX - lastPt.x) * zoom;
+        if (screenDy < 18) {
+          return { x: worldX, y: lastPt.y, type: 'YATAY AKS (0°)' };
+        } else if (screenDx < 18) {
+          return { x: lastPt.x, y: worldY, type: 'DİKEY AKS (90°)' };
+        }
+      }
+
+      return null;
+    }
+
+    // Vertex Shader (Supports Dynamic CAD Y-Up and Axis Alignment)
+    const vsSource = `
+      attribute vec2 a_pos;
+      attribute vec3 a_color;
+      uniform vec2 u_res;
+      uniform vec2 u_offset;
+      uniform float u_zoom;
+      uniform float u_flip_y;
+      varying vec3 v_color;
+      void main() {
+        vec2 d = a_pos - u_offset;
+        vec2 clip = vec2(d.x, d.y * u_flip_y) * (2.0 * u_zoom / u_res);
+        gl_Position = vec4(clip.x, clip.y, 0.0, 1.0);
+        v_color = a_color;
+      }
+    `;
+
+    // Fragment Shader
+    const fsSource = `
+      precision mediump float;
+      varying vec3 v_color;
+      void main() {
+        gl_FragColor = vec4(v_color, 1.0);
+      }
+    `;
+
+    function initGL() {
+      gl = glCanvas.getContext('webgl', { antialias: true, alpha: false });
+      if (!gl) {
+        alert('WebGL bu tarayıcıda desteklenmiyor!');
+        return false;
+      }
+      textCtx = textCanvas.getContext('2d');
+
+      const vs = gl.createShader(gl.VERTEX_SHADER);
+      gl.shaderSource(vs, vsSource);
+      gl.compileShader(vs);
+
+      const fs = gl.createShader(gl.FRAGMENT_SHADER);
+      gl.shaderSource(fs, fsSource);
+      gl.compileShader(fs);
+
+      lineProgram = gl.createProgram();
+      gl.attachShader(lineProgram, vs);
+      gl.attachShader(lineProgram, fs);
+      gl.linkProgram(lineProgram);
+
+      gl.useProgram(lineProgram);
+      gl.clearColor(0.0, 0.0, 0.0, 1.0); // CAD çizim tuvali DAİMA siyah
+      return true;
+    }
+
+    function resize() {
+      const dpr = window.devicePixelRatio || 1;
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+
+      glCanvas.width = Math.round(w * dpr);
+      glCanvas.height = Math.round(h * dpr);
+      textCanvas.width = Math.round(w * dpr);
+      textCanvas.height = Math.round(h * dpr);
+      gl.viewport(0, 0, glCanvas.width, glCanvas.height);
+      render();
+    }
+
+    window.addEventListener('resize', resize);
+
+    // Cihaz İçi IndexedDB Hızlı CAD Önbelleği (Tekrar açılışlarda 0.05 saniye anında render)
+    function openCadDb() {
+      return new Promise((resolve) => {
+        try {
+          const req = indexedDB.open('CadFastCacheDB', 1);
+          req.onupgradeneeded = () => {
+            const db = req.result;
+            if (!db.objectStoreNames.contains('drawings')) {
+              db.createObjectStore('drawings', { keyPath: 'id' });
+            }
+          };
+          req.onsuccess = () => resolve(req.result);
+          req.onerror = () => resolve(null);
+        } catch (e) { resolve(null); }
+      });
+    }
+
+    async function getCachedDrawing(id) {
+      const forceRefresh = urlParams.has('nocache') || urlParams.has('refresh') || urlParams.has('v');
+      if (forceRefresh) return null;
+      try {
+        const db = await openCadDb();
+        if (!db) return null;
+        return new Promise((resolve) => {
+          const tx = db.transaction('drawings', 'readonly');
+          const store = tx.objectStore('drawings');
+          const req = store.get(id);
+          req.onsuccess = () => {
+            const res = req.result;
+            // Eski eksik, dolgusuz veya triangles içermeyen önbelleği anında at ve canlı çek!
+            if (!res || !res.v || res.v < 5 || !res.meta || !res.meta.triangles || res.meta.triangles.length === 0 || (res.meta.totalLines < 350000)) {
+              resolve(null);
+            } else {
+              resolve(res);
+            }
+          };
+          req.onerror = () => resolve(null);
+        });
+      } catch (e) { return null; }
+    }
+
+    async function setCachedDrawing(id, meta, vertexData) {
+      try {
+        const db = await openCadDb();
+        if (!db) return;
+        const tx = db.transaction('drawings', 'readwrite');
+        const store = tx.objectStore('drawings');
+        // ArrayBuffer structured clone ile kaydedilir
+        const copyBuf = vertexData.buffer.slice(0);
+        store.put({ id, meta, vertexBuffer: copyBuf, v: 5, savedAt: Date.now() });
+      } catch (e) {}
+    }
+
+    // DWG FastView standardında kiriş ve kolon katı dolgularını (HATCH) GPU bufferına yükler
+    function buildTriangleBuffer(triangles) {
+      if (!triangles || triangles.length === 0) return;
+      totalTriangles = Math.floor(triangles.length / 7);
+      const tData = new Float32Array(totalTriangles * 15);
+      for (let i = 0, vi = 0; i < triangles.length; i += 7) {
+        const x1 = triangles[i], y1 = triangles[i+1];
+        const x2 = triangles[i+2], y2 = triangles[i+3];
+        const x3 = triangles[i+4], y3 = triangles[i+5];
+        const c = triangles[i+6];
+        const r = ((c >> 16) & 255) / 255.0;
+        const g = ((c >> 8) & 255) / 255.0;
+        const b = (c & 255) / 255.0;
+
+        // v1
+        tData[vi++] = x1; tData[vi++] = y1; tData[vi++] = r; tData[vi++] = g; tData[vi++] = b;
+        // v2
+        tData[vi++] = x2; tData[vi++] = y2; tData[vi++] = r; tData[vi++] = g; tData[vi++] = b;
+        // v3
+        tData[vi++] = x3; tData[vi++] = y3; tData[vi++] = r; tData[vi++] = g; tData[vi++] = b;
+      }
+      triangleBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, triangleBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, tData, gl.STATIC_DRAW);
+    }
+
+    // Fetch and load CAD data (High-Performance Zero-Copy Binary Pipeline)
+    async function loadCadData() {
+      const fileId = urlParams.get('id') || urlParams.get('file');
+      const customTitle = urlParams.get('title');
+
+      if (customTitle) {
+        const decodedTitle = decodeURIComponent(customTitle);
+        document.getElementById('project-title').textContent = decodedTitle;
+        document.title = `${decodedTitle} - CAD Motoru`;
+      } else if (!fileId) {
+        document.getElementById('project-title').textContent = 'HASAN AKTAŞ STATİK PROJESİ';
+      }
+
+      updateLoader(1, 'Hızlı CAD Akışı Başlatılıyor', 'DWG vektörleri GPU donanımına hazırlanıyor...', 20);
+
+      let vertexData = null;
+      const forceRefresh = urlParams.has('nocache') || urlParams.has('refresh') || urlParams.has('v');
+      if (fileId) {
+        // 1. ADIM: Cihaz önbelleğini kontrol et (Anında açılış)
+        let cached = !forceRefresh ? await getCachedDrawing(fileId) : null;
+        if (cached && cached.vertexBuffer) {
+          // Eski dolgusuz önbellekse kesinlikle reddet, sunucudan en güncel dolgulu veriyi çek!
+          if (!cached.meta || !cached.meta.triangles || cached.meta.triangles.length === 0) {
+            cached = null;
+          }
+        }
+        if (cached && cached.vertexBuffer) {
+          updateLoader(2, 'Önbellekten Hızlı Yükleme', 'Geometri cihaz belleğinden anında aktarılıyor...', 80);
+          vertexData = new Float32Array(cached.vertexBuffer);
+          bounds = cached.meta.bounds || bounds;
+          cadTexts = cached.meta.texts || [];
+          totalLines = cached.meta.totalLines || Math.floor(vertexData.length / 10);
+          if (cached.meta && cached.meta.triangles) {
+            buildTriangleBuffer(cached.meta.triangles);
+          }
+          loadedFromBinary = true;
+        } else {
+          const cacheBust = `?v=5.2&t=${Date.now()}`;
+          const metaUrl = `/files/${fileId}_cad_meta.json${cacheBust}`;
+          const binUrl = `/files/${fileId}_cad_vertices.bin${cacheBust}`;
+          const jsonUrl = `/files/${fileId}_cad_data.json${cacheBust}`;
+          let attempts = 0;
+          const maxAttempts = 90;
+
+          while (attempts < maxAttempts) {
+            attempts++;
+            try {
+              if (attempts > 1) {
+                const pct = Math.min(68, 20 + Math.round(attempts * 0.7));
+                updateLoader(1, 'Vektör Katmanları İşleniyor', `Büyük CAD projesi çözümleniyor (${attempts}/${maxAttempts})`, pct);
+              }
+
+              // 1. ÖNCELİK: Ultra hızlı ikili buffer (Zero-Copy ArrayBuffer)
+              const [metaRes, binRes] = await Promise.all([
+                fetch(metaUrl),
+                fetch(binUrl)
+              ]);
+
+              if (metaRes.ok && binRes.ok) {
+                updateLoader(2, 'GPU Doğrudan Akışı', 'İkili geometri paketi GPU belleğine akıtılıyor...', 78);
+                const meta = await metaRes.json();
+                const buf = await binRes.arrayBuffer();
+
+                vertexData = new Float32Array(buf);
+                bounds = meta.bounds || bounds;
+                cadTexts = meta.texts || [];
+                totalLines = meta.totalLines || Math.floor(vertexData.length / 10);
+                if (meta.triangles) {
+                  buildTriangleBuffer(meta.triangles);
+                }
+                loadedFromBinary = true;
+                setCachedDrawing(fileId, meta, vertexData);
+                break;
+              } else {
+                // 2. İKİNCİ ÖNCELİK: Standart JSON kontrolü
+                const jsonRes = await fetch(jsonUrl);
+                if (jsonRes.ok) {
+                  updateLoader(2, 'Vektörler Çözümleniyor', 'Geometri verisi çözümleniyor...', 65);
+                  const data = await jsonRes.json();
+                  bounds = data.bounds || bounds;
+                  cadTexts = data.texts || [];
+                  const lines = data.lines || [];
+                  totalLines = Math.floor(lines.length / 5);
+                  rawLinesArray = lines;
+                  if (data.triangles) {
+                    buildTriangleBuffer(data.triangles);
+                  }
+
+                  // Vertex buffer oluştur
+                  vertexData = new Float32Array(totalLines * 10);
+                  for (let i = 0, vi = 0; i < lines.length; i += 5) {
+                    const x1 = lines[i], y1 = lines[i+1], x2 = lines[i+2], y2 = lines[i+3], c = lines[i+4];
+                    const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
+                    vertexData[vi++] = x1; vertexData[vi++] = y1; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+                    vertexData[vi++] = x2; vertexData[vi++] = y2; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+                  }
+                  setCachedDrawing(fileId, { bounds, texts: cadTexts, totalLines, triangles: data.triangles }, vertexData);
+                  break;
+                }
+              }
+              await new Promise(r => setTimeout(r, 1200));
+            } catch (e) {
+              await new Promise(r => setTimeout(r, 1200));
+            }
+          }
+        }
+      } else {
+        // Varsayılan statik dosya (Hasan Aktaş)
+        try {
+          const [metaRes, binRes] = await Promise.all([
+            fetch('/cad_meta.json'),
+            fetch('/cad_vertices.bin')
+          ]);
+          if (metaRes.ok && binRes.ok) {
+            updateLoader(2, 'GPU Doğrudan Akışı', 'Varsayılan mimari çizim GPU donanımına aktarılıyor...', 75);
+            const meta = await metaRes.json();
+            const buf = await binRes.arrayBuffer();
+            vertexData = new Float32Array(buf);
+            bounds = meta.bounds || bounds;
+            cadTexts = meta.texts || [];
+            totalLines = meta.totalLines || Math.floor(vertexData.length / 10);
+            if (meta.triangles) {
+              buildTriangleBuffer(meta.triangles);
+            }
+            loadedFromBinary = true;
+          } else {
+            const res = await fetch('/cad_data.json');
+            if (res.ok) {
+              updateLoader(2, 'Vektörler Çözümleniyor', 'Varsayılan mimari çizim yükleniyor...', 65);
+              const data = await res.json();
+              bounds = data.bounds || bounds;
+              cadTexts = data.texts || [];
+              const lines = data.lines || [];
+              totalLines = Math.floor(lines.length / 5);
+              rawLinesArray = lines;
+              if (data.triangles) {
+                buildTriangleBuffer(data.triangles);
+              }
+
+              vertexData = new Float32Array(totalLines * 10);
+              for (let i = 0, vi = 0; i < lines.length; i += 5) {
+                const x1 = lines[i], y1 = lines[i+1], x2 = lines[i+2], y2 = lines[i+3], c = lines[i+4];
+                const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
+                vertexData[vi++] = x1; vertexData[vi++] = y1; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+                vertexData[vi++] = x2; vertexData[vi++] = y2; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+              }
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        }
+      }
+
+      if (!vertexData || vertexData.length === 0) {
+        updateLoader(1, 'Çizim Dosyası Hazırlanıyor', 'Sunucudaki CAD vektör işlemi devam ediyor. Lütfen butona basarak tekrar kontrol edin.', 0);
+        let existingBtn = document.getElementById('cad-retry-btn');
+        if (!existingBtn) {
+          const retryBtn = document.createElement('button');
+          retryBtn.id = 'cad-retry-btn';
+          retryBtn.className = 'cad-retry-btn';
+          retryBtn.textContent = 'Çizimi Tekrar Kontrol Et';
+          retryBtn.onclick = () => {
+            retryBtn.remove();
+            loadCadData();
+          };
+          if (loader) loader.appendChild(retryBtn);
+        }
+        return;
+      }
+      const existingBtn = document.getElementById('cad-retry-btn');
+      if (existingBtn) existingBtn.remove();
+
+      // Step 3: GPU Donanım Motoruna Yükleme
+      updateLoader(3, 'GPU Belleğine Aktarılıyor', `${totalLines.toLocaleString('tr-TR')} çizgi grafik işlemcisine aktarılıyor...`, 88);
+
+      lineBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+
+      const aPos = gl.getAttribLocation(lineProgram, 'a_pos');
+      gl.enableVertexAttribArray(aPos);
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 20, 0);
+
+      const aColor = gl.getAttribLocation(lineProgram, 'a_color');
+      gl.enableVertexAttribArray(aColor);
+      gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 20, 8);
+
+      // Binary veriden ölçüm ve mıknatıs koordinatlarını hazırla (renk ve 5-stride tam senkronize)
+      if (loadedFromBinary) {
+        rawLinesArray = new Float32Array(totalLines * 5);
+        for (let i = 0, vi = 0, ri = 0; i < totalLines; i++, vi += 10, ri += 5) {
+          rawLinesArray[ri] = vertexData[vi];
+          rawLinesArray[ri+1] = vertexData[vi+1];
+          rawLinesArray[ri+2] = vertexData[vi+5];
+          rawLinesArray[ri+3] = vertexData[vi+6];
+          const r = Math.round(vertexData[vi+2] * 255);
+          const g = Math.round(vertexData[vi+3] * 255);
+          const b = Math.round(vertexData[vi+4] * 255);
+          rawLinesArray[ri+4] = (r << 16) | (g << 8) | b;
+        }
+      }
+
+      updateLoader(4, 'Çizim Hazır', 'Görüntü ekrana yerleştiriliyor...', 100);
+      setTimeout(() => {
+        if (loader) loader.style.display = 'none';
+      }, 180);
+      const fillLabel = totalTriangles > 0 ? ` • ${(totalTriangles / 2).toLocaleString('tr-TR', {maximumFractionDigits: 0})} Dolgu` : '';
+      statsEl.innerText = `${totalLines.toLocaleString('tr-TR')} Çizgi${fillLabel} • ${cadTexts.length.toLocaleString('tr-TR')} Metin`;
+
+      const urlParamsNow = new URLSearchParams(window.location.search);
+      const paramX = parseFloat(urlParamsNow.get('x'));
+      const paramY = parseFloat(urlParamsNow.get('y'));
+      const paramZoom = parseFloat(urlParamsNow.get('zoom'));
+
+      if (!isNaN(paramX) && !isNaN(paramY) && !isNaN(paramZoom)) {
+        offsetX = paramX;
+        offsetY = paramY;
+        zoom = paramZoom;
+        render();
+      } else {
+        fitToScreen();
+      }
+
+      // Mıknatıs İndeksini Eşzamansız (Asenkron) Olarak Arka Planda Kur (Tüm formatlarda standart stride = 5)
+      setTimeout(() => {
+        buildSpatialGrid(rawLinesArray, 5);
+      }, 50);
+    }
+
+    function fitToScreen() {
+      const w = window.innerWidth;
+      const h = window.innerHeight;
+      const scaleX = (w * 0.95) / bounds.w;
+      const scaleY = (h * 0.95) / bounds.h;
+      zoom = Math.min(scaleX, scaleY);
+      offsetX = bounds.minX + bounds.w / 2;
+      offsetY = bounds.minY + bounds.h / 2;
+      render();
+    }
+
+    function focusBodrum() {
+      offsetX = 45800.0;
+      offsetY = 11800.0;
+      zoom = 0.35;
+      render();
+    }
+
+    function focusZemin() {
+      offsetX = 87800.0;
+      offsetY = 11800.0;
+      zoom = 0.35;
+      render();
+    }
+
+    function focusBoth() {
+      offsetX = 66800.0;
+      offsetY = 11800.0;
+      zoom = 0.17;
+      render();
+    }
+
+    // World to Screen & Screen to World transforms
+    function worldToScreen(wx, wy) {
+      const logicalW = window.innerWidth;
+      const logicalH = window.innerHeight;
+      const dy = flipY ? (wy - offsetY) : -(wy - offsetY);
+      return {
+        x: (wx - offsetX) * zoom + logicalW * 0.5,
+        y: dy * zoom + logicalH * 0.5
+      };
+    }
+
+    function screenToWorld(sx, sy) {
+      const logicalW = window.innerWidth;
+      const logicalH = window.innerHeight;
+      const dy = (sy - logicalH * 0.5) / zoom;
+      return {
+        x: offsetX + (sx - logicalW * 0.5) / zoom,
+        y: flipY ? (offsetY + dy) : (offsetY - dy)
+      };
+    }
+
+    // Render loop
+    function render() {
+      const dpr = window.devicePixelRatio || 1;
+      const screenW = glCanvas.width;
+      const screenH = glCanvas.height;
+      const logicalW = window.innerWidth;
+      const logicalH = window.innerHeight;
+
+      // 1. WebGL Hardware Line Draw
+      gl.clear(gl.COLOR_BUFFER_BIT);
+
+      gl.useProgram(lineProgram);
+      const uRes = gl.getUniformLocation(lineProgram, 'u_res');
+      const uOffset = gl.getUniformLocation(lineProgram, 'u_offset');
+      const uZoom = gl.getUniformLocation(lineProgram, 'u_zoom');
+      const uFlipY = gl.getUniformLocation(lineProgram, 'u_flip_y');
+
+      gl.uniform2f(uRes, screenW, screenH);
+      gl.uniform2f(uOffset, offsetX, offsetY);
+      gl.uniform1f(uZoom, zoom * dpr);
+      gl.uniform1f(uFlipY, flipY ? -1.0 : 1.0);
+
+      const aPos = gl.getAttribLocation(lineProgram, 'a_pos');
+      const aColor = gl.getAttribLocation(lineProgram, 'a_color');
+
+      // 1.1 Kiriş ve Kolon Katı Dolgularını (Solid Hatches) Zemin Katmanında Çiz (FastView Standardı)
+      if (totalTriangles > 0 && triangleBuffer) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, triangleBuffer);
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 20, 0);
+        gl.enableVertexAttribArray(aColor);
+        gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 20, 8);
+        gl.drawArrays(gl.TRIANGLES, 0, totalTriangles * 3);
+      }
+
+      // 1.2 Keskin Duvar ve Kenar Çizgilerini Üst Katmanda Çiz
+      if (totalLines > 0 && lineBuffer) {
+        gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+        gl.enableVertexAttribArray(aPos);
+        gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 20, 0);
+        gl.enableVertexAttribArray(aColor);
+        gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 20, 8);
+        gl.drawArrays(gl.LINES, 0, totalLines * 2);
+      }
+
+      // 2. Text and Measure Overlay Draw
+      textCtx.clearRect(0, 0, textCanvas.width, textCanvas.height);
+      textCtx.save();
+      textCtx.scale(dpr, dpr);
+
+      // Draw CAD Text Annotations
+      if (showTexts && cadTexts.length > 0) {
+        textCtx.textAlign = 'left';
+        textCtx.textBaseline = 'alphabetic';
+
+        const halfW = (logicalW * 0.5) / zoom;
+        const halfH = (logicalH * 0.5) / zoom;
+        const minVisX = offsetX - halfW - 300;
+        const maxVisX = offsetX + halfW + 300;
+        const minVisY = offsetY - halfH - 300;
+        const maxVisY = offsetY + halfH + 300;
+
+        for (let i = 0; i < cadTexts.length; i++) {
+          const item = cadTexts[i];
+          if (item.x < minVisX || item.x > maxVisX || item.y < minVisY || item.y > maxVisY) {
+            continue;
+          }
+          const screenFontSize = item.s * zoom;
+          if (screenFontSize < 1.0) continue;
+
+          const sp = worldToScreen(item.x, item.y);
+          textCtx.font = `600 ${screenFontSize.toFixed(1)}px 'Poppins', Arial, sans-serif`;
+          textCtx.fillStyle = item.c || '#ffffff';
+
+          if (item.r) {
+            textCtx.save();
+            textCtx.translate(sp.x, sp.y);
+            const rotAngle = flipY ? (item.r * Math.PI / 180) : (-item.r * Math.PI / 180);
+            textCtx.rotate(rotAngle);
+            textCtx.fillText(item.t, 0, 0);
+            textCtx.restore();
+          } else {
+            textCtx.fillText(item.t, sp.x, sp.y);
+          }
+        }
+      }
+
+      // 3. Render Active Measurement (Mesafe / Alan)
+      renderMeasurements();
+
+      textCtx.restore();
+
+      zoomLevelEl.innerText = `Zoom: ${(zoom * 1000).toFixed(1)}%`;
+      updateCoordsDisplay(offsetX, offsetY);
+    }
+
+    // Interactive Measurement Canvas Drawing
+    let currentAimingPos = null;
+
+    function renderMeasurements() {
+      if (measureMode === 'none' && measurePoints.length === 0 && !isAiming) return;
+
+      const pts = measurePoints.map(p => worldToScreen(p.x, p.y));
+
+      if (measureMode === 'distance') {
+        // Draw distance line segments
+        if (pts.length > 1) {
+          textCtx.beginPath();
+          textCtx.strokeStyle = '#00f0ff';
+          textCtx.lineWidth = 2.5;
+          textCtx.setLineDash([8, 5]);
+          textCtx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) {
+            textCtx.lineTo(pts[i].x, pts[i].y);
+          }
+          textCtx.stroke();
+          textCtx.setLineDash([]);
+
+          // Segment measurement badges
+          for (let i = 0; i < measurePoints.length - 1; i++) {
+            const p1 = measurePoints[i];
+            const p2 = measurePoints[i+1];
+            const sp1 = pts[i];
+            const sp2 = pts[i+1];
+
+            const dx = p2.x - p1.x;
+            const dy = p2.y - p1.y;
+            const distWorld = Math.hypot(dx, dy);
+            const distMeters = distWorld * metersPerUnit;
+
+            const midX = (sp1.x + sp2.x) * 0.5;
+            const midY = (sp1.y + sp2.y) * 0.5;
+
+            drawPillBadge(`${distMeters.toFixed(2)} m`, midX, midY - 14, '#00f0ff', '#083344');
+          }
+        }
+
+        // Live dynamic rubber-band line from last point to current aiming crosshair
+        if (isAiming && currentAimingPos && pts.length > 0) {
+          const lastSp = pts[pts.length - 1];
+          const aimSp = worldToScreen(currentAimingPos.x, currentAimingPos.y);
+
+          textCtx.beginPath();
+          textCtx.strokeStyle = '#f59e0b';
+          textCtx.lineWidth = 2.4;
+          textCtx.setLineDash([6, 4]);
+          textCtx.moveTo(lastSp.x, lastSp.y);
+          textCtx.lineTo(aimSp.x, aimSp.y);
+          textCtx.stroke();
+          textCtx.setLineDash([]);
+
+          const lastP = measurePoints[measurePoints.length - 1];
+          const liveDistM = Math.hypot(currentAimingPos.x - lastP.x, currentAimingPos.y - lastP.y) * metersPerUnit;
+          const midX = (lastSp.x + aimSp.x) * 0.5;
+          const midY = (lastSp.y + aimSp.y) * 0.5;
+          drawPillBadge(`${liveDistM.toFixed(2)} m`, midX, midY - 14, '#fbbf24', '#451a03');
+        }
+
+        // Draw handles at points
+        for (let i = 0; i < pts.length; i++) {
+          drawHandle(pts[i].x, pts[i].y, i + 1, '#00f0ff');
+        }
+
+      } else if (measureMode === 'area') {
+        // Draw polygon
+        if (pts.length >= 2) {
+          textCtx.beginPath();
+          textCtx.moveTo(pts[0].x, pts[0].y);
+          for (let i = 1; i < pts.length; i++) {
+            textCtx.lineTo(pts[i].x, pts[i].y);
+          }
+          if (pts.length >= 3) {
+            textCtx.closePath();
+            textCtx.fillStyle = 'rgba(16, 185, 129, 0.28)';
+            textCtx.fill();
+          }
+          textCtx.strokeStyle = '#10b981';
+          textCtx.lineWidth = 2.5;
+          textCtx.setLineDash([8, 4]);
+          textCtx.stroke();
+          textCtx.setLineDash([]);
+
+          // Center Area Badge
+          if (pts.length >= 3) {
+            const areaM2 = calculateShoelaceArea(measurePoints) * (metersPerUnit * metersPerUnit);
+            const perimeterM = calculatePerimeter(measurePoints) * metersPerUnit;
+
+            const cx = pts.reduce((s, p) => s + p.x, 0) / pts.length;
+            const cy = pts.reduce((s, p) => s + p.y, 0) / pts.length;
+
+            drawPillBadge(`Alan: ${areaM2.toFixed(2)} m²`, cx, cy - 10, '#34d399', '#064e3b');
+            drawPillBadge(`Çevre: ${perimeterM.toFixed(2)} m`, cx, cy + 14, '#a7f3d0', '#064e3b');
+          }
+        }
+
+        // Live dynamic rubber-band polygon edges while aiming in area mode
+        if (isAiming && currentAimingPos && pts.length > 0) {
+          const lastSp = pts[pts.length - 1];
+          const aimSp = worldToScreen(currentAimingPos.x, currentAimingPos.y);
+
+          textCtx.beginPath();
+          textCtx.strokeStyle = '#34d399';
+          textCtx.lineWidth = 2.2;
+          textCtx.setLineDash([6, 4]);
+          textCtx.moveTo(lastSp.x, lastSp.y);
+          textCtx.lineTo(aimSp.x, aimSp.y);
+          if (pts.length >= 2) {
+            textCtx.lineTo(pts[0].x, pts[0].y);
+          }
+          textCtx.stroke();
+          textCtx.setLineDash([]);
+        }
+
+        for (let i = 0; i < pts.length; i++) {
+          drawHandle(pts[i].x, pts[i].y, i + 1, '#10b981');
+        }
+      }
+
+      // Draw active magnetic snap indicator if aiming
+      if (isAiming && currentAimingPos) {
+        const sp = worldToScreen(currentAimingPos.x, currentAimingPos.y);
+        textCtx.save();
+        if (activeSnapPoint && activeSnapPoint.type && activeSnapPoint.type.includes('ÇİZGİ')) {
+          // Çizgi hattı: Cyan kum saati / X ikonu + etiket
+          textCtx.strokeStyle = '#00f0ff';
+          textCtx.lineWidth = 2.4;
+          textCtx.beginPath();
+          textCtx.moveTo(sp.x - 8, sp.y - 8); textCtx.lineTo(sp.x + 8, sp.y + 8);
+          textCtx.moveTo(sp.x - 8, sp.y + 8); textCtx.lineTo(sp.x + 8, sp.y - 8);
+          textCtx.stroke();
+          drawPillBadge('ÇİZGİ HATTI', sp.x, sp.y - 20, '#00f0ff', '#083344');
+        } else if (activeSnapPoint && activeSnapPoint.type && activeSnapPoint.type.includes('ORTA')) {
+          // Orta nokta: Mavi üçgen ikonu + etiket
+          textCtx.strokeStyle = '#38bdf8';
+          textCtx.lineWidth = 2.4;
+          textCtx.beginPath();
+          textCtx.moveTo(sp.x, sp.y - 9);
+          textCtx.lineTo(sp.x + 8, sp.y + 6);
+          textCtx.lineTo(sp.x - 8, sp.y + 6);
+          textCtx.closePath();
+          textCtx.stroke();
+          drawPillBadge('ORTA NOKTA', sp.x, sp.y - 20, '#38bdf8', '#082f49');
+        } else if (activeSnapPoint && activeSnapPoint.type && activeSnapPoint.type.includes('AKS')) {
+          // Aks kılavuzu: Turuncu hedef
+          textCtx.strokeStyle = '#f59e0b';
+          textCtx.lineWidth = 2;
+          textCtx.beginPath();
+          textCtx.arc(sp.x, sp.y, 9, 0, Math.PI * 2);
+          textCtx.stroke();
+          drawPillBadge(activeSnapPoint.type, sp.x, sp.y - 20, '#f59e0b', '#451a03');
+        } else if (activeSnapPoint) {
+          // Köşe (Endpoint): Yeşil kare ikonu + etiket
+          textCtx.strokeStyle = '#22c55e';
+          textCtx.lineWidth = 2.5;
+          textCtx.strokeRect(sp.x - 8, sp.y - 8, 16, 16);
+          textCtx.fillStyle = 'rgba(34, 197, 94, 0.4)';
+          textCtx.fillRect(sp.x - 8, sp.y - 8, 16, 16);
+          drawPillBadge(activeSnapPoint.type || 'KÖŞE', sp.x, sp.y - 20, '#22c55e', '#052e16');
+        } else {
+          // Serbest nişan alma noktası (Snap yakalanmadıysa)
+          textCtx.strokeStyle = '#ffffff';
+          textCtx.lineWidth = 1.8;
+          textCtx.beginPath();
+          textCtx.arc(sp.x, sp.y, 6, 0, Math.PI * 2);
+          textCtx.stroke();
+        }
+        textCtx.restore();
+      }
+    }
+
+    function drawHandle(x, y, index, color) {
+      textCtx.save();
+      textCtx.beginPath();
+      textCtx.arc(x, y, 7, 0, Math.PI * 2);
+      textCtx.fillStyle = color;
+      textCtx.shadowColor = color;
+      textCtx.shadowBlur = 8;
+      textCtx.fill();
+
+      textCtx.beginPath();
+      textCtx.arc(x, y, 3, 0, Math.PI * 2);
+      textCtx.fillStyle = '#ffffff';
+      textCtx.fill();
+      textCtx.restore();
+    }
+
+    function drawPillBadge(text, x, y, textColor, bgColor) {
+      textCtx.save();
+      textCtx.font = 'bold 11px -apple-system, sans-serif';
+      const textW = textCtx.measureText(text).width;
+      const padX = 8;
+      const padY = 4;
+      const boxW = textW + padX * 2;
+      const boxH = 18;
+
+      textCtx.fillStyle = bgColor;
+      textCtx.strokeStyle = textColor;
+      textCtx.lineWidth = 1.2;
+      textCtx.beginPath();
+      textCtx.roundRect(x - boxW * 0.5, y - boxH * 0.5, boxW, boxH, 6);
+      textCtx.fill();
+      textCtx.stroke();
+
+      textCtx.fillStyle = textColor;
+      textCtx.textAlign = 'center';
+      textCtx.textBaseline = 'middle';
+      textCtx.fillText(text, x, y);
+      textCtx.restore();
+    }
+
+    function calculateShoelaceArea(points) {
+      if (points.length < 3) return 0;
+      let area = 0;
+      const n = points.length;
+      for (let i = 0; i < n; i++) {
+        const j = (i + 1) % n;
+        area += points[i].x * points[j].y;
+        area -= points[j].x * points[i].y;
+      }
+      return Math.abs(area) * 0.5;
+    }
+
+    function calculatePerimeter(points) {
+      if (points.length < 2) return 0;
+      let perim = 0;
+      for (let i = 0; i < points.length; i++) {
+        const next = points[(i + 1) % points.length];
+        perim += Math.hypot(next.x - points[i].x, next.y - points[i].y);
+      }
+      return perim;
+    }
+
+    function updateMeasureCardUI() {
+      if (measureMode === 'none') {
+        measureCard.style.display = 'none';
+        return;
+      }
+      measureCard.style.display = 'flex';
+
+      const cardIcon = document.getElementById('measure-card-icon');
+
+      if (measureMode === 'distance') {
+        measureCardTitle.innerText = 'Mesafe Ölçümü';
+        if (cardIcon) {
+          cardIcon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#00f0ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21.3 15.3a2.4 2.4 0 0 1 0 3.4l-2.6 2.6a2.4 2.4 0 0 1-3.4 0L2.7 8.7a2.4 2.4 0 0 1 0-3.4l2.6-2.6a2.4 2.4 0 0 1 3.4 0Z"/><path d="m14.5 12.5 2-2"/></svg>`;
+        }
+        if (measurePoints.length >= 2) {
+          let totalWorld = 0;
+          for (let i = 0; i < measurePoints.length - 1; i++) {
+            totalWorld += Math.hypot(measurePoints[i+1].x - measurePoints[i].x, measurePoints[i+1].y - measurePoints[i].y);
+          }
+          const totalM = totalWorld * metersPerUnit;
+          measurePrimaryVal.innerText = `${totalM.toFixed(2)} m`;
+          measureSubVal.innerText = `${measurePoints.length} nokta • Ölçü için basılı tutun`;
+        } else if (measurePoints.length === 1) {
+          measurePrimaryVal.innerText = '0.00 m';
+          measureSubVal.innerText = '2. nokta için basılı tutun • Kaydırmak için sürükleyin';
+        } else {
+          measurePrimaryVal.innerText = '0.00 m';
+          measureSubVal.innerText = 'Başlangıç için basılı tutun • Kaydırmak için sürükleyin';
+        }
+      } else if (measureMode === 'area') {
+        measureCardTitle.innerText = 'Alan Hesaplama';
+        if (cardIcon) {
+          cardIcon.innerHTML = `<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 2 2 7l4 12h12l4-12Z"/></svg>`;
+        }
+        if (measurePoints.length >= 3) {
+          const areaM2 = calculateShoelaceArea(measurePoints) * (metersPerUnit * metersPerUnit);
+          const perimM = calculatePerimeter(measurePoints) * metersPerUnit;
+          measurePrimaryVal.innerText = `${areaM2.toFixed(2)} m²`;
+          measureSubVal.innerText = `Çevre: ${perimM.toFixed(2)} m • ${measurePoints.length} köşe`;
+        } else {
+          measurePrimaryVal.innerText = '0.00 m²';
+          measureSubVal.innerText = `${measurePoints.length}/3 köşe • Basılı tutarak köşe seçin`;
+        }
+      }
+    }
+
+    // Render Magnifier Loupe (Büyüteç) at given screen coordinate
+    function renderLoupe(screenX, screenY, worldX, worldY) {
+      loupeContainer.style.display = 'block';
+
+      // Position loupe safely above finger so finger never obstructs crosshair
+      let loupeLeft = Math.max(75, Math.min(window.innerWidth - 75, screenX));
+      let loupeTop = screenY - 95;
+      if (loupeTop < 75) {
+        loupeTop = screenY + 95; // flip below if near top screen edge
+      }
+      loupeContainer.style.left = `${loupeLeft}px`;
+      loupeContainer.style.top = `${loupeTop}px`;
+
+      // Clear loupe canvas
+      loupeCtx.fillStyle = '#000000';
+      loupeCtx.fillRect(0, 0, 160, 160);
+
+      if (!rawLinesArray) return;
+
+      const loupeZoom = Math.max(zoom * 3.5, 0.04);
+      const lcx = 80;
+      const lcy = 80;
+
+      // Draw local lines within loupe view
+      const halfLoupeWorldW = lcx / loupeZoom;
+      const halfLoupeWorldH = lcy / loupeZoom;
+      const minX = worldX - halfLoupeWorldW;
+      const maxX = worldX + halfLoupeWorldW;
+      const minY = worldY - halfLoupeWorldH;
+      const maxY = worldY + halfLoupeWorldH;
+
+      loupeCtx.lineWidth = 2.0;
+      const lines = rawLinesArray;
+      const len = lines.length;
+
+      for (let i = 0; i < len; i += 5) {
+        const x1 = lines[i];
+        const y1 = lines[i+1];
+        const x2 = lines[i+2];
+        const y2 = lines[i+3];
+
+        if ((x1 < minX && x2 < minX) || (x1 > maxX && x2 > maxX)) continue;
+        if ((y1 < minY && y2 < minY) || (y1 > maxY && y2 > maxY)) continue;
+
+        const colorInt = lines[i+4];
+        loupeCtx.strokeStyle = `#${(colorInt & 0xffffff).toString(16).padStart(6, '0')}`;
+
+        const sx1 = (x1 - worldX) * loupeZoom + lcx;
+        const dy1 = flipY ? (y1 - worldY) : -(y1 - worldY);
+        const sy1 = dy1 * loupeZoom + lcy;
+
+        const sx2 = (x2 - worldX) * loupeZoom + lcx;
+        const dy2 = flipY ? (y2 - worldY) : -(y2 - worldY);
+        const sy2 = dy2 * loupeZoom + lcy;
+
+        loupeCtx.beginPath();
+        loupeCtx.moveTo(sx1, sy1);
+        loupeCtx.lineTo(sx2, sy2);
+        loupeCtx.stroke();
+      }
+
+      // Draw CAD Text Annotations in Loupe
+      if (showTexts && cadTexts && cadTexts.length > 0) {
+        loupeCtx.save();
+        loupeCtx.textAlign = 'left';
+        loupeCtx.textBaseline = 'alphabetic';
+        for (let i = 0; i < cadTexts.length; i++) {
+          const item = cadTexts[i];
+          if (item.x < minX || item.x > maxX || item.y < minY || item.y > maxY) continue;
+          const fs = Math.max(item.s * loupeZoom, 7);
+          loupeCtx.font = `600 ${fs.toFixed(1)}px 'Poppins', Arial, sans-serif`;
+          loupeCtx.fillStyle = item.c || '#ffffff';
+          const sx = (item.x - worldX) * loupeZoom + lcx;
+          const dy = flipY ? (item.y - worldY) : -(item.y - worldY);
+          const sy = dy * loupeZoom + lcy;
+          if (item.r) {
+            loupeCtx.save();
+            loupeCtx.translate(sx, sy);
+            const rot = flipY ? (item.r * Math.PI / 180) : (-item.r * Math.PI / 180);
+            loupeCtx.rotate(rot);
+            loupeCtx.fillText(item.t, 0, 0);
+            loupeCtx.restore();
+          } else {
+            loupeCtx.fillText(item.t, sx, sy);
+          }
+        }
+        loupeCtx.restore();
+      }
+
+      // Draw dynamic line from last measurement point inside loupe
+      if (measurePoints.length > 0) {
+        const lastP = measurePoints[measurePoints.length - 1];
+        const sx = (lastP.x - worldX) * loupeZoom + lcx;
+        const dy = flipY ? (lastP.y - worldY) : -(lastP.y - worldY);
+        const sy = dy * loupeZoom + lcy;
+        loupeCtx.save();
+        loupeCtx.beginPath();
+        loupeCtx.moveTo(sx, sy);
+        loupeCtx.lineTo(lcx, lcy);
+        loupeCtx.strokeStyle = '#f59e0b';
+        loupeCtx.lineWidth = 2.2;
+        loupeCtx.setLineDash([4, 3]);
+        loupeCtx.stroke();
+        loupeCtx.restore();
+      }
+
+      // Draw existing measurement points in loupe
+      for (const p of measurePoints) {
+        const sx = (p.x - worldX) * loupeZoom + lcx;
+        const dy = flipY ? (p.y - worldY) : -(p.y - worldY);
+        const sy = dy * loupeZoom + lcy;
+        loupeCtx.beginPath();
+        loupeCtx.arc(sx, sy, 5, 0, Math.PI * 2);
+        loupeCtx.fillStyle = '#00f0ff';
+        loupeCtx.fill();
+      }
+
+      // Check Magnetic Snap in Loupe
+      if (activeSnapPoint) {
+        loupeSnapBadge.style.display = 'block';
+        loupeSnapBadge.innerText = activeSnapPoint.type || 'KÖŞE';
+        if (activeSnapPoint.type && activeSnapPoint.type.includes('ÇİZGİ')) {
+          loupeSnapBadge.style.background = 'rgba(6, 182, 212, 0.95)';
+        } else if (activeSnapPoint.type && activeSnapPoint.type.includes('ORTA')) {
+          loupeSnapBadge.style.background = 'rgba(59, 130, 246, 0.95)';
+        } else if (activeSnapPoint.type && activeSnapPoint.type.includes('AKS')) {
+          loupeSnapBadge.style.background = 'rgba(245, 158, 11, 0.95)';
+        } else {
+          loupeSnapBadge.style.background = 'rgba(16, 185, 129, 0.95)';
+        }
+
+        const sx = (activeSnapPoint.x - worldX) * loupeZoom + lcx;
+        const dy = flipY ? (activeSnapPoint.y - worldY) : -(activeSnapPoint.y - worldY);
+        const sy = dy * loupeZoom + lcy;
+
+        loupeCtx.save();
+        if (activeSnapPoint.type && activeSnapPoint.type.includes('ÇİZGİ')) {
+          loupeCtx.strokeStyle = '#00f0ff';
+          loupeCtx.lineWidth = 2.4;
+          loupeCtx.beginPath();
+          loupeCtx.moveTo(sx - 7, sy - 7); loupeCtx.lineTo(sx + 7, sy + 7);
+          loupeCtx.moveTo(sx - 7, sy + 7); loupeCtx.lineTo(sx + 7, sy - 7);
+          loupeCtx.stroke();
+        } else if (activeSnapPoint.type && activeSnapPoint.type.includes('ORTA')) {
+          loupeCtx.strokeStyle = '#38bdf8';
+          loupeCtx.lineWidth = 2.4;
+          loupeCtx.beginPath();
+          loupeCtx.moveTo(sx, sy - 8);
+          loupeCtx.lineTo(sx + 7, sy + 6);
+          loupeCtx.lineTo(sx - 7, sy + 6);
+          loupeCtx.closePath();
+          loupeCtx.stroke();
+        } else if (activeSnapPoint.type && activeSnapPoint.type.includes('AKS')) {
+          loupeCtx.strokeStyle = '#f59e0b';
+          loupeCtx.lineWidth = 2;
+          loupeCtx.beginPath();
+          loupeCtx.arc(sx, sy, 8, 0, Math.PI * 2);
+          loupeCtx.stroke();
+        } else {
+          loupeCtx.strokeStyle = '#22c55e';
+          loupeCtx.lineWidth = 2.4;
+          loupeCtx.strokeRect(sx - 8, sy - 8, 16, 16);
+        }
+        loupeCtx.restore();
+      } else {
+        loupeSnapBadge.style.display = 'none';
+      }
+    }
+
+    function hideLoupe() {
+      loupeContainer.style.display = 'none';
+      activeSnapPoint = null;
+      currentAimingPos = null;
+    }
+
+    // Touch & Pointer Gesture Engine (PDF-Style Touch-and-Hold Aiming + Drag-to-Pan)
+    let isAiming = false;
+    let holdTimer = null;
+    let isDragging = false;
+    let dragStartX = 0, dragStartY = 0;
+    let initialZoom = 1;
+    let initialDist = 0;
+    let pinchMidpoint = { x: 0, y: 0 };
+    const activeTouches = new Map();
+    let hasMovedFar = false;
+
+    container.addEventListener('pointerdown', (e) => {
+      container.setPointerCapture(e.pointerId);
+      activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activeTouches.size === 1) {
+        dragStartX = e.clientX;
+        dragStartY = e.clientY;
+        hasMovedFar = false;
+        isDragging = true;
+        isAiming = false;
+
+        if (measureMode !== 'none') {
+          // Basılı tutma zamanlayıcısı (PDF Motorundaki gibi ~240ms sabit tutulursa büyüteç ve nişan açılır)
+          clearTimeout(holdTimer);
+          holdTimer = setTimeout(() => {
+            if (activeTouches.size === 1 && !hasMovedFar) {
+              isAiming = true;
+              if (navigator.vibrate) navigator.vibrate(22);
+              const wp = screenToWorld(dragStartX, dragStartY);
+              activeSnapPoint = findNearestSnap(wp.x, wp.y);
+              currentAimingPos = activeSnapPoint || wp;
+              renderLoupe(dragStartX, dragStartY, currentAimingPos.x, currentAimingPos.y);
+              render();
+            }
+          }, 240);
+        }
+      } else if (activeTouches.size >= 2) {
+        // İki parmakla kıstırma (Pinch-to-zoom)
+        clearTimeout(holdTimer);
+        isAiming = false;
+        isDragging = false;
+        hideLoupe();
+
+        const pts = Array.from(activeTouches.values());
+        initialDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        initialZoom = zoom;
+        pinchMidpoint = {
+          x: (pts[0].x + pts[1].x) * 0.5,
+          y: (pts[0].y + pts[1].y) * 0.5
+        };
+      }
+    });
+
+    container.addEventListener('pointermove', (e) => {
+      if (!activeTouches.has(e.pointerId)) return;
+      activeTouches.set(e.pointerId, { x: e.clientX, y: e.clientY });
+
+      if (activeTouches.size >= 2) {
+        clearTimeout(holdTimer);
+        isAiming = false;
+        hideLoupe();
+
+        const pts = Array.from(activeTouches.values());
+        const currentDist = Math.hypot(pts[0].x - pts[1].x, pts[0].y - pts[1].y);
+        const currentMid = {
+          x: (pts[0].x + pts[1].x) * 0.5,
+          y: (pts[0].y + pts[1].y) * 0.5
+        };
+
+        if (initialDist > 8 && currentDist > 8) {
+          const factor = currentDist / initialDist;
+          const logicalW = window.innerWidth;
+          const logicalH = window.innerHeight;
+
+          const worldMid = screenToWorld(currentMid.x, currentMid.y);
+          zoom = Math.max(0.00005, Math.min(zoom * factor, 50.0));
+          offsetX = worldMid.x - (currentMid.x - logicalW * 0.5) / zoom;
+          const dy = (currentMid.y - logicalH * 0.5) / zoom;
+          offsetY = flipY ? (worldMid.y - dy) : (worldMid.y + dy);
+
+          initialDist = currentDist;
+          render();
+        }
+        return;
+      }
+
+      // Dinamik koordinat takibi (parmak hareket ettikçe)
+      const wp = screenToWorld(e.clientX, e.clientY);
+      if (isAiming && currentAimingPos) {
+        updateCoordsDisplay(currentAimingPos.x, currentAimingPos.y);
+      } else {
+        updateCoordsDisplay(wp.x, wp.y);
+      }
+
+      if (activeTouches.size === 1 && isDragging) {
+        const dx = e.clientX - dragStartX;
+        const dy = e.clientY - dragStartY;
+
+        if (measureMode !== 'none') {
+          if (isAiming) {
+            // Basılı tutuldu ve büyüteç aktif: parmak sürüklendikçe hedef hassasça mıknatıslanır
+            const prevSnapType = activeSnapPoint ? activeSnapPoint.type : null;
+            activeSnapPoint = findNearestSnap(wp.x, wp.y);
+            currentAimingPos = activeSnapPoint || wp;
+
+            if (activeSnapPoint && activeSnapPoint.type !== prevSnapType) {
+              if (navigator.vibrate) navigator.vibrate(15);
+            }
+
+            renderLoupe(e.clientX, e.clientY, currentAimingPos.x, currentAimingPos.y);
+            render();
+          } else {
+            // Henüz basılı tutulmadı: hareket mesafesini kontrol et
+            if (Math.hypot(dx, dy) > 12) {
+              // Parmağını kaydırdı: basılı tutma iptal, serbest çizim kaydırma (Pan) aktif!
+              hasMovedFar = true;
+              clearTimeout(holdTimer);
+
+              dragStartX = e.clientX;
+              dragStartY = e.clientY;
+              offsetX -= dx / zoom;
+              if (flipY) {
+                offsetY -= dy / zoom;
+              } else {
+                offsetY += dy / zoom;
+              }
+              render();
+            }
+          }
+        } else {
+          // Standart navigasyon modu: serbest kaydırma (Pan)
+          dragStartX = e.clientX;
+          dragStartY = e.clientY;
+          offsetX -= dx / zoom;
+          if (flipY) {
+            offsetY -= dy / zoom;
+          } else {
+            offsetY += dy / zoom;
+          }
+          render();
+        }
+      }
+    });
+
+    // Masaüstü fare gezinme (hover) koordinat takibi
+    container.addEventListener('mousemove', (e) => {
+      if (!isDragging && !isAiming) {
+        const wp = screenToWorld(e.clientX, e.clientY);
+        updateCoordsDisplay(wp.x, wp.y);
+      }
+    });
+
+    function endPointer(e) {
+      clearTimeout(holdTimer);
+
+      if (activeTouches.has(e.pointerId)) {
+        if (measureMode !== 'none' && activeTouches.size === 1) {
+          if (isAiming) {
+            // Basılı tutup hedefledikten sonra parmak kaldırıldı: noktayı koy ve sabitle!
+            if (navigator.vibrate) navigator.vibrate(28);
+            const finalPoint = currentAimingPos || activeSnapPoint || screenToWorld(e.clientX, e.clientY);
+            measurePoints.push({ x: finalPoint.x, y: finalPoint.y });
+            updateMeasureCardUI();
+            render();
+          }
+        }
+      }
+
+      isAiming = false;
+      currentAimingPos = null;
+      hideLoupe();
+      activeTouches.delete(e.pointerId);
+
+      if (activeTouches.size === 0) {
+        isDragging = false;
+      } else if (activeTouches.size === 1) {
+        const remaining = Array.from(activeTouches.values())[0];
+        isDragging = true;
+        dragStartX = remaining.x;
+        dragStartY = remaining.y;
+      }
+    }
+
+    container.addEventListener('pointerup', endPointer);
+    container.addEventListener('pointercancel', endPointer);
+
+    // Mouse Wheel Zoom
+    container.addEventListener('wheel', (e) => {
+      e.preventDefault();
+      const logicalW = window.innerWidth;
+      const logicalH = window.innerHeight;
+
+      const cursorWorld = screenToWorld(e.clientX, e.clientY);
+      const zoomFactor = e.deltaY < 0 ? 1.25 : 0.8;
+      zoom = Math.max(0.00005, Math.min(zoom * zoomFactor, 50.0));
+
+      offsetX = cursorWorld.x - (e.clientX - logicalW * 0.5) / zoom;
+      const dy = (e.clientY - logicalH * 0.5) / zoom;
+      offsetY = flipY ? (cursorWorld.y - dy) : (cursorWorld.y + dy);
+
+      render();
+    }, { passive: false });
+
+    // Tools Popup & Measure Mode Controls
+    const toolsMenuBtn = document.getElementById('tools-menu-btn');
+    const toolsPopup = document.getElementById('tools-popup');
+    const activeModeDot = document.getElementById('active-mode-dot');
+    const btnDist = document.getElementById('btn-measure-dist');
+    const btnArea = document.getElementById('btn-measure-area');
+    const pillDist = document.getElementById('pill-dist');
+    const pillArea = document.getElementById('pill-area');
+    const pillTexts = document.getElementById('pill-texts');
+
+    // Toggle Tools Dropdown Popup
+    toolsMenuBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const isHidden = toolsPopup.style.display === 'none' || !toolsPopup.style.display;
+      toolsPopup.style.display = isHidden ? 'flex' : 'none';
+    });
+
+    // Close popup on outside click
+    document.addEventListener('click', (e) => {
+      if (toolsPopup && !toolsPopup.contains(e.target) && !toolsMenuBtn.contains(e.target)) {
+        toolsPopup.style.display = 'none';
+      }
+    });
+
+    function setMeasureMode(newMode) {
+      if (measureMode === newMode) {
+        measureMode = 'none';
+      } else {
+        measureMode = newMode;
+      }
+      measurePoints = [];
+      activeSnapPoint = null;
+      hideLoupe();
+
+      // Update popup item states
+      btnDist.classList.toggle('item-active', measureMode === 'distance');
+      btnArea.classList.toggle('item-active', measureMode === 'area');
+
+      pillDist.innerText = measureMode === 'distance' ? 'Açık' : 'Kapalı';
+      pillDist.className = 'status-pill' + (measureMode === 'distance' ? ' active-pill' : '');
+
+      pillArea.innerText = measureMode === 'area' ? 'Açık' : 'Kapalı';
+      pillArea.className = 'status-pill' + (measureMode === 'area' ? ' active-pill-green' : '');
+
+      // Update header tools button indicator
+      toolsMenuBtn.classList.toggle('active-dist', measureMode === 'distance');
+      toolsMenuBtn.classList.toggle('active-area', measureMode === 'area');
+      activeModeDot.style.display = measureMode !== 'none' ? 'block' : 'none';
+      activeModeDot.style.background = measureMode === 'area' ? '#10b981' : '#00f0ff';
+      activeModeDot.style.boxShadow = measureMode === 'area' ? '0 0 8px #10b981' : '0 0 8px #00f0ff';
+
+      container.classList.toggle('crosshair-cursor', measureMode !== 'none');
+
+      // Close popup after selecting tool so user can draw immediately
+      toolsPopup.style.display = 'none';
+
+      updateMeasureCardUI();
+      render();
+    }
+
+    btnDist.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMeasureMode('distance');
+    });
+
+    btnArea.addEventListener('click', (e) => {
+      e.stopPropagation();
+      setMeasureMode('area');
+    });
+
+    document.getElementById('toggle-texts').addEventListener('click', (e) => {
+      e.stopPropagation();
+      showTexts = !showTexts;
+      pillTexts.innerText = showTexts ? 'Açık' : 'Kapalı';
+      pillTexts.className = 'status-pill' + (showTexts ? ' active-pill' : '');
+      render();
+    });
+
+    document.getElementById('btn-measure-close').addEventListener('click', () => {
+      setMeasureMode('none');
+    });
+
+    document.getElementById('btn-measure-clear').addEventListener('click', () => {
+      measurePoints = [];
+      updateMeasureCardUI();
+      render();
+    });
+
+    document.getElementById('btn-measure-undo').addEventListener('click', () => {
+      if (measurePoints.length > 0) {
+        measurePoints.pop();
+        updateMeasureCardUI();
+        render();
+      }
+    });
+
+    scaleSelect.addEventListener('change', (e) => {
+      metersPerUnit = parseFloat(e.target.value) || 0.01;
+      updateMeasureCardUI();
+      render();
+    });
+
+    // Y Eksen Yönü ve X/Y Eksen Değişimi Kontrolleri
+    const btnToggleY = document.getElementById('btn-toggle-y');
+    const pillYAxis = document.getElementById('pill-y-axis');
+    const btnSwapXY = document.getElementById('btn-swap-xy');
+    const pillSwapXY = document.getElementById('pill-swap-xy');
+
+    function updateAxisPills() {
+      if (pillYAxis) {
+        pillYAxis.innerText = flipY ? 'Kuzey ↑' : 'Ters ↓';
+        pillYAxis.className = 'status-pill' + (flipY ? ' active-pill' : '');
+      }
+      if (pillSwapXY) {
+        pillSwapXY.innerText = swapXY ? 'Aktif (Y,X)' : 'Standart (X,Y)';
+        pillSwapXY.className = 'status-pill' + (swapXY ? ' active-pill-green' : '');
+      }
+    }
+    updateAxisPills();
+
+    if (btnToggleY) {
+      btnToggleY.addEventListener('click', (e) => {
+        e.stopPropagation();
+        flipY = !flipY;
+        localStorage.setItem('cad_flip_y', flipY);
+        updateAxisPills();
+        render();
+      });
+    }
+
+    if (btnSwapXY) {
+      btnSwapXY.addEventListener('click', (e) => {
+        e.stopPropagation();
+        swapXY = !swapXY;
+        localStorage.setItem('cad_swap_xy', swapXY);
+        updateAxisPills();
+        render();
+      });
+    }
+
+    const btnForceReload = document.getElementById('btn-force-reload');
+    if (btnForceReload) {
+      btnForceReload.addEventListener('click', async (e) => {
+        e.stopPropagation();
+        if (confirm('Telefondaki çizim önbelleği temizlenip en güncel tarama ve dolgular sunucudan canlı indirilsin mi?')) {
+          try {
+            const db = await openCadDb();
+            if (db) {
+              db.close();
+              indexedDB.deleteDatabase('SantiyeCadDB');
+            }
+            localStorage.clear();
+          } catch (err) {}
+          const url = new URL(window.location.href);
+          url.searchParams.set('nocache', Date.now());
+          url.searchParams.set('v', '5.2');
+          window.location.href = url.toString();
+        }
+      });
+    }
+
+    // Navigation Buttons (Clean SVG icons)
+    document.getElementById('zoom-in').addEventListener('click', () => {
+      zoom *= 1.4;
+      render();
+    });
+    document.getElementById('zoom-out').addEventListener('click', () => {
+      zoom /= 1.4;
+      render();
+    });
+    document.getElementById('fit-btn').addEventListener('click', fitToScreen);
+
+    // Start
+    if (initGL()) {
+      resize();
+      loadCadData();
+    }
+  </script>
+</body>
+</html>
