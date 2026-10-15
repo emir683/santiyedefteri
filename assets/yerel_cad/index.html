@@ -4,6 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Şantiye Çevrimdışı CAD Motoru</title>
+  <script type="module" src="libredwg-web.js"></script>
   <style>
     :root {
       --bg-main: #000000;
@@ -1871,6 +1872,79 @@
     window.loadDxfFileBase64 = function(base64Data, fileName) {
       const raw = atob(base64Data);
       window.loadDxfString(raw, fileName);
+    };
+
+    let wasmModule = null;
+    async function getWasmModule() {
+      if (wasmModule) return wasmModule;
+      if (!window.createModule) {
+        try {
+          const mod = await import('./libredwg-web.js');
+          window.createModule = mod.default || mod.createModule;
+        } catch (e) {
+          console.warn('Import failed, checking global createModule:', e);
+        }
+      }
+      if (typeof window.createModule !== 'function') {
+        throw new Error('WebAssembly modülü yüklenemedi.');
+      }
+      loaderSub.innerText = 'C++ WebAssembly Motoru Başlatılıyor...';
+      loaderProgress.style.width = '30%';
+      wasmModule = await window.createModule({
+        locateFile: (f) => f.endsWith('.wasm') ? 'libredwg-web.wasm' : f
+      });
+      return wasmModule;
+    }
+
+    window.loadDwgFileBase64 = async function(base64Data, fileName) {
+      if (fileName) projectTitle.innerText = fileName;
+      loader.style.display = 'flex';
+      loaderSub.innerText = "DWG dosyası yerel C++ motoruyla çözümleniyor (0 internet)...";
+      loaderProgress.style.width = "40%";
+
+      setTimeout(async () => {
+        try {
+          const mod = await getWasmModule();
+          loaderProgress.style.width = "65%";
+          loaderSub.innerText = "Vektör geometrisi ve katmanlar çıkarılıyor...";
+
+          const binaryStr = atob(base64Data);
+          const len = binaryStr.length;
+          const bytes = new Uint8Array(len);
+          for (let i = 0; i < len; i++) {
+            bytes[i] = binaryStr.charCodeAt(i);
+          }
+
+          const inName = 'in_' + Date.now() + '.dwg';
+          const outName = 'out_' + Date.now() + '.dxf';
+
+          mod.FS.writeFile(inName, bytes);
+          const err = mod.dwg_write_dxf(inName, outName);
+
+          const hasOut = mod.FS.analyzePath(outName).exists;
+          if (!hasOut) {
+            throw new Error('LibreDWG çözümleme hatası (Kod: ' + err + ')');
+          }
+
+          const dxfBytes = mod.FS.readFile(outName);
+          const dxfStr = new TextDecoder('utf-8').decode(dxfBytes);
+
+          try { mod.FS.unlink(inName); } catch (_) {}
+          try { mod.FS.unlink(outName); } catch (_) {}
+
+          loaderProgress.style.width = "85%";
+          window.loadDxfString(dxfStr, fileName);
+        } catch (e) {
+          console.error('WASM DWG Error:', e);
+          loaderSub.innerText = 'Yerel DWG çözümleme hatası: ' + e.message;
+          if (window.YerelCadBridge) {
+            window.YerelCadBridge.postMessage(JSON.stringify({
+              type: 'dwg_wasm_failed',
+              error: e.message
+            }));
+          }
+        }
+      }, 50);
     };
 
     // Initialize on page load

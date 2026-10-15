@@ -71,6 +71,8 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   String _parsingStatusText = 'Vektörler çözümleniyor...';
   String _activeDrawingName = '';
   List<YerelCadDosya> _recentFiles = [];
+  File? _pendingDwgFile;
+  String? _pendingDwgFileName;
 
   @override
   void initState() {
@@ -157,6 +159,11 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                 setState(() {
                   _isParsing = false;
                 });
+              }
+            } else if (data['type'] == 'dwg_wasm_failed') {
+              // Yerel WASM çözemezse otomatik olarak bulut dönüştürücüyü dene
+              if (_pendingDwgFile != null && _pendingDwgFileName != null) {
+                _convertAndOpenDwg(_pendingDwgFile!, _pendingDwgFileName!);
               }
             }
           } catch (_) {}
@@ -253,35 +260,28 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
 
     final bytes = await file.readAsBytes();
 
-    // DWG ise otomatik dönüştür ve aç (asla kullanıcıyı engelleme)
+    // DWG ise doğrudan yerel WebAssembly motoruyla çöz (sıfır internet)
     if (extension == 'dwg') {
-      final isBinaryDwg = bytes.length >= 6 &&
-          bytes[0] == 0x41 && // 'A'
-          bytes[1] == 0x43 && // 'C'
-          bytes[2] == 0x31; // '1'
+      _pendingDwgFile = file;
+      _pendingDwgFileName = fileName;
 
-      if (isBinaryDwg) {
-        // İkili DWG dosyasını sunucuda dönüştür ve anında aç
-        await _convertAndOpenDwg(file, fileName);
-      } else {
-        // Metin tabanlı DXF/DWG formatı - Doğrudan yerel WebGL motoruna aktar
-        if (!_isWebViewReady) {
-          await _webViewController
-              ?.loadFlutterAsset('assets/yerel_cad/index.html');
-          await Future.delayed(const Duration(milliseconds: 300));
-        }
-        final content = utf8.decode(bytes, allowMalformed: true);
-        final escapedJson = jsonEncode(content);
-        final titleJson = jsonEncode(fileName);
-        await _webViewController?.runJavaScript(
-            'window.loadDxfString($escapedJson, $titleJson);');
-        await _saveRecentFile(YerelCadDosya(
-          dosyaAdi: fileName,
-          dosyaYolu: filePath,
-          dosyaBoyutu: bytes.length,
-          acilmaTarihi: DateTime.now(),
-        ));
+      if (!_isWebViewReady) {
+        await _webViewController
+            ?.loadFlutterAsset('assets/yerel_cad/index.html');
+        await Future.delayed(const Duration(milliseconds: 300));
       }
+
+      final base64Data = base64Encode(bytes);
+      final titleJson = jsonEncode(fileName);
+      await _webViewController?.runJavaScript(
+          'window.loadDwgFileBase64("$base64Data", $titleJson);');
+
+      await _saveRecentFile(YerelCadDosya(
+        dosyaAdi: fileName,
+        dosyaYolu: filePath,
+        dosyaBoyutu: bytes.length,
+        acilmaTarihi: DateTime.now(),
+      ));
     } else {
       // Standart DXF dosyası - Tamamen internetsiz, doğrudan telefonun GPU'sunda çalışır
       if (!_isWebViewReady) {
