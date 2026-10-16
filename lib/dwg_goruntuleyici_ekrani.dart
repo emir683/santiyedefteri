@@ -313,17 +313,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     }
 
     if (existing != null && existing.webglUrl.isNotEmpty) {
-      await _saveProjectToRecent(existing);
-      if (mounted) {
-        Navigator.of(context).push(
-          MaterialPageRoute(
-            builder: (_) => CadWebglEkrani(
-              webglUrl: existing!.webglUrl,
-              projeAdi: existing.fileName,
-            ),
-          ),
-        );
-      }
+      await _openSavedProject(existing);
       return;
     }
 
@@ -1228,13 +1218,37 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     );
   }
 
+  /// Sunucu adresi (Cloudflare tunnel vb.) değişse bile kayıtlı projenin güncel sunucu üzerinden açılmasını sağlar
+  String _resolveProjectWebglUrl(SavedCadProject project) {
+    if (project.id.isNotEmpty && !project.id.startsWith('17')) {
+      return '$_kCadServerUrl/webgl-cad.html?id=${project.id}&title=${Uri.encodeComponent(project.fileName)}';
+    }
+    if (project.webglUrl.contains('.trycloudflare.com')) {
+      final uri = Uri.tryParse(project.webglUrl);
+      if (uri != null) {
+        final baseUri = Uri.parse(_kCadServerUrl);
+        return uri.replace(scheme: baseUri.scheme, host: baseUri.host, port: baseUri.hasPort ? baseUri.port : null).toString();
+      }
+    }
+    return project.webglUrl;
+  }
+
   Future<void> _openSavedProject(SavedCadProject project) async {
-    await _saveProjectToRecent(project);
+    final resolvedUrl = _resolveProjectWebglUrl(project);
+    final updatedProject = SavedCadProject(
+      id: project.id,
+      fileName: project.fileName,
+      originalFilePath: project.originalFilePath,
+      fileSize: project.fileSize,
+      savedAt: DateTime.now(),
+      webglUrl: resolvedUrl,
+    );
+    await _saveProjectToRecent(updatedProject);
     if (mounted) {
       Navigator.of(context).push(
         MaterialPageRoute(
           builder: (_) => CadWebglEkrani(
-            webglUrl: project.webglUrl,
+            webglUrl: resolvedUrl,
             projeAdi: project.fileName,
           ),
         ),

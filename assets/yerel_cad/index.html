@@ -902,6 +902,124 @@
     }
 
     /* ========================================================================
+       TURKISH ENCODING (UTF-8 / WINDOWS-1254) & SHX DECODER
+       ======================================================================== */
+    function decodeCadBytes(bytes) {
+      try {
+        return new TextDecoder('utf-8', { fatal: true }).decode(bytes);
+      } catch (_) {
+        try {
+          return new TextDecoder('windows-1254').decode(bytes);
+        } catch (__) {
+          return new TextDecoder('iso-8859-9').decode(bytes);
+        }
+      }
+    }
+
+    const SHX_TR_REPLACEMENTS = {
+      '\u00dd': 'İ', '\u00de': 'Ş', '\u00d0': 'Ğ',
+      '\u00fd': 'ı', '\u00fe': 'ş', '\u00f0': 'ğ'
+    };
+
+    function cleanCadText(str) {
+      if (!str) return '';
+      let s = str
+        .replace(/%%c/gi, 'Ø')
+        .replace(/%%d/gi, '°')
+        .replace(/%%p/gi, '±')
+        .replace(/%%u/gi, '')
+        .replace(/\\[uU]\+([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)))
+        .replace(/\\S([^;^]+)\^([^;]*);/g, '$1/$2')
+        .replace(/\\P/g, '\n')
+        .replace(/\\[fF][^;]+;/g, '')
+        .replace(/\\[A-Za-z][^;]*;/g, '')
+        .replace(/\{|\}/g, '');
+      s = s.replace(/[\u00dd\u00de\u00d0\u00fd\u00fe\u00f0]/g, ch => SHX_TR_REPLACEMENTS[ch] || ch);
+      return s.trim();
+    }
+
+    /* ========================================================================
+       POLYGON EAR-CLIPPING TRIANGULATOR (FOR SOLID HATCHES)
+       ======================================================================== */
+    function triangulatePolygon(pts) {
+      if (!pts || pts.length < 3) return [];
+      const cleaned = [];
+      for (let i = 0; i < pts.length; i++) {
+        const p = pts[i];
+        if (cleaned.length === 0 || Math.hypot(p.x - cleaned[cleaned.length - 1].x, p.y - cleaned[cleaned.length - 1].y) > 1e-3) {
+          cleaned.push(p);
+        }
+      }
+      if (cleaned.length >= 2 && Math.hypot(cleaned[0].x - cleaned[cleaned.length - 1].x, cleaned[0].y - cleaned[cleaned.length - 1].y) <= 1e-3) {
+        cleaned.pop();
+      }
+      let work = cleaned;
+      let n = work.length;
+      if (n < 3) return [];
+      if (n === 3) return [[work[0], work[1], work[2]]];
+      if (n === 4) return [[work[0], work[1], work[2]], [work[0], work[2], work[3]]];
+      if (n > 200) {
+        const step = Math.max(1, Math.floor(n / 160));
+        work = work.filter((_, idx) => idx % step === 0);
+        n = work.length;
+      }
+
+      const area2 = (a, b, c) => (b.x - a.x) * (c.y - a.y) - (b.y - a.y) * (c.x - a.x);
+      const inTri = (p, a, b, c) => {
+        const d1 = area2(p, a, b), d2 = area2(p, b, c), d3 = area2(p, c, a);
+        return !(((d1 < 0) || (d2 < 0) || (d3 < 0)) && ((d1 > 0) || (d2 > 0) || (d3 > 0)));
+      };
+
+      const indices = [];
+      let signedArea = 0;
+      for (let i = 0; i < n; i++) {
+        indices.push(i);
+        const nxt = work[(i + 1) % n];
+        signedArea += (nxt.x - work[i].x) * (nxt.y + work[i].y);
+      }
+      if (signedArea > 0) indices.reverse();
+
+      const tris = [];
+      let guard = 0;
+      const maxGuard = n * 3 + 30;
+      while (indices.length > 3 && guard < maxGuard) {
+        guard++;
+        let earFound = false;
+        const m = indices.length;
+        for (let i = 0; i < m; i++) {
+          const pi = indices[(i + m - 1) % m];
+          const ci = indices[i];
+          const ni = indices[(i + 1) % m];
+          const a = work[pi], b = work[ci], c = work[ni];
+          if (area2(a, b, c) <= 1e-6) continue;
+          let ear = true;
+          for (let k = 0; k < m; k++) {
+            const vi = indices[k];
+            if (vi !== pi && vi !== ci && vi !== ni && inTri(work[vi], a, b, c)) {
+              ear = false;
+              break;
+            }
+          }
+          if (ear) {
+            tris.push([a, b, c]);
+            indices.splice(i, 1);
+            earFound = true;
+            break;
+          }
+        }
+        if (!earFound) break;
+      }
+      if (indices.length === 3) {
+        tris.push([work[indices[0]], work[indices[1]], work[indices[2]]]);
+      } else if (indices.length > 3) {
+        for (let i = 1; i < indices.length - 1; i++) {
+          tris.push([work[indices[0]], work[indices[i]], work[indices[i + 1]]]);
+        }
+      }
+      return tris;
+    }
+
+    /* ========================================================================
        OFFLINE DXF HIGH-FIDELITY PARSER & FAST STREAMING SCANNER
        ======================================================================== */
     class FastDxfScanner {
@@ -944,42 +1062,41 @@
       }
     }
 
-    function cleanCadText(str) {
-      if (!str) return '';
-      return str
-        .replace(/%%c/gi, 'Ø')
-        .replace(/%%d/gi, '°')
-        .replace(/%%p/gi, '±')
-        .replace(/\\A[0-9];/g, '')
-        .replace(/\\P/g, ' ')
-        .replace(/\\[A-Za-z0-9]+;?/g, '')
-        .replace(/\{|\}/g, '')
-        .replace(/\s+/g, ' ')
-        .trim();
-    }
-
     class OfflineDxfParser {
       constructor() {
         this.layers = new Map();
         this.blocks = new Map();
-        this.lines = []; // [x1, y1, x2, y2, color]
-        this.triangles = []; // [x1,y1, x2,y2, x3,y3, color]
-        this.texts = []; // [{text, x, y, size, color, rot, layer}]
+        this.lines = [];       // [x1, y1, x2, y2, color]
+        this.lineLayers = [];  // [layerName]
+        this.triangles = [];   // [x1, y1, x2, y2, x3, y3, color]
+        this.triLayers = [];   // [layerName]
+        this.texts = [];       // [{text, x, y, size, color, rot, layer, halign}]
         this.bounds = { minX: Infinity, minY: Infinity, maxX: -Infinity, maxY: -Infinity };
+        this.insunits = 5;     // default cm
+        this.metersPerUnit = 0.01;
       }
 
       updateBounds(x, y) {
-        if (!isFinite(x) || !isFinite(y)) return;
+        if (!isFinite(x) || !isFinite(y) || Math.abs(x) > 1e9 || Math.abs(y) > 1e9) return;
         if (x < this.bounds.minX) this.bounds.minX = x;
         if (x > this.bounds.maxX) this.bounds.maxX = x;
         if (y < this.bounds.minY) this.bounds.minY = y;
         if (y > this.bounds.maxY) this.bounds.maxY = y;
       }
 
+      ensureLayer(name, color = 0xFFFFFF) {
+        const lname = name || '0';
+        if (!this.layers.has(lname)) {
+          this.layers.set(lname, { name: lname, color, visible: true, count: 0 });
+        }
+        return this.layers.get(lname);
+      }
+
       parse(dxfString) {
         const scanner = new FastDxfScanner(dxfString);
         let currentSection = null;
         let currentBlock = null;
+        const rawEntities = [];
 
         while (true) {
           const pair = scanner.nextPair();
@@ -996,7 +1113,16 @@
             continue;
           }
 
-          if (currentSection === 'TABLES') {
+          if (currentSection === 'HEADER') {
+            if (pair.code === 9 && pair.value === '$INSUNITS') {
+              const up = scanner.nextPair();
+              if (up && up.code === 70) {
+                this.insunits = parseInt(up.value, 10) || 5;
+                const uMap = { 1: 0.0254, 2: 0.3048, 4: 0.001, 5: 0.01, 6: 1.0 };
+                if (uMap[this.insunits]) this.metersPerUnit = uMap[this.insunits];
+              }
+            }
+          } else if (currentSection === 'TABLES') {
             if (pair.code === 0 && pair.value === 'LAYER') {
               this.parseLayer(scanner);
             }
@@ -1015,14 +1141,18 @@
           } else if (currentSection === 'ENTITIES') {
             if (pair.code === 0) {
               const entity = this.parseEntity(pair.value, scanner);
-              if (entity) this.instantiateEntity(entity);
+              if (entity) rawEntities.push(entity);
             }
           }
         }
 
-        // Finalize bounds
+        // Instantiate all entities after all blocks and layers are registered
+        for (let i = 0; i < rawEntities.length; i++) {
+          this.instantiateEntity(rawEntities[i]);
+        }
+
         if (!isFinite(this.bounds.minX) || !isFinite(this.bounds.minY)) {
-          this.bounds = { minX: 0, minY: 0, w: 1000, h: 1000 };
+          this.bounds = { minX: 0, minY: 0, maxX: 1000, maxY: 1000, w: 1000, h: 1000 };
         } else {
           this.bounds.w = Math.max(1, this.bounds.maxX - this.bounds.minX);
           this.bounds.h = Math.max(1, this.bounds.maxY - this.bounds.minY);
@@ -1030,10 +1160,14 @@
 
         return {
           lines: this.lines,
+          lineLayers: this.lineLayers,
           triangles: this.triangles,
+          triLayers: this.triLayers,
           texts: this.texts,
-          layers: Array.from(this.layers.values()),
-          bounds: this.bounds
+          layers: Array.from(this.layers.values()).filter(l => l.count > 0),
+          bounds: this.bounds,
+          insunits: this.insunits,
+          metersPerUnit: this.metersPerUnit
         };
       }
 
@@ -1052,6 +1186,9 @@
             else color = aciToRgb(aci);
           } else if (p.code === 420) {
             color = parseInt(p.value, 10) & 0xFFFFFF;
+          } else if (p.code === 70) {
+            const flags = parseInt(p.value, 10) || 0;
+            if ((flags & 1) === 1) visible = false; // Frozen layer
           }
         }
         this.layers.set(name, { name, color, visible, count: 0 });
@@ -1065,17 +1202,108 @@
             if (p) scanner.pushBack(p);
             break;
           }
-          if (p.code === 2) name = p.value;
-          else if (p.code === 10) bx = parseFloat(p.value) || 0;
+          if (p.code === 2 || p.code === 3) {
+            if (!name) name = p.value;
+          } else if (p.code === 10) bx = parseFloat(p.value) || 0;
           else if (p.code === 20) by = parseFloat(p.value) || 0;
         }
         return { name, bx, by, entities: [] };
       }
 
+      parseHatch(scanner, e) {
+        e.solidFill = 0;
+        e.patternName = '';
+        e.loops = [];
+        let currentLoop = null;
+        let inBoundary = false;
+        let edgeType = 0;
+        let currEdge = null;
+        let currPolyVert = null;
+
+        while (true) {
+          const p = scanner.nextPair();
+          if (!p || p.code === 0) {
+            if (p) scanner.pushBack(p);
+            break;
+          }
+          const c = p.code, v = p.value;
+          if (c === 8) e.layer = v;
+          else if (c === 62) {
+            const aci = parseInt(v, 10);
+            e.aci = aci;
+            if (aci > 0) e.color = aciToRgb(aci);
+          } else if (c === 420) e.color = parseInt(v, 10) & 0xFFFFFF;
+          else if (c === 2) e.patternName = v.toUpperCase();
+          else if (c === 70) e.solidFill = parseInt(v, 10) || 0;
+          else if (c === 92) {
+            inBoundary = true;
+            const loopFlag = parseInt(v, 10) || 0;
+            currentLoop = {
+              isPolyline: (loopFlag & 2) !== 0,
+              pts: [],
+              edges: []
+            };
+            e.loops.push(currentLoop);
+            edgeType = 0;
+            currEdge = null;
+            currPolyVert = null;
+          } else if (c === 75 || c === 76 || c === 98) {
+            inBoundary = false;
+          } else if (inBoundary && currentLoop) {
+            if (currentLoop.isPolyline) {
+              if (c === 10) {
+                currPolyVert = { x: parseFloat(v) || 0, y: 0, bulge: 0 };
+                currentLoop.pts.push(currPolyVert);
+              } else if (c === 20 && currPolyVert) {
+                currPolyVert.y = parseFloat(v) || 0;
+              } else if (c === 42 && currPolyVert) {
+                currPolyVert.bulge = parseFloat(v) || 0;
+              }
+            } else {
+              if (c === 72) {
+                edgeType = parseInt(v, 10) || 0;
+                currEdge = { edgeType };
+                currentLoop.edges.push(currEdge);
+              } else if (currEdge) {
+                if (edgeType === 1) { // Line edge
+                  if (c === 10) currEdge.x1 = parseFloat(v) || 0;
+                  else if (c === 20) currEdge.y1 = parseFloat(v) || 0;
+                  else if (c === 11) currEdge.x2 = parseFloat(v) || 0;
+                  else if (c === 21) currEdge.y2 = parseFloat(v) || 0;
+                } else if (edgeType === 2) { // Circular Arc edge
+                  if (c === 10) currEdge.cx = parseFloat(v) || 0;
+                  else if (c === 20) currEdge.cy = parseFloat(v) || 0;
+                  else if (c === 40) currEdge.r = parseFloat(v) || 0;
+                  else if (c === 50) currEdge.startA = parseFloat(v) || 0;
+                  else if (c === 51) currEdge.endA = parseFloat(v) || 0;
+                  else if (c === 73) currEdge.ccw = parseInt(v, 10) !== 0;
+                } else {
+                  if (c === 10) {
+                    currPolyVert = { x: parseFloat(v) || 0, y: 0, bulge: 0 };
+                    currentLoop.pts.push(currPolyVert);
+                  } else if (c === 20 && currPolyVert) {
+                    currPolyVert.y = parseFloat(v) || 0;
+                  }
+                }
+              }
+            }
+          }
+        }
+        return e;
+      }
+
       parseEntity(type, scanner) {
-        let e = { type, layer: '0', color: null };
+        let e = { type, layer: '0', color: null, aci: null };
+        if (type === 'HATCH') {
+          return this.parseHatch(scanner, e);
+        }
+
         let vertices = [];
+        let fitPoints = [];
         let currV = null;
+        let currFit = null;
+        let mtextChunks = [];
+        let mainText = '';
 
         while (true) {
           const p = scanner.nextPair();
@@ -1086,11 +1314,16 @@
 
           const c = p.code, v = p.value;
           if (c === 8) e.layer = v;
-          else if (c === 62) e.color = aciToRgb(parseInt(v, 10));
-          else if (c === 420) e.color = parseInt(v, 10) & 0xFFFFFF;
+          else if (c === 62) {
+            const aci = parseInt(v, 10);
+            e.aci = aci;
+            if (aci > 0) e.color = aciToRgb(aci);
+          } else if (c === 420) e.color = parseInt(v, 10) & 0xFFFFFF;
 
           switch (type) {
             case 'LINE':
+            case 'XLINE':
+            case 'RAY':
               if (c === 10) e.x1 = parseFloat(v);
               else if (c === 20) e.y1 = parseFloat(v);
               else if (c === 11) e.x2 = parseFloat(v);
@@ -1122,11 +1355,16 @@
               else if (c === 42) e.endP = parseFloat(v);
               break;
             case 'LWPOLYLINE':
+            case 'LEADER':
+            case 'MLEADER':
+            case 'MLINE':
               if (c === 70) e.closed = (parseInt(v, 10) & 1) === 1;
-              else if (c === 10) {
-                currV = { x: parseFloat(v), y: 0, bulge: 0 };
-                vertices.push(currV);
-              } else if (c === 20 && currV) {
+              else if (c === 10 || c === 11) {
+                if (c === 10 || type === 'MLINE') {
+                  currV = { x: parseFloat(v), y: 0, bulge: 0 };
+                  vertices.push(currV);
+                }
+              } else if ((c === 20 || (c === 21 && type === 'MLINE')) && currV) {
                 currV.y = parseFloat(v);
               } else if (c === 42 && currV) {
                 currV.bulge = parseFloat(v) || 0;
@@ -1136,14 +1374,21 @@
               if (c === 70) e.closed = (parseInt(v, 10) & 1) === 1;
               break;
             case 'SPLINE':
-              if (c === 10) {
+              if (c === 70) e.closed = (parseInt(v, 10) & 1) === 1;
+              else if (c === 10) {
                 currV = { x: parseFloat(v), y: 0 };
                 vertices.push(currV);
               } else if (c === 20 && currV) {
                 currV.y = parseFloat(v);
+              } else if (c === 11) {
+                currFit = { x: parseFloat(v), y: 0 };
+                fitPoints.push(currFit);
+              } else if (c === 21 && currFit) {
+                currFit.y = parseFloat(v);
               }
               break;
             case 'SOLID':
+            case 'TRACE':
             case '3DFACE':
               if (c === 10) e.x1 = parseFloat(v);
               else if (c === 20) e.y1 = parseFloat(v);
@@ -1156,21 +1401,71 @@
               break;
             case 'DIMENSION':
             case 'INSERT':
+            case 'MINSERT':
               if (c === 2) e.block = v;
               else if (c === 10) e.ix = parseFloat(v);
               else if (c === 20) e.iy = parseFloat(v);
               else if (c === 41) e.sx = parseFloat(v);
               else if (c === 42) e.sy = parseFloat(v);
               else if (c === 50) e.rot = parseFloat(v);
+              else if (c === 66) e.hasAttribs = parseInt(v, 10) === 1;
+              else if (c === 70 && type !== 'DIMENSION') e.cols = parseInt(v, 10) || 1;
+              else if (c === 71 && type !== 'DIMENSION') e.rows = parseInt(v, 10) || 1;
+              else if (c === 44) e.colSpacing = parseFloat(v) || 0;
+              else if (c === 45) e.rowSpacing = parseFloat(v) || 0;
+              else if (c === 1 && type === 'DIMENSION') mainText = v;
+              else if (c === 11 && type === 'DIMENSION') e.tx = parseFloat(v);
+              else if (c === 21 && type === 'DIMENSION') e.ty = parseFloat(v);
               break;
             case 'TEXT':
             case 'MTEXT':
-              if (c === 1) e.text = cleanCadText(v);
+            case 'ATTRIB':
+            case 'ATTDEF':
+              if (c === 3) mtextChunks.push(v);
+              else if (c === 1) mainText = v;
               else if (c === 10) e.x = parseFloat(v);
               else if (c === 20) e.y = parseFloat(v);
+              else if (c === 11) e.ax = parseFloat(v);
+              else if (c === 21) e.ay = parseFloat(v);
               else if (c === 40) e.size = parseFloat(v);
               else if (c === 50) e.rot = parseFloat(v);
+              else if (c === 70 && (type === 'ATTRIB' || type === 'ATTDEF')) e.attrFlags = parseInt(v, 10) || 0;
+              else if (c === 71) e.attachPoint = parseInt(v, 10) || 1;
+              else if (c === 72) e.halign = parseInt(v, 10) || 0;
               break;
+          }
+        }
+
+        if (type === 'TEXT' || type === 'MTEXT' || type === 'ATTRIB' || type === 'ATTDEF') {
+          e.text = cleanCadText(mtextChunks.join('') + mainText);
+        } else if (type === 'DIMENSION' && mainText && mainText !== '<>') {
+          e.dimText = cleanCadText(mainText);
+        }
+
+        // INSERT elemanına bağlı ATTRIB varlıklarını (aks balonları, kotlar, antetler) oku
+        if ((type === 'INSERT' || type === 'MINSERT') && e.hasAttribs) {
+          e.attribs = [];
+          while (true) {
+            const p = scanner.nextPair();
+            if (!p) break;
+            if (p.code === 0 && p.value === 'ATTRIB') {
+              const attrEnt = this.parseEntity('ATTRIB', scanner);
+              if (attrEnt && ((attrEnt.attrFlags || 0) & 1) === 0) {
+                e.attribs.push(attrEnt);
+              }
+            } else if (p.code === 0 && p.value === 'SEQEND') {
+              while (true) {
+                const sp = scanner.nextPair();
+                if (!sp || sp.code === 0) {
+                  if (sp) scanner.pushBack(sp);
+                  break;
+                }
+              }
+              break;
+            } else if (p.code === 0) {
+              scanner.pushBack(p);
+              break;
+            }
           }
         }
 
@@ -1207,29 +1502,86 @@
           }
         }
 
+        if (fitPoints.length >= 2 && type === 'SPLINE') {
+          e.fitPoints = fitPoints;
+        }
         if (vertices.length > 0) e.vertices = vertices;
         return e;
       }
 
-      instantiateEntity(e, matrix = [1, 0, 0, 1, 0, 0], depth = 0) {
+      // Bulge (yaylı segment) çizici
+      emitBulgeArc(v1, v2, bulge, transformPoint, addLine) {
+        const dx = v2.x - v1.x;
+        const dy = v2.y - v1.y;
+        const chord = Math.hypot(dx, dy);
+        if (chord < 1e-4) return;
+        const theta = 4 * Math.atan(bulge);
+        const sinHalf = Math.sin(theta / 2);
+        if (Math.abs(sinHalf) < 1e-6) {
+          const p1 = transformPoint(v1.x, v1.y);
+          const p2 = transformPoint(v2.x, v2.y);
+          addLine(p1.x, p1.y, p2.x, p2.y);
+          return;
+        }
+        const radius = chord / (2 * sinHalf);
+        const midX = (v1.x + v2.x) * 0.5;
+        const midY = (v1.y + v2.y) * 0.5;
+        const distToCenter = Math.sqrt(Math.max(0, radius * radius - (chord * 0.5) * (chord * 0.5)));
+        const normX = -dy / chord;
+        const normY = dx / chord;
+        const sign = bulge > 0 ? 1 : -1;
+        const dir = sign * (radius >= 0 ? 1 : -1);
+        const arcCenterX = midX + dir * distToCenter * normX;
+        const arcCenterY = midY + dir * distToCenter * normY;
+
+        let startAngle = Math.atan2(v1.y - arcCenterY, v1.x - arcCenterX);
+        let endAngle = Math.atan2(v2.y - arcCenterY, v2.x - arcCenterX);
+        if (bulge > 0 && endAngle < startAngle) endAngle += Math.PI * 2;
+        if (bulge < 0 && endAngle > startAngle) endAngle -= Math.PI * 2;
+
+        const segs = Math.max(6, Math.min(28, Math.round(Math.abs(theta) * 8)));
+        let prevP = transformPoint(v1.x, v1.y);
+        const absR = Math.abs(radius);
+        for (let s = 1; s <= segs; s++) {
+          const a = startAngle + (s / segs) * (endAngle - startAngle);
+          const p = transformPoint(arcCenterX + absR * Math.cos(a), arcCenterY + absR * Math.sin(a));
+          addLine(prevP.x, prevP.y, p.x, p.y);
+          prevP = p;
+        }
+      }
+
+      instantiateEntity(e, matrix = [1, 0, 0, 1, 0, 0], depth = 0, parentLayer = '0', parentColor = null) {
         if (!e) return;
-        const color = e.color || (this.layers.get(e.layer) ? this.layers.get(e.layer).color : 0xFFFFFF);
+        // AutoCAD '0' katmanı ve BYBLOCK (aci === 0) mirası
+        const effectiveLayer = (e.layer === '0' && parentLayer && parentLayer !== '0') ? parentLayer : (e.layer || '0');
+        const layerObj = this.ensureLayer(effectiveLayer);
+        let color = e.color;
+        if (!color) {
+          if (e.aci === 0 && parentColor) color = parentColor;
+          else color = layerObj.color || 0xFFFFFF;
+        }
+
         const transformPoint = (x, y) => ({
           x: matrix[0] * x + matrix[2] * y + matrix[4],
           y: matrix[1] * x + matrix[3] * y + matrix[5]
         });
 
-        // Add line to buffer
-        const addLine = (p1x, p1y, p2x, p2y) => {
-          this.lines.push(p1x, p1y, p2x, p2y, color);
+        const addLine = (p1x, p1y, p2x, p2y, overrideColor = null) => {
+          if (!isFinite(p1x) || !isFinite(p1y) || !isFinite(p2x) || !isFinite(p2y)) return;
+          if (Math.abs(p1x - p2x) < 1e-4 && Math.abs(p1y - p2y) < 1e-4) return;
+          const c = overrideColor !== null ? overrideColor : color;
+          this.lines.push(p1x, p1y, p2x, p2y, c);
+          this.lineLayers.push(effectiveLayer);
           this.updateBounds(p1x, p1y);
           this.updateBounds(p2x, p2y);
-          if (this.layers.has(e.layer)) this.layers.get(e.layer).count++;
+          layerObj.count++;
         };
 
-        // Add triangle to buffer
-        const addTri = (ax, ay, bx, by, cx, cy) => {
-          this.triangles.push(ax, ay, bx, by, cx, cy, color);
+        const addTri = (ax, ay, bx, by, cx, cy, overrideColor = null) => {
+          if (!isFinite(ax) || !isFinite(ay) || !isFinite(bx) || !isFinite(by) || !isFinite(cx) || !isFinite(cy)) return;
+          const c = overrideColor !== null ? overrideColor : color;
+          this.triangles.push(ax, ay, bx, by, cx, cy, c);
+          this.triLayers.push(effectiveLayer);
           this.updateBounds(ax, ay);
           this.updateBounds(bx, by);
           this.updateBounds(cx, cy);
@@ -1242,16 +1594,26 @@
             addLine(p1.x, p1.y, p2.x, p2.y);
             break;
           }
+          case 'XLINE':
+          case 'RAY': {
+            const ox = e.x1 || 0, oy = e.y1 || 0;
+            const dx = e.x2 || 1, dy = e.y2 || 0;
+            const len = 5000;
+            const p1 = transformPoint(e.type === 'XLINE' ? ox - dx * len : ox, e.type === 'XLINE' ? oy - dy * len : oy);
+            const p2 = transformPoint(ox + dx * len, oy + dy * len);
+            addLine(p1.x, p1.y, p2.x, p2.y);
+            break;
+          }
           case 'POINT': {
             const p = transformPoint(e.x || 0, e.y || 0);
-            const s = 1.0;
+            const s = 1.5;
             addLine(p.x - s, p.y, p.x + s, p.y);
             addLine(p.x, p.y - s, p.x, p.y + s);
             break;
           }
           case 'CIRCLE': {
             const cx = e.cx || 0, cy = e.cy || 0, r = e.r || 10;
-            const segments = Math.max(16, Math.min(64, Math.round(r * 0.8)));
+            const segments = Math.max(20, Math.min(64, Math.round(r * 0.8)));
             let prev = null, first = null;
             for (let s = 0; s <= segments; s++) {
               const theta = (s / segments) * Math.PI * 2;
@@ -1269,7 +1631,7 @@
             let endRad = ((e.endA || 0) * Math.PI) / 180;
             if (endRad < startRad) endRad += Math.PI * 2;
             const span = endRad - startRad;
-            const segments = Math.max(8, Math.min(48, Math.round(span * 8)));
+            const segments = Math.max(10, Math.min(48, Math.round(span * 10)));
             let prev = null;
             for (let s = 0; s <= segments; s++) {
               const theta = startRad + (s / segments) * span;
@@ -1286,9 +1648,9 @@
             const majorAngle = Math.atan2(my, mx);
             const minorLen = majorLen * (e.ratio || 0.5);
             let startP = e.startP || 0;
-            let endP = e.endP || (Math.PI * 2);
-            if (endP < startP) endP += Math.PI * 2;
-            const segments = 32;
+            let endP = e.endP !== undefined ? e.endP : (Math.PI * 2);
+            if (endP <= startP) endP += Math.PI * 2;
+            const segments = 36;
             let prev = null;
             for (let s = 0; s <= segments; s++) {
               const t = startP + (s / segments) * (endP - startP);
@@ -1303,7 +1665,10 @@
             break;
           }
           case 'LWPOLYLINE':
-          case 'POLYLINE': {
+          case 'POLYLINE':
+          case 'LEADER':
+          case 'MLEADER':
+          case 'MLINE': {
             const verts = e.vertices || [];
             if (verts.length < 2) break;
             const count = e.closed ? verts.length : verts.length - 1;
@@ -1311,120 +1676,264 @@
               const v1 = verts[v];
               const v2 = verts[(v + 1) % verts.length];
               const bulge = v1.bulge || 0;
-
               if (Math.abs(bulge) < 1e-4) {
                 const p1 = transformPoint(v1.x, v1.y);
                 const p2 = transformPoint(v2.x, v2.y);
                 addLine(p1.x, p1.y, p2.x, p2.y);
               } else {
-                // Curved bulge arc segment
-                const dx = v2.x - v1.x;
-                const dy = v2.y - v1.y;
-                const chord = Math.hypot(dx, dy);
-                if (chord < 1e-4) continue;
-                const theta = 4 * Math.atan(bulge);
-                const radius = chord / (2 * Math.sin(theta / 2));
-                const midX = (v1.x + v2.x) / 2;
-                const midY = (v1.y + v2.y) / 2;
-                const sagitta = (chord / 2) * Math.abs(bulge);
-                const distToCenter = Math.sqrt(Math.max(0, radius * radius - (chord / 2) * (chord / 2)));
-                const normX = -dy / chord;
-                const normY = dx / chord;
-                const sign = bulge > 0 ? 1 : -1;
-                const arcCenterX = midX + sign * (radius > 0 ? distToCenter : -distToCenter) * normX;
-                const arcCenterY = midY + sign * (radius > 0 ? distToCenter : -distToCenter) * normY;
-
-                let startAngle = Math.atan2(v1.y - arcCenterY, v1.x - arcCenterX);
-                let endAngle = Math.atan2(v2.y - arcCenterY, v2.x - arcCenterX);
-                if (bulge > 0 && endAngle < startAngle) endAngle += Math.PI * 2;
-                if (bulge < 0 && endAngle > startAngle) endAngle -= Math.PI * 2;
-
-                const segs = Math.max(6, Math.min(24, Math.round(Math.abs(theta) * 6)));
-                let prevP = transformPoint(v1.x, v1.y);
-                for (let s = 1; s <= segs; s++) {
-                  const a = startAngle + (s / segs) * (endAngle - startAngle);
-                  const p = transformPoint(arcCenterX + Math.abs(radius) * Math.cos(a), arcCenterY + Math.abs(radius) * Math.sin(a));
-                  addLine(prevP.x, prevP.y, p.x, p.y);
-                  prevP = p;
-                }
+                this.emitBulgeArc(v1, v2, bulge, transformPoint, addLine);
+              }
+            }
+            // LEADER ok ucu (arrowhead)
+            if ((e.type === 'LEADER' || e.type === 'MLEADER') && verts.length >= 2) {
+              const tip = transformPoint(verts[0].x, verts[0].y);
+              const nxt = transformPoint(verts[1].x, verts[1].y);
+              const dx = nxt.x - tip.x, dy = nxt.y - tip.y;
+              const len = Math.hypot(dx, dy);
+              if (len > 1e-3) {
+                const aLen = Math.min(len * 0.25, 12);
+                const ux = dx / len, uy = dy / len;
+                const px = -uy * (aLen * 0.35), py = ux * (aLen * 0.35);
+                const bx = tip.x + ux * aLen, by = tip.y + uy * aLen;
+                addTri(tip.x, tip.y, bx + px, by + py, bx - px, by - py);
               }
             }
             break;
           }
           case 'SPLINE': {
-            const verts = e.vertices || [];
-            if (verts.length < 2) break;
-            let prevP = transformPoint(verts[0].x, verts[0].y);
-            for (let s = 1; s < verts.length; s++) {
-              const p = transformPoint(verts[s].x, verts[s].y);
-              addLine(prevP.x, prevP.y, p.x, p.y);
-              prevP = p;
+            const rawPts = (e.fitPoints && e.fitPoints.length >= 2) ? e.fitPoints : (e.vertices || []);
+            if (rawPts.length < 2) break;
+            if (rawPts.length === 2) {
+              const p1 = transformPoint(rawPts[0].x, rawPts[0].y);
+              const p2 = transformPoint(rawPts[1].x, rawPts[1].y);
+              addLine(p1.x, p1.y, p2.x, p2.y);
+              break;
+            }
+            // Catmull-Rom / B-Spline yumuşak eğri interpolasyonu
+            let prevP = transformPoint(rawPts[0].x, rawPts[0].y);
+            const subSteps = 6;
+            for (let i = 0; i < rawPts.length - 1; i++) {
+              const p0 = rawPts[Math.max(0, i - 1)];
+              const p1 = rawPts[i];
+              const p2 = rawPts[i + 1];
+              const p3 = rawPts[Math.min(rawPts.length - 1, i + 2)];
+              for (let s = 1; s <= subSteps; s++) {
+                const t = s / subSteps;
+                const t2 = t * t;
+                const t3 = t2 * t;
+                const x = 0.5 * ((2 * p1.x) + (-p0.x + p2.x) * t + (2 * p0.x - 5 * p1.x + 4 * p2.x - p3.x) * t2 + (-p0.x + 3 * p1.x - 3 * p2.x + p3.x) * t3);
+                const y = 0.5 * ((2 * p1.y) + (-p0.y + p2.y) * t + (2 * p0.y - 5 * p1.y + 4 * p2.y - p3.y) * t2 + (-p0.y + 3 * p1.y - 3 * p2.y + p3.y) * t3);
+                const curP = transformPoint(x, y);
+                addLine(prevP.x, prevP.y, curP.x, curP.y);
+                prevP = curP;
+              }
             }
             break;
           }
           case 'SOLID':
+          case 'TRACE':
           case '3DFACE': {
             const p1 = transformPoint(e.x1 || 0, e.y1 || 0);
             const p2 = transformPoint(e.x2 || 0, e.y2 || 0);
             const p3 = transformPoint(e.x3 || 0, e.y3 || 0);
-            const p4 = transformPoint(e.x4 || e.x3 || 0, e.y4 || e.y3 || 0);
+            const p4 = transformPoint(e.x4 !== undefined ? e.x4 : (e.x3 || 0), e.y4 !== undefined ? e.y4 : (e.y3 || 0));
             addTri(p1.x, p1.y, p2.x, p2.y, p3.x, p3.y);
             if (e.x4 !== undefined && (e.x4 !== e.x3 || e.y4 !== e.y3)) {
-              addTri(p1.x, p1.y, p3.x, p3.y, p4.x, p4.y);
+              // SOLID DXF vertex order is 1-2-4-3 (bowtie) whereas 3DFACE is 1-2-3-4
+              if (e.type === '3DFACE') {
+                addTri(p1.x, p1.y, p3.x, p3.y, p4.x, p4.y);
+              } else {
+                addTri(p2.x, p2.y, p4.x, p4.y, p3.x, p3.y);
+              }
+            }
+            break;
+          }
+          case 'HATCH': {
+            if (!e.loops || e.loops.length === 0) break;
+            const lyrLower = effectiveLayer.toLowerCase();
+            const isExcluded = ['temel', 'doseme', 'döşeme', 'pafta', 'tarif', 'olcu', 'ölçü', 'aks', 'yazi', 'yazı', 'text', 'tefris', 'tefriş'].some(k => lyrLower.includes(k));
+            const isSolid = (e.solidFill === 1) || (e.patternName === 'SOLID');
+            const isCol = ['kolon', 'column', 'sutun', 'sütun', 'col'].some(k => lyrLower.includes(k));
+            const isWall = ['perde', 'kiris', 'kiriş', 'beam', 'wall', 'duvar'].some(k => lyrLower.includes(k));
+
+            let fillColor = color;
+            if (isWall) fillColor = 0xa05252;
+            else if (isCol) fillColor = 0x527273;
+            else {
+              const r = ((color >> 16) & 255) >> 1;
+              const g = ((color >> 8) & 255) >> 1;
+              const b = (color & 255) >> 1;
+              fillColor = (r << 16) | (g << 8) | b;
+            }
+
+            for (const loop of e.loops) {
+              const worldPts = [];
+              if (loop.pts && loop.pts.length >= 2) {
+                for (let i = 0; i < loop.pts.length; i++) {
+                  const v1 = loop.pts[i];
+                  const v2 = loop.pts[(i + 1) % loop.pts.length];
+                  const tp1 = transformPoint(v1.x, v1.y);
+                  worldPts.push(tp1);
+                  if (Math.abs(v1.bulge || 0) > 1e-4) {
+                    this.emitBulgeArc(v1, v2, v1.bulge, transformPoint, (ax, ay, bx, by) => {
+                      addLine(ax, ay, bx, by);
+                      worldPts.push({ x: bx, y: by });
+                    });
+                  } else {
+                    const tp2 = transformPoint(v2.x, v2.y);
+                    addLine(tp1.x, tp1.y, tp2.x, tp2.y);
+                  }
+                }
+              } else if (loop.edges && loop.edges.length > 0) {
+                for (const ed of loop.edges) {
+                  if (ed.edgeType === 1 && ed.x1 !== undefined && ed.x2 !== undefined) {
+                    const p1 = transformPoint(ed.x1, ed.y1);
+                    const p2 = transformPoint(ed.x2, ed.y2);
+                    addLine(p1.x, p1.y, p2.x, p2.y);
+                    worldPts.push(p1);
+                  } else if (ed.edgeType === 2 && ed.cx !== undefined && ed.r !== undefined) {
+                    let sa = ((ed.startA || 0) * Math.PI) / 180;
+                    let ea = ((ed.endA || 360) * Math.PI) / 180;
+                    if (ed.ccw !== false && ea < sa) ea += Math.PI * 2;
+                    else if (ed.ccw === false && ea > sa) ea -= Math.PI * 2;
+                    const segs = 12;
+                    let prev = null;
+                    for (let s = 0; s <= segs; s++) {
+                      const a = sa + (s / segs) * (ea - sa);
+                      const p = transformPoint(ed.cx + ed.r * Math.cos(a), ed.cy + ed.r * Math.sin(a));
+                      worldPts.push(p);
+                      if (prev) addLine(prev.x, prev.y, p.x, p.y);
+                      prev = p;
+                    }
+                  }
+                }
+              }
+
+              if (isSolid && !isExcluded && worldPts.length >= 3) {
+                const tris = triangulatePolygon(worldPts);
+                for (let t = 0; t < tris.length; t++) {
+                  const [a, b, c] = tris[t];
+                  addTri(a.x, a.y, b.x, b.y, c.x, c.y, fillColor);
+                }
+              }
             }
             break;
           }
           case 'DIMENSION':
-          case 'INSERT': {
-            if (depth > 6) break; // guard recursion
+          case 'INSERT':
+          case 'MINSERT': {
+            if (depth > 8) break;
+            // DIMENSION özel metni varsa ve blok yoksa doğrudan metni ekle
+            if (e.type === 'DIMENSION' && e.dimText && e.tx !== undefined && e.ty !== undefined && !this.blocks.has(e.block)) {
+              const tp = transformPoint(e.tx, e.ty);
+              this.texts.push({
+                text: e.dimText,
+                x: tp.x,
+                y: tp.y,
+                size: 14,
+                color,
+                rot: 0,
+                layer: effectiveLayer
+              });
+            }
+
+            // INSERT'e bağlı ATTRIB yazıları (aks balonları, kotlar, antetler)
+            if (e.attribs && e.attribs.length > 0) {
+              for (const attr of e.attribs) {
+                this.instantiateEntity(attr, matrix, depth + 1, effectiveLayer, color);
+              }
+            }
+
             const block = this.blocks.get(e.block);
             if (!block) break;
 
-            const ix = e.ix || 0, iy = e.iy || 0;
+            const baseIx = (e.type === 'DIMENSION') ? 0 : (e.ix || 0);
+            const baseIy = (e.type === 'DIMENSION') ? 0 : (e.iy || 0);
             const sx = e.sx !== undefined ? e.sx : 1;
             const sy = e.sy !== undefined ? e.sy : 1;
             const rotDeg = e.rot || 0;
             const rad = (rotDeg * Math.PI) / 180;
             const cosA = Math.cos(rad);
             const sinA = Math.sin(rad);
+            const bx = block.bx || 0;
+            const by = block.by || 0;
 
-            // Local block affine matrix: M_local = [sx*cos, sx*sin, -sy*sin, sy*cos, ix, iy]
-            const mLocal = [
-              sx * cosA, sx * sinA,
-              -sy * sinA, sy * cosA,
-              ix - (block.bx || 0) * sx,
-              iy - (block.by || 0) * sy
-            ];
+            const cols = Math.max(1, e.cols || 1);
+            const rows = Math.max(1, e.rows || 1);
+            const colSp = e.colSpacing || 0;
+            const rowSp = e.rowSpacing || 0;
+            const hasExplicitAttribs = Boolean(e.attribs && e.attribs.length > 0);
 
-            // Multiply with parent matrix: M_world = M_parent * M_local
-            const mWorld = [
-              matrix[0] * mLocal[0] + matrix[2] * mLocal[1],
-              matrix[1] * mLocal[0] + matrix[3] * mLocal[1],
-              matrix[0] * mLocal[2] + matrix[2] * mLocal[3],
-              matrix[1] * mLocal[2] + matrix[3] * mLocal[3],
-              matrix[0] * mLocal[4] + matrix[2] * mLocal[5] + matrix[4],
-              matrix[1] * mLocal[4] + matrix[3] * mLocal[5] + matrix[5]
-            ];
+            for (let r = 0; r < rows; r++) {
+              for (let c = 0; c < cols; c++) {
+                const gx = c * colSp;
+                const gy = r * rowSp;
+                const ix = baseIx + gx * cosA - gy * sinA;
+                const iy = baseIy + gx * sinA + gy * cosA;
 
-            for (const subEntity of block.entities) {
-              this.instantiateEntity(subEntity, mWorld, depth + 1);
+                // Doğru AutoCAD Blok Dönüşüm Matrisi: T(ix, iy) * R(rot) * S(sx, sy) * T(-bx, -by)
+                const m0 = sx * cosA;
+                const m1 = sx * sinA;
+                const m2 = -sy * sinA;
+                const m3 = sy * cosA;
+                const m4 = ix - m0 * bx - m2 * by;
+                const m5 = iy - m1 * bx - m3 * by;
+
+                const mWorld = [
+                  matrix[0] * m0 + matrix[2] * m1,
+                  matrix[1] * m0 + matrix[3] * m1,
+                  matrix[0] * m2 + matrix[2] * m3,
+                  matrix[1] * m2 + matrix[3] * m3,
+                  matrix[0] * m4 + matrix[2] * m5 + matrix[4],
+                  matrix[1] * m4 + matrix[3] * m5 + matrix[5]
+                ];
+
+                for (const subEntity of block.entities) {
+                  // Blokta ATTRIB zaten dışarıdan verilmişse ATTDEF şablonunu tekrar çizme
+                  if (subEntity.type === 'ATTDEF' && hasExplicitAttribs) continue;
+                  this.instantiateEntity(subEntity, mWorld, depth + 1, effectiveLayer, color);
+                }
+              }
             }
             break;
           }
           case 'TEXT':
-          case 'MTEXT': {
+          case 'MTEXT':
+          case 'ATTRIB':
+          case 'ATTDEF': {
             if (!e.text) break;
-            const p = transformPoint(e.x || 0, e.y || 0);
-            this.texts.push({
-              text: e.text,
-              x: p.x,
-              y: p.y,
-              size: Math.max(8, (e.size || 20) * Math.hypot(matrix[0], matrix[1])),
-              color,
-              rot: (e.rot || 0),
-              layer: e.layer
-            });
-            this.updateBounds(p.x, p.y);
+            const useAlign = (e.halign && e.halign > 0 && e.ax !== undefined && e.ay !== undefined && (Math.abs(e.ax) > 1e-4 || Math.abs(e.ay) > 1e-4));
+            const rawX = useAlign ? e.ax : (e.x || 0);
+            const rawY = useAlign ? e.ay : (e.y || 0);
+            const p = transformPoint(rawX, rawY);
+            const scaleMag = Math.hypot(matrix[0], matrix[1]) || 1;
+            const blockRotDeg = (Math.atan2(matrix[1], matrix[0]) * 180) / Math.PI;
+            const totalRot = (e.rot || 0) + blockRotDeg;
+            const fontSize = Math.max(2.5, (e.size || 15) * scaleMag);
+
+            // Çok satırlı MTEXT (satır sonu) desteği
+            const lines = e.text.split('\n').map(s => s.trim()).filter(Boolean);
+            const lineStep = fontSize * 1.3;
+            const rad = (totalRot * Math.PI) / 180;
+            const sinR = Math.sin(rad);
+            const cosR = Math.cos(rad);
+
+            for (let idx = 0; idx < lines.length; idx++) {
+              const lx = p.x + idx * lineStep * sinR;
+              const ly = p.y - idx * lineStep * cosR;
+              this.texts.push({
+                text: lines[idx],
+                x: lx,
+                y: ly,
+                size: fontSize,
+                color,
+                rot: totalRot,
+                layer: effectiveLayer,
+                halign: e.halign || 0
+              });
+              this.updateBounds(lx, ly);
+              layerObj.count++;
+            }
             break;
           }
         }
@@ -1441,8 +1950,6 @@
     const loaderTitle = document.getElementById('loader-title');
     const loaderSub = document.getElementById('loader-sub');
     const loaderProgress = document.getElementById('loader-progress');
-    const loaderIcon = document.getElementById('loader-icon');
-    const loaderErrorActions = document.getElementById('loader-error-actions');
     const projectTitle = document.getElementById('project-title');
 
     // Loupe Elements
@@ -1462,11 +1969,20 @@
     let lineProgram, triProgram;
     let lineBuffer = null, triBuffer = null;
     let totalLines = 0, totalTriangles = 0;
-    let rawLines = null;
+
+    // Raw unfiltered geometry + layer mappings (katman filtreleme için)
+    let masterLines = [];
+    let masterLineLayers = [];
+    let masterTriangles = [];
+    let masterTriLayers = [];
+
+    let rawLines = null; // Currently visible lines [x1, y1, x2, y2, color]
     let cadTexts = [];
     let cadLayers = [];
     let hiddenLayers = new Set();
     let bounds = { minX: 0, minY: 0, w: 1000, h: 1000 };
+    let rtcCenterX = 0.0;
+    let rtcCenterY = 0.0;
     let showTexts = true;
 
     // Camera
@@ -1480,9 +1996,9 @@
     let activeSnap = null;
     let scaleRatio = 0.01; // default 1:100 (1 unit = 1 cm = 0.01 m)
 
-    // Fast Spatial Hash for Snapping
+    // Fast Spatial Hash for Snapping & Loupe
     const spatialGrid = new Map();
-    const GRID_SIZE = 1500;
+    const GRID_SIZE = 1200;
 
     function buildSpatialGrid(lines) {
       spatialGrid.clear();
@@ -1498,27 +2014,50 @@
 
         const addPoint = (gx, gy, x, y, type) => {
           const key = `${gx}_${gy}`;
-          if (!spatialGrid.has(key)) spatialGrid.set(key, { pts: [], lines: [] });
-          const cell = spatialGrid.get(key);
-          if (cell.pts.length < 60) cell.pts.push({ x, y, type });
+          let cell = spatialGrid.get(key);
+          if (!cell) {
+            cell = { pts: [], lines: [] };
+            spatialGrid.set(key, cell);
+          }
+          if (cell.pts.length < 150) cell.pts.push({ x, y, type });
         };
 
         addPoint(gx1, gy1, x1, y1, 'KÖŞE');
         addPoint(gx2, gy2, x2, y2, 'KÖŞE');
-        addPoint(Math.floor((x1 + x2) / 2 / GRID_SIZE), Math.floor((y1 + y2) / 2 / GRID_SIZE), (x1 + x2) / 2, (y1 + y2) / 2, 'ORTA');
+        addPoint(Math.floor((x1 + x2) * 0.5 / GRID_SIZE), Math.floor((y1 + y2) * 0.5 / GRID_SIZE), (x1 + x2) * 0.5, (y1 + y2) * 0.5, 'ORTA');
 
-        const keyL = `${gx1}_${gy1}`;
-        if (!spatialGrid.has(keyL)) spatialGrid.set(keyL, { pts: [], lines: [] });
-        const cellL = spatialGrid.get(keyL);
-        if (cellL.lines.length < 40) cellL.lines.push(i);
+        const minGx = Math.min(gx1, gx2), maxGx = Math.max(gx1, gx2);
+        const minGy = Math.min(gy1, gy2), maxGy = Math.max(gy1, gy2);
+        if (maxGx - minGx <= 3 && maxGy - minGy <= 3) {
+          for (let gx = minGx; gx <= maxGx; gx++) {
+            for (let gy = minGy; gy <= maxGy; gy++) {
+              const keyL = `${gx}_${gy}`;
+              let cellL = spatialGrid.get(keyL);
+              if (!cellL) {
+                cellL = { pts: [], lines: [] };
+                spatialGrid.set(keyL, cellL);
+              }
+              if (cellL.lines.length < 200) cellL.lines.push(i);
+            }
+          }
+        } else {
+          const keyL = `${gx1}_${gy1}`;
+          let cellL = spatialGrid.get(keyL);
+          if (!cellL) {
+            cellL = { pts: [], lines: [] };
+            spatialGrid.set(keyL, cellL);
+          }
+          if (cellL.lines.length < 200) cellL.lines.push(i);
+        }
       }
     }
 
     function findSnapPoint(worldX, worldY) {
-      const snapRadius = 24 / zoom;
+      const snapRadius = 26 / zoom;
       const gx = Math.floor(worldX / GRID_SIZE);
       const gy = Math.floor(worldY / GRID_SIZE);
       let bestPt = null, bestDistSq = snapRadius * snapRadius;
+      let bestLinePt = null, bestLineDistSq = (20 / zoom) ** 2;
 
       for (let dx = -1; dx <= 1; dx++) {
         for (let dy = -1; dy <= 1; dy++) {
@@ -1532,9 +2071,25 @@
               bestPt = { x: p.x, y: p.y, type: p.type };
             }
           }
+          if (!bestPt && rawLines) {
+            for (let j = 0; j < cell.lines.length; j++) {
+              const li = cell.lines[j];
+              const x1 = rawLines[li], y1 = rawLines[li+1], x2 = rawLines[li+2], y2 = rawLines[li+3];
+              const vx = x2 - x1, vy = y2 - y1;
+              const lenSq = vx * vx + vy * vy;
+              if (lenSq < 1e-4) continue;
+              const t = Math.max(0, Math.min(1, ((worldX - x1) * vx + (worldY - y1) * vy) / lenSq));
+              const px = x1 + t * vx, py = y1 + t * vy;
+              const dSq = (worldX - px) ** 2 + (worldY - py) ** 2;
+              if (dSq < bestLineDistSq) {
+                bestLineDistSq = dSq;
+                bestLinePt = { x: px, y: py, type: 'ÇİZGİ' };
+              }
+            }
+          }
         }
       }
-      return bestPt;
+      return bestPt || bestLinePt;
     }
 
     // WebGL Shaders
@@ -1547,7 +2102,7 @@
       varying vec3 v_color;
       void main() {
         vec2 d = a_pos - u_offset;
-        vec2 clip = vec2(d.x, -d.y) * (2.0 * u_zoom / u_res);
+        vec2 clip = vec2(d.x, d.y) * (2.0 * u_zoom / u_res);
         gl_Position = vec4(clip.x, clip.y, 0.0, 1.0);
         v_color = a_color;
       }
@@ -1581,7 +2136,7 @@
       gl.attachShader(lineProgram, fs);
       gl.linkProgram(lineProgram);
 
-      triProgram = lineProgram; // Shared shader
+      triProgram = lineProgram;
       gl.useProgram(lineProgram);
       gl.clearColor(0.0, 0.0, 0.0, 1.0);
       return true;
@@ -1600,39 +2155,84 @@
     }
     window.addEventListener('resize', resize);
 
-    function uploadGeometry(lines, triangles) {
-      rawLines = lines;
-      totalLines = Math.floor(lines.length / 5);
+    // Katman görünürlüğüne göre WebGL tamponlarını ve mıknatıs indeksini yeniden oluştur
+    function rebuildVisibleBuffers() {
+      if (!gl) return;
+      rtcCenterX = (bounds.minX || 0) + (bounds.w || 0) * 0.5;
+      rtcCenterY = (bounds.minY || 0) + (bounds.h || 0) * 0.5;
+
+      const visLines = [];
+      const numMasterLines = Math.floor(masterLines.length / 5);
+      for (let idx = 0; idx < numMasterLines; idx++) {
+        const lyr = masterLineLayers[idx];
+        if (lyr && hiddenLayers.has(lyr)) continue;
+        const base = idx * 5;
+        visLines.push(
+          masterLines[base],
+          masterLines[base + 1],
+          masterLines[base + 2],
+          masterLines[base + 3],
+          masterLines[base + 4]
+        );
+      }
+
+      rawLines = visLines;
+      totalLines = Math.floor(visLines.length / 5);
       const lineData = new Float32Array(totalLines * 10);
-      for (let i = 0, vi = 0; i < lines.length; i += 5) {
-        const x1 = lines[i], y1 = lines[i+1], x2 = lines[i+2], y2 = lines[i+3], c = lines[i+4];
+      for (let i = 0, vi = 0; i < visLines.length; i += 5) {
+        const x1 = visLines[i] - rtcCenterX, y1 = visLines[i+1] - rtcCenterY;
+        const x2 = visLines[i+2] - rtcCenterX, y2 = visLines[i+3] - rtcCenterY;
+        const c = visLines[i+4];
         const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
         lineData[vi++] = x1; lineData[vi++] = y1; lineData[vi++] = r; lineData[vi++] = g; lineData[vi++] = b;
         lineData[vi++] = x2; lineData[vi++] = y2; lineData[vi++] = r; lineData[vi++] = g; lineData[vi++] = b;
       }
-      lineBuffer = gl.createBuffer();
+      if (!lineBuffer) lineBuffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
       gl.bufferData(gl.ARRAY_BUFFER, lineData, gl.STATIC_DRAW);
 
-      if (triangles && triangles.length > 0) {
-        totalTriangles = Math.floor(triangles.length / 7);
+      const visTris = [];
+      const numMasterTris = Math.floor(masterTriangles.length / 7);
+      for (let idx = 0; idx < numMasterTris; idx++) {
+        const lyr = masterTriLayers[idx];
+        if (lyr && hiddenLayers.has(lyr)) continue;
+        const base = idx * 7;
+        visTris.push(
+          masterTriangles[base], masterTriangles[base + 1],
+          masterTriangles[base + 2], masterTriangles[base + 3],
+          masterTriangles[base + 4], masterTriangles[base + 5],
+          masterTriangles[base + 6]
+        );
+      }
+
+      totalTriangles = Math.floor(visTris.length / 7);
+      if (totalTriangles > 0) {
         const triData = new Float32Array(totalTriangles * 15);
-        for (let i = 0, vi = 0; i < triangles.length; i += 7) {
-          const x1 = triangles[i], y1 = triangles[i+1];
-          const x2 = triangles[i+2], y2 = triangles[i+3];
-          const x3 = triangles[i+4], y3 = triangles[i+5];
-          const c = triangles[i+6];
+        for (let i = 0, vi = 0; i < visTris.length; i += 7) {
+          const x1 = visTris[i] - rtcCenterX, y1 = visTris[i+1] - rtcCenterY;
+          const x2 = visTris[i+2] - rtcCenterX, y2 = visTris[i+3] - rtcCenterY;
+          const x3 = visTris[i+4] - rtcCenterX, y3 = visTris[i+5] - rtcCenterY;
+          const c = visTris[i+6];
           const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
           triData[vi++] = x1; triData[vi++] = y1; triData[vi++] = r; triData[vi++] = g; triData[vi++] = b;
           triData[vi++] = x2; triData[vi++] = y2; triData[vi++] = r; triData[vi++] = g; triData[vi++] = b;
           triData[vi++] = x3; triData[vi++] = y3; triData[vi++] = r; triData[vi++] = g; triData[vi++] = b;
         }
-        triBuffer = gl.createBuffer();
+        if (!triBuffer) triBuffer = gl.createBuffer();
         gl.bindBuffer(gl.ARRAY_BUFFER, triBuffer);
         gl.bufferData(gl.ARRAY_BUFFER, triData, gl.STATIC_DRAW);
       }
 
-      buildSpatialGrid(lines);
+      buildSpatialGrid(visLines);
+    }
+
+    function uploadGeometry(lines, triangles, lineLayers = [], triLayers = []) {
+      masterLines = lines || [];
+      masterLineLayers = lineLayers || [];
+      masterTriangles = triangles || [];
+      masterTriLayers = triLayers || [];
+      hiddenLayers.clear();
+      rebuildVisibleBuffers();
       fitToScreen();
     }
 
@@ -1664,7 +2264,7 @@
       const aColor = gl.getAttribLocation(lineProgram, 'a_color');
 
       gl.uniform2f(uRes, glCanvas.width / dpr, glCanvas.height / dpr);
-      gl.uniform2f(uOffset, offsetX, offsetY);
+      gl.uniform2f(uOffset, offsetX - rtcCenterX, offsetY - rtcCenterY);
       gl.uniform1f(uZoom, zoom);
 
       // Draw Triangles (Solid fills/Hatch)
@@ -1710,15 +2310,16 @@
           const t = cadTexts[i];
           if (hiddenLayers.has(t.layer)) continue;
           const sPos = toScreen(t.x, t.y);
-          if (sPos.x < -100 || sPos.x > screenW + 100 || sPos.y < -100 || sPos.y > screenH + 100) continue;
+          if (sPos.x < -150 || sPos.x > screenW + 150 || sPos.y < -150 || sPos.y > screenH + 150) continue;
 
-          const screenFontSize = Math.max(9, Math.min(48, t.size * zoom));
-          if (screenFontSize < 6) continue;
+          const screenFontSize = Math.min(48, t.size * zoom);
+          if (screenFontSize < 2.2) continue;
 
           textCtx.save();
           textCtx.translate(sPos.x, sPos.y);
           if (t.rot) textCtx.rotate(-t.rot * Math.PI / 180);
-          textCtx.font = `600 ${screenFontSize}px monospace`;
+          textCtx.font = `600 ${screenFontSize.toFixed(1)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif`;
+          textCtx.textAlign = (t.halign === 1 || t.halign === 4) ? 'center' : (t.halign === 2 ? 'right' : 'left');
           textCtx.fillStyle = `#${((t.color || 0xFFFFFF) & 0xFFFFFF).toString(16).padStart(6, '0')}`;
           textCtx.fillText(t.text, 0, 0);
           textCtx.restore();
@@ -1745,7 +2346,6 @@
         textCtx.stroke();
         textCtx.setLineDash([]);
 
-        // Points
         for (let i = 0; i < measurePts.length; i++) {
           const sp = toScreen(measurePts[i].x, measurePts[i].y);
           textCtx.beginPath();
@@ -1770,8 +2370,10 @@
       textCtx.restore();
     }
 
-    // Touch & Mouse Handling
+    // Touch & Pointer Handling (Tap-vs-Drag ayırımı ile kaydırırken yanlışlıkla nokta atılmasını önler)
     let isDragging = false;
+    let pointerDownPos = null;
+    let movedDuringTouch = false;
     let lastX = 0, lastY = 0;
     let initialPinchDist = null;
     let initialZoom = 1;
@@ -1787,17 +2389,17 @@
     };
 
     window.addEventListener('pointerdown', (e) => {
-      if (e.target.closest('#hud-actions, #nav-controls, #project-badge, .popup-menu, #measure-box')) return;
+      if (e.target.closest('#hud-actions, #nav-controls, #project-badge, .popup-menu, #measure-box, #debugger-modal, #loader')) return;
       isDragging = true;
+      movedDuringTouch = false;
+      pointerDownPos = { x: e.clientX, y: e.clientY };
       lastX = e.clientX;
       lastY = e.clientY;
 
       if (measureMode !== 'none') {
         const wp = screenToWorld(e.clientX, e.clientY);
-        const snap = findSnapPoint(wp.x, wp.y);
-        const pt = snap ? { x: snap.x, y: snap.y } : wp;
-        measurePts.push(pt);
-        updateMeasurement();
+        activeSnap = findSnapPoint(wp.x, wp.y);
+        updateLoupe(e.clientX, e.clientY, wp, activeSnap);
         render();
       }
     });
@@ -1806,43 +2408,58 @@
       const wp = screenToWorld(e.clientX, e.clientY);
       coordsText.innerText = `${wp.x.toFixed(1)} , ${wp.y.toFixed(1)}`;
 
-      if (measureMode !== 'none') {
+      if (measureMode !== 'none' && isDragging && !initialPinchDist) {
         activeSnap = findSnapPoint(wp.x, wp.y);
         updateLoupe(e.clientX, e.clientY, wp, activeSnap);
         render();
-      } else {
-        loupeContainer.style.display = 'none';
       }
 
-      if (!isDragging) return;
+      if (!isDragging || initialPinchDist) return;
       const dx = e.clientX - lastX;
       const dy = e.clientY - lastY;
+      if (pointerDownPos && Math.hypot(e.clientX - pointerDownPos.x, e.clientY - pointerDownPos.y) > 10) {
+        movedDuringTouch = true;
+      }
       lastX = e.clientX;
       lastY = e.clientY;
 
-      offsetX -= dx / zoom;
-      offsetY += dy / zoom;
-      render();
+      if (measureMode === 'none') {
+        offsetX -= dx / zoom;
+        offsetY += dy / zoom;
+        render();
+      }
     });
 
-    window.addEventListener('pointerup', () => {
+    window.addEventListener('pointerup', (e) => {
+      if (isDragging && measureMode !== 'none' && !initialPinchDist) {
+        const wp = screenToWorld(e.clientX, e.clientY);
+        const snap = findSnapPoint(wp.x, wp.y);
+        const pt = snap ? { x: snap.x, y: snap.y } : wp;
+        measurePts.push(pt);
+        updateMeasurement();
+        loupeContainer.style.display = 'none';
+        activeSnap = null;
+        render();
+      }
       isDragging = false;
+      pointerDownPos = null;
       initialPinchDist = null;
     });
 
-    // Touch Pinch Zoom
+    // Touch Pinch Zoom & 2-Finger Pan
     window.addEventListener('touchmove', (e) => {
       if (e.touches.length === 2) {
         e.preventDefault();
+        loupeContainer.style.display = 'none';
         const t1 = e.touches[0];
         const t2 = e.touches[1];
         const dist = Math.hypot(t1.clientX - t2.clientX, t1.clientY - t2.clientY);
         if (!initialPinchDist) {
           initialPinchDist = dist;
           initialZoom = zoom;
-        } else {
+        } else if (dist > 8) {
           const factor = dist / initialPinchDist;
-          zoom = initialZoom * factor;
+          zoom = Math.max(0.00005, Math.min(initialZoom * factor, 60.0));
           render();
         }
       }
@@ -1851,14 +2468,15 @@
     // Wheel Zoom
     window.addEventListener('wheel', (e) => {
       e.preventDefault();
-      const zoomFactor = e.deltaY < 0 ? 1.15 : 0.85;
+      const zoomFactor = e.deltaY < 0 ? 1.18 : 0.85;
       const wp = screenToWorld(e.clientX, e.clientY);
-      zoom *= zoomFactor;
+      zoom = Math.max(0.00005, Math.min(zoom * zoomFactor, 60.0));
       offsetX = wp.x - (e.clientX - window.innerWidth / 2) / zoom;
       offsetY = wp.y + (e.clientY - window.innerHeight / 2) / zoom;
       render();
     }, { passive: false });
 
+    // SpatialGrid ile optimize edilmiş O(1) Büyüteç (Loupe)
     function updateLoupe(screenX, screenY, worldPt, snap) {
       loupeContainer.style.display = 'block';
       loupeContainer.style.left = `${Math.min(window.innerWidth - 160, Math.max(10, screenX - 75))}px`;
@@ -1872,20 +2490,44 @@
       const targetX = snap ? snap.x : worldPt.x;
       const targetY = snap ? snap.y : worldPt.y;
       const lZoom = zoom * 3.5;
+      const halfSpan = 80 / lZoom;
 
       loupeCtx.translate(75, 75);
       loupeCtx.scale(1, -1);
 
       if (rawLines) {
-        loupeCtx.lineWidth = 1.5;
-        for (let i = 0; i < rawLines.length; i += 5) {
+        loupeCtx.lineWidth = 1.6;
+        const drawSeg = (i) => {
           const x1 = rawLines[i], y1 = rawLines[i+1], x2 = rawLines[i+2], y2 = rawLines[i+3], c = rawLines[i+4];
-          if (Math.abs(x1 - targetX) > 2000 / zoom && Math.abs(x2 - targetX) > 2000 / zoom) continue;
+          if ((x1 < targetX - halfSpan && x2 < targetX - halfSpan) || (x1 > targetX + halfSpan && x2 > targetX + halfSpan)) return;
+          if ((y1 < targetY - halfSpan && y2 < targetY - halfSpan) || (y1 > targetY + halfSpan && y2 > targetY + halfSpan)) return;
           loupeCtx.beginPath();
           loupeCtx.moveTo((x1 - targetX) * lZoom, (y1 - targetY) * lZoom);
           loupeCtx.lineTo((x2 - targetX) * lZoom, (y2 - targetY) * lZoom);
           loupeCtx.strokeStyle = `#${((c || 0xFFFFFF) & 0xFFFFFF).toString(16).padStart(6, '0')}`;
           loupeCtx.stroke();
+        };
+
+        if (spatialGrid.size > 0) {
+          const minGx = Math.floor((targetX - halfSpan) / GRID_SIZE);
+          const maxGx = Math.floor((targetX + halfSpan) / GRID_SIZE);
+          const minGy = Math.floor((targetY - halfSpan) / GRID_SIZE);
+          const maxGy = Math.floor((targetY + halfSpan) / GRID_SIZE);
+          const seen = new Set();
+          for (let gx = minGx; gx <= maxGx; gx++) {
+            for (let gy = minGy; gy <= maxGy; gy++) {
+              const cell = spatialGrid.get(`${gx}_${gy}`);
+              if (!cell) continue;
+              for (let k = 0; k < cell.lines.length; k++) {
+                const li = cell.lines[k];
+                if (seen.has(li)) continue;
+                seen.add(li);
+                drawSeg(li);
+              }
+            }
+          }
+        } else {
+          for (let i = 0; i < rawLines.length; i += 5) drawSeg(i);
         }
       }
 
@@ -1907,7 +2549,6 @@
           measureMainVal.innerText = `0.00 m²`;
           measureSubVal.innerText = `${measurePts.length}/3 nokta seçildi`;
         } else {
-          // Shoelace formula
           let area = 0;
           for (let i = 0; i < measurePts.length; i++) {
             const j = (i + 1) % measurePts.length;
@@ -1996,12 +2637,15 @@
     };
 
     function populateLayers(layers) {
-      cadLayers = layers;
+      cadLayers = layers || [];
       const container = document.getElementById('layers-list');
       container.innerHTML = '';
-      layers.forEach(l => {
+      cadLayers.forEach(l => {
+        if (l.visible === false) hiddenLayers.add(l.name);
         const item = document.createElement('div');
         item.className = 'menu-item';
+        item.dataset.layerName = l.name;
+        item.style.opacity = hiddenLayers.has(l.name) ? '0.35' : '1';
         item.innerHTML = `
           <div class="menu-item-left">
             <span class="layer-color-dot" style="background:#${(l.color & 0xFFFFFF).toString(16).padStart(6, '0')}"></span>
@@ -2017,10 +2661,29 @@
             hiddenLayers.add(l.name);
             item.style.opacity = '0.35';
           }
+          rebuildVisibleBuffers();
           render();
         };
         container.appendChild(item);
       });
+    }
+
+    const btnToggleAllLayers = document.getElementById('btn-toggle-all-layers');
+    if (btnToggleAllLayers) {
+      btnToggleAllLayers.onclick = (e) => {
+        e.stopPropagation();
+        const shouldHideAll = hiddenLayers.size === 0;
+        hiddenLayers.clear();
+        if (shouldHideAll) {
+          cadLayers.forEach(l => hiddenLayers.add(l.name));
+        }
+        const items = document.querySelectorAll('#layers-list .menu-item');
+        items.forEach(el => {
+          el.style.opacity = shouldHideAll ? '0.35' : '1';
+        });
+        rebuildVisibleBuffers();
+        render();
+      };
     }
 
     /* ========================================================================
@@ -2031,17 +2694,16 @@
       loaderProgress.style.width = "40%";
 
       const lines = [];
+      const lineLayers = [];
       const triangles = [];
+      const triLayers = [];
       const texts = [];
       const layers = [
         { name: 'KOLONLAR', color: 0xFF3B30, count: 12, visible: true },
         { name: 'KIRISLER', color: 0x00F0FF, count: 24, visible: true },
-        { name: 'DUVARLAR', color: 0xFFFFFF, count: 36, visible: true },
-        { name: 'AKSLAR', color: 0xFF9500, count: 8, visible: true },
-        { name: 'OLCULER', color: 0x38BDF8, count: 16, visible: true }
+        { name: 'AKSLAR', color: 0xFF9500, count: 8, visible: true }
       ];
 
-      // Kolonlar (Solid fill triangles + bounding lines)
       const cols = [
         [0, 0], [400, 0], [800, 0],
         [0, 500], [400, 500], [800, 500],
@@ -2054,45 +2716,43 @@
         const x1 = cx - w/2, y1 = cy - h/2;
         const x2 = cx + w/2, y2 = cy + h/2;
 
-        // Triangles (Solid Fill)
         triangles.push(x1, y1, x2, y1, x2, y2, 0xFF3B30);
+        triLayers.push('KOLONLAR');
         triangles.push(x1, y1, x2, y2, x1, y2, 0xFF3B30);
+        triLayers.push('KOLONLAR');
 
-        // Lines
-        lines.push(x1, y1, x2, y1, 0xFF3B30);
-        lines.push(x2, y1, x2, y2, 0xFF3B30);
-        lines.push(x2, y2, x1, y2, 0xFF3B30);
-        lines.push(x1, y2, x1, y1, 0xFF3B30);
+        lines.push(x1, y1, x2, y1, 0xFF3B30); lineLayers.push('KOLONLAR');
+        lines.push(x2, y1, x2, y2, 0xFF3B30); lineLayers.push('KOLONLAR');
+        lines.push(x2, y2, x1, y2, 0xFF3B30); lineLayers.push('KOLONLAR');
+        lines.push(x1, y2, x1, y1, 0xFF3B30); lineLayers.push('KOLONLAR');
 
         texts.push({ text: `S${idx + 1}`, x: cx - 12, y: cy + 35, size: 14, color: 0xFFFFFF, rot: 0, layer: 'KOLONLAR' });
       });
 
-      // Kirişler (Beam lines)
       for (let r = 0; r < 4; r++) {
         const y = r * 500;
-        lines.push(0, y - 12, 800, y - 12, 0x00F0FF);
-        lines.push(0, y + 12, 800, y + 12, 0x00F0FF);
+        lines.push(0, y - 12, 800, y - 12, 0x00F0FF); lineLayers.push('KIRISLER');
+        lines.push(0, y + 12, 800, y + 12, 0x00F0FF); lineLayers.push('KIRISLER');
         texts.push({ text: `K${r+1}01 (25/50)`, x: 180, y: y + 2, size: 11, color: 0x00F0FF, rot: 0, layer: 'KIRISLER' });
         texts.push({ text: `K${r+1}02 (25/50)`, x: 580, y: y + 2, size: 11, color: 0x00F0FF, rot: 0, layer: 'KIRISLER' });
       }
 
       for (let c = 0; c < 3; c++) {
         const x = c * 400;
-        lines.push(x - 12, 0, x - 12, 1500, 0x00F0FF);
-        lines.push(x + 12, 0, x + 12, 1500, 0x00F0FF);
+        lines.push(x - 12, 0, x - 12, 1500, 0x00F0FF); lineLayers.push('KIRISLER');
+        lines.push(x + 12, 0, x + 12, 1500, 0x00F0FF); lineLayers.push('KIRISLER');
       }
 
-      // Akslar
       ['A', 'B', 'C'].forEach((lbl, i) => {
         const x = i * 400;
-        lines.push(x, -100, x, 1600, 0xFF9500);
+        lines.push(x, -100, x, 1600, 0xFF9500); lineLayers.push('AKSLAR');
         texts.push({ text: lbl, x: x - 6, y: -120, size: 18, color: 0xFF9500, rot: 0, layer: 'AKSLAR' });
         texts.push({ text: lbl, x: x - 6, y: 1620, size: 18, color: 0xFF9500, rot: 0, layer: 'AKSLAR' });
       });
 
       ['1', '2', '3', '4'].forEach((lbl, i) => {
         const y = i * 500;
-        lines.push(-100, y, 900, y, 0xFF9500);
+        lines.push(-100, y, 900, y, 0xFF9500); lineLayers.push('AKSLAR');
         texts.push({ text: lbl, x: -130, y: y - 8, size: 18, color: 0xFF9500, rot: 0, layer: 'AKSLAR' });
         texts.push({ text: lbl, x: 920, y: y - 8, size: 18, color: 0xFF9500, rot: 0, layer: 'AKSLAR' });
       });
@@ -2102,14 +2762,14 @@
 
       setTimeout(() => {
         loaderProgress.style.width = "100%";
-        uploadGeometry(lines, triangles);
+        uploadGeometry(lines, triangles, lineLayers, triLayers);
         populateLayers(layers);
         setTimeout(() => { loader.style.display = 'none'; }, 200);
-      }, 300);
+      }, 250);
     }
 
     /* ========================================================================
-       EXTERNAL FLUTTER BRIDGE API
+       EXTERNAL FLUTTER BRIDGE API (STREAMING + BASE64 BACKWARD COMPATIBLE)
        ======================================================================== */
     window.loadDxfString = async function(dxfString, fileName) {
       if (fileName) projectTitle.innerText = fileName;
@@ -2122,10 +2782,9 @@
         loader.style.display = 'flex';
       }
       if (loaderTitle) loaderTitle.innerText = "Vektör Çizimi Hazırlanıyor";
-      if (loaderSub) loaderSub.innerText = "DXF varlıkları çözümleniyor...";
+      if (loaderSub) loaderSub.innerText = "DXF varlıkları, bloklar ve dolgular çözümleniyor...";
       if (loaderProgress) loaderProgress.style.width = "40%";
 
-      // Yield briefly to let WebView paint progress bar
       await new Promise(r => setTimeout(r, 20));
 
       try {
@@ -2135,10 +2794,20 @@
         bounds = result.bounds;
         cadTexts = result.texts;
 
+        if (result.metersPerUnit && scaleSelect) {
+          scaleRatio = result.metersPerUnit;
+          for (const opt of scaleSelect.options) {
+            if (Math.abs(parseFloat(opt.value) - scaleRatio) < 1e-6) {
+              scaleSelect.value = opt.value;
+              break;
+            }
+          }
+        }
+
         if (loaderProgress) loaderProgress.style.width = "80%";
         if (loaderSub) loaderSub.innerText = "GPU WebGL tamponlarına yükleniyor...";
 
-        uploadGeometry(result.lines, result.triangles);
+        uploadGeometry(result.lines, result.triangles, result.lineLayers, result.triLayers);
         populateLayers(result.layers);
 
         if (loaderProgress) loaderProgress.style.width = "100%";
@@ -2174,8 +2843,11 @@
     };
 
     window.loadDxfFileBase64 = async function(base64Data, fileName) {
-      const raw = atob(base64Data);
-      await window.loadDxfString(raw, fileName);
+      const binaryStr = atob(base64Data);
+      const bytes = new Uint8Array(binaryStr.length);
+      for (let i = 0; i < binaryStr.length; i++) bytes[i] = binaryStr.charCodeAt(i);
+      const decoded = decodeCadBytes(bytes);
+      await window.loadDxfString(decoded, fileName);
     };
 
     /* ========================================================================
@@ -2370,13 +3042,131 @@
       return wasmLoadingPromise;
     }
 
+    // Ortak Binary DWG Byte Dizisi Çözümleyici (Hem Localhost Stream hem Base64 için)
+    window.loadDwgBytes = async function(bytes, fileName) {
+      if (fileName) projectTitle.innerText = fileName;
+      CADDebugger.currentFile = fileName;
+      const fileInfoEl = document.getElementById('debug-file-info');
+      if (fileInfoEl) fileInfoEl.innerText = 'Dosya: ' + (fileName || 'Bilinmiyor');
+
+      if (loader) {
+        loader.classList.remove('has-error');
+        loader.style.display = 'flex';
+      }
+      if (loaderTitle) loaderTitle.innerText = "DWG Dosyası Çözümleniyor";
+      if (loaderSub) loaderSub.innerText = "Yerel C++ WebAssembly motoruyla çözümleniyor (0 internet)...";
+      if (loaderProgress) loaderProgress.style.width = "25%";
+
+      const len = bytes.length;
+      let header = '';
+      for (let i = 0; i < Math.min(6, len); i++) {
+        header += String.fromCharCode(bytes[i]);
+      }
+      const versions = {
+        'AC1012': 'AutoCAD R13 (AC1012)',
+        'AC1014': 'AutoCAD R14 (AC1014)',
+        'AC1015': 'AutoCAD 2000 (AC1015)',
+        'AC1018': 'AutoCAD 2004 (AC1018)',
+        'AC1021': 'AutoCAD 2007 (AC1021)',
+        'AC1024': 'AutoCAD 2010 (AC1024)',
+        'AC1027': 'AutoCAD 2013 (AC1027)',
+        'AC1032': 'AutoCAD 2018/2021/2024 (AC1032)'
+      };
+      const verName = versions[header] || ('Özel / Bilinmeyen Başlık: ' + header);
+      CADDebugger.setStep('header', 'AutoCAD DWG Başlık Sürümü', header.startsWith('AC') ? 'ok' : 'warn', verName);
+
+      loaderProgress.style.width = "40%";
+      loaderSub.innerText = "C++ WebAssembly Çekirdeği Başlatılıyor...";
+      const mod = await getWasmModule();
+
+      loaderProgress.style.width = "60%";
+      loaderSub.innerText = "Sanal dosya sistemine yazılıyor...";
+      const inName = 'in_' + Date.now() + '.dwg';
+      const outName = 'out_' + Date.now() + '.dxf';
+
+      CADDebugger.setStep('fs_write', 'Sanal Bellek Dosya Yazımı', 'running', inName + ' dosyası oluşturuluyor...');
+      mod.FS.writeFile(inName, bytes);
+      const inExists = mod.FS.analyzePath(inName).exists;
+      if (!inExists) {
+        throw new Error('Sanal FS içerisine giriş DWG dosyası yazılamadı.');
+      }
+      CADDebugger.setStep('fs_write', 'Sanal Bellek Dosya Yazımı', 'ok', inName + ' (' + bytes.length + ' bayt) sanal belleğe yazıldı.');
+
+      loaderProgress.style.width = "75%";
+      loaderSub.innerText = "Vektör geometrisi ve katmanlar çıkarılıyor...";
+      CADDebugger.setStep('cpp_convert', 'LibreDWG C++ Motoru (dwg_write_dxf)', 'running', 'C++ dönüştürme fonksiyonu çalıştırılıyor...');
+
+      const startTime = performance.now();
+      const err = mod.dwg_write_dxf(inName, outName);
+      const elapsed = Math.round(performance.now() - startTime);
+
+      const hasOut = mod.FS.analyzePath(outName).exists;
+      if (!hasOut) {
+        try { mod.FS.unlink(inName); } catch (_) {}
+        throw new Error('LibreDWG DWG dosyasını DXF formatına dönüştüremedi. (C++ Hata Kodu: ' + err + ')');
+      }
+
+      const dxfBytes = mod.FS.readFile(outName);
+      CADDebugger.setStep('cpp_convert', 'LibreDWG C++ Motoru (dwg_write_dxf)', 'ok', 'Dönüştürme tamamlandı: ' + elapsed + ' ms. Çıktı boyutu: ' + Math.round(dxfBytes.length / 1024) + ' KB (Kod: ' + err + ')');
+
+      try { mod.FS.unlink(inName); } catch (_) {}
+      try { mod.FS.unlink(outName); } catch (_) {}
+
+      loaderProgress.style.width = "90%";
+      loaderSub.innerText = "WebGL ile çizim GPU'ya aktarılıyor...";
+      CADDebugger.setStep('render', 'DXF Vektör Geometrisi & WebGL', 'running', 'Vektörler ve yazılar çiziliyor...');
+      const dxfStr = decodeCadBytes(dxfBytes);
+      await window.loadDxfString(dxfStr, fileName);
+    };
+
+    // Yüksek Hızlı Sıfır-Base64 Localhost Stream Yükleyici (Büyük dosyalarda OOM önler)
+    window.loadCadFromUrl = async function(fileUrl, fileName, ext) {
+      if (fileName) projectTitle.innerText = fileName;
+      CADDebugger.currentFile = fileName;
+      if (loader) {
+        loader.classList.remove('has-error');
+        loader.style.display = 'flex';
+      }
+      if (loaderTitle) loaderTitle.innerText = "CAD Dosyası Akışı Başlatıldı";
+      if (loaderSub) loaderSub.innerText = "Yerel sunucudan ikili (binary) veri çekiliyor...";
+      if (loaderProgress) loaderProgress.style.width = "15%";
+
+      try {
+        const res = await fetch(fileUrl);
+        if (!res.ok) throw new Error('Yerel dosya akışı okunamadı (' + res.status + ')');
+        const buf = await res.arrayBuffer();
+        const bytes = new Uint8Array(buf);
+        CADDebugger.setStep('input', 'Yerel Binary Akışı (Zero-Copy)', 'ok', fileName + ' (' + Math.round(bytes.length / 1024) + ' KB)');
+
+        const isDwg = (ext && ext.toLowerCase() === 'dwg') || (fileName && fileName.toLowerCase().endsWith('.dwg'));
+        if (isDwg) {
+          await window.loadDwgBytes(bytes, fileName);
+        } else {
+          const dxfStr = decodeCadBytes(bytes);
+          await window.loadDxfString(dxfStr, fileName);
+        }
+      } catch (e) {
+        console.error('CAD Stream Error:', e);
+        CADDebugger.log('EXCEPTION', e.message + (e.stack ? '\n' + e.stack : ''), 'error');
+        if (loader) loader.classList.add('has-error');
+        if (loaderTitle) loaderTitle.innerText = "Yerel CAD Çözümleme Hatası";
+        if (loaderSub) loaderSub.innerText = e.message;
+        if (window.YerelCadBridge) {
+          window.YerelCadBridge.postMessage(JSON.stringify({
+            type: 'dwg_wasm_failed',
+            error: e.message,
+            report: CADDebugger.getReport()
+          }));
+        }
+      }
+    };
+
     window.loadDwgFileBase64 = async function(base64Data, fileName) {
       if (fileName) projectTitle.innerText = fileName;
       CADDebugger.currentFile = fileName;
       const fileInfoEl = document.getElementById('debug-file-info');
       if (fileInfoEl) fileInfoEl.innerText = 'Dosya: ' + (fileName || 'Bilinmiyor');
 
-      // Loader'ı aktif duruma getir, hata stilini temizle
       if (loader) {
         loader.classList.remove('has-error');
         loader.style.display = 'flex';
@@ -2389,7 +3179,6 @@
 
       setTimeout(async () => {
         try {
-          // 1. Base64 Dönüşümü
           CADDebugger.setStep('base64', 'Base64 Binary Dönüşümü', 'running', 'Base64 verisi byte dizisine çevriliyor...');
           const binaryStr = atob(base64Data);
           const len = binaryStr.length;
@@ -2397,70 +3186,8 @@
           for (let i = 0; i < len; i++) {
             bytes[i] = binaryStr.charCodeAt(i);
           }
-
-          // AutoCAD DWG Sürüm Başlığı Denetimi (İlk 6 byte)
-          let header = '';
-          for (let i = 0; i < Math.min(6, len); i++) {
-            header += String.fromCharCode(bytes[i]);
-          }
-          const versions = {
-            'AC1015': 'AutoCAD 2000 (AC1015)',
-            'AC1018': 'AutoCAD 2004 (AC1018)',
-            'AC1021': 'AutoCAD 2007 (AC1021)',
-            'AC1024': 'AutoCAD 2010 (AC1024)',
-            'AC1027': 'AutoCAD 2013 (AC1027)',
-            'AC1032': 'AutoCAD 2018/2021/2024 (AC1032)'
-          };
-          const verName = versions[header] || ('Özel / Bilinmeyen Başlık: ' + header);
-          CADDebugger.setStep('header', 'AutoCAD DWG Başlık Sürümü', header.startsWith('AC') ? 'ok' : 'warn', verName);
           CADDebugger.setStep('base64', 'Base64 Binary Dönüşümü', 'ok', len + ' bayt binary bellek hazırlandı.');
-
-          // 2. WebAssembly Modülünü Al
-          loaderProgress.style.width = "40%";
-          loaderSub.innerText = "C++ WebAssembly Çekirdeği Başlatılıyor...";
-          const mod = await getWasmModule();
-
-          // 3. Sanal Dosya Sistemine Yaz
-          loaderProgress.style.width = "60%";
-          loaderSub.innerText = "Sanal dosya sistemine yazılıyor...";
-          const inName = 'in_' + Date.now() + '.dwg';
-          const outName = 'out_' + Date.now() + '.dxf';
-
-          CADDebugger.setStep('fs_write', 'Sanal Bellek Dosya Yazımı', 'running', inName + ' dosyası oluşturuluyor...');
-          mod.FS.writeFile(inName, bytes);
-          const inExists = mod.FS.analyzePath(inName).exists;
-          if (!inExists) {
-            throw new Error('Sanal FS içerisine giriş DWG dosyası yazılamadı.');
-          }
-          CADDebugger.setStep('fs_write', 'Sanal Bellek Dosya Yazımı', 'ok', inName + ' (' + bytes.length + ' bayt) sanal belleğe yazıldı.');
-
-          // 4. LibreDWG C++ Çözümleyici
-          loaderProgress.style.width = "75%";
-          loaderSub.innerText = "Vektör geometrisi ve katmanlar çıkarılıyor...";
-          CADDebugger.setStep('cpp_convert', 'LibreDWG C++ Motoru (dwg_write_dxf)', 'running', 'C++ dönüştürme fonksiyonu çalıştırılıyor...');
-
-          const startTime = performance.now();
-          const err = mod.dwg_write_dxf(inName, outName);
-          const elapsed = Math.round(performance.now() - startTime);
-
-          const hasOut = mod.FS.analyzePath(outName).exists;
-          if (!hasOut) {
-            throw new Error('LibreDWG DWG dosyasını DXF formatına dönüştüremedi. (C++ Hata Kodu: ' + err + ')');
-          }
-
-          const dxfBytes = mod.FS.readFile(outName);
-          CADDebugger.setStep('cpp_convert', 'LibreDWG C++ Motoru (dwg_write_dxf)', 'ok', 'Dönüştürme tamamlandı: ' + elapsed + ' ms. Çıktı boyutu: ' + Math.round(dxfBytes.length / 1024) + ' KB (Kod: ' + err + ')');
-
-          try { mod.FS.unlink(inName); } catch (_) {}
-          try { mod.FS.unlink(outName); } catch (_) {}
-
-          // 5. DXF Render
-          loaderProgress.style.width = "90%";
-          loaderSub.innerText = "WebGL ile çizim GPU'ya aktarılıyor...";
-          CADDebugger.setStep('render', 'DXF Vektör Geometrisi & WebGL', 'running', 'Vektörler ve yazılar çiziliyor...');
-          const dxfStr = new TextDecoder('utf-8').decode(dxfBytes);
-          await window.loadDxfString(dxfStr, fileName);
-
+          await window.loadDwgBytes(bytes, fileName);
         } catch (e) {
           console.error('WASM DWG Error:', e);
           CADDebugger.log('EXCEPTION', e.message + (e.stack ? '\n' + e.stack : ''), 'error');
@@ -2471,7 +3198,6 @@
             }
           }
 
-          // Loader ekranında hatayı ve debugger açma butonunu göster (Kullanıcı isteği: Hata mesajı kalsın, ana sunucuya gitmesin!)
           if (loader) loader.classList.add('has-error');
           if (loaderTitle) loaderTitle.innerText = "Yerel DWG Çözümleme Hatası";
           if (loaderSub) loaderSub.innerText = e.message;
@@ -2492,9 +3218,7 @@
       CADDebugger.init();
       initGL();
       resize();
-      // Load demo plan by default until Flutter sends file data
       loadDemoPlan();
-      // Pre-warm WASM in background
       setTimeout(() => {
         getWasmModule().catch(e => CADDebugger.log('PREWARM', 'WASM arka plan pre-warm: ' + e.message, 'warn'));
       }, 300);

@@ -72,6 +72,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   bool _isViewingDrawing = false;
   bool _isParsing = false;
   String _activeDrawingName = '';
+  String? _activeLocalFilePath;
   List<YerelCadDosya> _recentFiles = [];
 
   @override
@@ -160,6 +161,18 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       server.listen((HttpRequest request) async {
         try {
           var path = request.uri.path;
+          if (path == '/active-cad-file' && _activeLocalFilePath != null) {
+            final cadFile = File(_activeLocalFilePath!);
+            if (await cadFile.exists()) {
+              request.response.headers.set('Content-Type', 'application/octet-stream');
+              request.response.headers.set('Access-Control-Allow-Origin', '*');
+              request.response.headers.set('Cache-Control', 'no-store');
+              request.response.statusCode = HttpStatus.ok;
+              await request.response.addStream(cadFile.openRead());
+              await request.response.close();
+              return;
+            }
+          }
           if (path == '/' || path.isEmpty) {
             path = 'index.html';
           } else if (path.startsWith('/')) {
@@ -359,44 +372,47 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       _activeDrawingName = fileName;
     });
 
-    final bytes = await file.readAsBytes();
+    final fileSize = await file.length();
+    _activeLocalFilePath = filePath;
 
-    // DWG ise doğrudan yerel WebAssembly motoruyla çöz (sıfır internet)
-    if (extension == 'dwg') {
-      if (!_isWebViewReady) {
-        await _loadCadHtml();
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-
-      final base64Data = base64Encode(bytes);
-      final titleJson = jsonEncode(fileName);
-      await _webViewController?.runJavaScript(
-          'window.loadDwgFileBase64("$base64Data", $titleJson);');
-
-      await _saveRecentFile(YerelCadDosya(
-        dosyaAdi: fileName,
-        dosyaYolu: filePath,
-        dosyaBoyutu: bytes.length,
-        acilmaTarihi: DateTime.now(),
-      ));
-    } else {
-      // Standart DXF dosyası - Tamamen internetsiz, doğrudan telefonun GPU'sunda çalışır
-      if (!_isWebViewReady) {
-        await _loadCadHtml();
-        await Future.delayed(const Duration(milliseconds: 300));
-      }
-      final content = utf8.decode(bytes, allowMalformed: true);
-      final escapedJson = jsonEncode(content);
-      final titleJson = jsonEncode(fileName);
-      await _webViewController
-          ?.runJavaScript('window.loadDxfString($escapedJson, $titleJson);');
-      await _saveRecentFile(YerelCadDosya(
-        dosyaAdi: fileName,
-        dosyaYolu: filePath,
-        dosyaBoyutu: bytes.length,
-        acilmaTarihi: DateTime.now(),
-      ));
+    if (!_isWebViewReady || _localCadServerPort == null) {
+      await _loadCadHtml();
+      await Future.delayed(const Duration(milliseconds: 300));
     }
+
+    final titleJson = jsonEncode(fileName);
+    final extJson = jsonEncode(extension);
+
+    // 1. ÖNCELİK: Yerel HTTP Sunucusu üzerinden Sıfır-Kopya (Zero-Copy) Binary Stream aktarımı
+    // Büyük DWG/DXF dosyalarında Base64 kaynaklı RAM şişmesini (OOM) tamamen önler.
+    if (_localCadServerPort != null) {
+      final streamUrl =
+          'http://127.0.0.1:$_localCadServerPort/active-cad-file?t=${DateTime.now().millisecondsSinceEpoch}';
+      final urlJson = jsonEncode(streamUrl);
+      await _webViewController?.runJavaScript(
+        'if (window.loadCadFromUrl) { window.loadCadFromUrl($urlJson, $titleJson, $extJson); }',
+      );
+    } else {
+      // Fallback: Sunucu portu açılamadıysa Base64 üzerinden aktar
+      final bytes = await file.readAsBytes();
+      final base64Data = base64Encode(bytes);
+      if (extension == 'dwg') {
+        await _webViewController?.runJavaScript(
+          'window.loadDwgFileBase64("$base64Data", $titleJson);',
+        );
+      } else {
+        await _webViewController?.runJavaScript(
+          'window.loadDxfFileBase64("$base64Data", $titleJson);',
+        );
+      }
+    }
+
+    await _saveRecentFile(YerelCadDosya(
+      dosyaAdi: fileName,
+      dosyaYolu: filePath,
+      dosyaBoyutu: fileSize,
+      acilmaTarihi: DateTime.now(),
+    ));
   }
 
   Future<void> _convertAndOpenDwg(File file, String fileName) async {

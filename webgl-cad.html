@@ -979,10 +979,13 @@
         <span>Ölçek & Birim</span>
       </div>
       <select id="scale-select" title="Çizim Ölçeği">
+        <option value="1.0">1:1 (m)</option>
+        <option value="0.05">1:20</option>
+        <option value="0.02">1:50</option>
         <option value="0.01" selected>1:100 (cm)</option>
-        <option value="0.02">1:50 (2 cm)</option>
-        <option value="1.0">1:1000 (m)</option>
-        <option value="0.001">1:10 (mm)</option>
+        <option value="0.005">1:200</option>
+        <option value="0.002">1:500</option>
+        <option value="0.001">1:1000 (mm)</option>
       </select>
     </div>
 
@@ -996,6 +999,18 @@
         <span>Çizim Metinleri</span>
       </div>
       <span class="status-pill active-pill" id="pill-texts">Açık</span>
+    </button>
+
+    <button class="popup-item" id="toggle-fills">
+      <div class="item-left">
+        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <rect x="3" y="3" width="18" height="18" rx="2"/>
+          <path d="M3 9h18"/>
+          <path d="M9 21V9"/>
+        </svg>
+        <span>Kolon/Perde Dolguları</span>
+      </div>
+      <span class="status-pill active-pill" id="pill-fills">Açık</span>
     </button>
 
     <div class="popup-divider"></div>
@@ -1066,6 +1081,9 @@
 
   <!-- Floating Navigation Controls -->
   <div id="zoom-tools">
+    <button class="tool-btn" id="fit-btn" title="Tümünü Ekrana Sığdır">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+    </button>
     <button class="tool-btn" id="zoom-in" title="Yakınlaş">
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><line x1="12" y1="5" x2="12" y2="19"/><line x1="5" y1="12" x2="19" y2="12"/></svg>
     </button>
@@ -1149,7 +1167,11 @@
     let totalLines = 0;
     let totalTriangles = 0;
     let showTexts = true;
+    let showFills = true;
     let rawLinesArray = null;
+    let loadedFromBinary = false;
+    let rtcCenterX = 0.0;
+    let rtcCenterY = 0.0;
 
     // Measurement & Loupe State
     let measureMode = 'none'; // 'none', 'distance', 'area'
@@ -1482,8 +1504,7 @@
           const req = store.get(id);
           req.onsuccess = () => {
             const res = req.result;
-            // Eski eksik, dolgusuz veya triangles içermeyen önbelleği anında at ve canlı çek!
-            if (!res || !res.v || res.v < 5 || !res.meta || !res.meta.triangles || res.meta.triangles.length === 0 || (res.meta.totalLines < 350000)) {
+            if (!res || !res.v || res.v < 6 || !res.meta || !res.meta.totalLines || res.meta.totalLines <= 0) {
               resolve(null);
             } else {
               resolve(res);
@@ -1502,19 +1523,35 @@
         const store = tx.objectStore('drawings');
         // ArrayBuffer structured clone ile kaydedilir
         const copyBuf = vertexData.buffer.slice(0);
-        store.put({ id, meta, vertexBuffer: copyBuf, v: 5, savedAt: Date.now() });
+        store.put({ id, meta, vertexBuffer: copyBuf, v: 6, savedAt: Date.now() });
       } catch (e) {}
     }
 
     // DWG FastView standardında kiriş ve kolon katı dolgularını (HATCH) GPU bufferına yükler
+    function applyDetectedUnits(metaObj) {
+      if (!metaObj || !metaObj.metersPerUnit) return;
+      const mpu = parseFloat(metaObj.metersPerUnit);
+      if (!isNaN(mpu) && mpu > 0) {
+        metersPerUnit = mpu;
+        if (scaleSelect) {
+          for (const opt of scaleSelect.options) {
+            if (Math.abs(parseFloat(opt.value) - mpu) < 1e-6) {
+              scaleSelect.value = opt.value;
+              break;
+            }
+          }
+        }
+      }
+    }
+
     function buildTriangleBuffer(triangles) {
       if (!triangles || triangles.length === 0) return;
       totalTriangles = Math.floor(triangles.length / 7);
       const tData = new Float32Array(totalTriangles * 15);
       for (let i = 0, vi = 0; i < triangles.length; i += 7) {
-        const x1 = triangles[i], y1 = triangles[i+1];
-        const x2 = triangles[i+2], y2 = triangles[i+3];
-        const x3 = triangles[i+4], y3 = triangles[i+5];
+        const x1 = triangles[i] - rtcCenterX, y1 = triangles[i+1] - rtcCenterY;
+        const x2 = triangles[i+2] - rtcCenterX, y2 = triangles[i+3] - rtcCenterY;
+        const x3 = triangles[i+4] - rtcCenterX, y3 = triangles[i+5] - rtcCenterY;
         const c = triangles[i+6];
         const r = ((c >> 16) & 255) / 255.0;
         const g = ((c >> 8) & 255) / 255.0;
@@ -1554,20 +1591,13 @@
         // 1. ADIM: Cihaz önbelleğini kontrol et (Anında açılış)
         let cached = !forceRefresh ? await getCachedDrawing(fileId) : null;
         if (cached && cached.vertexBuffer) {
-          // Eski dolgusuz önbellekse kesinlikle reddet, sunucudan en güncel dolgulu veriyi çek!
-          if (!cached.meta || !cached.meta.triangles || cached.meta.triangles.length === 0) {
-            cached = null;
-          }
-        }
-        if (cached && cached.vertexBuffer) {
           updateLoader(2, 'Önbellekten Hızlı Yükleme', 'Geometri cihaz belleğinden anında aktarılıyor...', 80);
           vertexData = new Float32Array(cached.vertexBuffer);
           bounds = cached.meta.bounds || bounds;
           cadTexts = cached.meta.texts || [];
           totalLines = cached.meta.totalLines || Math.floor(vertexData.length / 10);
-          if (cached.meta && cached.meta.triangles) {
-            buildTriangleBuffer(cached.meta.triangles);
-          }
+          applyDetectedUnits(cached.meta);
+          window._pendingTriangles = (cached.meta && cached.meta.triangles) ? cached.meta.triangles : null;
           loadedFromBinary = true;
         } else {
           const cacheBust = `?v=5.4&t=${Date.now()}`;
@@ -1612,9 +1642,8 @@
                     bounds = meta.bounds || bounds;
                     cadTexts = meta.texts || [];
                     totalLines = meta.totalLines || Math.floor(vertexData.length / 10);
-                    if (meta.triangles) {
-                      buildTriangleBuffer(meta.triangles);
-                    }
+                    applyDetectedUnits(meta);
+                    window._pendingTriangles = meta.triangles || null;
                     loadedFromBinary = true;
                     setCachedDrawing(fileId, meta, vertexData);
                     foundBinary = true;
@@ -1638,9 +1667,8 @@
                     const lines = data.lines || [];
                     totalLines = Math.floor(lines.length / 5);
                     rawLinesArray = lines;
-                    if (data.triangles) {
-                      buildTriangleBuffer(data.triangles);
-                    }
+                    applyDetectedUnits(data);
+                    window._pendingTriangles = data.triangles || null;
 
                     // Vertex buffer oluştur
                     vertexData = new Float32Array(totalLines * 10);
@@ -1680,9 +1708,8 @@
             bounds = meta.bounds || bounds;
             cadTexts = meta.texts || [];
             totalLines = meta.totalLines || Math.floor(vertexData.length / 10);
-            if (meta.triangles) {
-              buildTriangleBuffer(meta.triangles);
-            }
+            applyDetectedUnits(meta);
+            window._pendingTriangles = meta.triangles || null;
             loadedFromBinary = true;
           } else {
             const res = await fetch('/cad_data.json');
@@ -1694,9 +1721,8 @@
               const lines = data.lines || [];
               totalLines = Math.floor(lines.length / 5);
               rawLinesArray = lines;
-              if (data.triangles) {
-                buildTriangleBuffer(data.triangles);
-              }
+              applyDetectedUnits(data);
+              window._pendingTriangles = data.triangles || null;
 
               vertexData = new Float32Array(totalLines * 10);
               for (let i = 0, vi = 0; i < lines.length; i += 5) {
@@ -1731,22 +1757,13 @@
       const existingBtn = document.getElementById('cad-retry-btn');
       if (existingBtn) existingBtn.remove();
 
-      // Step 3: GPU Donanım Motoruna Yükleme
+      // Step 3: GPU Donanım Motoruna Yükleme (Relative-to-Center / RTC ile yüksek koordinat titremesini önle)
       updateLoader(3, 'GPU Belleğine Aktarılıyor', `${totalLines.toLocaleString('tr-TR')} çizgi grafik işlemcisine aktarılıyor...`, 88);
 
-      lineBuffer = gl.createBuffer();
-      gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
+      rtcCenterX = (bounds.minX || 0) + (bounds.w || 0) * 0.5;
+      rtcCenterY = (bounds.minY || 0) + (bounds.h || 0) * 0.5;
 
-      const aPos = gl.getAttribLocation(lineProgram, 'a_pos');
-      gl.enableVertexAttribArray(aPos);
-      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 20, 0);
-
-      const aColor = gl.getAttribLocation(lineProgram, 'a_color');
-      gl.enableVertexAttribArray(aColor);
-      gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 20, 8);
-
-      // Binary veriden ölçüm ve mıknatıs koordinatlarını hazırla (renk ve 5-stride tam senkronize)
+      // Binary veriden ölçüm ve mıknatıs koordinatlarını gerçek dünya koordinatlarında hazırla
       if (loadedFromBinary) {
         rawLinesArray = new Float32Array(totalLines * 5);
         for (let i = 0, vi = 0, ri = 0; i < totalLines; i++, vi += 10, ri += 5) {
@@ -1760,6 +1777,30 @@
           rawLinesArray[ri+4] = (r << 16) | (g << 8) | b;
         }
       }
+
+      // GPU'ya yüklenen vertexData'yı RTC merkezine göre kaydır (UTM/ITRF büyük koordinatlarda sıfır titreme)
+      const rtcVertexData = new Float32Array(vertexData.length);
+      rtcVertexData.set(vertexData);
+      for (let vi = 0; vi < rtcVertexData.length; vi += 5) {
+        rtcVertexData[vi] -= rtcCenterX;
+        rtcVertexData[vi + 1] -= rtcCenterY;
+      }
+
+      if (window._pendingTriangles) {
+        buildTriangleBuffer(window._pendingTriangles);
+      }
+
+      lineBuffer = gl.createBuffer();
+      gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
+      gl.bufferData(gl.ARRAY_BUFFER, rtcVertexData, gl.STATIC_DRAW);
+
+      const aPos = gl.getAttribLocation(lineProgram, 'a_pos');
+      gl.enableVertexAttribArray(aPos);
+      gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 20, 0);
+
+      const aColor = gl.getAttribLocation(lineProgram, 'a_color');
+      gl.enableVertexAttribArray(aColor);
+      gl.vertexAttribPointer(aColor, 3, gl.FLOAT, false, 20, 8);
 
       updateLoader(4, 'Çizim Hazır', 'Görüntü ekrana yerleştiriliyor...', 100);
       setTimeout(() => {
@@ -1861,7 +1902,7 @@
       const uFlipY = gl.getUniformLocation(lineProgram, 'u_flip_y');
 
       gl.uniform2f(uRes, screenW, screenH);
-      gl.uniform2f(uOffset, offsetX, offsetY);
+      gl.uniform2f(uOffset, offsetX - rtcCenterX, offsetY - rtcCenterY);
       gl.uniform1f(uZoom, zoom * dpr);
       gl.uniform1f(uFlipY, flipY ? -1.0 : 1.0);
 
@@ -1869,7 +1910,7 @@
       const aColor = gl.getAttribLocation(lineProgram, 'a_color');
 
       // 1.1 Kiriş ve Kolon Katı Dolgularını (Solid Hatches) Zemin Katmanında Çiz (FastView Standardı)
-      if (totalTriangles > 0 && triangleBuffer) {
+      if (showFills && totalTriangles > 0 && triangleBuffer) {
         gl.bindBuffer(gl.ARRAY_BUFFER, triangleBuffer);
         gl.enableVertexAttribArray(aPos);
         gl.vertexAttribPointer(aPos, 2, gl.FLOAT, false, 20, 0);
@@ -2256,14 +2297,14 @@
       const lines = rawLinesArray;
       const len = lines.length;
 
-      for (let i = 0; i < len; i += 5) {
+      const drawLoupeSegment = (i) => {
         const x1 = lines[i];
         const y1 = lines[i+1];
         const x2 = lines[i+2];
         const y2 = lines[i+3];
 
-        if ((x1 < minX && x2 < minX) || (x1 > maxX && x2 > maxX)) continue;
-        if ((y1 < minY && y2 < minY) || (y1 > maxY && y2 > maxY)) continue;
+        if ((x1 < minX && x2 < minX) || (x1 > maxX && x2 > maxX)) return;
+        if ((y1 < minY && y2 < minY) || (y1 > maxY && y2 > maxY)) return;
 
         const colorInt = lines[i+4];
         loupeCtx.strokeStyle = `#${(colorInt & 0xffffff).toString(16).padStart(6, '0')}`;
@@ -2280,6 +2321,30 @@
         loupeCtx.moveTo(sx1, sy1);
         loupeCtx.lineTo(sx2, sy2);
         loupeCtx.stroke();
+      };
+
+      if (spatialGrid.size > 0) {
+        const minGx = Math.floor(minX / GRID_SIZE);
+        const maxGx = Math.floor(maxX / GRID_SIZE);
+        const minGy = Math.floor(minY / GRID_SIZE);
+        const maxGy = Math.floor(maxY / GRID_SIZE);
+        const drawnLines = new Set();
+        for (let gx = minGx; gx <= maxGx; gx++) {
+          for (let gy = minGy; gy <= maxGy; gy++) {
+            const cell = spatialGrid.get(`${gx}_${gy}`);
+            if (!cell) continue;
+            for (let k = 0; k < cell.lines.length; k++) {
+              const li = cell.lines[k];
+              if (drawnLines.has(li)) continue;
+              drawnLines.add(li);
+              drawLoupeSegment(li);
+            }
+          }
+        }
+      } else {
+        for (let i = 0; i < len; i += 5) {
+          drawLoupeSegment(i);
+        }
       }
 
       // Draw CAD Text Annotations in Loupe
@@ -2746,6 +2811,20 @@
       render();
     });
 
+    const pillFills = document.getElementById('pill-fills');
+    const toggleFillsBtn = document.getElementById('toggle-fills');
+    if (toggleFillsBtn) {
+      toggleFillsBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        showFills = !showFills;
+        if (pillFills) {
+          pillFills.innerText = showFills ? 'Açık' : 'Kapalı';
+          pillFills.className = 'status-pill' + (showFills ? ' active-pill' : '');
+        }
+        render();
+      });
+    }
+
     document.getElementById('btn-measure-close').addEventListener('click', () => {
       setMeasureMode('none');
     });
@@ -2817,7 +2896,7 @@
             const db = await openCadDb();
             if (db) {
               db.close();
-              indexedDB.deleteDatabase('SantiyeCadDB');
+              indexedDB.deleteDatabase('CadFastCacheDB');
             }
             localStorage.clear();
           } catch (err) {}
