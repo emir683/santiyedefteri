@@ -1537,12 +1537,13 @@
       const fileId = urlParams.get('id') || urlParams.get('file');
       const customTitle = urlParams.get('title');
 
+      const titleEl = document.getElementById('project-title');
       if (customTitle) {
         const decodedTitle = decodeURIComponent(customTitle);
-        document.getElementById('project-title').textContent = decodedTitle;
+        if (titleEl) titleEl.textContent = decodedTitle;
         document.title = `${decodedTitle} - CAD Motoru`;
       } else if (!fileId) {
-        document.getElementById('project-title').textContent = 'HASAN AKTAŞ STATİK PROJESİ';
+        if (titleEl) titleEl.textContent = 'HASAN AKTAŞ STATİK PROJESİ';
       }
 
       updateLoader(1, 'Hızlı CAD Akışı Başlatılıyor', 'DWG vektörleri GPU donanımına hazırlanıyor...', 20);
@@ -1765,7 +1766,9 @@
         if (loader) loader.style.display = 'none';
       }, 180);
       const fillLabel = totalTriangles > 0 ? ` • ${(totalTriangles / 2).toLocaleString('tr-TR', {maximumFractionDigits: 0})} Dolgu` : '';
-      statsEl.innerText = `${totalLines.toLocaleString('tr-TR')} Çizgi${fillLabel} • ${cadTexts.length.toLocaleString('tr-TR')} Metin`;
+      if (statsEl) {
+        statsEl.innerText = `${totalLines.toLocaleString('tr-TR')} Çizgi${fillLabel} • ${cadTexts.length.toLocaleString('tr-TR')} Metin`;
+      }
 
       const urlParamsNow = new URLSearchParams(window.location.search);
       const paramX = parseFloat(urlParamsNow.get('x'));
@@ -2841,7 +2844,10 @@
     // Start
     if (initGL()) {
       resize();
-      loadCadData();
+      loadCadData().catch((err) => {
+        console.error('[CAD Init Error]', err);
+        updateLoader(1, 'Hata Oluştu', err.message || 'Çizim başlatılamadı', 0);
+      });
     }
   </script>
 </body>
