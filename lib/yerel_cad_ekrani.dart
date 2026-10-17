@@ -68,7 +68,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   WebViewController? _webViewController;
   HttpServer? _localCadServer;
   int? _localCadServerPort;
-  bool _isWebViewReady = false;
   bool _isViewingDrawing = false;
   bool _isParsing = false;
   String _activeDrawingName = '';
@@ -292,7 +291,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
           onPageFinished: (url) {
             if (mounted) {
               setState(() {
-                _isWebViewReady = true;
                 _isParsing = false;
               });
             }
@@ -332,11 +330,22 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
     }
   }
 
+  static String _normalizeUrl(String rawUrl) {
+    if (rawUrl.isEmpty) return rawUrl;
+    try {
+      final uri = Uri.parse(rawUrl);
+      final currentHost = Uri.parse(_kCadServerUrl).host;
+      if (uri.host.endsWith('.trycloudflare.com') && uri.host != currentHost) {
+        return uri.replace(host: currentHost).toString();
+      }
+    } catch (_) {}
+    return rawUrl;
+  }
+
   Future<void> _openLocalFile(String filePath,
       [String? displayName, String? cachedWebglUrl]) async {
     final file = File(filePath);
     final fileName = displayName ?? file.uri.pathSegments.last;
-    final extension = fileName.toLowerCase().split('.').last;
 
     // 1. Eğer daha önce dönüştürülmüş ve webglUrl varsa doğrudan yükle
     if (cachedWebglUrl != null && cachedWebglUrl.isNotEmpty) {
@@ -346,7 +355,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
         _activeDrawingName = fileName;
       });
       final isDark = Theme.of(context).brightness == Brightness.dark;
-      String url = cachedWebglUrl;
+      String url = _normalizeUrl(cachedWebglUrl);
       if (!url.contains('theme=')) {
         url += '&theme=${isDark ? 'dark' : 'light'}';
       }
@@ -366,64 +375,21 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       return;
     }
 
+    // V2 Motoruna Yönlendir
+    await _convertAndOpenDwg(file, fileName);
+  }
+
+  Future<void> _convertAndOpenDwg(File file, String fileName) async {
     setState(() {
       _isViewingDrawing = true;
       _isParsing = true;
       _activeDrawingName = fileName;
     });
 
-    final fileSize = await file.length();
-    _activeLocalFilePath = filePath;
-
-    if (!_isWebViewReady || _localCadServerPort == null) {
-      await _loadCadHtml();
-      await Future.delayed(const Duration(milliseconds: 300));
-    }
-
-    final titleJson = jsonEncode(fileName);
-    final extJson = jsonEncode(extension);
-
-    // 1. ÖNCELİK: Yerel HTTP Sunucusu üzerinden Sıfır-Kopya (Zero-Copy) Binary Stream aktarımı
-    // Büyük DWG/DXF dosyalarında Base64 kaynaklı RAM şişmesini (OOM) tamamen önler.
-    if (_localCadServerPort != null) {
-      final streamUrl =
-          'http://127.0.0.1:$_localCadServerPort/active-cad-file?t=${DateTime.now().millisecondsSinceEpoch}';
-      final urlJson = jsonEncode(streamUrl);
-      await _webViewController?.runJavaScript(
-        'if (window.loadCadFromUrl) { window.loadCadFromUrl($urlJson, $titleJson, $extJson); }',
-      );
-    } else {
-      // Fallback: Sunucu portu açılamadıysa Base64 üzerinden aktar
-      final bytes = await file.readAsBytes();
-      final base64Data = base64Encode(bytes);
-      if (extension == 'dwg') {
-        await _webViewController?.runJavaScript(
-          'window.loadDwgFileBase64("$base64Data", $titleJson);',
-        );
-      } else {
-        await _webViewController?.runJavaScript(
-          'window.loadDxfFileBase64("$base64Data", $titleJson);',
-        );
-      }
-    }
-
-    await _saveRecentFile(YerelCadDosya(
-      dosyaAdi: fileName,
-      dosyaYolu: filePath,
-      dosyaBoyutu: fileSize,
-      acilmaTarihi: DateTime.now(),
-    ));
-  }
-
-  Future<void> _convertAndOpenDwg(File file, String fileName) async {
-    setState(() {
-      _isParsing = true;
-    });
-
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_kCadServerUrl/api/convert'),
+        Uri.parse('$_kCadServerUrl/api/convert-v2'),
       );
       request.files.add(
         await http.MultipartFile.fromPath('file', file.path,
@@ -431,7 +397,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       );
 
       final streamedResponse =
-          await request.send().timeout(const Duration(seconds: 50));
+          await request.send().timeout(const Duration(seconds: 120));
       final responseBody = await streamedResponse.stream.bytesToString();
 
       if (streamedResponse.statusCode == 200) {
@@ -448,13 +414,17 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
           }
         } else if (fileId != null && fileId.isNotEmpty) {
           resolvedWebglUrl =
-              '$_kCadServerUrl/webgl-cad.html?id=$fileId&title=${Uri.encodeComponent(fileName)}';
+              '$_kCadServerUrl/webgl-cad-v2.html?id=$fileId&title=${Uri.encodeComponent(fileName)}';
         } else {
           throw Exception('Geçerli bir CAD bağlantısı alınamadı.');
         }
 
         final isDark = Theme.of(context).brightness == Brightness.dark;
-        resolvedWebglUrl += '&theme=${isDark ? 'dark' : 'light'}';
+        if (!resolvedWebglUrl.contains('theme=')) {
+          resolvedWebglUrl += '&theme=${isDark ? 'dark' : 'light'}';
+        }
+
+        resolvedWebglUrl = _normalizeUrl(resolvedWebglUrl);
 
         // Son dosyalara webglUrl ile kaydet
         await _saveRecentFile(YerelCadDosya(
@@ -485,7 +455,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'DWG dosyası açılamadı: ${e.toString().replaceAll('Exception: ', '')}',
+              'DWG/DXF dosyası (V2) açılamadı: ${e.toString().replaceAll('Exception: ', '')}',
             ),
             backgroundColor: Colors.redAccent,
             duration: const Duration(seconds: 6),
@@ -503,10 +473,12 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   void _openDemoPlan() {
     setState(() {
       _isViewingDrawing = true;
-      _activeDrawingName = 'HASAN AKTAŞ STATİK (DEMO)';
+      _activeDrawingName = 'HASAN AKTAŞ STATİK (V2)';
     });
-    _loadCadHtml();
-    _webViewController?.runJavaScript('window.loadDemoPlan();');
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final demoUrl =
+        '$_kCadServerUrl/webgl-cad-v2.html?id=bc00f9c7-d593-49d7-9f4e-ceefb57f27b8&title=${Uri.encodeComponent('HASAN AKTAŞ STATİK (V2)')}&theme=${isDark ? 'dark' : 'light'}';
+    _webViewController?.loadRequest(Uri.parse(demoUrl));
   }
 
   String _formatFileSize(int bytes) {
@@ -742,7 +714,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
           mainAxisSize: MainAxisSize.min,
           children: [
             Text(
-              'Çevrimdışı CAD Motoru',
+              'Yeni Nesil V2 CAD Motoru',
               style: TextStyle(
                 color: textPrimary,
                 fontSize: 18,
@@ -756,13 +728,13 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                   width: 6,
                   height: 6,
                   decoration: const BoxDecoration(
-                    color: Color(0xFF38BDF8),
+                    color: Color(0xFF10B981),
                     shape: BoxShape.circle,
                   ),
                 ),
                 const SizedBox(width: 5),
                 Text(
-                  'Cihaz İçi Sıfır-Sunucu WebGL',
+                  'Doğrudan DXF & Donanım Hızlandırma (V2)',
                   style: TextStyle(
                     color: textSecondary,
                     fontSize: 11,
@@ -794,7 +766,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                     ),
                     const SizedBox(height: 16),
                     Text(
-                      'Doğrudan Cihazdan CAD Aç',
+                      'V2 Motoru ile CAD Çizimi Aç',
                       style: TextStyle(
                         color: textPrimary,
                         fontSize: 17,
@@ -806,7 +778,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                     const SizedBox(height: 8),
                     Text(
                       '.dwg veya .dxf projelerinizi doğrudan seçin. '
-                      'Donanım hızlandırmalı WebGL motoruyla yüksek hızda görüntülenir.',
+                      'Yeni V2 mimarisi (Direct DXF + Sıfır-Kopya Binary Stream) ile ultra yüksek hızda görüntülenir.',
                       style: TextStyle(
                         color: textSecondary,
                         fontSize: 12.5,
@@ -830,7 +802,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                         onPressed: _pickAndOpenFile,
                         icon: const Icon(Icons.file_open_rounded, size: 20),
                         label: const Text(
-                          'Cihazdan CAD Dosyası Aç (.dwg / .dxf)',
+                          'V2 Motoru ile CAD Aç (.dwg / .dxf)',
                           style: TextStyle(
                             fontSize: 13.5,
                             fontWeight: FontWeight.w700,
@@ -856,7 +828,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
                         icon: const Icon(Icons.remove_red_eye_outlined,
                             size: 18),
                         label: const Text(
-                          'Örnek Statik Projeyi Canlı Test Et',
+                          'Örnek Statik Projeyi V2 ile Test Et',
                           style: TextStyle(
                             fontSize: 12.5,
                             fontWeight: FontWeight.w600,
