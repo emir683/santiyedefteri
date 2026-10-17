@@ -5,6 +5,7 @@ import time
 import gzip
 import os
 import sys
+import subprocess
 from collections import Counter
 import numpy as np
 
@@ -17,7 +18,7 @@ print(f"Reading {svg_path}...")
 with open(svg_path, "r", encoding="utf-8", errors="ignore") as f:
     text = f.read()
 
-# Fix legacy monochrome blue/black injection
+# Fix legacy monochrome black stroke injection
 text = text.replace('stroke:black', 'stroke:#FFFFFF')
 
 defs_start = text.find("<defs>")
@@ -41,13 +42,18 @@ if vb_match:
 else:
     bounds = {'minX': -5048.34, 'minY': -1034.74, 'w': 262513.69, 'h': 22764.35}
 
-# Genişletilmiş pafta sınırları (Aykırı/bozuk koordinatları filtrelerken tüm paftaları korur)
-pad_x = max(bounds['w'] * 0.25, 25000.0)
-pad_y = max(bounds['h'] * 0.50, 25000.0)
-BOUNDS_MIN_X = bounds['minX'] - pad_x
-BOUNDS_MAX_X = bounds['minX'] + bounds['w'] + pad_x
-BOUNDS_MIN_Y = bounds['minY'] - pad_y
-BOUNDS_MAX_Y = bounds['minY'] + bounds['h'] + pad_y
+# AutoCAD Color Index (ACI) & SVG color mapping
+ACI_PALETTE = {
+    1: 0xff3b30,  # Red
+    2: 0xffe600,  # Yellow
+    3: 0x22c55e,  # Green
+    4: 0x00f0ff,  # Cyan
+    5: 0x38bdf8,  # Blue
+    6: 0xff2d55,  # Magenta
+    7: 0xffffff,  # White
+    8: 0x64748b,  # Dark Gray
+    9: 0x94a3b8,  # Light Gray
+}
 
 color_map = {
     '#ffffff': 0xffffff, 'white': 0xffffff, '#000000': 0xffffff, 'black': 0xffffff,
@@ -86,7 +92,7 @@ def clean_cad_text(raw_t):
     if not raw_t:
         return ""
     raw_t = re.sub(r'\\[fF][^;]+;', '', raw_t)
-    raw_t = re.sub(r'\\[WwHhQqTtAaPp][^;]*;?', '', raw_t)
+    raw_t = re.sub(r'\\[WwHhQqTtAa][^;]*;?', '', raw_t)
     raw_t = re.sub(r'\\S([^;^]+)\^([^;]*);', r'\1/\2', raw_t)
     def repl_u(m):
         try:
@@ -95,11 +101,15 @@ def clean_cad_text(raw_t):
             return m.group(0)
     raw_t = re.sub(r'\\[uU]\+([0-9a-fA-F]{4})', repl_u, raw_t)
     raw_t = (raw_t
+             .replace('\\P', '\n').replace('\\p', '\n')
+             .replace('{', '').replace('}', '')
              .replace('&#x192;', 'Ø')
              .replace('%%c', 'Ø').replace('%%C', 'Ø')
              .replace('%%d', '°').replace('%%D', '°')
              .replace('%%p', '±').replace('%%P', '±')
-             .replace('&apos;', "'").replace('&#39;', "'"))
+             .replace('%%u', '').replace('%%U', '')
+             .replace('&apos;', "'").replace('&#39;', "'")
+             .replace('&quot;', '"').replace('&amp;', '&'))
     return raw_t.translate(SHX_TR_MAP).strip()
 
 def identity_matrix():
@@ -117,7 +127,7 @@ def multiply_matrices(m1, m2):
         b1 * e2 + d1 * f2 + f1
     ]
 
-def parse_transform(trans_str):
+def parse_transform(trans_str, invert_rotate=False):
     if not trans_str:
         return identity_matrix()
     mat = identity_matrix()
@@ -134,6 +144,11 @@ def parse_transform(trans_str):
             mat = multiply_matrices(mat, [sx, 0.0, 0.0, sy, 0.0, 0.0])
         elif cmd == 'rotate':
             deg = args[0] if len(args) > 0 else 0.0
+            # dwg2SVG.c output_INSERT satır 666'da Y ekseni ters çevrildiği halde
+            # insert->rotation açısı negatiflenmeden (+deg olarak) yazılır.
+            # invert_rotate=True olduğunda AutoCAD CCW açısı Y-aşağı SVG uzayına (-deg) doğru aktarılır.
+            if invert_rotate:
+                deg = -deg
             rad = math.radians(deg)
             cos_a = math.cos(rad)
             sin_a = math.sin(rad)
@@ -151,49 +166,45 @@ def parse_transform(trans_str):
 def apply_transform(mat, x, y):
     return mat[0] * x + mat[2] * y + mat[4], mat[1] * x + mat[3] * y + mat[5]
 
-# dwg2SVG'nin <defs> içindeki sembollere uyguladığı (transform_X(0), transform_Y(0)) = (-model_xmin, model_ymax) ofsetini tespit et
-all_sym_min_x = []
-all_sym_max_y = []
-for m in re.finditer(r'<path[^>]+d="M\s*([+-]?\d+\.?\d*),([+-]?\d+\.?\d*)', defs_part):
-    px = float(m.group(1))
-    py = float(m.group(2))
-    if px > 1000 and py < -1000:
-        all_sym_min_x.append(round(px, 1))
-        all_sym_max_y.append(round(py, 1))
-
-def most_frequent(arr):
-    if not arr:
-        return 0.0
-    return Counter(arr).most_common(1)[0][0]
-
-BASE_X = most_frequent(all_sym_min_x) or 47599.4
-BASE_Y = most_frequent(all_sym_max_y) or -28187.4
-print(f"Detected global block base point: ({BASE_X}, {BASE_Y})")
-OFFSET_SHIFT_MAT = [1.0, 0.0, 0.0, 1.0, -BASE_X, -BASE_Y]
-
-# DXF varsa blokların kendi taban noktalarını (base_point) ve $INSUNITS birimini oku
+# DXF dosyasını önceden yükle (Hem kesin BASE_X/BASE_Y kalibrasyonu hem de MTEXT/ATTRIB/DIMENSION/HATCH için)
 dxf_candidate = svg_path.replace('.svg', '.dxf')
 dwg_candidate = svg_path.replace('.svg', '.dwg')
 if not os.path.exists(dxf_candidate) and os.path.exists(dwg_candidate):
     print(f"Generating DXF from DWG: {dwg_candidate}...")
-    import subprocess
     subprocess.run(['dwg2dxf', '-y', dwg_candidate, '-o', dxf_candidate], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
 
 dxf_doc = None
 dxf_block_base_pts = {}
+dxf_layer_colors = {}
 insunits = 5
 meters_per_unit = 0.01
 
 if os.path.exists(dxf_candidate):
     try:
         import ezdxf
-        dxf_doc = ezdxf.readfile(dxf_candidate)
+        try:
+            dxf_doc = ezdxf.readfile(dxf_candidate)
+        except Exception:
+            from ezdxf import recover
+            dxf_doc, _ = recover.readfile(dxf_candidate)
         try:
             insunits = int(dxf_doc.header.get('$INSUNITS', 5))
             u_map = {1: 0.0254, 2: 0.3048, 4: 0.001, 5: 0.01, 6: 1.0}
             meters_per_unit = u_map.get(insunits, 0.01)
         except Exception:
             pass
+        for lyr in dxf_doc.layers:
+            try:
+                aci = abs(int(lyr.dxf.color)) if lyr.dxf.hasattr('color') else 7
+                if lyr.dxf.hasattr('true_color') and lyr.dxf.true_color:
+                    dxf_layer_colors[lyr.dxf.name] = int(lyr.dxf.true_color) & 0xffffff
+                elif aci in ACI_PALETTE:
+                    dxf_layer_colors[lyr.dxf.name] = ACI_PALETTE[aci]
+                else:
+                    rgb = ezdxf.colors.aci2rgb(aci if 1 <= aci <= 255 else 7)
+                    dxf_layer_colors[lyr.dxf.name] = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
+            except Exception:
+                dxf_layer_colors[lyr.dxf.name] = 0xffffff
         for b in dxf_doc.blocks:
             if b.block and b.block.dxf.hasattr('base_point'):
                 bp = b.block.dxf.base_point
@@ -202,68 +213,48 @@ if os.path.exists(dxf_candidate):
     except Exception as e:
         print(f"DXF pre-read note: {e}")
 
-# Sembolleri (<g id="symbol-...">) analiz et:
-# KRİTİK DÜZELTME:
-# 1. smartFixSvg yalnızca üst düzey (depth=0) sembollere transform="translate(-baseX, -baseY)" ekliyordu.
-#    Alt sembollerde (depth>=1) ve hem üst hem alt düzeyde kullanılan sembollerde (Reason 1, 2, 3)
-#    çift kayma veya sıfır kayma oluşmasını önlemek için her sembolün ham koordinatlarını doğrudan kontrol ediyoruz.
-# 2. <polygon>, <circle>, <path> ve alt <use> koordinatlarının tamamı kontrol edilerek sembolün
-#    dwg2SVG taban ofsetine sahip olup olmadığı tespit edilir ve her derinlikte (depth=0, 1, 2...)
-#    tutarlı şekilde ТЕК KEZ uygulanır.
-symbols = {}
-sym_regex = re.compile(r'<g\s+id="([^"]+)"([^>]*)>(.*?)</g>', re.DOTALL)
-for m in sym_regex.finditer(defs_part):
-    sid = m.group(1)
-    attrs = m.group(2)
-    body = m.group(3)
-
-    # Sembol içindeki tüm ham Y koordinatlarını topla (<circle>, <text>, <path>, <polygon>, <use>)
-    ys = [float(cy) for cy in re.findall(r'cy="([+-]?\d+\.?\d*)"', body)]
-    ys += [float(ty) for ty in re.findall(r'\by="([+-]?\d+\.?\d*)"', body)]
-    ys += [float(py) for py in re.findall(r'[ML]\s*[+-]?\d+\.?\d*[, ]\s*([+-]?\d+\.?\d*)', body)]
-    for poly_m in re.finditer(r'points="([^"]+)"', body):
-        p_nums = [float(v) for v in re.findall(r'[-+]?\d*\.?\d+', poly_m.group(1))]
-        ys += p_nums[1::2]
-    for use_m in re.finditer(r'translate\(\s*[+-]?\d+\.?\d*[\s,]+([+-]?\d+\.?\d*)', body):
-        ys.append(float(use_m.group(1)))
-
-    avg_y = sum(ys[:30]) / min(len(ys), 30) if ys else None
-
-    # Sembolün kendi içinde (smartFixSvg dışında) özel bir dönüşümü var mı?
-    # Not: smartFixSvg tarafından eklenen translate(-baseX, -baseY) değerini sıfırlayıp
-    # shift_mat üzerinden her derinlikte (depth=0, 1, 2...) tek tip uyguluyoruz.
-    needs_shift = (avg_y is not None and avg_y < -2000)
-
-    # Eğer DXF'te bu bloğun özel bir base_point'i varsa onu da hesaba kat
-    comment_m = re.search(r'<!--\s*([^\s].*?)\s*-->', body)
-    blk_name = comment_m.group(1).strip() if comment_m else ""
-    bx, by = dxf_block_base_pts.get(blk_name, (0.0, 0.0))
-
-    if needs_shift:
-        shift_mat = [1.0, 0.0, 0.0, 1.0, -(BASE_X + bx), -(BASE_Y - by)]
-    else:
-        shift_mat = identity_matrix()
-
-    symbols[sid] = {
-        'shift_mat': shift_mat,
-        'body': body,
-        'needs_base_shift': needs_shift
-    }
+def get_dxf_entity_color(ent, default_color=0xffffff):
+    try:
+        if ent.dxf.hasattr('true_color') and ent.dxf.true_color:
+            val = int(ent.dxf.true_color) & 0xffffff
+            return 0xffffff if val == 0 else val
+        aci = int(ent.dxf.color) if ent.dxf.hasattr('color') else 256
+        if aci == 256:  # ByLayer
+            lname = ent.dxf.layer if ent.dxf.hasattr('layer') else '0'
+            return dxf_layer_colors.get(lname, default_color)
+        if aci == 0:    # ByBlock
+            return default_color
+        aci = abs(aci)
+        if aci in ACI_PALETTE:
+            return ACI_PALETTE[aci]
+        import ezdxf
+        rgb = ezdxf.colors.aci2rgb(aci if 1 <= aci <= 255 else 7)
+        val = (rgb[0] << 16) | (rgb[1] << 8) | rgb[2]
+        return 0xffffff if val == 0 else val
+    except Exception:
+        return default_color
 
 lines_data = []      # [x1, y1, x2, y2, color, ...]
 texts_data = []
 triangles_data = []  # [x1, y1, x2, y2, x3, y3, color, ...]
 
+MAX_COORD_LIMIT = 1e9
+
 def add_line(x1, y1, x2, y2, color):
-    if not (BOUNDS_MIN_X <= x1 <= BOUNDS_MAX_X and BOUNDS_MIN_Y <= y1 <= BOUNDS_MAX_Y and
-            BOUNDS_MIN_X <= x2 <= BOUNDS_MAX_X and BOUNDS_MIN_Y <= y2 <= BOUNDS_MAX_Y):
+    if not (math.isfinite(x1) and math.isfinite(y1) and math.isfinite(x2) and math.isfinite(y2)):
+        return
+    if abs(x1) > MAX_COORD_LIMIT or abs(y1) > MAX_COORD_LIMIT or abs(x2) > MAX_COORD_LIMIT or abs(y2) > MAX_COORD_LIMIT:
         return
     if abs(x1 - x2) < 1e-3 and abs(y1 - y2) < 1e-3:
         return
     lines_data.extend([round(x1, 1), round(y1, 1), round(x2, 1), round(y2, 1), int(color)])
 
 def add_triangle(p1, p2, p3, color):
-    if not (BOUNDS_MIN_X <= p1[0] <= BOUNDS_MAX_X and BOUNDS_MIN_Y <= p1[1] <= BOUNDS_MAX_Y):
+    if not (math.isfinite(p1[0]) and math.isfinite(p1[1]) and
+            math.isfinite(p2[0]) and math.isfinite(p2[1]) and
+            math.isfinite(p3[0]) and math.isfinite(p3[1])):
+        return
+    if abs(p1[0]) > MAX_COORD_LIMIT or abs(p1[1]) > MAX_COORD_LIMIT:
         return
     triangles_data.extend([
         round(p1[0], 1), round(p1[1], 1),
@@ -272,31 +263,44 @@ def add_triangle(p1, p2, p3, color):
         int(color)
     ])
 
-def add_text(wx, wy, size, fill, raw_t, rot_deg=0.0):
-    if not (BOUNDS_MIN_X <= wx <= BOUNDS_MAX_X and BOUNDS_MIN_Y <= wy <= BOUNDS_MAX_Y):
+def add_text(wx, wy, size, fill_or_int, raw_t, rot_deg=0.0):
+    if not (math.isfinite(wx) and math.isfinite(wy)):
+        return
+    if abs(wx) > MAX_COORD_LIMIT or abs(wy) > MAX_COORD_LIMIT:
         return
     cleaned = clean_cad_text(raw_t)
     if not cleaned:
         return
-    c_int = parse_color(fill)
-    item = {
-        'x': round(wx, 1),
-        'y': round(wy, 1),
-        's': round(max(size, 1.0), 1),
-        'c': f"#{c_int:06x}",
-        't': cleaned
-    }
-    if abs(rot_deg) > 0.1:
-        item['r'] = round(rot_deg, 1)
-    texts_data.append(item)
+    c_int = fill_or_int if isinstance(fill_or_int, int) else parse_color(fill_or_int)
+    lines = [ln.strip() for ln in cleaned.split('\n') if ln.strip()]
+    if not lines:
+        return
+    font_s = round(max(size, 1.0), 1)
+    line_step = font_s * 1.28
+    rad = math.radians(rot_deg)
+    sin_r = math.sin(rad)
+    cos_r = math.cos(rad)
+    for idx, ln in enumerate(lines):
+        # SVG Y-down uzayında alt satıra geçiş (+Y yönü)
+        lx = wx - idx * line_step * sin_r
+        ly = wy + idx * line_step * cos_r
+        item = {
+            'x': round(lx, 1),
+            'y': round(ly, 1),
+            's': font_s,
+            'c': f"#{c_int:06x}",
+            't': ln
+        }
+        if abs(rot_deg) > 0.1:
+            item['r'] = round(rot_deg, 1)
+        texts_data.append(item)
 
-# SVG Elliptical Arc (A/a) -> Çizgi Segmentleri (dwg2SVG output_ARC formatıyla %100 uyumlu)
+# SVG Elliptical Arc (A/a) -> Çizgi Segmentleri
 def arc_to_segments(x1, y1, rx, ry, phi_deg, large_arc, sweep, x2, y2, num_segs=16):
     if (abs(x1 - x2) < 1e-4 and abs(y1 - y2) < 1e-4) or rx <= 0 or ry <= 0:
         return []
-    # Çok büyük yarıçaplı bozuk yayların çizimi dağıtmasını önle
     chord = math.hypot(x2 - x1, y2 - y1)
-    if chord < 1e-3 or rx > max(bounds['w'], bounds['h']) * 2:
+    if chord < 1e-3 or rx > 1e7:
         return [(x1, y1, x2, y2)]
 
     rx = abs(rx)
@@ -354,9 +358,6 @@ def arc_to_segments(x1, y1, rx, ry, phi_deg, large_arc, sweep, x2, y2, num_segs=
     elif sweep and dtheta < 0:
         dtheta += 2.0 * math.pi
 
-    # dwg2SVG.c satır 347'de end_angle < start_angle olduğunda (0 dereceden geçen yaylar)
-    # large_arc yanlışlıkla 0 hesaplandığı için yay ters yönde (>180 derece) dönebiliyor;
-    # Eğer large_arc==0 olduğu halde hesaplanan açı > pi ise tamamlayıcı kısa yayı seç:
     if not large_arc and abs(dtheta) > math.pi + 1e-3:
         if dtheta > 0:
             dtheta -= 2.0 * math.pi
@@ -547,19 +548,117 @@ def process_elements(content, current_mat):
         wx, wy = apply_transform(current_mat, x, y)
         add_text(wx, wy, size * scale_mag, fill, raw_t, base_rot)
 
+# 1. ADIM: Önce doğrudan ModelSpace elemanlarını çıkar
 process_elements(model_part, identity_matrix())
 
-# Hiyerarşik Sembol Render Motoru:
-# KRİTİK DÜZELTME:
-# Alt sembollere (depth + 1) geçerken `current_mat` yerine `elem_mat` (yani ebeveynin shift_mat uygulanmış matrisi!)
-# aktarılır. Böylece:
-# 1) Ebeveynin (-BASE_X, -BASE_Y) kaydırması, alt <use> etiketindeki translate(cx + BASE_X, -cy + BASE_Y) ofsetini
-#    tam olarak sıfırlar (geriye saf yerel (cx, -cy) kalır).
-# 2) Alt sembol kendi içine girdiğinde kendi `sym['shift_mat']` matrisiyle kendi elemanlarını (-BASE_X, -BASE_Y)
-#    kadar kaydırır.
-# Bu sayede ne depth=1'de ne de depth=2,3,4,5'te hiçbir sembol (47599, -28187) noktasında kümelenmez,
-# her sembol pafta üzerindeki gerçek koordinatına oturur!
-def render_symbol(sid, current_mat, depth=0, max_depth=6):
+# 2. ADIM: dwg2SVG'nin (transform_X(0), transform_Y(0)) = (-model_xmin, model_ymax) taban ofsetini
+#          SEMBOL RENDER İŞLEMİNDEN ÖNCE %100 kesin olarak kalibre et!
+def detect_exact_svg_base_offset():
+    # A) server.js tarafından kaydedilmiş orijinal dwg2SVG viewBox tabanı varsa kontrol et
+    attr_bx = re.search(r'data-dwg-base-x="([+-]?\d+\.?\d*)"', text[:1000])
+    attr_by = re.search(r'data-dwg-base-y="([+-]?\d+\.?\d*)"', text[:1000])
+
+    # B) DXF ModelSpace ile SVG ModelSpace arasında çoklu varlık eşleştirmesi (TEXT, INSERT, CIRCLE, LINE)
+    if dxf_doc is not None:
+        try:
+            msp = dxf_doc.modelspace()
+            matches = []
+
+            # B.1: ModelSpace TEXT eşleştirmesi
+            svg_text_map = {}
+            for st in texts_data:
+                txt = st['t'].strip()
+                if len(txt) >= 3:
+                    svg_text_map.setdefault(txt, []).append((st['x'], st['y']))
+            for t in msp.query('TEXT'):
+                raw = clean_cad_text(t.dxf.text if t.dxf.hasattr('text') else '')
+                if raw in svg_text_map and t.dxf.hasattr('insert'):
+                    for sx, sy in svg_text_map[raw]:
+                        matches.append((sx - float(t.dxf.insert.x), sy + float(t.dxf.insert.y)))
+
+            # B.2: ModelSpace INSERT (<use>) eşleştirmesi
+            svg_uses = []
+            for um in re.finditer(r'<use\s+[^>]*transform="translate\(([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\)', model_part):
+                svg_uses.append((float(um.group(1)), float(um.group(2))))
+            dxf_inserts = list(msp.query('INSERT'))
+            if svg_uses and dxf_inserts:
+                if len(svg_uses) == len(dxf_inserts):
+                    for (ux, uy), ins in zip(svg_uses, dxf_inserts):
+                        matches.append((ux - float(ins.dxf.insert.x), uy + float(ins.dxf.insert.y)))
+                else:
+                    for ux, uy in svg_uses[:80]:
+                        for ins in dxf_inserts[:80]:
+                            matches.append((ux - float(ins.dxf.insert.x), uy + float(ins.dxf.insert.y)))
+
+            # B.3: ModelSpace CIRCLE eşleştirmesi
+            svg_circles = {}
+            for cm in re.finditer(r'<circle[^>]+cx="([+-]?\d+\.?\d*)"\s+cy="([+-]?\d+\.?\d*)"\s+r="([+-]?\d+\.?\d*)"', model_part):
+                r_key = round(float(cm.group(3)), 1)
+                if r_key > 0.5:
+                    svg_circles.setdefault(r_key, []).append((float(cm.group(1)), float(cm.group(2))))
+            for c in msp.query('CIRCLE'):
+                r_key = round(float(c.dxf.radius), 1)
+                if r_key in svg_circles and len(svg_circles[r_key]) <= 20:
+                    for cx_s, cy_s in svg_circles[r_key]:
+                        matches.append((cx_s - float(c.dxf.center.x), cy_s + float(c.dxf.center.y)))
+
+            if matches:
+                rx = Counter([round(m[0], -1) for m in matches])
+                ry = Counter([round(m[1], -1) for m in matches])
+                best_rx = rx.most_common(1)[0][0]
+                best_ry = ry.most_common(1)[0][0]
+                close_x = [m[0] for m in matches if abs(m[0] - best_rx) < 80]
+                close_y = [m[1] for m in matches if abs(m[1] - best_ry) < 80]
+                if close_x and close_y:
+                    bx_val = round(sum(close_x) / len(close_x), 2)
+                    by_val = round(sum(close_y) / len(close_y), 2)
+                    print(f"Exact DXF-SVG base offset calibrated from {len(close_x)} matches: ({bx_val}, {by_val})")
+                    return bx_val, by_val
+        except Exception as e:
+            print(f"Offset calibration note: {e}")
+
+    if attr_bx and attr_by:
+        return float(attr_bx.group(1)), float(attr_by.group(1))
+
+    # C) Fallback: Sembollerin kendi min_x ve max_y modlarını bul
+    sym_min_x = []
+    sym_max_y = []
+    for sm in re.finditer(r'<g\s+id="symbol-[^"]+"[^>]*>(.*?)</g>', defs_part, re.DOTALL):
+        sbody = sm.group(1)
+        pts = [(float(xm.group(1)), float(xm.group(2))) for xm in re.finditer(r'([+-]?\d+\.\d+),([+-]?\d+\.\d+)', sbody)]
+        if len(pts) >= 4:
+            sym_min_x.append(round(min(p[0] for p in pts), 0))
+            sym_max_y.append(round(max(p[1] for p in pts), 0))
+    if sym_min_x and sym_max_y:
+        bx_mode = Counter(sym_min_x).most_common(1)[0][0]
+        by_mode = Counter(sym_max_y).most_common(1)[0][0]
+        return float(bx_mode), float(by_mode)
+
+    return 47599.4, -28187.4
+
+BASE_X, BASE_Y = detect_exact_svg_base_offset()
+print(f"Using global block base point: ({BASE_X}, {BASE_Y})")
+
+# 3. ADIM: <defs> içindeki tüm sembolleri hazırla
+symbols = {}
+sym_regex = re.compile(r'<g\s+id="([^"]+)"([^>]*)>(.*?)</g>', re.DOTALL)
+for m in sym_regex.finditer(defs_part):
+    sid = m.group(1)
+    attrs = m.group(2)
+    body = m.group(3)
+
+    comment_m = re.search(r'<!--\s*([^\s].*?)\s*-->', body)
+    blk_name = comment_m.group(1).strip() if comment_m else ""
+    bx, by = dxf_block_base_pts.get(blk_name, (0.0, 0.0))
+
+    shift_mat = [1.0, 0.0, 0.0, 1.0, -(BASE_X + bx), -(BASE_Y - by)]
+    symbols[sid] = {
+        'shift_mat': shift_mat,
+        'body': body,
+        'blk_name': blk_name
+    }
+
+def render_symbol(sid, current_mat, depth=0, max_depth=8):
     if depth > max_depth or sid not in symbols:
         return
     sym = symbols[sid]
@@ -574,14 +673,13 @@ def render_symbol(sid, current_mat, depth=0, max_depth=6):
         if c_id not in symbols:
             continue
         t_m = re.search(r'transform="([^"]+)"', c_attrs)
-        child_trans_mat = parse_transform(t_m.group(1) if t_m else "")
+        child_trans_mat = parse_transform(t_m.group(1) if t_m else "", invert_rotate=True)
         xm = re.search(r'\bx="([+-]?\d+\.?\d*)"', c_attrs)
         ym = re.search(r'\by="([+-]?\d+\.?\d*)"', c_attrs)
         if xm or ym:
             ax = float(xm.group(1)) if xm else 0.0
             ay = float(ym.group(1)) if ym else 0.0
-            child_trans_mat = multiply_matrices([1, 0, 0, 1, ax, ay], child_trans_mat)
-        # current_mat yerine elem_mat kullan!
+            child_trans_mat = multiply_matrices([1.0, 0.0, 0.0, 1.0, ax, ay], child_trans_mat)
         child_mat = multiply_matrices(elem_mat, child_trans_mat)
         render_symbol(c_id, child_mat, depth + 1, max_depth)
 
@@ -594,14 +692,13 @@ for m in re.finditer(r'<use\s+([^>]+)>', model_part):
     if sym_id not in symbols:
         continue
     t_m = re.search(r'transform="([^"]+)"', tag_attrs)
-    use_mat = parse_transform(t_m.group(1) if t_m else "")
+    use_mat = parse_transform(t_m.group(1) if t_m else "", invert_rotate=True)
     xm = re.search(r'\bx="([+-]?\d+\.?\d*)"', tag_attrs)
     ym = re.search(r'\by="([+-]?\d+\.?\d*)"', tag_attrs)
     if xm or ym:
         ax = float(xm.group(1)) if xm else 0.0
         ay = float(ym.group(1)) if ym else 0.0
         use_mat = multiply_matrices([1.0, 0.0, 0.0, 1.0, ax, ay], use_mat)
-    # sym['shift_mat'] zaten render_symbol içinde uygulanıyor
     render_symbol(sym_id, use_mat, depth=0)
 
 # Robust Polygon Triangulation for Solid Hatches
@@ -654,79 +751,133 @@ def triangulate_polygon(pts):
             triangles.append((pts[indices[0]], pts[indices[i]], pts[indices[i + 1]]))
     return triangles
 
-# EXTRACT SOLID HATCHES FROM DXF (Columns, Beams, Walls, Foundations)
+# 4. ADIM: dwg2SVG'nin desteklemediği tüm varlıkları doğrudan DXF üzerinden çıkar
 if dxf_doc is not None:
-    print(f"Extracting solid architectural hatches and fills from {dxf_candidate}...")
+    print(f"Extracting DXF hatches, MTEXT notes, ATTRIB labels, and DIMENSION blocks from {dxf_candidate}...")
     try:
         msp = dxf_doc.modelspace()
         block_map = {b.name: b for b in dxf_doc.blocks}
         solid_tri_count = 0
-
-        # Calculate exact DXF to SVG offset using text matching across all projects
-        CALC_BASE_X = BASE_X
-        CALC_BASE_Y = BASE_Y
-        try:
-            svg_map = {}
-            for st in texts_data:
-                txt = st['t'].strip()
-                if len(txt) >= 4 and not any(txt.startswith(c) for c in ['GREEN', 'RED', 'CYAN', 'YELLOW', 'ÖLÇEK', 'OLCEK']):
-                    svg_map.setdefault(txt, []).append((st['x'], st['y']))
-
-            matches = []
-            for t in msp.query('TEXT MTEXT'):
-                txt = (t.dxf.text if t.dxftype() == 'TEXT' else t.text).strip()
-                if txt in svg_map:
-                    for sx, sy in svg_map[txt]:
-                        diff_x = sx - t.dxf.insert.x
-                        diff_y = sy + t.dxf.insert.y
-                        matches.append((diff_x, diff_y))
-
-            if matches:
-                rx = Counter([round(m[0], -1) for m in matches])
-                ry = Counter([round(m[1], -1) for m in matches])
-                best_rx = rx.most_common(1)[0][0]
-                best_ry = ry.most_common(1)[0][0]
-                close_x = [m[0] for m in matches if abs(m[0] - best_rx) < 100]
-                close_y = [m[1] for m in matches if abs(m[1] - best_ry) < 100]
-                if close_x and close_y:
-                    CALC_BASE_X = round(sum(close_x) / len(close_x), 1)
-                    CALC_BASE_Y = round(sum(close_y) / len(close_y), 1)
-                    print(f"Auto-calibrated offset from {len(matches)} text matches: ({CALC_BASE_X}, {CALC_BASE_Y})")
-            else:
-                print(f"Fallback to global block base point: ({CALC_BASE_X}, {CALC_BASE_Y})")
-        except Exception as ce:
-            print(f"Calibration note: {ce}")
+        extra_text_count = 0
+        extra_dim_lines = 0
 
         def dxf_to_svg(x, y):
-            return (x + CALC_BASE_X, -y + CALC_BASE_Y)
+            return (x + BASE_X, -y + BASE_Y)
 
-        def transform_pt_by_insert(px, py, ins):
-            sx = ins.dxf.xscale if ins.dxf.hasattr('xscale') else 1.0
-            sy = ins.dxf.yscale if ins.dxf.hasattr('yscale') else 1.0
-            rot = math.radians(ins.dxf.rotation if ins.dxf.hasattr('rotation') else 0.0)
+        def make_insert_matrix(ins, base_pt=(0.0, 0.0)):
+            sx = float(ins.dxf.xscale) if ins.dxf.hasattr('xscale') else 1.0
+            sy = float(ins.dxf.yscale) if ins.dxf.hasattr('yscale') else 1.0
+            rot = math.radians(float(ins.dxf.rotation) if ins.dxf.hasattr('rotation') else 0.0)
             cos_r = math.cos(rot)
             sin_r = math.sin(rot)
-            x_sc = px * sx
-            y_sc = py * sy
-            x_rot = x_sc * cos_r - y_sc * sin_r
-            y_rot = x_sc * sin_r + y_sc * cos_r
-            return (x_rot + ins.dxf.insert.x, y_rot + ins.dxf.insert.y)
+            bx, by = base_pt
+            m0 = sx * cos_r
+            m1 = sx * sin_r
+            m2 = -sy * sin_r
+            m3 = sy * cos_r
+            ix = float(ins.dxf.insert.x) - m0 * bx - m2 * by
+            iy = float(ins.dxf.insert.y) - m1 * bx - m3 * by
+            return [m0, m1, m2, m3, ix, iy]
 
-        # Collect all hatches: both direct modelspace and from block inserts
+        def apply_dxf_mat(mat, px, py):
+            return (mat[0] * px + mat[2] * py + mat[4], mat[1] * px + mat[3] * py + mat[5])
+
+        # 4.1: ModelSpace ve Blok içindeki MTEXT varlıkları
+        for mt in msp.query('MTEXT'):
+            try:
+                raw_val = mt.text if hasattr(mt, 'text') else (mt.dxf.text if mt.dxf.hasattr('text') else '')
+                if not raw_val:
+                    continue
+                ins_pt = mt.dxf.insert
+                sx, sy = dxf_to_svg(float(ins_pt.x), float(ins_pt.y))
+                ch_h = float(mt.dxf.char_height) if mt.dxf.hasattr('char_height') else 12.0
+                rot_d = float(mt.dxf.rotation) if mt.dxf.hasattr('rotation') else 0.0
+                c_int = get_dxf_entity_color(mt, 0xffe600)
+                add_text(sx, sy, ch_h, c_int, raw_val, -rot_d)
+                extra_text_count += 1
+            except Exception:
+                pass
+
+        # 4.2: INSERT üzerindeki ATTRIB etiketleri
+        for ins in msp.query('INSERT'):
+            try:
+                ins_color = get_dxf_entity_color(ins, 0xffffff)
+                if hasattr(ins, 'attribs'):
+                    for attr in ins.attribs:
+                        if attr.dxf.hasattr('flags') and (int(attr.dxf.flags) & 1):
+                            continue
+                        raw_val = attr.dxf.text if attr.dxf.hasattr('text') else ''
+                        if not raw_val:
+                            continue
+                        apt = attr.dxf.insert
+                        sx, sy = dxf_to_svg(float(apt.x), float(apt.y))
+                        ch_h = float(attr.dxf.height) if attr.dxf.hasattr('height') else 12.0
+                        rot_d = float(attr.dxf.rotation) if attr.dxf.hasattr('rotation') else 0.0
+                        c_int = get_dxf_entity_color(attr, ins_color)
+                        add_text(sx, sy, ch_h, c_int, raw_val, -rot_d)
+                        extra_text_count += 1
+            except Exception:
+                pass
+
+        # 4.3: DIMENSION ve LEADER okları
+        name_to_sym_id = {v['blk_name']: k for k, v in symbols.items() if v.get('blk_name')}
+        for dim in msp.query('DIMENSION'):
+            try:
+                bname = dim.dxf.geometry if dim.dxf.hasattr('geometry') else ''
+                if bname and bname in name_to_sym_id:
+                    sid = name_to_sym_id[bname]
+                    dim_use_mat = [1.0, 0.0, 0.0, 1.0, BASE_X, BASE_Y]
+                    before_cnt = len(lines_data)
+                    render_symbol(sid, dim_use_mat, depth=0)
+                    extra_dim_lines += (len(lines_data) - before_cnt) // 5
+                elif dim.dxf.hasattr('text') and dim.dxf.text and dim.dxf.text != '<>' and dim.dxf.hasattr('text_midpoint'):
+                    mp = dim.dxf.text_midpoint
+                    sx, sy = dxf_to_svg(float(mp.x), float(mp.y))
+                    add_text(sx, sy, 12.0, get_dxf_entity_color(dim, 0x00f0ff), dim.dxf.text, 0.0)
+            except Exception:
+                pass
+
+        for ldr in msp.query('LEADER'):
+            try:
+                verts = list(ldr.vertices) if hasattr(ldr, 'vertices') else []
+                if len(verts) >= 2:
+                    c_int = get_dxf_entity_color(ldr, 0x00f0ff)
+                    for k in range(len(verts) - 1):
+                        p1 = dxf_to_svg(float(verts[k][0]), float(verts[k][1]))
+                        p2 = dxf_to_svg(float(verts[k + 1][0]), float(verts[k + 1][1]))
+                        add_line(p1[0], p1[1], p2[0], p2[1], c_int)
+            except Exception:
+                pass
+
+        # 4.4: HATCH
         hatch_items = []
         for h in msp.query('HATCH'):
-            hatch_items.append((h, None))
+            hatch_items.append((h, identity_matrix()))
+
+        def collect_block_hatches(bname, parent_mat, depth=0):
+            if depth > 5 or bname not in block_map:
+                return
+            b = block_map[bname]
+            for h in b.query('HATCH'):
+                hatch_items.append((h, parent_mat))
+            for sub_ins in b.query('INSERT'):
+                sub_name = sub_ins.dxf.name if sub_ins.dxf.hasattr('name') else ''
+                if sub_name in block_map:
+                    bp = dxf_block_base_pts.get(sub_name, (0.0, 0.0))
+                    sub_mat = make_insert_matrix(sub_ins, bp)
+                    comb = multiply_matrices(parent_mat, sub_mat)
+                    collect_block_hatches(sub_name, comb, depth + 1)
 
         for ins in msp.query('INSERT'):
-            bname = ins.dxf.name
+            bname = ins.dxf.name if ins.dxf.hasattr('name') else ''
             if bname in block_map:
-                b = block_map[bname]
-                for h in b.query('HATCH'):
-                    hatch_items.append((h, ins))
+                bp = dxf_block_base_pts.get(bname, (0.0, 0.0))
+                ins_mat = make_insert_matrix(ins, bp)
+                collect_block_hatches(bname, ins_mat, depth=1)
 
         print(f"Processing total of {len(hatch_items)} hatch elements...")
 
-        for h, ins in hatch_items:
+        for h, dxf_mat in hatch_items:
             layer = h.dxf.layer.lower() if h.dxf.hasattr('layer') else ''
             pat = h.dxf.pattern_name.upper() if h.dxf.hasattr('pattern_name') else ''
             is_solid = (h.dxf.solid_fill == 1) if h.dxf.hasattr('solid_fill') else (pat == 'SOLID')
@@ -768,11 +919,7 @@ if dxf_doc is not None:
                 if len(pts) < 3:
                     continue
 
-                if ins is not None:
-                    msp_pts = [transform_pt_by_insert(pt[0], pt[1], ins) for pt in pts]
-                else:
-                    msp_pts = pts
-
+                msp_pts = [apply_dxf_mat(dxf_mat, pt[0], pt[1]) for pt in pts]
                 svg_pts = [dxf_to_svg(pt[0], pt[1]) for pt in msp_pts]
 
                 tris = triangulate_polygon(svg_pts)
@@ -785,9 +932,69 @@ if dxf_doc is not None:
                     p2 = svg_pts[(i + 1) % len(svg_pts)]
                     add_line(p1[0], p1[1], p2[0], p2[1], c_outline)
 
-        print(f"Successfully generated {solid_tri_count} solid fill triangles from DXF!")
+        print(f"DXF extras added -> Solid Triangles: {solid_tri_count}, MTEXT/ATTRIB: {extra_text_count}, Dim Lines: {extra_dim_lines}")
     except Exception as e:
-        print(f"Hatch triangulation note: {e}")
+        print(f"DXF supplement note: {e}")
+
+# 5. ADIM: Aykırı Koordinat Filtresi (Outlier Rejection) ve Sıkı Pafta Sınırı (Tight Sheet Bounds)
+if lines_data:
+    arr_all = np.array(lines_data, dtype=np.float64).reshape(-1, 5)
+    all_x = np.concatenate([arr_all[:, 0], arr_all[:, 2]])
+    all_y = np.concatenate([arr_all[:, 1], arr_all[:, 3]])
+
+    q_min_x, q_max_x = np.percentile(all_x, [5.0, 95.0])
+    q_min_y, q_max_y = np.percentile(all_y, [5.0, 95.0])
+    span_x = max(float(q_max_x - q_min_x), 5000.0)
+    span_y = max(float(q_max_y - q_min_y), 5000.0)
+
+    valid_min_x = float(q_min_x) - max(span_x * 1.5, 100000.0)
+    valid_max_x = float(q_max_x) + max(span_x * 1.5, 100000.0)
+    valid_min_y = float(q_min_y) - max(span_y * 2.0, 80000.0)
+    valid_max_y = float(q_max_y) + max(span_y * 2.0, 80000.0)
+
+    mask = (
+        (arr_all[:, 0] >= valid_min_x) & (arr_all[:, 0] <= valid_max_x) &
+        (arr_all[:, 1] >= valid_min_y) & (arr_all[:, 1] <= valid_max_y) &
+        (arr_all[:, 2] >= valid_min_x) & (arr_all[:, 2] <= valid_max_x) &
+        (arr_all[:, 3] >= valid_min_y) & (arr_all[:, 3] <= valid_max_y)
+    )
+    kept = arr_all[mask]
+    if len(kept) > 0:
+        if len(kept) < len(arr_all):
+            print(f"Filtered {len(arr_all) - len(kept)} extreme outlier line segments.")
+            lines_data = []
+            for row in kept:
+                lines_data.extend([round(float(row[0]), 1), round(float(row[1]), 1), round(float(row[2]), 1), round(float(row[3]), 1), int(row[4])])
+
+        real_min_x = float(np.min(np.concatenate([kept[:, 0], kept[:, 2]])))
+        real_max_x = float(np.max(np.concatenate([kept[:, 0], kept[:, 2]])))
+        real_min_y = float(np.min(np.concatenate([kept[:, 1], kept[:, 3]])))
+        real_max_y = float(np.max(np.concatenate([kept[:, 1], kept[:, 3]])))
+
+        bounds = {
+            'minX': round(real_min_x, 2),
+            'minY': round(real_min_y, 2),
+            'w': round(max(real_max_x - real_min_x, 100.0), 2),
+            'h': round(max(real_max_y - real_min_y, 100.0), 2)
+        }
+        print(f"Computed tight sheet bounds: {bounds}")
+
+        if triangles_data:
+            tri_arr = np.array(triangles_data, dtype=np.float64).reshape(-1, 7)
+            t_mask = (
+                (tri_arr[:, 0] >= valid_min_x) & (tri_arr[:, 0] <= valid_max_x) &
+                (tri_arr[:, 1] >= valid_min_y) & (tri_arr[:, 1] <= valid_max_y)
+            )
+            if not np.all(t_mask):
+                kept_t = tri_arr[t_mask]
+                triangles_data = []
+                for r in kept_t:
+                    triangles_data.extend([round(float(r[0]), 1), round(float(r[1]), 1), round(float(r[2]), 1), round(float(r[3]), 1), round(float(r[4]), 1), round(float(r[5]), 1), int(r[6])])
+
+        texts_data = [
+            t for t in texts_data
+            if valid_min_x <= t['x'] <= valid_max_x and valid_min_y <= t['y'] <= valid_max_y
+        ]
 
 total_lines_count = len(lines_data) // 5
 total_triangles_count = len(triangles_data) // 7
@@ -837,7 +1044,7 @@ try:
     with open(out_meta, 'rb') as f_in, gzip.open(out_meta_gz, 'wb', compresslevel=6) as f_out:
         f_out.writelines(f_in)
 
-    if 'alt_meta' in locals() and alt_meta != out_meta:
+    if 'alt_meta' in locals() and alt_meta not in (out_meta, out_json):
         try:
             with open(alt_meta, 'w', encoding='utf-8') as f:
                 json.dump(meta_payload, f)
@@ -860,7 +1067,7 @@ try:
         with open(out_bin, 'rb') as f_in, gzip.open(out_bin_gz, 'wb', compresslevel=6) as f_out:
             f_out.write(f_in.read())
 
-        if 'alt_bin' in locals() and alt_bin != out_bin:
+        if 'alt_bin' in locals() and alt_bin not in (out_bin, out_json):
             try:
                 vertices.tofile(alt_bin)
             except Exception:
