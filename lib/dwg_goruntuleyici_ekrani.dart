@@ -74,7 +74,7 @@ class DwgGoruntuleyiciEkrani extends StatefulWidget {
 class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   // Oracle Cloud üzerinde çalışan özel CAD Vektör sunucumuz
   static const String _kCadServerUrl =
-      'https://durham-recommended-processing-seconds.trycloudflare.com';
+      'https://junior-employers-gay-tommy.trycloudflare.com';
 
   bool _isLoading = false;
   String _loadingStatusText = 'CAD Motoru Hazırlanıyor...';

@@ -63,7 +63,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   static const Color _kBrandTeal = Color(0xFF0F7C86);
   static const Color _kTitleDark = Color(0xFF102A43);
   static const String _kCadServerUrl =
-      'https://durham-recommended-processing-seconds.trycloudflare.com';
+      'https://junior-employers-gay-tommy.trycloudflare.com';
 
   WebViewController? _webViewController;
   HttpServer? _localCadServer;
