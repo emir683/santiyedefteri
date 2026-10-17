@@ -85,6 +85,18 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
     _controller = controller;
   }
 
+  static const String _kActiveServerHost = 'junior-employers-gay-tommy.trycloudflare.com';
+
+  String _normalizeUrl(String rawUrl) {
+    if (rawUrl.contains('.trycloudflare.com') && !rawUrl.contains(_kActiveServerHost)) {
+      try {
+        final uri = Uri.parse(rawUrl);
+        return 'https://$_kActiveServerHost${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+      } catch (_) {}
+    }
+    return rawUrl;
+  }
+
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
@@ -93,7 +105,7 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
       final isDark = Theme.of(context).brightness == Brightness.dark;
       final themeStr = isDark ? 'dark' : 'light';
 
-      String finalUrl = widget.webglUrl;
+      String finalUrl = _normalizeUrl(widget.webglUrl);
       final cacheBuster = 'v=5.3&t=${DateTime.now().millisecondsSinceEpoch}';
       finalUrl += (finalUrl.contains('?') ? '&' : '?') + cacheBuster;
       if (!finalUrl.contains('theme=')) {
@@ -105,7 +117,7 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
 
   Future<void> _openInExternalBrowser() async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    String targetUrl = widget.webglUrl;
+    String targetUrl = _normalizeUrl(widget.webglUrl);
     final cacheBuster = 'v=5.3&t=${DateTime.now().millisecondsSinceEpoch}';
     targetUrl += (targetUrl.contains('?') ? '&' : '?') + cacheBuster;
     if (!targetUrl.contains('theme=')) {
