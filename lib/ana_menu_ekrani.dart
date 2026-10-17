@@ -33,7 +33,6 @@ import 'destek_ekrani.dart';
 import 'puanlama_servisi.dart';
 import 'performance_provider.dart';
 import 'dwg_goruntuleyici_ekrani.dart';
-import 'yerel_cad_ekrani.dart';
 import 'rol_provider.dart';
 import 'tur_servisi.dart';
 import 'format_yardimcisi.dart';
@@ -2757,19 +2756,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                           Navigator.push(
                             context,
                             SayfaGecisi(sayfa: const DwgGoruntuleyiciEkrani()),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.offline_bolt_rounded,
-                        title: 'Çevrimdışı CAD (Yerel Motor)',
-                        color: const Color(0xFF38BDF8),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(sayfa: const YerelCadEkrani()),
                           );
                         },
                       ),

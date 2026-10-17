@@ -77,19 +77,23 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       'https://junior-employers-gay-tommy.trycloudflare.com';
 
   bool _isLoading = false;
+  int _loadingStep = 1;
   String _loadingStatusText = 'CAD Motoru Hazırlanıyor...';
   String _loadingSubText = 'Çizim GPU donanım motoruna aktarılıyor';
+  String _loadingFileName = '';
+  String _loadingFileSize = '';
+  Timer? _stageTimer;
 
   List<SavedCadProject> _savedProjects = [];
   StreamSubscription<CadFilePayload>? _cadStreamSub;
 
-  // Hazır örnek CAD çizimleri
+  // Hazır örnek CAD çizimleri (V2 Yüksek Performans Motoru)
   static const List<Map<String, String>> _hazirOrnekler = [
     {
       'id': 'bc00f9c7-d593-49d7-9f4e-ceefb57f27b8',
       'ad': 'Kapalı Spor Salonu Statik Projesi',
       'url':
-          '$_kCadServerUrl/webgl-cad.html?id=bc00f9c7-d593-49d7-9f4e-ceefb57f27b8&title=Kapal%C4%B1%20Spor%20Salonu%20Statik%20Projesi',
+          '$_kCadServerUrl/webgl-cad-v2.html?id=bc00f9c7-d593-49d7-9f4e-ceefb57f27b8&title=Kapal%C4%B1%20Spor%20Salonu%20Statik%20Projesi',
       'aciklama': 'Temel aplikasyon, kolon, kiriş ve donatı detayları',
       'boyut': '846K Çizim Detayı',
       'colorHex': '0xFF38BDF8',
@@ -98,7 +102,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       'id': '5d6e89b2-bdac-4ff9-8e7c-c129c1fc68e2',
       'ad': 'Hasan Aktaş Statik Projesi',
       'url':
-          '$_kCadServerUrl/webgl-cad.html?id=5d6e89b2-bdac-4ff9-8e7c-c129c1fc68e2&title=HASAN%20AKTA%C5%9E%20STAT%C4%B0K%20PROJES%C4%B0',
+          '$_kCadServerUrl/webgl-cad-v2.html?id=5d6e89b2-bdac-4ff9-8e7c-c129c1fc68e2&title=HASAN%20AKTA%C5%9E%20STAT%C4%B0K%20PROJES%C4%B0',
       'aciklama': 'Tüm katlar, kiriş açılımları ve kalıp planları',
       'boyut': '589K Çizim Detayı',
       'colorHex': '0xFF10B981',
@@ -107,7 +111,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       'id': 'a6003203-6143-414a-bc21-5929f5e8c61e',
       'ad': 'Yağmur Suyu Deposu Mimari Projesi',
       'url':
-          '$_kCadServerUrl/webgl-cad.html?id=a6003203-6143-414a-bc21-5929f5e8c61e&title=Ya%C4%9Fmur%20Suyu%20Deposu%20Mimari',
+          '$_kCadServerUrl/webgl-cad-v2.html?id=a6003203-6143-414a-bc21-5929f5e8c61e&title=Ya%C4%9Fmur%20Suyu%20Deposu%20Mimari',
       'aciklama': 'Mimari kesit, plan ve kot detayları',
       'boyut': '102K Çizim Detayı',
       'colorHex': '0xFFF59E0B',
@@ -155,6 +159,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   @override
   void dispose() {
     DwgGoruntuleyiciEkrani.isScreenActive = false;
+    _stageTimer?.cancel();
     _cadStreamSub?.cancel();
     super.dispose();
   }
@@ -317,23 +322,50 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       return;
     }
 
-    // 2. Yeni dosya -> Sunucuda dönüştür ve WebGL ile aç
+    // 2. Yeni dosya -> V2 Sunucu Motorunda dönüştür ve WebGL ile aç
+    _stageTimer?.cancel();
     setState(() {
       _isLoading = true;
-      _loadingStatusText = 'WebGL Motoru Hazırlanıyor...';
-      _loadingSubText = 'Çizim GPU donanım motoruna aktarılıyor';
+      _loadingStep = 1;
+      _loadingFileName = fileName;
+      _loadingFileSize = _formatFileSize(fileSize);
+      _loadingStatusText = 'CAD Dosyası Hazırlanıyor...';
+      _loadingSubText = 'Çizim dosyası ($fileName) inceleniyor ve paketleniyor...';
+    });
+
+    _stageTimer = Timer(const Duration(milliseconds: 1000), () {
+      if (mounted && _isLoading) {
+        setState(() {
+          _loadingStep = 2;
+          _loadingStatusText = 'V2 Sunucusuna Aktarılıyor...';
+          _loadingSubText =
+              'Cloudflare yüksek hızlı tüneli ile Oracle Cloud V2 motoruna iletiliyor...';
+        });
+      }
     });
 
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_kCadServerUrl/api/convert'),
+        Uri.parse('$_kCadServerUrl/api/convert-v2'),
       );
       request.files.add(
         await http.MultipartFile.fromPath('file', file.path, filename: fileName),
       );
 
-      final streamedResponse = await request.send();
+      Timer(const Duration(milliseconds: 3000), () {
+        if (mounted && _isLoading && _loadingStep < 3) {
+          setState(() {
+            _loadingStep = 3;
+            _loadingStatusText = 'V2 Motoru Çizimi Çözümlüyor...';
+            _loadingSubText =
+                'Direct DXF motoru ile ACI renkler, dolgular ve sıfır-kopya binary paket üretiliyor...';
+          });
+        }
+      });
+
+      final streamedResponse =
+          await request.send().timeout(const Duration(seconds: 120));
       final responseBody = await streamedResponse.stream.bytesToString();
 
       if (streamedResponse.statusCode == 200) {
@@ -350,10 +382,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           }
         } else if (fileId != null && fileId.isNotEmpty) {
           resolvedWebglUrl =
-              '$_kCadServerUrl/webgl-cad.html?id=$fileId&title=${Uri.encodeComponent(fileName)}';
+              '$_kCadServerUrl/webgl-cad-v2.html?id=$fileId&title=${Uri.encodeComponent(fileName)}';
         } else {
           resolvedWebglUrl =
-              '$_kCadServerUrl/webgl-cad.html?title=${Uri.encodeComponent(fileName)}';
+              '$_kCadServerUrl/webgl-cad-v2.html?title=${Uri.encodeComponent(fileName)}';
         }
 
         final newProj = SavedCadProject(
@@ -366,6 +398,17 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         );
 
         await _saveProjectToRecent(newProj);
+
+        if (mounted) {
+          setState(() {
+            _loadingStep = 4;
+            _loadingStatusText = 'GPU Donanım Motoru Başlatılıyor...';
+            _loadingSubText =
+                'Sıfır-kopya ikili (binary) geometri verisi WebGL tuvaline yükleniyor...';
+          });
+        }
+
+        await Future.delayed(const Duration(milliseconds: 300));
 
         setState(() {
           _isLoading = false;
@@ -382,17 +425,19 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           );
         }
       } else {
-        throw Exception('Dönüştürme başarısız (Kod: ${streamedResponse.statusCode})');
+        throw Exception(
+            'Dönüştürme başarısız (Kod: ${streamedResponse.statusCode})');
       }
     } catch (e) {
-      debugPrint('[CAD Direct Open Error] $e');
+      _stageTimer?.cancel();
+      debugPrint('[CAD Direct Open Error V2] $e');
       setState(() {
         _isLoading = false;
       });
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('CAD dosyası açılamadı: $e'),
+            content: Text('CAD dosyası V2 motorunda açılamadı: $e'),
             backgroundColor: const Color(0xFFEF4444),
             behavior: SnackBarBehavior.floating,
           ),
@@ -1158,79 +1203,259 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     );
   }
 
-  /// Yükleme Ekranı Overlay
+  /// Yükleme Ekranı Overlay (V2 Gelişmiş 4 Aşamalı Gösterge)
   Widget _buildLoadingOverlay(
     bool isDark,
     Color textPrimary,
     Color textSecondary,
   ) {
     return Container(
-      color: Colors.black.withValues(alpha: 0.65),
+      color: Colors.black.withValues(alpha: 0.82),
       child: Center(
-        child: Container(
-          width: 280,
-          padding: const EdgeInsets.all(22),
-          decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF1E293B) : Colors.white,
-            borderRadius: BorderRadius.circular(20),
-            boxShadow: const [
-              BoxShadow(
-                color: Colors.black38,
-                blurRadius: 24,
-                offset: Offset(0, 10),
-              ),
-            ],
-          ),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              const SizedBox(
-                width: 44,
-                height: 44,
-                child: CircularProgressIndicator(
-                  strokeWidth: 3.2,
-                  valueColor: AlwaysStoppedAnimation<Color>(_kBrandTeal),
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 400),
+            child: Container(
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    isDark ? const Color(0xFF161F2E) : Colors.white,
+                    isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
+                  ],
                 ),
-              ),
-              const SizedBox(height: 16),
-              Text(
-                _loadingStatusText,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: textPrimary,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+                borderRadius: BorderRadius.circular(22),
+                border: Border.all(
+                  color: const Color(0xFF0F7C86).withValues(alpha: 0.35),
+                  width: 1.2,
                 ),
+                boxShadow: const [
+                  BoxShadow(
+                    color: Colors.black38,
+                    blurRadius: 32,
+                    offset: Offset(0, 14),
+                  ),
+                ],
               ),
-              const SizedBox(height: 5),
-              Text(
-                _loadingSubText,
-                textAlign: TextAlign.center,
-                style: TextStyle(
-                  color: textSecondary,
-                  fontSize: 11.5,
-                ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Container(
+                    width: 68,
+                    height: 68,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF0F7C86).withValues(alpha: 0.25),
+                          const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: const Color(0xFF0F7C86).withValues(alpha: 0.5),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 36,
+                        height: 36,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3.2,
+                          valueColor: AlwaysStoppedAnimation<Color>(_kBrandTeal),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+                  Text(
+                    _loadingStatusText,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: textPrimary,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 6),
+                  Text(
+                    _loadingSubText,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: textSecondary,
+                      fontSize: 12,
+                      height: 1.4,
+                    ),
+                  ),
+                  if (_loadingFileName.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 7),
+                      decoration: BoxDecoration(
+                        color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(10),
+                        border: Border.all(
+                          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.1),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.description_outlined, size: 15, color: _kBrandTeal),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              _loadingFileName,
+                              style: TextStyle(
+                                color: textPrimary,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (_loadingFileSize.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              '($_loadingFileSize)',
+                              style: TextStyle(
+                                color: textSecondary,
+                                fontSize: 10.5,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+                  ],
+                  const SizedBox(height: 20),
+                  Row(
+                    children: [
+                      _buildStepIndicator(1, 'Hazırlık', isDark),
+                      _buildStepConnector(1),
+                      _buildStepIndicator(2, 'Aktarım', isDark),
+                      _buildStepConnector(2),
+                      _buildStepIndicator(3, 'V2 Motor', isDark),
+                      _buildStepConnector(3),
+                      _buildStepIndicator(4, 'GPU Çizim', isDark),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 38,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: textSecondary,
+                        side: BorderSide(
+                          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.16),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: () {
+                        _stageTimer?.cancel();
+                        setState(() {
+                          _isLoading = false;
+                        });
+                      },
+                      child: const Text(
+                        'İptal Et',
+                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-            ],
+            ),
           ),
         ),
       ),
     );
   }
 
+  Widget _buildStepIndicator(int stepNumber, String label, bool isDark) {
+    final isDone = _loadingStep > stepNumber;
+    final isActive = _loadingStep == stepNumber;
+    final color = isDone
+        ? const Color(0xFF10B981)
+        : (isActive ? _kBrandTeal : (isDark ? Colors.white24 : Colors.black26));
+
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 22,
+            height: 22,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDone
+                  ? const Color(0xFF10B981)
+                  : (isActive ? _kBrandTeal.withValues(alpha: 0.2) : Colors.transparent),
+              border: Border.all(color: color, width: 1.5),
+            ),
+            child: Center(
+              child: isDone
+                  ? const Icon(Icons.check, size: 13, color: Colors.white)
+                  : Text(
+                      '$stepNumber',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive || isDone ? (isDark ? Colors.white : Colors.black87) : (isDark ? Colors.white38 : Colors.black38),
+              fontSize: 9,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepConnector(int stepNumber) {
+    final isDone = _loadingStep > stepNumber;
+    return Container(
+      width: 10,
+      height: 2,
+      margin: const EdgeInsets.only(bottom: 15),
+      color: isDone ? const Color(0xFF10B981) : Colors.white12,
+    );
+  }
+
   /// Sunucu adresi (Cloudflare tunnel vb.) değişse bile kayıtlı projenin güncel sunucu üzerinden açılmasını sağlar
   String _resolveProjectWebglUrl(SavedCadProject project) {
     if (project.id.isNotEmpty && !project.id.startsWith('17')) {
-      return '$_kCadServerUrl/webgl-cad.html?id=${project.id}&title=${Uri.encodeComponent(project.fileName)}';
+      return '$_kCadServerUrl/webgl-cad-v2.html?id=${project.id}&title=${Uri.encodeComponent(project.fileName)}';
     }
-    if (project.webglUrl.contains('.trycloudflare.com')) {
-      final uri = Uri.tryParse(project.webglUrl);
+    String url = project.webglUrl;
+    if (url.contains('/webgl-cad.html')) {
+      url = url.replaceAll('/webgl-cad.html', '/webgl-cad-v2.html');
+    }
+    if (url.contains('.trycloudflare.com')) {
+      final uri = Uri.tryParse(url);
       if (uri != null) {
         final baseUri = Uri.parse(_kCadServerUrl);
         return uri.replace(scheme: baseUri.scheme, host: baseUri.host, port: baseUri.hasPort ? baseUri.port : null).toString();
       }
     }
-    return project.webglUrl;
+    return url;
   }
 
   Future<void> _openSavedProject(SavedCadProject project) async {
