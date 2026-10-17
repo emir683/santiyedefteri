@@ -74,6 +74,13 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   String? _activeLocalFilePath;
   List<YerelCadDosya> _recentFiles = [];
 
+  // V2 İlerleme & Yükleme Durumu
+  int _loadingStep = 1;
+  String _loadingTitle = 'CAD Dosyası Hazırlanıyor...';
+  String _loadingSubtitle = 'Dosya inceleniyor ve belleğe alınıyor...';
+  String _loadingFileSize = '';
+  Timer? _stageTimer;
+
   @override
   void initState() {
     super.initState();
@@ -89,6 +96,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
 
   @override
   void dispose() {
+    _stageTimer?.cancel();
     _localCadServer?.close(force: true);
     super.dispose();
   }
@@ -302,7 +310,6 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
       );
 
     _webViewController = controller;
-    _loadCadHtml();
   }
 
   Future<void> _pickAndOpenFile() async {
@@ -342,6 +349,16 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
     return rawUrl;
   }
 
+  void _closeDrawingView() {
+    _stageTimer?.cancel();
+    setState(() {
+      _isViewingDrawing = false;
+      _isParsing = false;
+      _activeDrawingName = '';
+    });
+    _webViewController?.loadRequest(Uri.parse('about:blank'));
+  }
+
   Future<void> _openLocalFile(String filePath,
       [String? displayName, String? cachedWebglUrl]) async {
     final file = File(filePath);
@@ -349,10 +366,17 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
 
     // 1. Eğer daha önce dönüştürülmüş ve webglUrl varsa doğrudan yükle
     if (cachedWebglUrl != null && cachedWebglUrl.isNotEmpty) {
+      _stageTimer?.cancel();
       setState(() {
         _isViewingDrawing = true;
         _isParsing = true;
         _activeDrawingName = fileName;
+        _loadingStep = 4;
+        _loadingTitle = 'Önbellekten Yükleniyor...';
+        _loadingSubtitle =
+            'Daha önce dönüştürülen V2 WebGL çizim verisi GPU donanımına aktarılıyor.';
+        _loadingFileSize =
+            file.existsSync() ? _formatFileSize(file.lengthSync()) : '';
       });
       final isDark = Theme.of(context).brightness == Brightness.dark;
       String url = _normalizeUrl(cachedWebglUrl);
@@ -380,10 +404,28 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   }
 
   Future<void> _convertAndOpenDwg(File file, String fileName) async {
+    final fileSize = file.existsSync() ? file.lengthSync() : 0;
+    _stageTimer?.cancel();
+
     setState(() {
       _isViewingDrawing = true;
       _isParsing = true;
       _activeDrawingName = fileName;
+      _loadingStep = 1;
+      _loadingTitle = 'CAD Dosyası Hazırlanıyor...';
+      _loadingSubtitle = 'Çizim dosyası ($fileName) inceleniyor ve paketleniyor...';
+      _loadingFileSize = _formatFileSize(fileSize);
+    });
+
+    _stageTimer = Timer(const Duration(milliseconds: 1000), () {
+      if (mounted && _isParsing) {
+        setState(() {
+          _loadingStep = 2;
+          _loadingTitle = 'V2 Sunucusuna Aktarılıyor...';
+          _loadingSubtitle =
+              'Cloudflare yüksek hızlı tüneli ile Oracle Cloud V2 motoruna iletiliyor...';
+        });
+      }
     });
 
     try {
@@ -395,6 +437,17 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
         await http.MultipartFile.fromPath('file', file.path,
             filename: fileName),
       );
+
+      Timer(const Duration(milliseconds: 3000), () {
+        if (mounted && _isParsing && _loadingStep < 3) {
+          setState(() {
+            _loadingStep = 3;
+            _loadingTitle = 'V2 Motoru Çizimi Çözümlüyor...';
+            _loadingSubtitle =
+                'Direct DXF motoru ile ACI renkler, dolgular ve sıfır-kopya binary paket üretiliyor...';
+          });
+        }
+      });
 
       final streamedResponse =
           await request.send().timeout(const Duration(seconds: 120));
@@ -430,22 +483,27 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
         await _saveRecentFile(YerelCadDosya(
           dosyaAdi: fileName,
           dosyaYolu: file.path,
-          dosyaBoyutu: file.existsSync() ? file.lengthSync() : 0,
+          dosyaBoyutu: fileSize,
           acilmaTarihi: DateTime.now(),
           webglUrl: resolvedWebglUrl,
         ));
 
-        await _webViewController?.loadRequest(Uri.parse(resolvedWebglUrl));
         if (mounted) {
           setState(() {
-            _isParsing = false;
+            _loadingStep = 4;
+            _loadingTitle = 'GPU Donanım Motoru Başlatılıyor...';
+            _loadingSubtitle =
+                'Sıfır-kopya ikili (binary) geometri verisi WebGL tuvaline yükleniyor...';
           });
         }
+
+        await _webViewController?.loadRequest(Uri.parse(resolvedWebglUrl));
       } else {
         throw Exception(
             'Dönüştürme sunucusu yanıt vermedi (${streamedResponse.statusCode})');
       }
     } catch (e) {
+      _stageTimer?.cancel();
       if (mounted) {
         setState(() {
           _isParsing = false;
@@ -471,9 +529,16 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
   }
 
   void _openDemoPlan() {
+    _stageTimer?.cancel();
     setState(() {
       _isViewingDrawing = true;
+      _isParsing = true;
       _activeDrawingName = 'HASAN AKTAŞ STATİK (V2)';
+      _loadingStep = 4;
+      _loadingTitle = 'Örnek Statik Proje Yükleniyor...';
+      _loadingSubtitle =
+          'V2 motoru ile önbelleklenen 757.000+ çizgi ve dolgu GPU donanımına aktarılıyor...';
+      _loadingFileSize = '7.4 MB DWG (28.9 MB GPU)';
     });
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final demoUrl =
@@ -594,10 +659,7 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
         canPop: false,
         onPopInvokedWithResult: (didPop, result) {
           if (didPop) return;
-          setState(() {
-            _isViewingDrawing = false;
-          });
-          _loadCadHtml();
+          _closeDrawingView();
         },
         child: Scaffold(
           backgroundColor: Colors.black,
@@ -607,91 +669,79 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
             leading: IconButton(
               icon: const Icon(Icons.arrow_back_ios_new_rounded,
                   color: Colors.white, size: 19),
-              onPressed: () {
-                setState(() {
-                  _isViewingDrawing = false;
-                });
-                _loadCadHtml();
-              },
+              onPressed: _closeDrawingView,
               tooltip: 'Dosyalara Dön',
             ),
-          title: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            mainAxisSize: MainAxisSize.min,
-            children: [
-              Text(
-                _activeDrawingName.isNotEmpty
-                    ? _activeDrawingName
-                    : 'Çevrimdışı CAD Motoru',
-                style: const TextStyle(
-                  color: Colors.white,
-                  fontSize: 15,
-                  fontWeight: FontWeight.w700,
+            title: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Text(
+                  _activeDrawingName.isNotEmpty
+                      ? _activeDrawingName
+                      : 'V2 CAD Motoru',
+                  style: const TextStyle(
+                    color: Colors.white,
+                    fontSize: 15,
+                    fontWeight: FontWeight.w700,
+                  ),
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                 ),
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
+                Row(
+                  children: [
+                    Container(
+                      width: 6,
+                      height: 6,
+                      decoration: const BoxDecoration(
+                        color: Color(0xFF10B981),
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                    const SizedBox(width: 5),
+                    const Text(
+                      'Donanım Hızlandırmalı GPU Motoru (V2)',
+                      style: TextStyle(
+                        color: Colors.white70,
+                        fontSize: 10.5,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+            actions: [
+              IconButton(
+                icon: const Icon(Icons.bug_report_outlined,
+                    color: Color(0xFFF87171), size: 21),
+                tooltip: 'Hata Ayıklayıcı (Debugger)',
+                onPressed: () {
+                  _webViewController?.runJavaScript(
+                      'window.openDebugger ? window.openDebugger() : CADDebugger.open();');
+                },
               ),
-              Row(
-                children: [
-                  Container(
-                    width: 6,
-                    height: 6,
-                    decoration: const BoxDecoration(
-                      color: Color(0xFF10B981),
-                      shape: BoxShape.circle,
-                    ),
-                  ),
-                  const SizedBox(width: 5),
-                  const Text(
-                    'Donanım Hızlandırmalı GPU Motoru',
-                    style: TextStyle(
-                      color: Colors.white70,
-                      fontSize: 10.5,
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
+              IconButton(
+                icon: const Icon(Icons.file_open_outlined,
+                    color: Color(0xFF38BDF8), size: 21),
+                tooltip: 'Farklı Çizim Seç',
+                onPressed: _pickAndOpenFile,
               ),
             ],
           ),
-          actions: [
-            IconButton(
-              icon: const Icon(Icons.bug_report_outlined,
-                  color: Color(0xFFF87171), size: 21),
-              tooltip: 'Hata Ayıklayıcı (Debugger)',
-              onPressed: () {
-                _webViewController?.runJavaScript(
-                    'window.openDebugger ? window.openDebugger() : CADDebugger.open();');
-              },
-            ),
-            IconButton(
-              icon: const Icon(Icons.file_open_outlined,
-                  color: Color(0xFF38BDF8), size: 21),
-              tooltip: 'Farklı Çizim Seç',
-              onPressed: _pickAndOpenFile,
-            ),
-          ],
-        ),
-        body: Stack(
-          children: [
-            if (_webViewController != null)
-              WebViewWidget(controller: _webViewController!),
-            if (_isParsing)
-              const Positioned(
-                top: 0,
-                left: 0,
-                right: 0,
-                child: LinearProgressIndicator(
-                  minHeight: 2.5,
-                  backgroundColor: Colors.transparent,
-                  valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+          body: Stack(
+            children: [
+              if (_webViewController != null)
+                WebViewWidget(controller: _webViewController!),
+              if (_isParsing)
+                Positioned.fill(
+                  child: _buildLoadingOverlay(),
                 ),
-              ),
-          ],
+            ],
+          ),
         ),
-      ),
-    );
-  }
+      );
+    }
 
     // Ana Dosya Seçim & Çevrimdışı Bilgi Ekranı
     return Scaffold(
@@ -1095,6 +1145,255 @@ class _YerelCadEkraniState extends State<YerelCadEkrani> {
           fontWeight: FontWeight.w600,
         ),
       ),
+    );
+  }
+
+  Widget _buildLoadingOverlay() {
+    return Container(
+      color: Colors.black.withValues(alpha: 0.88),
+      child: Center(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 32),
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 420),
+            child: Container(
+              padding: const EdgeInsets.all(26),
+              decoration: BoxDecoration(
+                gradient: const LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: [
+                    Color(0xFF161F2E),
+                    Color(0xFF0F172A),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: const Color(0xFF38BDF8).withValues(alpha: 0.28),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: 0.65),
+                    blurRadius: 36,
+                    offset: const Offset(0, 18),
+                  ),
+                  BoxShadow(
+                    color: const Color(0xFF0F7C86).withValues(alpha: 0.18),
+                    blurRadius: 28,
+                    offset: const Offset(0, 4),
+                  ),
+                ],
+              ),
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  // Animasyonlu / Parlayan CAD İkonu
+                  Container(
+                    width: 72,
+                    height: 72,
+                    decoration: BoxDecoration(
+                      shape: BoxShape.circle,
+                      gradient: LinearGradient(
+                        colors: [
+                          const Color(0xFF0F7C86).withValues(alpha: 0.25),
+                          const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                        ],
+                      ),
+                      border: Border.all(
+                        color: const Color(0xFF38BDF8).withValues(alpha: 0.4),
+                        width: 1.5,
+                      ),
+                    ),
+                    child: const Center(
+                      child: SizedBox(
+                        width: 38,
+                        height: 38,
+                        child: CircularProgressIndicator(
+                          strokeWidth: 3.2,
+                          valueColor:
+                              AlwaysStoppedAnimation<Color>(Color(0xFF38BDF8)),
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Başlık (Mevcut Aşama)
+                  Text(
+                    _loadingTitle,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(
+                      color: Colors.white,
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w700,
+                      letterSpacing: -0.2,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+
+                  // Açıklama Detayı
+                  Text(
+                    _loadingSubtitle,
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      color: Colors.white.withValues(alpha: 0.72),
+                      fontSize: 12.5,
+                      height: 1.45,
+                    ),
+                  ),
+                  const SizedBox(height: 18),
+
+                  // Dosya Adı & Boyut Rozeti
+                  if (_activeDrawingName.isNotEmpty)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                          horizontal: 14, vertical: 8),
+                      decoration: BoxDecoration(
+                        color: Colors.white.withValues(alpha: 0.06),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.12),
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(Icons.description_outlined,
+                              size: 16, color: Color(0xFF38BDF8)),
+                          const SizedBox(width: 8),
+                          Flexible(
+                            child: Text(
+                              _activeDrawingName,
+                              style: const TextStyle(
+                                color: Colors.white,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (_loadingFileSize.isNotEmpty) ...[
+                            const SizedBox(width: 6),
+                            Text(
+                              '($_loadingFileSize)',
+                              style: TextStyle(
+                                color: Colors.white.withValues(alpha: 0.55),
+                                fontSize: 11,
+                              ),
+                            ),
+                          ],
+                        ],
+                      ),
+                    ),
+
+                  const SizedBox(height: 22),
+
+                  // 4 Aşamalı İlerleme Göstergesi (Stepper)
+                  Row(
+                    children: [
+                      _buildStepIndicator(1, 'Hazırlık'),
+                      _buildStepConnector(1),
+                      _buildStepIndicator(2, 'Aktarım'),
+                      _buildStepConnector(2),
+                      _buildStepIndicator(3, 'V2 Motor'),
+                      _buildStepConnector(3),
+                      _buildStepIndicator(4, 'GPU Çizim'),
+                    ],
+                  ),
+
+                  const SizedBox(height: 24),
+
+                  // İptal Et Butonu
+                  SizedBox(
+                    width: double.infinity,
+                    height: 38,
+                    child: OutlinedButton(
+                      style: OutlinedButton.styleFrom(
+                        foregroundColor: Colors.white70,
+                        side: BorderSide(
+                          color: Colors.white.withValues(alpha: 0.16),
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                      ),
+                      onPressed: _closeDrawingView,
+                      child: const Text(
+                        'İptal Et / Geri Dön',
+                        style: TextStyle(
+                            fontSize: 12.5, fontWeight: FontWeight.w500),
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildStepIndicator(int stepNumber, String label) {
+    final isDone = _loadingStep > stepNumber;
+    final isActive = _loadingStep == stepNumber;
+    final color = isDone
+        ? const Color(0xFF10B981)
+        : (isActive ? const Color(0xFF38BDF8) : Colors.white24);
+
+    return Expanded(
+      child: Column(
+        children: [
+          Container(
+            width: 24,
+            height: 24,
+            decoration: BoxDecoration(
+              shape: BoxShape.circle,
+              color: isDone
+                  ? const Color(0xFF10B981)
+                  : (isActive
+                      ? const Color(0xFF38BDF8).withValues(alpha: 0.2)
+                      : Colors.transparent),
+              border: Border.all(color: color, width: 1.5),
+            ),
+            child: Center(
+              child: isDone
+                  ? const Icon(Icons.check, size: 14, color: Colors.white)
+                  : Text(
+                      '$stepNumber',
+                      style: TextStyle(
+                        color: color,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w700,
+                      ),
+                    ),
+            ),
+          ),
+          const SizedBox(height: 4),
+          Text(
+            label,
+            style: TextStyle(
+              color: isActive || isDone ? Colors.white : Colors.white38,
+              fontSize: 9.5,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+            ),
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildStepConnector(int stepNumber) {
+    final isDone = _loadingStep > stepNumber;
+    return Container(
+      width: 12,
+      height: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      color: isDone ? const Color(0xFF10B981) : Colors.white12,
     );
   }
 }

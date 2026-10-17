@@ -3214,7 +3214,6 @@
       CADDebugger.init();
       initGL();
       resize();
-      loadDemoPlan();
       setTimeout(() => {
         getWasmModule().catch(e => CADDebugger.log('PREWARM', 'WASM arka plan pre-warm: ' + e.message, 'warn'));
       }, 300);

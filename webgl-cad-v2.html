@@ -1643,7 +1643,12 @@
         if (titleEl) titleEl.textContent = decodedTitle;
         document.title = `${decodedTitle} - CAD Motoru`;
       } else if (!fileId) {
-        if (titleEl) titleEl.textContent = 'HASAN AKTAŞ STATİK PROJESİ';
+        if (titleEl) titleEl.textContent = 'CAD Çizimi';
+      }
+
+      if (!fileId && !urlParams.has('demo')) {
+        hideLoader();
+        return;
       }
 
       updateLoader(1, 'Hızlı CAD Akışı Başlatılıyor', 'DWG vektörleri GPU donanımına hazırlanıyor...', 20);
