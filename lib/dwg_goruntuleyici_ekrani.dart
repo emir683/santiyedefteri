@@ -365,7 +365,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       });
 
       final streamedResponse =
-          await request.send().timeout(const Duration(seconds: 120));
+          await request.send().timeout(const Duration(minutes: 5));
       final responseBody = await streamedResponse.stream.bytesToString();
 
       if (streamedResponse.statusCode == 200) {

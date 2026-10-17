@@ -1,10 +1,9 @@
 const express = require('express');
 const multer = require('multer');
-const { exec } = require('child_process');
+const { execFile } = require('child_process');
 const path = require('path');
 const fs = require('fs');
 const { v4: uuidv4 } = require('uuid');
-
 const compression = require('compression');
 
 const app = express();
@@ -15,23 +14,60 @@ app.use(compression({ threshold: 1024 }));
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PUBLIC_DIR = path.join(__dirname, 'public');
 
+// V1 Motoru (Mevcut, dokunulmaz SVG+DXF hattı)
+const PYTHON_SCRIPT_PATH = fs.existsSync(path.join(__dirname, 'generate_full_cad_webgl.py'))
+  ? path.join(__dirname, 'generate_full_cad_webgl.py')
+  : '/home/ubuntu/cad-service/generate_full_cad_webgl.py';
+
+// V2 Motoru (Yeni, DXF-Öncelikli saf CAD hattı)
+const PYTHON_SCRIPT_PATH_V2 = fs.existsSync(path.join(__dirname, 'generate_full_cad_webgl_v2.py'))
+  ? path.join(__dirname, 'generate_full_cad_webgl_v2.py')
+  : '/home/ubuntu/cad-service/generate_full_cad_webgl_v2.py';
+
 if (!fs.existsSync(UPLOAD_DIR)) fs.mkdirSync(UPLOAD_DIR, { recursive: true });
 if (!fs.existsSync(PUBLIC_DIR)) fs.mkdirSync(PUBLIC_DIR, { recursive: true });
+
+// Korunan hazır örnek proje ID'leri (Temizlik sırasında asla silinmez)
+const PROTECTED_FILE_IDS = new Set([
+  'bc00f9c7-d593-49d7-9f4e-ceefb57f27b8',
+  '5d6e89b2-bdac-4ff9-8e7c-c129c1fc68e2',
+  'a6003203-6143-414a-bc21-5929f5e8c61e',
+  '87b6f0bc-dc50-4fbc-959b-e1302122afd0'
+]);
+
+function cleanupOldUploads(maxAgeMs = 7 * 24 * 60 * 60 * 1000) {
+  try {
+    const now = Date.now();
+    const files = fs.readdirSync(UPLOAD_DIR);
+    for (const file of files) {
+      const isProtected = Array.from(PROTECTED_FILE_IDS).some(id => file.startsWith(id));
+      if (isProtected) continue;
+      const fullPath = path.join(UPLOAD_DIR, file);
+      const stat = fs.statSync(fullPath);
+      if (now - stat.mtimeMs > maxAgeMs) {
+        fs.unlinkSync(fullPath);
+      }
+    }
+  } catch (err) {
+    console.warn('[CLEANUP NOTE]', err.message);
+  }
+}
+setInterval(() => cleanupOldUploads(), 6 * 60 * 60 * 1000);
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
-    const ext = path.extname(file.originalname);
+    const ext = path.extname(file.originalname || '').toLowerCase() || '.dwg';
     cb(null, uuidv4() + ext);
   }
 });
 
 const upload = multer({
   storage,
-  limits: { fileSize: 250 * 1024 * 1024 } // 250 MB
+  limits: { fileSize: 250 * 1024 * 1024 }
 });
 
-// Aktif donusturme kuyrugu ve eszamanli talep yonetimi (Race condition ve cift Python calismasini onler)
+// ----------------- V1 İŞ KUYRUĞU (MEVCUT DOKUNULMAZ MOTOR) -----------------
 const activeCadJobs = new Map();
 
 function getOrCreateCadData(fileId, svgPath, jsonTarget) {
@@ -39,31 +75,97 @@ function getOrCreateCadData(fileId, svgPath, jsonTarget) {
     return activeCadJobs.get(fileId);
   }
   const job = new Promise((resolve, reject) => {
-    console.log(`[CAD ENGINE] Yuksek hizli vektor cizim paketi uretiliyor: ${fileId}...`);
-    exec(`python3 /home/ubuntu/cad-service/generate_full_cad_webgl.py "${svgPath}" "${jsonTarget}"`, { maxBuffer: 50 * 1024 * 1024 }, (err) => {
-      activeCadJobs.delete(fileId);
-      if (err) {
-        console.error(`[CAD ENGINE ERROR] ${fileId}:`, err);
-        return reject(err);
+    console.log(`[CAD ENGINE V1] Yüksek hızlı vektör çizim paketi üretiliyor: ${fileId}...`);
+    execFile(
+      'python3',
+      [PYTHON_SCRIPT_PATH, svgPath, jsonTarget],
+      { maxBuffer: 64 * 1024 * 1024, timeout: 180000 },
+      (err) => {
+        activeCadJobs.delete(fileId);
+        if (err) {
+          console.error(`[CAD ENGINE V1 ERROR] ${fileId}:`, err);
+          return reject(err);
+        }
+        console.log(`[CAD ENGINE V1 SUCCESS] ${fileId}`);
+        resolve();
       }
-      console.log(`[CAD ENGINE SUCCESS] ${fileId}`);
-      resolve();
-    });
+    );
   });
   activeCadJobs.set(fileId, job);
   return job;
 }
 
-// CAD Durum Kontrol API'si (Yukleme ekraninda anlik durum ve ilerleme)
+// ----------------- V2 İŞ KUYRUĞU (YENİ DXF-ÖNCELİKLİ HAT) -----------------
+const activeCadJobsV2 = new Map();
+
+function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfPath) {
+  if (activeCadJobsV2.has(fileId)) {
+    return activeCadJobsV2.get(fileId);
+  }
+
+  const job = (async () => {
+    console.log(`[CAD ENGINE V2 START] ${fileId} dönüşümü başlatıldı...`);
+    const isDwg = inputPath.toLowerCase().endsWith('.dwg');
+    if (isDwg) {
+      if (!fs.existsSync(dxfPath) || fs.statSync(dxfPath).size < 100) {
+        console.log(`[CAD ENGINE V2] dwg2dxf çalıştırılıyor: ${fileId}...`);
+        await runDwgToDxf(inputPath, dxfPath);
+      }
+    } else if (inputPath.toLowerCase().endsWith('.dxf')) {
+      if (inputPath !== dxfPath && !fs.existsSync(dxfPath)) {
+        fs.copyFileSync(inputPath, dxfPath);
+      }
+    }
+
+    console.log(`[CAD ENGINE V2] Python V2 DXF-Öncelikli Binary üretiliyor: ${fileId}...`);
+    await new Promise((resolve, reject) => {
+      execFile(
+        'python3',
+        [PYTHON_SCRIPT_PATH_V2, svgPath, jsonTarget],
+        { maxBuffer: 128 * 1024 * 1024, timeout: 600000 },
+        (err) => {
+          if (err) {
+            console.error(`[CAD ENGINE V2 ERROR] ${fileId}:`, err);
+            return reject(err);
+          }
+          console.log(`[CAD ENGINE V2 SUCCESS] ${fileId} başarıyla tamamlandı!`);
+          resolve();
+        }
+      );
+    });
+
+    // Arka planda SVG ve PDF fallback üretimi
+    if (isDwg) {
+      runDwgToSvg(inputPath, svgPath).then(() => {
+        smartFixSvg(svgPath);
+        if (fs.existsSync(svgPath) && fs.statSync(svgPath).size > 50) {
+          execFile('rsvg-convert', ['-f', 'pdf', '-o', pdfPath, svgPath], () => {});
+        }
+      }).catch(() => {});
+    }
+  })();
+
+  activeCadJobsV2.set(fileId, job);
+  job.finally(() => {
+    activeCadJobsV2.delete(fileId);
+  });
+  return job;
+}
+
 app.get('/api/cad-status/:fileId', (req, res) => {
   const { fileId } = req.params;
+  if (!/^[a-zA-Z0-9_\-]+$/.test(fileId)) {
+    return res.status(400).json({ error: 'Geçersiz dosya kimliği' });
+  }
   const binGz = path.join(UPLOAD_DIR, `${fileId}_cad_vertices.bin.gz`);
   const bin = path.join(UPLOAD_DIR, `${fileId}_cad_vertices.bin`);
+  const metaGz = path.join(UPLOAD_DIR, `${fileId}_cad_meta.json.gz`);
+  const meta = path.join(UPLOAD_DIR, `${fileId}_cad_meta.json`);
   const jsonGz = path.join(UPLOAD_DIR, `${fileId}_cad_data.json.gz`);
   const json = path.join(UPLOAD_DIR, `${fileId}_cad_data.json`);
 
-  const ready = (fs.existsSync(binGz) || fs.existsSync(bin)) || (fs.existsSync(jsonGz) || fs.existsSync(json));
-  const converting = activeCadJobs.has(fileId);
+  const ready = (fs.existsSync(binGz) || fs.existsSync(bin)) && (fs.existsSync(metaGz) || fs.existsSync(meta));
+  const converting = activeCadJobs.has(fileId) || activeCadJobsV2.has(fileId);
 
   res.json({
     fileId,
@@ -72,14 +174,14 @@ app.get('/api/cad-status/:fileId', (req, res) => {
   });
 });
 
-// Yüksek Hızlı Statik Dosya Dağıtımı (Gzip, Kalıcı Önbellek ve Mutex Garantili CAD Üretimi)
 app.get('/files/:filename', (req, res, next) => {
-  const filename = req.params.filename;
+  const filename = path.basename(req.params.filename);
   const filePath = path.join(UPLOAD_DIR, filename);
   const gzPath = filePath + '.gz';
   const acceptsGz = req.headers['accept-encoding'] && req.headers['accept-encoding'].includes('gzip');
 
   const serveFile = () => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
@@ -95,11 +197,24 @@ app.get('/files/:filename', (req, res, next) => {
     return next();
   };
 
-  // Eksikse tek bir is parcacigiyla talep aninda aninda olustur
   if (!fs.existsSync(filePath) && !fs.existsSync(gzPath)) {
-    const m = filename.match(/^([a-f0-9\-]+)_cad_(data\.json|vertices\.bin|meta\.json)$/);
+    const m = filename.match(/^([a-f0-9\-]+)_cad_(?:data_)?(data\.json|vertices\.bin|triangles\.bin|meta\.json)$/);
     if (m) {
       const fileId = m[1];
+      if (activeCadJobsV2.has(fileId)) {
+        return res.status(202).json({ converting: true, message: 'CAD projesi çözümleniyor...' });
+      }
+      const dxfPath = path.join(UPLOAD_DIR, `${fileId}.dxf`);
+      const dwgPath = path.join(UPLOAD_DIR, `${fileId}.dwg`);
+      const inputSrc = fs.existsSync(dwgPath) ? dwgPath : (fs.existsSync(dxfPath) ? dxfPath : null);
+      if (inputSrc) {
+        const svgPath = path.join(UPLOAD_DIR, `${fileId}.svg`);
+        const jsonTarget = path.join(UPLOAD_DIR, `${fileId}_cad_data.json`);
+        const pdfPath = path.join(UPLOAD_DIR, `${fileId}.pdf`);
+        startV2Conversion(fileId, inputSrc, dxfPath, svgPath, jsonTarget, pdfPath)
+          .catch((err) => console.error(`[ON-DEMAND V2 ERROR] ${fileId}:`, err));
+        return res.status(202).json({ converting: true, message: 'Dönüştürme başlatıldı...' });
+      }
       const svgPath = path.join(UPLOAD_DIR, `${fileId}.svg`);
       if (fs.existsSync(svgPath)) {
         const jsonTarget = path.join(UPLOAD_DIR, `${fileId}_cad_data.json`);
@@ -111,7 +226,6 @@ app.get('/files/:filename', (req, res, next) => {
     }
   }
 
-  // Halihazırda varsa anında servis et
   if (fs.existsSync(filePath) || fs.existsSync(gzPath)) {
     return serveFile();
   }
@@ -122,6 +236,7 @@ app.get('/files/:filename', (req, res, next) => {
 app.use('/files', express.static(UPLOAD_DIR, {
   maxAge: 0,
   setHeaders: (res) => {
+    res.setHeader('Access-Control-Allow-Origin', '*');
     res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate');
   }
 }));
@@ -134,14 +249,13 @@ app.use(express.static(PUBLIC_DIR, {
 }));
 
 app.get('/health', (req, res) => {
-  res.json({ status: 'ok', engine: 'LibreDWG Precision Single-Strip Vector CAD Engine (High-Performance Zero-Copy)', port: PORT });
+  res.json({
+    status: 'ok',
+    engine: 'Dual Engine: V1 (SVG+DXF) & V2 (Direct DXF-First Zero-Copy)',
+    port: PORT
+  });
 });
 
-// SVG'yi Akıllı Onarıcı - TEK YATAY ŞERİT VE %100 KAYIPSIZ ÇİZİM RENDER:
-// 1. MTEXT, SPLINE, DIMENSION, ATTDEF ve tüm AutoCAD çizim elemanlarını kapsar.
-// 2. Taban ofsetine sahip sembol bloklarını seçici olarak ait oldukları paftaların içine yerleştirir.
-// 3. ModelSpace sınırlarını hesaplayarak kesintisiz tek şerit (AutoCAD / DWG FastView standardı) oluşturur.
-// 4. Çap simgesi (%%c -> Ø), derece (%%d -> °), pas payı ve genel mühendislik notlarını kusursuz biçimlendirir.
 function smartFixSvg(filePath) {
   try {
     if (!fs.existsSync(filePath)) return;
@@ -153,28 +267,41 @@ function smartFixSvg(filePath) {
       content = content.substring(svgStart);
     }
 
-    const defsStart = content.indexOf('<defs>');
+    let origBaseX = null;
+    let origBaseY = null;
+    const origVb = content.match(/viewBox="([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)\s+([+-]?\d+\.?\d*)"/);
+    if (origVb && !content.includes('data-dwg-base-x=')) {
+      const ox = parseFloat(origVb[1]);
+      const oy = parseFloat(origVb[2]);
+      const ow = parseFloat(origVb[3]);
+      const oh = parseFloat(origVb[4]);
+      if (isFinite(ox) && isFinite(oy) && isFinite(ow) && isFinite(oh)) {
+        origBaseX = -ox;
+        origBaseY = oy + oh;
+        content = content.replace('<svg', `<svg data-dwg-base-x="${origBaseX.toFixed(2)}" data-dwg-base-y="${origBaseY.toFixed(2)}"`);
+      }
+    }
 
-    // 1. Sembollerdeki (Kiriş, Donatı, Kesit, Akslar) AutoCAD Base-Point kaymasını tespit edip HİYERARŞİK olarak düzelt
+    const defsStart = content.indexOf('<defs>');
     if (defsStart !== -1) {
       let defsPart = content.substring(defsStart);
       const modelSpacePart = content.substring(0, defsStart);
 
-      // ModelSpace içinde doğrudan çağrılan ÜST DÜZEY sembolleri tespit et
       const msSymbols = new Set();
-      const msUseRegex = /<use[^>]+href="#(symbol-[^"]+)"/g;
+      const msUseRegex = /<use[^>]+(?:xlink:href|href)="#(symbol-[^"]+)"/g;
       let uMatch;
       while ((uMatch = msUseRegex.exec(modelSpacePart)) !== null) {
         msSymbols.add(uMatch[1]);
       }
 
-      // Taban ofsetini hesapla
       const symMinX = [];
       const symMaxY = [];
       const symMatches = defsPart.split('<g id="symbol-');
 
       for (let i = 1; i < symMatches.length; i++) {
-        const chunk = symMatches[i].substring(0, symMatches[i].indexOf('</g>'));
+        const endIdx = symMatches[i].indexOf('</g>');
+        if (endIdx === -1) continue;
+        const chunk = symMatches[i].substring(0, endIdx);
         const pts = [];
         const ptRegex = /([+-]?\d+\.?\d*),([+-]?\d+\.?\d*)/g;
         let pMatch;
@@ -183,13 +310,11 @@ function smartFixSvg(filePath) {
           pts.push([parseFloat(pMatch[1]), parseFloat(pMatch[2])]);
           count++;
         }
-        if (pts.length > 5) {
+        if (pts.length > 4) {
           const xs = pts.map(p => p[0]);
           const ys = pts.map(p => p[1]);
-          const minX = Math.min(...xs);
-          const maxY = Math.max(...ys);
-          if (minX > 1000) symMinX.push(parseFloat(minX.toFixed(1)));
-          if (maxY < -1000) symMaxY.push(parseFloat(maxY.toFixed(1)));
+          symMinX.push(parseFloat(Math.min(...xs).toFixed(0)));
+          symMaxY.push(parseFloat(Math.max(...ys).toFixed(0)));
         }
       }
 
@@ -207,36 +332,29 @@ function smartFixSvg(filePath) {
         return best;
       }
 
-      const baseX = mostFrequent(symMinX) || 47599.412729;
-      const baseY = mostFrequent(symMaxY) || -28187.433527;
+      const baseX = origBaseX !== null ? origBaseX : mostFrequent(symMinX);
+      const baseY = origBaseY !== null ? origBaseY : mostFrequent(symMaxY);
 
-      console.log(`[ORIGIN SHIFT] Detected block origin offset: (${baseX}, ${baseY}), msSymbols count: ${msSymbols.size}`);
-
-      // YALNIZCA ham negatif koordinatlara (y < -10000) sahip sembollere transform ekle!
-      // Pozitif koordinatlı semboller (ölçü çizgileri, aks metreleri vb.) zaten ModelSpace'te doğru yerindedir.
-      const symSplits = defsPart.split('</g>');
-      const updatedChunks = [];
-      for (let chunk of symSplits) {
-        const idMatch = chunk.match(/<g\s+id="(symbol-[^"]+)"([^>]*)>/);
-        if (idMatch && msSymbols.has(idMatch[1])) {
-          const symId = idMatch[1];
-          const tag = idMatch[0];
-          if (!tag.includes('transform=')) {
-            // Sadece gerçekten büyük negatif Y koordinatına (<-10000) sahip bloklara transform uygula
-            const hasLargeNegY = /,\s*-[1-9]\d{4,}/.test(chunk) || /cy="-[1-9]\d{4,}/.test(chunk) || /y="-[1-9]\d{4,}/.test(chunk);
-            if (hasLargeNegY) {
+      if (baseX !== null && baseY !== null) {
+        console.log(`[ORIGIN SHIFT] Block origin offset: (${baseX}, ${baseY}), msSymbols count: ${msSymbols.size}`);
+        const symSplits = defsPart.split('</g>');
+        const updatedChunks = [];
+        for (let chunk of symSplits) {
+          const idMatch = chunk.match(/<g\s+id="(symbol-[^"]+)"([^>]*)>/);
+          if (idMatch && msSymbols.has(idMatch[1])) {
+            const symId = idMatch[1];
+            const tag = idMatch[0];
+            if (!tag.includes('transform=')) {
               chunk = chunk.replace(tag, `<g id="${symId}" transform="translate(${-baseX}, ${-baseY})"${idMatch[2]}>`);
             }
           }
+          updatedChunks.push(chunk);
         }
-        updatedChunks.push(chunk);
+        defsPart = updatedChunks.join('</g>');
+        content = content.substring(0, defsStart) + defsPart;
       }
-      defsPart = updatedChunks.join('</g>');
-
-      content = content.substring(0, defsStart) + defsPart;
     }
 
-    // 2. ModelSpace alanını (defs harici) tara ve tek şerit sınırlarını hesapla
     const currentDefsStart = content.indexOf('<defs>');
     const modelSpaceContent = currentDefsStart !== -1 ? content.substring(0, currentDefsStart) : content;
 
@@ -245,48 +363,47 @@ function smartFixSvg(filePath) {
     const textCoordRegex = /<text[^>]+x="([+-]?\d+\.?\d*)"\s+y="([+-]?\d+\.?\d*)"/g;
 
     let match;
-    let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
-    let count = 0;
+    const xsAll = [];
+    const ysAll = [];
 
-    while ((match = coordRegex.exec(modelSpaceContent)) !== null) {
-      const x = parseFloat(match[1]);
-      const y = parseFloat(match[2]);
-      if (!isNaN(x) && !isNaN(y) && Math.abs(x) < 1e7 && Math.abs(y) < 1e7) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-        count++;
+    const scanCoords = (regex) => {
+      while ((match = regex.exec(modelSpaceContent)) !== null) {
+        const x = parseFloat(match[1]);
+        const y = parseFloat(match[2]);
+        if (!isNaN(x) && !isNaN(y) && Math.abs(x) < 1e7 && Math.abs(y) < 1e7) {
+          xsAll.push(x);
+          ysAll.push(y);
+        }
       }
-    }
+    };
 
-    while ((match = transRegex.exec(modelSpaceContent)) !== null) {
-      const x = parseFloat(match[1]);
-      const y = parseFloat(match[2]);
-      if (!isNaN(x) && !isNaN(y) && Math.abs(x) < 1e7 && Math.abs(y) < 1e7) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-        count++;
-      }
-    }
+    scanCoords(coordRegex);
+    scanCoords(transRegex);
+    scanCoords(textCoordRegex);
 
-    while ((match = textCoordRegex.exec(modelSpaceContent)) !== null) {
-      const x = parseFloat(match[1]);
-      const y = parseFloat(match[2]);
-      if (!isNaN(x) && !isNaN(y) && Math.abs(x) < 1e7 && Math.abs(y) < 1e7) {
-        if (x < minX) minX = x;
-        if (x > maxX) maxX = x;
-        if (y < minY) minY = y;
-        if (y > maxY) maxY = y;
-        count++;
-      }
-    }
+    if (xsAll.length > 2) {
+      xsAll.sort((a, b) => a - b);
+      ysAll.sort((a, b) => a - b);
+      const q01X = xsAll[Math.floor(xsAll.length * 0.05)];
+      const q99X = xsAll[Math.floor(xsAll.length * 0.95)];
+      const q01Y = ysAll[Math.floor(ysAll.length * 0.05)];
+      const q99Y = ysAll[Math.floor(ysAll.length * 0.95)];
+      const spanX = Math.max(q99X - q01X, 2000);
+      const spanY = Math.max(q99Y - q01Y, 2000);
+      const limMinX = q01X - Math.max(spanX * 1.5, 100000);
+      const limMaxX = q99X + Math.max(spanX * 1.5, 100000);
+      const limMinY = q01Y - Math.max(spanY * 2.0, 80000);
+      const limMaxY = q99Y + Math.max(spanY * 2.0, 80000);
 
-    if (count > 0 && isFinite(minX) && isFinite(maxX) && isFinite(minY) && isFinite(maxY)) {
-      const w = maxX - minX;
-      const h = maxY - minY;
+      const filtX = xsAll.filter(v => v >= limMinX && v <= limMaxX);
+      const filtY = ysAll.filter(v => v >= limMinY && v <= limMaxY);
+      const minX = filtX.length ? filtX[0] : xsAll[0];
+      const maxX = filtX.length ? filtX[filtX.length - 1] : xsAll[xsAll.length - 1];
+      const minY = filtY.length ? filtY[0] : ysAll[0];
+      const maxY = filtY.length ? filtY[filtY.length - 1] : ysAll[ysAll.length - 1];
+
+      const w = Math.max(10, maxX - minX);
+      const h = Math.max(10, maxY - minY);
       const padX = Math.max(w * 0.02, 10);
       const padY = Math.max(h * 0.05, 10);
       const realMinX = (minX - padX).toFixed(2);
@@ -297,30 +414,28 @@ function smartFixSvg(filePath) {
       const newViewBox = `viewBox="${realMinX} ${realMinY} ${realW} ${realH}"`;
       content = content.replace(/viewBox="[^"]+"/, newViewBox);
 
-      // Tek uzun şerit oranını koru
       const targetW = 24000;
       const targetH = Math.max(Math.round(24000 * (h / (w || 1))), 800);
       content = content.replace(/width="[^"]*"/, `width="${targetW}"`);
       content = content.replace(/height="[^"]*"/, `height="${targetH}"`);
 
-      // CAD Karanlık mod: Tam boyutta siyah zemin ekle
       const bgRect = `<rect x="${realMinX}" y="${realMinY}" width="${realW}" height="${realH}" fill="#000000" />\n\t`;
       content = content.replace(/(<svg[^>]*>)/, `$1\n\t${bgRect}`);
     }
 
-    // 3. AutoCAD özel karakterlerini ve format kodlarını temizle
     content = content.replace(/%%[cC]/g, 'Ø');
     content = content.replace(/%%[dD]/g, '°');
     content = content.replace(/%%[pP]/g, '±');
     content = content.replace(/\\P/g, ' ');
     content = content.replace(/\\A[0-2];/g, '');
-    content = content.replace(/\\H[0-9.]+x;/g, '');
+    content = content.replace(/\\H[0-9.]+x?;/g, '');
     content = content.replace(/\\W[0-9.]+;/g, '');
     content = content.replace(/\\Q[0-9.]+;/g, '');
     content = content.replace(/\\T[0-9.]+;/g, '');
+    content = content.replace(/\\[fF][^;]+;/g, '');
     content = content.replace(/\\S([^;^]+)\^([^;]*);/g, '$1/$2');
+    content = content.replace(/\\[uU]\+([0-9a-fA-F]{4})/g, (_, hex) => String.fromCharCode(parseInt(hex, 16)));
 
-    // 4. Renk ve kontrast düzeltmeleri:
     content = content.replace(/fill="black"/g, 'fill="#FFFFFF"');
     content = content.replace(/fill='black'/g, 'fill="#FFFFFF"');
     content = content.replace(/stroke:black/g, 'stroke:#FFFFFF');
@@ -333,8 +448,30 @@ function smartFixSvg(filePath) {
   }
 }
 
-// Convert DWG/DXF to Single-Strip Vector PDF
-app.post('/api/convert', upload.single('file'), (req, res) => {
+function runDwgToDxf(inputPath, dxfPath) {
+  return new Promise((resolve) => {
+    execFile('dwg2dxf', ['-y', inputPath, '-o', dxfPath], { timeout: 300000 }, () => resolve());
+  });
+}
+
+function runDwgToSvg(inputPath, svgPath) {
+  return new Promise((resolve) => {
+    const outStream = fs.createWriteStream(svgPath);
+    const child = execFile('dwg2SVG', ['-v0', '--mspace', inputPath], { maxBuffer: 128 * 1024 * 1024, timeout: 180000 });
+    if (child.stdout) child.stdout.pipe(outStream);
+    child.on('close', () => {
+      outStream.end();
+      resolve();
+    });
+    child.on('error', () => {
+      outStream.end();
+      resolve();
+    });
+  });
+}
+
+// ----------------- V1 UÇ NOKTASI (MEVCUT DOKUNULMAZ HAT) -----------------
+app.post('/api/convert', upload.single('file'), async (req, res) => {
   if (!req.file) {
     return res.status(400).json({ error: 'Dosya yüklenmedi' });
   }
@@ -353,32 +490,37 @@ app.post('/api/convert', upload.single('file'), (req, res) => {
   const dxfFilename = `${fileId}.dxf`;
   const dxfPath = path.join(UPLOAD_DIR, dxfFilename);
 
-  // Model-space odaklı hızlı ve kayıpsız dönüştürme + Hatch dolguları için DXF çıkarımı
-  const dxfCmd = isDwg ? `dwg2dxf -y "${inputPath}" -o "${dxfPath}" 2>/dev/null; ` : '';
-  const cmd = `${dxfCmd}dwg2SVG -v0 --mspace "${inputPath}" > "${svgPath}" 2>/dev/null`;
-
-  exec(cmd, (error) => {
-    // Akıllı tek şerit onarımı ve blok taban kayması düzeltmesi
-    smartFixSvg(svgPath);
+  try {
+    if (isDwg) {
+      await Promise.all([
+        runDwgToDxf(inputPath, dxfPath),
+        runDwgToSvg(inputPath, svgPath)
+      ]);
+      smartFixSvg(svgPath);
+    } else if (inputPath.toLowerCase().endsWith('.dxf')) {
+      if (inputPath !== dxfPath && !fs.existsSync(dxfPath)) {
+        fs.copyFileSync(inputPath, dxfPath);
+      }
+    }
 
     const relativePdfUrl = `/files/${pdfFilename}`;
     const relativeWebglUrl = `/webgl-cad.html?id=${fileId}&title=${encodeURIComponent(projName)}`;
 
-    // 1. WebGL CAD verisini asenkron üret (%100 koordinat doğruluğu, ikili buffer)
     const jsonFilename = `${fileId}_cad_data.json`;
     const jsonPath = path.join(UPLOAD_DIR, jsonFilename);
     getOrCreateCadData(fileId, svgPath, jsonPath)
-      .then(() => console.log(`[WEBGL SUCCESS] CAD JSON ve BINARY hazırlandı: ${jsonFilename}`))
-      .catch((cadErr) => console.error('[WEBGL ERROR]', cadErr));
+      .then(() => console.log(`[WEBGL V1 SUCCESS] CAD JSON ve BINARY hazırlandı: ${jsonFilename}`))
+      .catch((cadErr) => console.error('[WEBGL V1 ERROR]', cadErr));
 
-    // 2. Vektörel PDF üretimini arka planda çalıştır (Ağır dosyalar için Cloudflare 100s timeout'unu engeller!)
-    exec(`rsvg-convert -f pdf -o "${pdfPath}" "${svgPath}"`, (pdfErr) => {
-      const hasPdf = fs.existsSync(pdfPath);
-      const pdfSize = hasPdf ? fs.statSync(pdfPath).size : 0;
-      console.log(`[CONVERT SUCCESS] PDF uretildi (Arka Plan): ${pdfFilename} (${pdfSize} bytes)`);
-    });
+    if (fs.existsSync(svgPath) && fs.statSync(svgPath).size > 50) {
+      execFile('rsvg-convert', ['-f', 'pdf', '-o', pdfPath, svgPath], (pdfErr) => {
+        if (!pdfErr && fs.existsSync(pdfPath)) {
+          const pdfSize = fs.statSync(pdfPath).size;
+          console.log(`[CONVERT SUCCESS] PDF üretildi (Arka Plan): ${pdfFilename} (${pdfSize} bytes)`);
+        }
+      });
+    }
 
-    // 3. Flutter istemcisine 5-8 saniye içinde ANINDA yanıt ver
     return res.json({
       success: true,
       id: fileId,
@@ -388,9 +530,58 @@ app.post('/api/convert', upload.single('file'), (req, res) => {
       webglUrl: relativeWebglUrl,
       dwgUrl: `/files/${fileId}${path.extname(inputPath)}`
     });
-  });
+  } catch (err) {
+    console.error('[CONVERT ERROR V1]', err);
+    return res.status(500).json({ error: 'Dönüştürme sırasında hata oluştu' });
+  }
+});
+
+// ----------------- V2 UÇ NOKTASI (YENİ DXF-ÖNCELİKLİ HAT) -----------------
+app.post('/api/convert-v2', upload.single('file'), async (req, res) => {
+  if (!req.file) {
+    return res.status(400).json({ error: 'Dosya yüklenmedi' });
+  }
+
+  const inputPath = req.file.path;
+  const fileId = path.parse(req.file.filename).name;
+  const projName = req.file.originalname || 'CAD Projesi';
+
+  const svgFilename = `${fileId}.svg`;
+  const svgPath = path.join(UPLOAD_DIR, svgFilename);
+
+  const pdfFilename = `${fileId}.pdf`;
+  const pdfPath = path.join(UPLOAD_DIR, pdfFilename);
+
+  const dxfFilename = `${fileId}.dxf`;
+  const dxfPath = path.join(UPLOAD_DIR, dxfFilename);
+  const jsonFilename = `${fileId}_cad_data.json`;
+  const jsonPath = path.join(UPLOAD_DIR, jsonFilename);
+
+  try {
+    // V2 Motorunu arka planda hemen başlat (Asenkron - non-blocking)
+    startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonPath, pdfPath)
+      .catch((err) => console.error(`[ASYNC V2 BACKGROUND ERROR] ${fileId}:`, err));
+
+    const relativePdfUrl = `/files/${pdfFilename}`;
+    // V2 HATTI İÇİN webgl-cad-v2.html KULLANILIR!
+    const relativeWebglUrl = `/webgl-cad-v2.html?id=${fileId}&title=${encodeURIComponent(projName)}`;
+
+    return res.json({
+      success: true,
+      id: fileId,
+      version: 'v2',
+      originalName: projName,
+      pdfUrl: relativePdfUrl,
+      svgUrl: `/files/${svgFilename}`,
+      webglUrl: relativeWebglUrl,
+      dwgUrl: `/files/${fileId}${path.extname(inputPath)}`
+    });
+  } catch (err) {
+    console.error('[CONVERT ERROR V2]', err);
+    return res.status(500).json({ error: 'Dönüştürme (V2) sırasında hata oluştu: ' + (err.message || err) });
+  }
 });
 
 app.listen(PORT, '0.0.0.0', () => {
-  console.log(`CAD Vector Server running on port ${PORT}`);
+  console.log(`CAD Vector Server running on port ${PORT} (Dual Engine: V1 + V2)`);
 });

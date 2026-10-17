@@ -1690,14 +1690,14 @@
             `/files/${fileId}.json${querySuffix}`
           ];
           let attempts = 0;
-          const maxAttempts = 90;
+          const maxAttempts = 300;
 
           while (attempts < maxAttempts) {
             attempts++;
             try {
               if (attempts > 1) {
-                const pct = Math.min(85, 20 + Math.round(attempts * 0.75));
-                updateLoader(1, 'Vektör Katmanları İşleniyor', `Büyük CAD projesi çözümleniyor (${attempts}/${maxAttempts})`, pct);
+                const pct = Math.min(88, 15 + Math.round((attempts / maxAttempts) * 73));
+                updateLoader(1, 'V2 Vektör Motoru İşliyor', `Büyük CAD projesi çözümleniyor (${attempts} sn)...`, pct);
               }
 
               let foundBinary = false;
@@ -1708,8 +1708,8 @@
                     fetch(candidateBinUrls[u])
                   ]);
 
-                  if (metaRes.ok && binRes.ok) {
-                    updateLoader(2, 'GPU Doğrudan Akışı', 'İkili geometri paketi GPU belleğine akıtılıyor...', 82);
+                  if (metaRes.status === 200 && binRes.status === 200) {
+                    updateLoader(2, 'GPU Doğrudan Akışı', 'İkili geometri paketi GPU belleğine akıtılıyor...', 90);
                     const meta = await metaRes.json();
                     const buf = await binRes.arrayBuffer();
 
@@ -1723,7 +1723,7 @@
                     if (meta.hasBinaryTriangles && (!meta.triangles || meta.triangles.length === 0)) {
                       try {
                         const triRes = await fetch(candidateTriBinUrls[u]);
-                        if (triRes.ok) {
+                        if (triRes.status === 200) {
                           const tBuf = await triRes.arrayBuffer();
                           triBinaryData = new Float32Array(tBuf);
                         }
@@ -1744,37 +1744,39 @@
               for (const jUrl of candidateJsonUrls) {
                 try {
                   const jsonRes = await fetch(jUrl);
-                  if (jsonRes.ok) {
-                    updateLoader(2, 'Vektörler Çözümleniyor', 'Geometri verisi çözümleniyor...', 75);
+                  if (jsonRes.status === 200) {
                     const data = await jsonRes.json();
-                    bounds = data.bounds || bounds;
-                    cadTexts = data.texts || [];
-                    const lines = data.lines || [];
-                    totalLines = Math.floor(lines.length / 5);
-                    rawLinesArray = lines;
-                    applyDetectedUnits(data);
-                    populateLayersUI(data.layers || []);
-                    window._pendingTriangles = data.triangles || null;
+                    if (data && data.lines && data.lines.length > 0) {
+                      updateLoader(2, 'Vektörler Çözümleniyor', 'Geometri verisi çözümleniyor...', 80);
+                      bounds = data.bounds || bounds;
+                      cadTexts = data.texts || [];
+                      const lines = data.lines || [];
+                      totalLines = Math.floor(lines.length / 5);
+                      rawLinesArray = lines;
+                      applyDetectedUnits(data);
+                      populateLayersUI(data.layers || []);
+                      window._pendingTriangles = data.triangles || null;
 
-                    vertexData = new Float32Array(totalLines * 10);
-                    for (let i = 0, vi = 0; i < lines.length; i += 5) {
-                      const x1 = lines[i], y1 = lines[i+1], x2 = lines[i+2], y2 = lines[i+3], c = lines[i+4];
-                      const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
-                      vertexData[vi++] = x1; vertexData[vi++] = y1; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
-                      vertexData[vi++] = x2; vertexData[vi++] = y2; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+                      vertexData = new Float32Array(totalLines * 10);
+                      for (let i = 0, vi = 0; i < lines.length; i += 5) {
+                        const x1 = lines[i], y1 = lines[i+1], x2 = lines[i+2], y2 = lines[i+3], c = lines[i+4];
+                        const r = ((c >> 16) & 255) / 255, g = ((c >> 8) & 255) / 255, b = (c & 255) / 255;
+                        vertexData[vi++] = x1; vertexData[vi++] = y1; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+                        vertexData[vi++] = x2; vertexData[vi++] = y2; vertexData[vi++] = r; vertexData[vi++] = g; vertexData[vi++] = b;
+                      }
+                      setCachedDrawing(fileId, { bounds, texts: cadTexts, totalLines, layers: data.layers, triangles: data.triangles }, vertexData);
+                      foundJson = true;
+                      break;
                     }
-                    setCachedDrawing(fileId, { bounds, texts: cadTexts, totalLines, layers: data.layers, triangles: data.triangles }, vertexData);
-                    foundJson = true;
-                    break;
                   }
                 } catch (_) {}
               }
 
               if (foundJson) break;
 
-              await new Promise(r => setTimeout(r, 450));
+              await new Promise(r => setTimeout(r, 1000));
             } catch (e) {
-              await new Promise(r => setTimeout(r, 450));
+              await new Promise(r => setTimeout(r, 1000));
             }
           }
         }
