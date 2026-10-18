@@ -98,7 +98,33 @@ function getOrCreateCadData(fileId, svgPath, jsonTarget) {
 // ----------------- V2 İŞ KUYRUĞU (YENİ DXF-ÖNCELİKLİ HAT) -----------------
 const activeCadJobsV2 = new Map();
 
-function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfPath) {
+async function triggerFcmPushNotification({ fcmToken, projectName, webglUrl, fileId }) {
+  if (!fcmToken) return;
+  try {
+    const cloudFunctionUrl = 'https://europe-west1-santiye-yonetim-app.cloudfunctions.net/notifyCadReady';
+    console.log(`[FCM PUSH TRIGGER] Bildirim iletiliyor: ${fileId} (${projectName}) -> ${fcmToken.substring(0, 15)}...`);
+    const res = await fetch(cloudFunctionUrl, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        fcmToken,
+        projectName,
+        webglUrl,
+        fileId,
+      }),
+    });
+    if (res.ok) {
+      console.log(`[FCM PUSH TRIGGER SUCCESS] ${fileId} için uzaktan push bildirimi başarıyla iletildi!`);
+    } else {
+      const errText = await res.text();
+      console.warn(`[FCM PUSH TRIGGER WARNING] HTTP ${res.status}: ${errText}`);
+    }
+  } catch (err) {
+    console.warn(`[FCM PUSH TRIGGER ERROR] ${err.message}`);
+  }
+}
+
+function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfPath, meta = {}) {
   if (activeCadJobsV2.has(fileId)) {
     return activeCadJobsV2.get(fileId);
   }
@@ -133,6 +159,16 @@ function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfP
         }
       );
     });
+
+    // Kullanıcı uygulamayı tamamen kapatmış olsa bile uzaktan FCM push bildirimi gönder
+    if (meta && meta.fcmToken) {
+      triggerFcmPushNotification({
+        fcmToken: meta.fcmToken,
+        projectName: meta.projName,
+        webglUrl: meta.webglUrl,
+        fileId: fileId,
+      });
+    }
 
     // Arka planda SVG ve PDF fallback üretimi
     if (isDwg) {
@@ -544,7 +580,8 @@ app.post('/api/convert-v2', upload.single('file'), async (req, res) => {
 
   const inputPath = req.file.path;
   const fileId = path.parse(req.file.filename).name;
-  const projName = req.file.originalname || 'CAD Projesi';
+  const projName = req.body.project_name || req.file.originalname || 'CAD Projesi';
+  const fcmToken = req.body.fcm_token || null;
 
   const svgFilename = `${fileId}.svg`;
   const svgPath = path.join(UPLOAD_DIR, svgFilename);
@@ -558,13 +595,16 @@ app.post('/api/convert-v2', upload.single('file'), async (req, res) => {
   const jsonPath = path.join(UPLOAD_DIR, jsonFilename);
 
   try {
-    // V2 Motorunu arka planda hemen başlat (Asenkron - non-blocking)
-    startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonPath, pdfPath)
-      .catch((err) => console.error(`[ASYNC V2 BACKGROUND ERROR] ${fileId}:`, err));
-
     const relativePdfUrl = `/files/${pdfFilename}`;
     // V2 HATTI İÇİN webgl-cad-v2.html KULLANILIR!
     const relativeWebglUrl = `/webgl-cad-v2.html?id=${fileId}&title=${encodeURIComponent(projName)}`;
+
+    // V2 Motorunu arka planda hemen başlat (Asenkron - non-blocking)
+    startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonPath, pdfPath, {
+      fcmToken,
+      projName,
+      webglUrl: relativeWebglUrl,
+    }).catch((err) => console.error(`[ASYNC V2 BACKGROUND ERROR] ${fileId}:`, err));
 
     return res.json({
       success: true,

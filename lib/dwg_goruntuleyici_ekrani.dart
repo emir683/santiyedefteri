@@ -9,6 +9,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'cad_intent_service.dart';
 import 'cad_webgl_ekrani.dart';
 import 'cad_arkaplan_servisi.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'widgets/glass_surface.dart';
 
 /// Önbelleğe kaydedilen ve son açılan CAD projeleri modeli
@@ -410,6 +411,18 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       request.files.add(
         await http.MultipartFile.fromPath('file', file.path, filename: fileName),
       );
+
+      // Uygulama tamamen kapalı olsa bile uzaktan bildirim gelebilmesi için FCM token ekle
+      try {
+        final fcmToken = await FirebaseMessaging.instance.getToken();
+        if (fcmToken != null && fcmToken.isNotEmpty) {
+          request.fields['fcm_token'] = fcmToken;
+        }
+      } catch (e) {
+        debugPrint('FCM token eklenemedi: $e');
+      }
+      request.fields['project_name'] =
+          _projeAdi.isNotEmpty ? _projeAdi : fileName;
 
       Timer(const Duration(milliseconds: 3000), () {
         if (mounted && _isLoading && _loadingStep < 3) {

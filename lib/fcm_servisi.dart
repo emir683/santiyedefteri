@@ -11,6 +11,8 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications_plus/flutter_local_notifications_plus.dart';
+import 'main.dart' show navigatorKey;
+import 'cad_webgl_ekrani.dart' show CadWebglEkrani;
 
 // Uygulama KAPALI iken gelen FCM mesajlarını işleyen top-level handler.
 // Bu fonksiyon main() dışında, global scope'ta olmalı.
@@ -150,6 +152,14 @@ class FcmServisi {
 
     debugPrint('🔔 FCM ön plan mesaj: ${notification.title}');
 
+    String? payload;
+    if (message.data['action'] == 'cad_project') {
+      final webglUrl = message.data['webgl_url']?.toString() ?? '';
+      final projectName =
+          message.data['project_name']?.toString() ?? 'CAD Çizimi';
+      payload = 'cad_project:$webglUrl|$projectName';
+    }
+
     await _localNotif.show(
       notification.hashCode,
       notification.title,
@@ -170,13 +180,31 @@ class FcmServisi {
           presentSound: true,
         ),
       ),
+      payload: payload,
     );
   }
 
-  /// Bildirime tıklanınca ne yapılacağı (şimdilik sadece loglama).
-  /// İleride deep link'e yönlendirme eklenebilir.
+  /// Bildirime tıklanınca ne yapılacağı.
   void _onBildirimTiklandi(RemoteMessage message) {
     debugPrint('🔔 Bildirime tıklandı: ${message.data}');
-    // TODO: message.data['ekipId'] ve message.data['hedef'] ile ilgili ekrana git
+    if (message.data['action'] == 'cad_project') {
+      final webglUrl = message.data['webgl_url']?.toString();
+      final projectName =
+          message.data['project_name']?.toString() ?? 'CAD Çizimi';
+      if (webglUrl != null && webglUrl.isNotEmpty) {
+        // Uygulama yeni açılıyorsa navigatorKey context'inin oturması için küçük gecikme
+        Future.delayed(const Duration(milliseconds: 350), () {
+          navigatorKey.currentState?.push(
+            MaterialPageRoute(
+              builder: (_) => CadWebglEkrani(
+                url: webglUrl,
+                baslik: projectName,
+              ),
+            ),
+          );
+        });
+        return;
+      }
+    }
   }
 }

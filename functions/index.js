@@ -10,6 +10,7 @@
 
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
+const { onRequest } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
 const { getFirestore, Timestamp } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
@@ -18,6 +19,64 @@ initializeApp();
 
 const db = getFirestore();
 const fcm = getMessaging();
+
+// ─── CAD HAZIR PUSH BİLDİRİMİ (UYGULAMA TAMAMEN KAPALIYKEN BİLE ÇALIŞIR) ─────
+exports.notifyCadReady = onRequest(
+  {
+    region: 'europe-west1',
+    cors: true,
+  },
+  async (req, res) => {
+    try {
+      const { fcmToken, projectName, webglUrl, fileId } = req.body || {};
+      if (!fcmToken) {
+        return res.status(400).json({ error: 'fcmToken parametresi gerekli' });
+      }
+
+      const baslik = projectName || 'CAD Projesi';
+      console.log(`📡 [CAD PUSH] Gönderiliyor: ${baslik} (${fileId}) -> ${fcmToken.substring(0, 15)}...`);
+
+      await fcm.send({
+        token: fcmToken,
+        notification: {
+          title: `📐 ${baslik} Çizimi Hazır!`,
+          body: 'Çizim başarıyla çözümlendi, 3D/2D CAD görüntüleyiciyi açmak için dokunun.',
+        },
+        data: {
+          action: 'cad_project',
+          webgl_url: webglUrl || '',
+          project_name: baslik,
+          file_id: fileId || '',
+        },
+        android: {
+          priority: 'high',
+          notification: {
+            channelId: 'santiye_bildirim_kanali',
+            icon: 'notification_icon',
+            color: '#14B8A6',
+            clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+            defaultSound: true,
+            defaultVibrateTimings: true,
+          },
+        },
+        apns: {
+          payload: {
+            aps: {
+              badge: 1,
+              sound: 'default',
+            },
+          },
+        },
+      });
+
+      console.log(`✅ [CAD PUSH SUCCESS] Bildirim başarıyla iletildi: ${fileId}`);
+      return res.json({ success: true, fileId });
+    } catch (err) {
+      console.error('❌ [CAD PUSH ERROR]', err);
+      return res.status(500).json({ error: err.message });
+    }
+  }
+);
 
 // ─── 1. HISTORY TRIGGER ─────────────────────────────────────────────────────
 
