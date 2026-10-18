@@ -1019,6 +1019,57 @@
       return tris;
     }
 
+    function clipHatchLinesMultiLoop(loops, angleDeg, spacing, maxLines = 220) {
+      const valid = (loops || []).filter(lp => lp && lp.length >= 3);
+      if (!valid.length || spacing <= 1e-3) return [];
+      const rad = (angleDeg * Math.PI) / 180;
+      const cosA = Math.cos(-rad), sinA = Math.sin(-rad);
+      const cosInv = Math.cos(rad), sinInv = Math.sin(rad);
+      let minY = Infinity, maxY = -Infinity;
+      const rotLoops = valid.map(lp => lp.map(p => {
+        const rx = p.x * cosA - p.y * sinA;
+        const ry = p.x * sinA + p.y * cosA;
+        if (ry < minY) minY = ry;
+        if (ry > maxY) maxY = ry;
+        return { x: rx, y: ry };
+      }));
+      const spanY = maxY - minY;
+      if (spanY <= 1e-3) return [];
+      if (spanY / spacing > maxLines) spacing = spanY / maxLines;
+      const segs = [];
+      let yCur = Math.floor(minY / spacing) * spacing + spacing * 0.5;
+      while (yCur < maxY) {
+        const xInts = [];
+        for (let r = 0; r < rotLoops.length; r++) {
+          const rlp = rotLoops[r];
+          const n = rlp.length;
+          for (let i = 0; i < n; i++) {
+            const p1 = rlp[i], p2 = rlp[(i + 1) % n];
+            if ((p1.y <= yCur && yCur < p2.y) || (p2.y <= yCur && yCur < p1.y)) {
+              const t = (yCur - p1.y) / (p2.y - p1.y);
+              xInts.push(p1.x + t * (p2.x - p1.x));
+            }
+          }
+        }
+        if (xInts.length >= 2) {
+          xInts.sort((a, b) => a - b);
+          for (let k = 0; k < xInts.length - 1; k += 2) {
+            const xa = xInts[k], xb = xInts[k + 1];
+            if (xb - xa > 1e-2) {
+              segs.push({
+                x1: xa * cosInv - yCur * sinInv,
+                y1: xa * sinInv + yCur * cosInv,
+                x2: xb * cosInv - yCur * sinInv,
+                y2: xb * sinInv + yCur * cosInv
+              });
+            }
+          }
+        }
+        yCur += spacing;
+      }
+      return segs;
+    }
+
     /* ========================================================================
        OFFLINE DXF HIGH-FIDELITY PARSER & FAST STREAMING SCANNER
        ======================================================================== */
@@ -1151,6 +1202,45 @@
           this.instantiateEntity(rawEntities[i]);
         }
 
+        // Aykırı (71663813 vb.) tekil uçuk koordinatları eleyerek sıkı pafta sınırlarını (tight bounds) hesapla
+        const totalSegs = Math.floor(this.lines.length / 5);
+        if (totalSegs > 20) {
+          const step = Math.max(1, Math.floor(totalSegs / 8000)) * 5;
+          const xs = [], ys = [];
+          for (let i = 0; i < this.lines.length; i += step) {
+            const x1 = this.lines[i], y1 = this.lines[i+1], x2 = this.lines[i+2], y2 = this.lines[i+3];
+            if (isFinite(x1) && isFinite(y1) && Math.abs(x1) < 1e8 && Math.abs(y1) < 1e8) { xs.push(x1); ys.push(y1); }
+            if (isFinite(x2) && isFinite(y2) && Math.abs(x2) < 1e8 && Math.abs(y2) < 1e8) { xs.push(x2); ys.push(y2); }
+          }
+          if (xs.length > 20) {
+            xs.sort((a, b) => a - b);
+            ys.sort((a, b) => a - b);
+            const qMinX = xs[Math.floor(xs.length * 0.05)], qMaxX = xs[Math.floor(xs.length * 0.95)];
+            const qMinY = ys[Math.floor(ys.length * 0.05)], qMaxY = ys[Math.floor(ys.length * 0.95)];
+            const spanX = Math.max(qMaxX - qMinX, 2000), spanY = Math.max(qMaxY - qMinY, 2000);
+            const validMinX = qMinX - Math.max(spanX * 1.5, 100000), validMaxX = qMaxX + Math.max(spanX * 1.5, 100000);
+            const validMinY = qMinY - Math.max(spanY * 2.0, 80000), validMaxY = qMaxY + Math.max(spanY * 2.0, 80000);
+            let tMinX = Infinity, tMaxX = -Infinity, tMinY = Infinity, tMaxY = -Infinity;
+            for (let i = 0; i < this.lines.length; i += 5) {
+              const x1 = this.lines[i], y1 = this.lines[i+1], x2 = this.lines[i+2], y2 = this.lines[i+3];
+              if (x1 >= validMinX && x1 <= validMaxX && y1 >= validMinY && y1 <= validMaxY &&
+                  x2 >= validMinX && x2 <= validMaxX && y2 >= validMinY && y2 <= validMaxY) {
+                if (x1 < tMinX) tMinX = x1;
+                if (x1 > tMaxX) tMaxX = x1;
+                if (x2 < tMinX) tMinX = x2;
+                if (x2 > tMaxX) tMaxX = x2;
+                if (y1 < tMinY) tMinY = y1;
+                if (y1 > tMaxY) tMaxY = y1;
+                if (y2 < tMinY) tMinY = y2;
+                if (y2 > tMaxY) tMaxY = y2;
+              }
+            }
+            if (isFinite(tMinX) && isFinite(tMaxX) && isFinite(tMinY) && isFinite(tMaxY)) {
+              this.bounds.minX = tMinX; this.bounds.maxX = tMaxX;
+              this.bounds.minY = tMinY; this.bounds.maxY = tMaxY;
+            }
+          }
+        }
         if (!isFinite(this.bounds.minX) || !isFinite(this.bounds.minY)) {
           this.bounds = { minX: 0, minY: 0, maxX: 1000, maxY: 1000, w: 1000, h: 1000 };
         } else {
@@ -1228,6 +1318,8 @@
           }
           const c = p.code, v = p.value;
           if (c === 8) e.layer = v;
+          else if (c === 6) e.ltype = v;
+          else if (c === 230) e.extZ = parseFloat(v) || 1;
           else if (c === 62) {
             const aci = parseInt(v, 10);
             e.aci = aci;
@@ -1235,6 +1327,9 @@
           } else if (c === 420) e.color = parseInt(v, 10) & 0xFFFFFF;
           else if (c === 2) e.patternName = v.toUpperCase();
           else if (c === 70) e.solidFill = parseInt(v, 10) || 0;
+          else if (c === 52) e.patternAngle = parseFloat(v) || 0;
+          else if (c === 41) e.patternScale = parseFloat(v) || 1;
+          else if (c === 230) e.extZ = parseFloat(v) || 1;
           else if (c === 92) {
             inBoundary = true;
             const loopFlag = parseInt(v, 10) || 0;
@@ -1412,6 +1507,8 @@
               else if (c === 1 && type === 'DIMENSION') mainText = v;
               else if (c === 11 && type === 'DIMENSION') e.tx = parseFloat(v);
               else if (c === 21 && type === 'DIMENSION') e.ty = parseFloat(v);
+              else if (c === 12 && type === 'DIMENSION') e.dimIx = parseFloat(v);
+              else if (c === 22 && type === 'DIMENSION') e.dimIy = parseFloat(v);
               break;
             case 'TEXT':
             case 'MTEXT':
@@ -1428,6 +1525,7 @@
               else if (c === 70 && (type === 'ATTRIB' || type === 'ATTDEF')) e.attrFlags = parseInt(v, 10) || 0;
               else if (c === 71) e.attachPoint = parseInt(v, 10) || 1;
               else if (c === 72) e.halign = parseInt(v, 10) || 0;
+              else if (c === 73) e.valign = parseInt(v, 10) || 0;
               break;
           }
         }
@@ -1557,12 +1655,16 @@
           else color = layerObj.color || 0xFFFFFF;
         }
 
-        const transformPoint = (x, y) => ({
-          x: matrix[0] * x + matrix[2] * y + matrix[4],
-          y: matrix[1] * x + matrix[3] * y + matrix[5]
-        });
+        const ocsFlipX = (e.extZ !== undefined && e.extZ < 0 && e.type !== 'LINE' && e.type !== '3DFACE') ? -1 : 1;
+        const transformPoint = (x, y) => {
+          const ox = x * ocsFlipX;
+          return {
+            x: matrix[0] * ox + matrix[2] * y + matrix[4],
+            y: matrix[1] * ox + matrix[3] * y + matrix[5]
+          };
+        };
 
-        const addLine = (p1x, p1y, p2x, p2y, overrideColor = null) => {
+        const addRawLine = (p1x, p1y, p2x, p2y, overrideColor = null) => {
           if (!isFinite(p1x) || !isFinite(p1y) || !isFinite(p2x) || !isFinite(p2y)) return;
           if (Math.abs(p1x - p2x) < 1e-4 && Math.abs(p1y - p2y) < 1e-4) return;
           const c = overrideColor !== null ? overrideColor : color;
@@ -1571,6 +1673,28 @@
           this.updateBounds(p1x, p1y);
           this.updateBounds(p2x, p2y);
           layerObj.count++;
+        };
+
+        const lyrLow = effectiveLayer.toLowerCase();
+        const ltUp = (e.ltype || '').toUpperCase();
+        const isAxisLyr = lyrLow.includes('aks') || lyrLow.includes('axis') || lyrLow.includes('eksen');
+        const isDashH = ltUp.includes('DASH') || ltUp.includes('CENTER') || ltUp.includes('HIDDEN') || ltUp.includes('ACAD_ISO') || isAxisLyr;
+
+        const addLine = (p1x, p1y, p2x, p2y, overrideColor = null) => {
+          const segLen = Math.hypot(p2x - p1x, p2y - p1y);
+          let c = overrideColor !== null ? overrideColor : color;
+          if (isAxisLyr && segLen > 150 && c === 0xFFFFFF) c = 0x78716c;
+          if (!isDashH || segLen < 60) {
+            addRawLine(p1x, p1y, p2x, p2y, c);
+            return;
+          }
+          const ux = (p2x - p1x) / segLen, uy = (p2y - p1y) / segLen;
+          const cycle = Math.max(48, segLen / 75);
+          const dash = cycle * 0.62;
+          for (let pos = 0; pos < segLen; pos += cycle) {
+            const endP = Math.min(segLen, pos + dash);
+            addRawLine(p1x + ux * pos, p1y + uy * pos, p1x + ux * endP, p1y + uy * endP, c);
+          }
         };
 
         const addTri = (ax, ay, bx, by, cx, cy, overrideColor = null) => {
@@ -1811,6 +1935,33 @@
                   const [a, b, c] = tris[t];
                   addTri(a.x, a.y, b.x, b.y, c.x, c.y, fillColor);
                 }
+              } else if (!isSolid && worldPts.length >= 3) {
+                if (isCol || isWall || (e.patternName.startsWith('ANSI3') && color === 0xFF0000)) {
+                  const tris = triangulatePolygon(worldPts);
+                  for (let t = 0; t < tris.length; t++) {
+                    const [a, b, c] = tris[t];
+                    addTri(a.x, a.y, b.x, b.y, c.x, c.y, fillColor);
+                  }
+                }
+                let minX = Infinity, maxX = -Infinity, minY = Infinity, maxY = -Infinity;
+                for (const p of worldPts) {
+                  if (p.x < minX) minX = p.x; if (p.x > maxX) maxX = p.x;
+                  if (p.y < minY) minY = p.y; if (p.y > maxY) maxY = p.y;
+                }
+                const minDim = Math.max(1, Math.min(maxX - minX, maxY - minY));
+                const maxDim = Math.max(1, Math.max(maxX - minX, maxY - minY));
+                const isTile = ['NET', 'NET3', 'BOX', 'SQUARE', 'ANSI37', 'CROSS'].includes(e.patternName) ||
+                               ['islak', 'ıslak', 'seramik', 'karo', 'banyo', 'mutfak'].some(k => lyrLower.includes(k));
+                if (isTile) {
+                  const gStep = Math.max(22, Math.min(65, maxDim / 28));
+                  const bAng = e.patternAngle || 0;
+                  for (const s of clipHatchLinesMultiLoop([worldPts], bAng, gStep, 120)) addRawLine(s.x1, s.y1, s.x2, s.y2, color);
+                  for (const s of clipHatchLinesMultiLoop([worldPts], bAng + 90, gStep, 120)) addRawLine(s.x1, s.y1, s.x2, s.y2, color);
+                } else {
+                  const dStep = Math.max(8.5, Math.min(22, minDim / 5));
+                  const dAng = 45 + (e.patternAngle || 0);
+                  for (const s of clipHatchLinesMultiLoop([worldPts], dAng, dStep, 180)) addRawLine(s.x1, s.y1, s.x2, s.y2, color);
+                }
               }
             }
             break;
@@ -1843,9 +1994,9 @@
             const block = this.blocks.get(e.block);
             if (!block) break;
 
-            const baseIx = (e.type === 'DIMENSION') ? 0 : (e.ix || 0);
-            const baseIy = (e.type === 'DIMENSION') ? 0 : (e.iy || 0);
-            const sx = e.sx !== undefined ? e.sx : 1;
+            const baseIx = (e.type === 'DIMENSION') ? (e.dimIx || 0) : (e.ix || 0);
+            const baseIy = (e.type === 'DIMENSION') ? (e.dimIy || 0) : (e.iy || 0);
+            const sx = (e.sx !== undefined ? e.sx : 1) * ((e.extZ !== undefined && e.extZ < 0) ? -1 : 1);
             const sy = e.sy !== undefined ? e.sy : 1;
             const rotDeg = e.rot || 0;
             const rad = (rotDeg * Math.PI) / 180;
@@ -1864,7 +2015,7 @@
               for (let c = 0; c < cols; c++) {
                 const gx = c * colSp;
                 const gy = r * rowSp;
-                const ix = baseIx + gx * cosA - gy * sinA;
+                const ix = (baseIx * ((e.extZ !== undefined && e.extZ < 0) ? -1 : 1)) + gx * cosA - gy * sinA;
                 const iy = baseIy + gx * sinA + gy * cosA;
 
                 // Doğru AutoCAD Blok Dönüşüm Matrisi: T(ix, iy) * R(rot) * S(sx, sy) * T(-bx, -by)
@@ -1898,7 +2049,7 @@
           case 'ATTRIB':
           case 'ATTDEF': {
             if (!e.text) break;
-            const useAlign = (e.halign && e.halign > 0 && e.ax !== undefined && e.ay !== undefined && (Math.abs(e.ax) > 1e-4 || Math.abs(e.ay) > 1e-4));
+            const useAlign = (e.type !== 'MTEXT' && ((e.halign && e.halign > 0) || (e.valign && e.valign > 0)) && e.ax !== undefined && e.ay !== undefined && (Math.abs(e.ax) > 1e-4 || Math.abs(e.ay) > 1e-4));
             const rawX = useAlign ? e.ax : (e.x || 0);
             const rawY = useAlign ? e.ay : (e.y || 0);
             const p = transformPoint(rawX, rawY);
@@ -1925,7 +2076,8 @@
                 color,
                 rot: totalRot,
                 layer: effectiveLayer,
-                halign: e.halign || 0
+                halign: e.type === 'MTEXT' ? ([2,5,8].includes(e.attachPoint) ? 1 : ([3,6,9].includes(e.attachPoint) ? 2 : 0)) : (e.halign || 0),
+                valign: e.type === 'MTEXT' ? ([1,2,3].includes(e.attachPoint) ? 3 : ([4,5,6].includes(e.attachPoint) ? 2 : 0)) : (e.halign === 4 ? 2 : (e.valign || 0))
               });
               this.updateBounds(lx, ly);
               layerObj.count++;
@@ -2316,6 +2468,7 @@
           if (t.rot) textCtx.rotate(-t.rot * Math.PI / 180);
           textCtx.font = `600 ${screenFontSize.toFixed(1)}px -apple-system, BlinkMacSystemFont, "Segoe UI", Arial, sans-serif`;
           textCtx.textAlign = (t.halign === 1 || t.halign === 4) ? 'center' : (t.halign === 2 ? 'right' : 'left');
+          textCtx.textBaseline = (t.valign === 2 || t.halign === 4) ? 'middle' : (t.valign === 3 ? 'top' : (t.valign === 1 ? 'bottom' : 'alphabetic'));
           textCtx.fillStyle = `#${((t.color || 0xFFFFFF) & 0xFFFFFF).toString(16).padStart(6, '0')}`;
           textCtx.fillText(t.text, 0, 0);
           textCtx.restore();
@@ -3214,6 +3367,7 @@
       CADDebugger.init();
       initGL();
       resize();
+      // Otomatik demo plan açılışı kaldırıldı
       setTimeout(() => {
         getWasmModule().catch(e => CADDebugger.log('PREWARM', 'WASM arka plan pre-warm: ' + e.message, 'warn'));
       }, 300);

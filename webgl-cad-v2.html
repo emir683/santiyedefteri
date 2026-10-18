@@ -1519,7 +1519,7 @@
           const req = store.get(id);
           req.onsuccess = () => {
             const res = req.result;
-            if (!res || !res.v || res.v < 8 || !res.meta || !res.meta.totalLines || res.meta.totalLines <= 0) {
+            if (!res || !res.v || res.v < 10 || !res.meta || !res.meta.totalLines || res.meta.totalLines <= 0) {
               resolve(null);
             } else {
               resolve(res);
@@ -1538,7 +1538,7 @@
         const store = tx.objectStore('drawings');
         const copyBuf = vertexData.buffer.slice(0);
         const copyTriBuf = triVertexBuffer ? triVertexBuffer.slice(0) : null;
-        store.put({ id, meta, vertexBuffer: copyBuf, triBuffer: copyTriBuf, v: 8, savedAt: Date.now() });
+        store.put({ id, meta, vertexBuffer: copyBuf, triBuffer: copyTriBuf, v: 10, savedAt: Date.now() });
       } catch (e) {}
     }
 
@@ -1672,7 +1672,7 @@
           window._pendingTriangles = (!triBinaryData && cached.meta && cached.meta.triangles) ? cached.meta.triangles : null;
           loadedFromBinary = true;
         } else {
-          const querySuffix = forceRefresh ? `?nocache=${Date.now()}` : `?v=8.0`;
+          const querySuffix = forceRefresh ? `?nocache=${Date.now()}` : `?v=10.0`;
           const candidateMetaUrls = [
             `/files/${fileId}_cad_meta.json${querySuffix}`,
             `/files/${fileId}_cad_data_meta.json${querySuffix}`
@@ -1861,8 +1861,8 @@
         }
       }
 
-      // Aykırı (71663813 vb.) uçuk koordinatları eleyerek gerçek pafta sınırlarını hesapla
-      if (rawLinesArray && totalLines > 10) {
+      // Sunucudan gelen sıkı pafta sınırı (meta.bounds) geçerliyse koru; yalnızca geçersizse yeniden hesapla
+      if (rawLinesArray && totalLines > 10 && (!bounds || !bounds.w || bounds.w <= 100 || bounds.w > 1e7)) {
         const sampleStep = Math.max(1, Math.floor(totalLines / 8000)) * 5;
         const xs = [], ys = [];
         for (let i = 0; i < rawLinesArray.length; i += sampleStep) {
@@ -1974,8 +1974,8 @@
     function fitToScreen() {
       const w = window.innerWidth;
       const h = window.innerHeight;
-      const scaleX = (w * 0.95) / bounds.w;
-      const scaleY = (h * 0.95) / bounds.h;
+      const scaleX = (w * 0.93) / bounds.w;
+      const scaleY = (h * 0.92) / bounds.h;
       zoom = Math.min(scaleX, scaleY);
       offsetX = bounds.minX + bounds.w / 2;
       offsetY = bounds.minY + bounds.h / 2;
@@ -2076,6 +2076,7 @@
           textCtx.font = `600 ${screenFontSize.toFixed(1)}px 'Poppins', Arial, sans-serif`;
           textCtx.fillStyle = item.c || '#ffffff';
           textCtx.textAlign = (item.a === 1 || item.a === 4) ? 'center' : (item.a === 2 ? 'right' : 'left');
+          textCtx.textBaseline = (item.v === 2 || item.a === 4) ? 'middle' : (item.v === 3 ? 'top' : (item.v === 1 ? 'bottom' : 'alphabetic'));
 
           if (item.r) {
             textCtx.save();
@@ -2477,6 +2478,7 @@
           loupeCtx.font = `600 ${fs.toFixed(1)}px 'Poppins', Arial, sans-serif`;
           loupeCtx.fillStyle = item.c || '#ffffff';
           loupeCtx.textAlign = (item.a === 1 || item.a === 4) ? 'center' : (item.a === 2 ? 'right' : 'left');
+          loupeCtx.textBaseline = (item.v === 2 || item.a === 4) ? 'middle' : (item.v === 3 ? 'top' : (item.v === 1 ? 'bottom' : 'alphabetic'));
           const sx = (item.x - worldX) * loupeZoom + lcx;
           const dy = flipY ? (item.y - worldY) : -(item.y - worldY);
           const sy = dy * loupeZoom + lcy;
