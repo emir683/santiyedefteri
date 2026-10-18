@@ -421,8 +421,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       } catch (e) {
         debugPrint('FCM token eklenemedi: $e');
       }
-      request.fields['project_name'] =
-          _projeAdi.isNotEmpty ? _projeAdi : fileName;
+      request.fields['project_name'] = fileName;
 
       Timer(const Duration(milliseconds: 3000), () {
         if (mounted && _isLoading && _loadingStep < 3) {

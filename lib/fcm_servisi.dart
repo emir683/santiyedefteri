@@ -197,8 +197,8 @@ class FcmServisi {
           navigatorKey.currentState?.push(
             MaterialPageRoute(
               builder: (_) => CadWebglEkrani(
-                url: webglUrl,
-                baslik: projectName,
+                webglUrl: webglUrl,
+                projeAdi: projectName,
               ),
             ),
           );
