@@ -2106,6 +2106,27 @@
       if (isAiming && currentAimingPos) {
         const sp = worldToScreen(currentAimingPos.x, currentAimingPos.y);
         textCtx.save();
+
+        // Dokunmatik ekranda parmak ile yukarıdaki seçici nokta arasına rehber çizgisi çiz
+        if (lastFingerScreenPos && Math.hypot(lastFingerScreenPos.x - sp.x, lastFingerScreenPos.y - sp.y) > 12) {
+          textCtx.beginPath();
+          textCtx.arc(lastFingerScreenPos.x, lastFingerScreenPos.y, 8, 0, Math.PI * 2);
+          textCtx.fillStyle = 'rgba(0, 240, 255, 0.15)';
+          textCtx.fill();
+          textCtx.strokeStyle = 'rgba(0, 240, 255, 0.6)';
+          textCtx.lineWidth = 1.5;
+          textCtx.stroke();
+
+          textCtx.beginPath();
+          textCtx.setLineDash([4, 3]);
+          textCtx.moveTo(lastFingerScreenPos.x, lastFingerScreenPos.y - 8);
+          textCtx.lineTo(sp.x, sp.y + 10);
+          textCtx.strokeStyle = 'rgba(0, 240, 255, 0.7)';
+          textCtx.lineWidth = 1.5;
+          textCtx.stroke();
+          textCtx.setLineDash([]);
+        }
+
         if (activeSnapPoint && activeSnapPoint.type && activeSnapPoint.type.includes('ÇİZGİ')) {
           // Çizgi hattı: Cyan kum saati / X ikonu + etiket
           textCtx.strokeStyle = '#00f0ff';
@@ -2266,20 +2287,33 @@
     function renderLoupe(screenX, screenY, worldX, worldY) {
       loupeContainer.style.display = 'block';
 
-      // Position loupe safely above finger so finger never obstructs crosshair
-      let loupeLeft = Math.max(75, Math.min(window.innerWidth - 75, screenX));
-      let loupeTop = screenY - 95;
-      if (loupeTop < 75) {
-        loupeTop = screenY + 95; // flip below if near top screen edge
+      let loupeLeft = Math.max(80, Math.min(window.innerWidth - 80, screenX));
+      // Büyüteç hedef noktanın ve parmağın yeterince yukarısında konumlansın
+      let loupeTop = screenY - 110;
+      if (loupeTop < 85) {
+        // Ekranın en üst kenarına çok yakınsa parmağın altına geçsin
+        loupeTop = screenY + 130;
       }
       loupeContainer.style.left = `${loupeLeft}px`;
       loupeContainer.style.top = `${loupeTop}px`;
 
-      // Clear loupe canvas
-      loupeCtx.fillStyle = '#000000';
+      loupeCtx.fillStyle = '#0a0e17';
       loupeCtx.fillRect(0, 0, 160, 160);
 
-      if (!rawLinesArray) return;
+      // Büyüteç nişangah dairesi ve hassas reticle
+      loupeCtx.save();
+      loupeCtx.strokeStyle = 'rgba(0, 240, 255, 0.12)';
+      loupeCtx.lineWidth = 1;
+      loupeCtx.beginPath();
+      loupeCtx.arc(80, 80, 35, 0, Math.PI * 2);
+      loupeCtx.arc(80, 80, 68, 0, Math.PI * 2);
+      loupeCtx.stroke();
+      loupeCtx.restore();
+
+      const lines = rawLinesArray;
+      const useVertexData = (!lines && vertexData && vertexData.length > 0);
+      const totalLineUnits = lines ? lines.length : (useVertexData ? (vertexData.length / 10) * 5 : 0);
+      if (totalLineUnits === 0) return;
 
       const loupeZoom = Math.max(zoom * 3.5, 0.04);
       const lcx = 80;
@@ -2294,19 +2328,32 @@
       const maxY = worldY + halfLoupeWorldH;
 
       loupeCtx.lineWidth = 2.0;
-      const lines = rawLinesArray;
-      const len = lines.length;
 
       const drawLoupeSegment = (i) => {
-        const x1 = lines[i];
-        const y1 = lines[i+1];
-        const x2 = lines[i+2];
-        const y2 = lines[i+3];
+        let x1, y1, x2, y2, colorInt;
+        if (lines) {
+          x1 = lines[i];
+          y1 = lines[i+1];
+          x2 = lines[i+2];
+          y2 = lines[i+3];
+          colorInt = lines[i+4];
+        } else if (useVertexData) {
+          const vi = (i / 5) * 10;
+          x1 = vertexData[vi];
+          y1 = vertexData[vi+1];
+          x2 = vertexData[vi+5];
+          y2 = vertexData[vi+6];
+          const r = Math.round(vertexData[vi+2] * 255);
+          const g = Math.round(vertexData[vi+3] * 255);
+          const b = Math.round(vertexData[vi+4] * 255);
+          colorInt = (r << 16) | (g << 8) | b;
+        } else {
+          return;
+        }
 
         if ((x1 < minX && x2 < minX) || (x1 > maxX && x2 > maxX)) return;
         if ((y1 < minY && y2 < minY) || (y1 > maxY && y2 > maxY)) return;
 
-        const colorInt = lines[i+4];
         loupeCtx.strokeStyle = `#${(colorInt & 0xffffff).toString(16).padStart(6, '0')}`;
 
         const sx1 = (x1 - worldX) * loupeZoom + lcx;
@@ -2323,7 +2370,7 @@
         loupeCtx.stroke();
       };
 
-      if (spatialGrid.size > 0) {
+      if (spatialGrid.size > 0 && lines) {
         const minGx = Math.floor(minX / GRID_SIZE);
         const maxGx = Math.floor(maxX / GRID_SIZE);
         const minGy = Math.floor(minY / GRID_SIZE);
@@ -2459,6 +2506,20 @@
       loupeContainer.style.display = 'none';
       activeSnapPoint = null;
       currentAimingPos = null;
+      lastFingerScreenPos = null;
+    }
+
+    // Parmağın seçici noktayı ve çizgileri kapatmasını önlemek için dikey yükseltme ofseti
+    const TOUCH_OFFSET_Y = 55;
+    let lastFingerScreenPos = null;
+
+    function getAimScreenPos(clientX, clientY, pointerType) {
+      const isTouch = (pointerType === 'touch' || pointerType === 'pen' || (pointerType !== 'mouse' && ('ontouchstart' in window || navigator.maxTouchPoints > 0)));
+      return {
+        x: clientX,
+        y: isTouch ? (clientY - TOUCH_OFFSET_Y) : clientY,
+        isTouch: isTouch
+      };
     }
 
     // Touch & Pointer Gesture Engine (PDF-Style Touch-and-Hold Aiming + Drag-to-Pan)
@@ -2486,14 +2547,17 @@
         if (measureMode !== 'none') {
           // Basılı tutma zamanlayıcısı (PDF Motorundaki gibi ~240ms sabit tutulursa büyüteç ve nişan açılır)
           clearTimeout(holdTimer);
+          const pType = e.pointerType;
           holdTimer = setTimeout(() => {
             if (activeTouches.size === 1 && !hasMovedFar) {
               isAiming = true;
               if (navigator.vibrate) navigator.vibrate(22);
-              const wp = screenToWorld(dragStartX, dragStartY);
+              const aimPos = getAimScreenPos(dragStartX, dragStartY, pType);
+              lastFingerScreenPos = { x: dragStartX, y: dragStartY };
+              const wp = screenToWorld(aimPos.x, aimPos.y);
               activeSnapPoint = findNearestSnap(wp.x, wp.y);
               currentAimingPos = activeSnapPoint || wp;
-              renderLoupe(dragStartX, dragStartY, currentAimingPos.x, currentAimingPos.y);
+              renderLoupe(dragStartX, aimPos.y, currentAimingPos.x, currentAimingPos.y);
               render();
             }
           }, 240);
@@ -2563,15 +2627,18 @@
         if (measureMode !== 'none') {
           if (isAiming) {
             // Basılı tutuldu ve büyüteç aktif: parmak sürüklendikçe hedef hassasça mıknatıslanır
+            const aimPos = getAimScreenPos(e.clientX, e.clientY, e.pointerType);
+            lastFingerScreenPos = { x: e.clientX, y: e.clientY };
+            const aimWp = screenToWorld(aimPos.x, aimPos.y);
             const prevSnapType = activeSnapPoint ? activeSnapPoint.type : null;
-            activeSnapPoint = findNearestSnap(wp.x, wp.y);
-            currentAimingPos = activeSnapPoint || wp;
+            activeSnapPoint = findNearestSnap(aimWp.x, aimWp.y);
+            currentAimingPos = activeSnapPoint || aimWp;
 
             if (activeSnapPoint && activeSnapPoint.type !== prevSnapType) {
               if (navigator.vibrate) navigator.vibrate(15);
             }
 
-            renderLoupe(e.clientX, e.clientY, currentAimingPos.x, currentAimingPos.y);
+            renderLoupe(e.clientX, aimPos.y, currentAimingPos.x, currentAimingPos.y);
             render();
           } else {
             // Henüz basılı tutulmadı: hareket mesafesini kontrol et
@@ -2622,7 +2689,8 @@
           if (isAiming) {
             // Basılı tutup hedefledikten sonra parmak kaldırıldı: noktayı koy ve sabitle!
             if (navigator.vibrate) navigator.vibrate(28);
-            const finalPoint = currentAimingPos || activeSnapPoint || screenToWorld(e.clientX, e.clientY);
+            const aimPos = getAimScreenPos(e.clientX, e.clientY, e.pointerType);
+            const finalPoint = currentAimingPos || activeSnapPoint || screenToWorld(aimPos.x, aimPos.y);
             measurePoints.push({ x: finalPoint.x, y: finalPoint.y });
             updateMeasureCardUI();
             render();
@@ -2632,6 +2700,7 @@
 
       isAiming = false;
       currentAimingPos = null;
+      lastFingerScreenPos = null;
       hideLoupe();
       activeTouches.delete(e.pointerId);
 
