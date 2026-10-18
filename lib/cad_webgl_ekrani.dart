@@ -85,7 +85,7 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
     _controller = controller;
   }
 
-  static const String _kActiveServerHost = 'junior-employers-gay-tommy.trycloudflare.com';
+  static const String _kActiveServerHost = 'urge-beliefs-number-unless.trycloudflare.com';
 
   String _normalizeUrl(String rawUrl) {
     if (rawUrl.contains('.trycloudflare.com') && !rawUrl.contains(_kActiveServerHost)) {

@@ -1690,7 +1690,7 @@
             `/files/${fileId}.json${querySuffix}`
           ];
           let attempts = 0;
-          const maxAttempts = 300;
+          const maxAttempts = 600;
 
           while (attempts < maxAttempts) {
             attempts++;
@@ -1848,16 +1848,19 @@
       updateLoader(3, 'GPU Belleğine Aktarılıyor', `${totalLines.toLocaleString('tr-TR')} çizgi grafik işlemcisine aktarılıyor...`, 88);
 
       if (loadedFromBinary) {
-        rawLinesArray = new Float32Array(totalLines * 5);
-        for (let i = 0, vi = 0, ri = 0; i < totalLines; i++, vi += 10, ri += 5) {
-          rawLinesArray[ri] = vertexData[vi];
-          rawLinesArray[ri+1] = vertexData[vi+1];
-          rawLinesArray[ri+2] = vertexData[vi+5];
-          rawLinesArray[ri+3] = vertexData[vi+6];
-          const r = Math.round(vertexData[vi+2] * 255);
-          const g = Math.round(vertexData[vi+3] * 255);
-          const b = Math.round(vertexData[vi+4] * 255);
-          rawLinesArray[ri+4] = (r << 16) | (g << 8) | b;
+        // Pafta sınırları (meta.bounds) sunucuda hesaplandıysa gereksiz Float32Array kopyasını yapma
+        if (!bounds || !bounds.w || bounds.w <= 100 || bounds.w > 1e7) {
+          rawLinesArray = new Float32Array(totalLines * 5);
+          for (let i = 0, vi = 0, ri = 0; i < totalLines; i++, vi += 10, ri += 5) {
+            rawLinesArray[ri] = vertexData[vi];
+            rawLinesArray[ri+1] = vertexData[vi+1];
+            rawLinesArray[ri+2] = vertexData[vi+5];
+            rawLinesArray[ri+3] = vertexData[vi+6];
+            const r = Math.round(vertexData[vi+2] * 255);
+            const g = Math.round(vertexData[vi+3] * 255);
+            const b = Math.round(vertexData[vi+4] * 255);
+            rawLinesArray[ri+4] = (r << 16) | (g << 8) | b;
+          }
         }
       }
 
@@ -1919,11 +1922,10 @@
       rtcCenterX = (bounds.minX || 0) + (bounds.w || 0) * 0.5;
       rtcCenterY = (bounds.minY || 0) + (bounds.h || 0) * 0.5;
 
-      const rtcVertexData = new Float32Array(vertexData.length);
-      rtcVertexData.set(vertexData);
-      for (let vi = 0; vi < rtcVertexData.length; vi += 5) {
-        rtcVertexData[vi] -= rtcCenterX;
-        rtcVertexData[vi + 1] -= rtcCenterY;
+      // Sıfır-kopya: vertexData doğrudan in-place RTC ofsetlenir (200MB ekstra RAM tüketmez)
+      for (let vi = 0; vi < vertexData.length; vi += 5) {
+        vertexData[vi] -= rtcCenterX;
+        vertexData[vi + 1] -= rtcCenterY;
       }
 
       if (triBinaryData && triBinaryData.length > 0) {
@@ -1934,7 +1936,7 @@
 
       lineBuffer = gl.createBuffer();
       gl.bindBuffer(gl.ARRAY_BUFFER, lineBuffer);
-      gl.bufferData(gl.ARRAY_BUFFER, rtcVertexData, gl.STATIC_DRAW);
+      gl.bufferData(gl.ARRAY_BUFFER, vertexData, gl.STATIC_DRAW);
 
       const aPos = gl.getAttribLocation(lineProgram, 'a_pos');
       gl.enableVertexAttribArray(aPos);

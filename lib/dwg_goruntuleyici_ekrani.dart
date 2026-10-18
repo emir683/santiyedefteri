@@ -74,7 +74,7 @@ class DwgGoruntuleyiciEkrani extends StatefulWidget {
 class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   // Oracle Cloud üzerinde çalışan özel CAD Vektör sunucumuz
   static const String _kCadServerUrl =
-      'https://junior-employers-gay-tommy.trycloudflare.com';
+      'https://urge-beliefs-number-unless.trycloudflare.com';
 
   bool _isLoading = false;
   int _loadingStep = 1;
