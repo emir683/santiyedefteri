@@ -5,6 +5,8 @@ import 'package:flutter_local_notifications_plus/flutter_local_notifications_plu
 import 'package:permission_handler/permission_handler.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
+import 'main.dart' show navigatorKey;
+import 'cad_webgl_ekrani.dart';
 
 // NOT: 'veri_yardimcisi.dart' importunu SİLİN.
 
@@ -35,8 +37,55 @@ class BildirimServisi {
       debugPrint("Saat dilimi yüklenemedi: $e");
     }
 
-    await flutterLocalNotificationsPlugin.initialize(initSettings);
+    await flutterLocalNotificationsPlugin.initialize(
+      initSettings,
+      onDidReceiveNotificationResponse: (NotificationResponse response) {
+        final payload = response.payload;
+        if (payload != null && payload.startsWith('cad_project:')) {
+          final data = payload.substring('cad_project:'.length).split('|');
+          if (data.isNotEmpty) {
+            final url = data[0];
+            final title = data.length > 1 ? data[1] : 'CAD Çizimi';
+            navigatorKey.currentState?.push(
+              MaterialPageRoute(
+                builder: (_) => CadWebglEkrani(
+                  webglUrl: url,
+                  projeAdi: title,
+                ),
+              ),
+            );
+          }
+        }
+      },
+    );
     await _izinleriIste();
+  }
+
+  /// CAD Çizimi hazır olduğunda anında yerel bildirim gönderir
+  Future<void> cadCizimiHazirBildirimiGonder({
+    required String projeAdi,
+    required String webglUrl,
+    String? fileId,
+  }) async {
+    const androidDetails = AndroidNotificationDetails(
+      'cad_islem_kanali',
+      'CAD Çizim Bildirimleri',
+      channelDescription: 'CAD çizim çözümleme tamamlanma bildirimleri',
+      icon: _androidNotificationIcon,
+      color: Color(0xFF0F7C86),
+      importance: Importance.max,
+      priority: Priority.high,
+      playSound: true,
+      enableVibration: true,
+    );
+    const details = NotificationDetails(android: androidDetails);
+    await flutterLocalNotificationsPlugin.show(
+      DateTime.now().millisecondsSinceEpoch % 100000,
+      'CAD Çizimi Hazır! 🏗️',
+      '$projeAdi başarıyla çözümlendi. Görüntülemek için dokunun.',
+      details,
+      payload: 'cad_project:$webglUrl|$projeAdi',
+    );
   }
 
   Future<void> _izinleriIste() async {

@@ -798,6 +798,103 @@
       touch-action: manipulation;
     }
 
+    /* Dynamic Engineering & Site Trivia Card */
+    .loader-tip-card {
+      margin-top: 10px;
+      padding: 10px 12px;
+      border-radius: 12px;
+      background: var(--item-hover);
+      border: 1px solid var(--btn-border);
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+      cursor: pointer;
+      user-select: none;
+      transition: all 0.2s ease;
+      position: relative;
+      overflow: hidden;
+    }
+    .loader-tip-card:hover {
+      background: var(--btn-hover);
+      border-color: rgba(56, 189, 248, 0.4);
+    }
+    .loader-tip-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
+    }
+    .loader-tip-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--text-accent);
+      letter-spacing: 0.3px;
+    }
+    .loader-tip-dots {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+    }
+    .tip-dot {
+      width: 4px;
+      height: 4px;
+      border-radius: 50%;
+      background: var(--text-secondary);
+      opacity: 0.4;
+      transition: all 0.2s ease;
+    }
+    .tip-dot.active {
+      width: 10px;
+      border-radius: 3px;
+      background: var(--text-accent);
+      opacity: 1;
+    }
+    .loader-tip-text {
+      font-size: 11px;
+      line-height: 1.45;
+      color: var(--text-primary);
+      transition: opacity 0.25s ease, transform 0.25s ease;
+      min-height: 32px;
+    }
+    .loader-tip-text.fade-out {
+      opacity: 0;
+      transform: translateY(4px);
+    }
+
+    /* Minimize / Background Action Button */
+    .loader-actions-row {
+      display: flex;
+      gap: 8px;
+      margin-top: 10px;
+      width: 100%;
+    }
+    .btn-minimize-cad {
+      flex: 1;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 7px;
+      padding: 9px 14px;
+      border-radius: 11px;
+      background: var(--hud-bg);
+      color: var(--text-accent);
+      border: 1px solid rgba(56, 189, 248, 0.4);
+      font-weight: 600;
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      backdrop-filter: blur(8px);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+    }
+    .btn-minimize-cad:hover {
+      background: var(--btn-hover);
+      border-color: var(--text-accent);
+      transform: translateY(-1px);
+    }
+
     @media (max-width: 480px) {
       #tools-popup, #layers-popup {
         right: 10px;
@@ -875,6 +972,35 @@
           <span class="stage-dot"></span>
           <span class="stage-name">4. Mıknatıs</span>
         </div>
+      </div>
+
+      <!-- Dynamic Engineering & CAD Trivia Card -->
+      <div class="loader-tip-card" id="loader-tip-card" onclick="nextTip()" title="Sonraki bilgi için tıklayın">
+        <div class="loader-tip-header">
+          <div class="loader-tip-badge">
+            <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2">
+              <path d="M9 18h6"/>
+              <path d="M10 22h4"/>
+              <path d="M12 2a7 7 0 0 0-7 7c0 2.5 1.5 4.5 3 6h8c1.5-1.5 3-3.5 3-6a7 7 0 0 0-7-7z"/>
+            </svg>
+            <span id="tip-category">💡 Biliyor muydunuz?</span>
+          </div>
+          <div class="loader-tip-dots" id="tip-dots"></div>
+        </div>
+        <div class="loader-tip-text" id="tip-text">24 MB'lık devasa bir DWG dosyası, CAD motorumuz tarafından 4.8 milyon çizgi ve 2.1 milyon dolgu geometrisine ayrıştırılarak sıfır-kopya WebGL formatına çevrilir.</div>
+      </div>
+
+      <!-- Minimize / Background Action Button -->
+      <div class="loader-actions-row">
+        <button id="btn-minimize-cad" class="btn-minimize-cad" onclick="minimizeCadLoading()">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polyline points="4 14 10 14 10 20"/>
+            <polyline points="20 10 14 10 14 4"/>
+            <line x1="14" y1="10" x2="21" y2="3"/>
+            <line x1="3" y1="21" x2="10" y2="14"/>
+          </svg>
+          <span>Arka Plana Al (Bittiğinde Bildir)</span>
+        </button>
       </div>
     </div>
   </div>
@@ -1633,7 +1759,95 @@
       gl.bufferData(gl.ARRAY_BUFFER, tData, gl.STATIC_DRAW);
     }
 
+    // ==================== MÜHENDİSLİK & ŞANTİYE İPUÇLARI ROTASYONU ====================
+    const CAD_TIPS = [
+      { cat: "Biliyor muydunuz?", icon: "💡", text: "24 MB'lık bir DWG dosyası, CAD motorumuz tarafından 4.8 milyon çizgi ve 2.1 milyon dolgu geometrisine ayrıştırılarak sıfır-kopya WebGL ikili formatına çevrilir." },
+      { cat: "Şantiye İpucu", icon: "🏗️", text: "Beton dökümü esnasında vibratörün kalıba ve donatıya direkt temas etmemesi, segregasyon riskini ve hava boşluklarını minimuma indirir." },
+      { cat: "CAD Motoru", icon: "📐", text: "Projenizdeki 7 seviyeli iç içe bloklar ve Türkçe SHX karakterler, akıllı vektör motoru ile aslına sadık biçimde tam koordinatlarıyla çözümleniyor." },
+      { cat: "Statik Analiz", icon: "🏛️", text: "Kolon-kiriş birleşim bölgelerindeki etriye sıklaştırması, deprem yatay kuvvetlerinin güvenle karşılanmasında en kritik taşıyıcı detaydır." },
+      { cat: "GPU Hızlandırma", icon: "⚡", text: "Çiziminiz doğrudan telefonunuzun grafik işlemcisine (GPU VBO) aktarılarak 60 FPS akıcı kaydırma (pan) ve yakınlaştırma (zoom) performansı sunulur." },
+      { cat: "Donatı Detayı", icon: "🔩", text: "Paspayı mesnetleri, donatının korozyona uğramasını önleyen ve yangın dayanımını artıran hayati bir şantiye emniyet unsurudur." },
+      { cat: "Pafta Düzeni", icon: "📑", text: "Çoklu pafta ve mimari antetler, pafta sınırları taranarak en doğru açı ve merkez ofseti ile tek tuvalde ekrana yerleştirilir." },
+      { cat: "Zemin & Temel", icon: "⛏️", text: "Radye jeneral temellerde zemin emniyet gerilmesi dağılımı, üst yapı yüklerinin üniform aktarılmasında kritik rol oynar." },
+      { cat: "Akıllı Katmanlar", icon: "🎨", text: "Çizim yüklendikten sonra 'Katmanlar' menüsünden mimari, statik, mekanik ve tefriş katmanlarını tek dokunuşla açıp kapatabilirsiniz." },
+      { cat: "Hassas Ölçüm", icon: "📏", text: "OSNAP mıknatıs modu ile çizimdeki herhangi iki köşe, orta nokta veya kesişim noktasını milimetrik kesinlikle ölçebilirsiniz." }
+    ];
+
+    let currentTipIndex = 0;
+    let tipTimer = null;
+
+    function renderTip(index) {
+      const tip = CAD_TIPS[index];
+      const catEl = document.getElementById('tip-category');
+      const textEl = document.getElementById('tip-text');
+      const dotsEl = document.getElementById('tip-dots');
+      if (!textEl || !catEl) return;
+
+      textEl.classList.add('fade-out');
+      setTimeout(() => {
+        catEl.textContent = `${tip.icon} ${tip.cat}`;
+        textEl.textContent = tip.text;
+        textEl.classList.remove('fade-out');
+      }, 200);
+
+      if (dotsEl) {
+        dotsEl.innerHTML = '';
+        for (let i = 0; i < CAD_TIPS.length; i++) {
+          const d = document.createElement('span');
+          d.className = 'tip-dot' + (i === index ? ' active' : '');
+          dotsEl.appendChild(d);
+        }
+      }
+    }
+
+    function nextTip() {
+      currentTipIndex = (currentTipIndex + 1) % CAD_TIPS.length;
+      renderTip(currentTipIndex);
+    }
+
+    function startTipRotation() {
+      renderTip(0);
+      if (tipTimer) clearInterval(tipTimer);
+      tipTimer = setInterval(nextTip, 4500);
+    }
+
+    function minimizeCadLoading() {
+      const fileId = urlParams.get('id') || urlParams.get('file');
+      const customTitle = urlParams.get('title') ? decodeURIComponent(urlParams.get('title')) : 'CAD Çizimi';
+
+      // 1. Flutter Uygulaması İçinde İse Flutter köprüsüne bildir
+      if (window.FlutterCadChannel) {
+        window.FlutterCadChannel.postMessage(JSON.stringify({
+          action: 'minimize',
+          fileId: fileId,
+          title: customTitle,
+          url: window.location.href
+        }));
+        return;
+      }
+
+      // 2. Tarayıcıda Doğrudan Açıldıysa Web Bildirimini İste ve Arka Plan Takibi Başlat
+      if ('Notification' in window) {
+        if (Notification.permission === 'default') {
+          Notification.requestPermission().then(perm => {
+            if (perm === 'granted') {
+              window._notifyOnLoad = true;
+              alert('Bildirim izni verildi! Çizim çözümlendiğinde tarayıcınızdan bildirim alacaksınız. Bu sekmeyi arka planda tutabilirsiniz.');
+            }
+          });
+        } else if (Notification.permission === 'granted') {
+          window._notifyOnLoad = true;
+          alert('Arka plan bildirimleri aktif! Çizim hazır olduğunda bildirim gönderilecektir. Bu sekmeyi arka planda tutabilirsiniz.');
+        } else {
+          alert('Tarayıcı bildirimleri kapalı. Lütfen tarayıcı kilit simgesinden bildirimlere izin verin.');
+        }
+      } else {
+        alert('Bu tarayıcı sistem bildirimi desteklemiyor. Sekmeyi arka planda açık tutabilirsiniz.');
+      }
+    }
+
     async function loadCadData() {
+      startTipRotation();
       const fileId = urlParams.get('id') || urlParams.get('file');
       const customTitle = urlParams.get('title');
 
@@ -1950,6 +2164,18 @@
       buildTextSpatialGrid(cadTexts);
 
       updateLoader(4, 'Çizim Hazır', 'Görüntü ekrana yerleştiriliyor...', 100);
+      if (typeof tipTimer !== 'undefined' && tipTimer) clearInterval(tipTimer);
+      if (window.FlutterCadChannel) {
+        window.FlutterCadChannel.postMessage(JSON.stringify({ action: 'loaded', fileId: fileId, title: customTitle }));
+      }
+      if (window._notifyOnLoad && 'Notification' in window && Notification.permission === 'granted') {
+        try {
+          new Notification('CAD Çizimi Hazır! 🏗️', {
+            body: `${customTitle ? decodeURIComponent(customTitle) : 'CAD Çizimi'} ekranda görüntülendi.`,
+            icon: '/favicon.ico'
+          });
+        } catch (_) {}
+      }
       setTimeout(() => {
         if (loader) loader.style.display = 'none';
       }, 150);

@@ -1,8 +1,10 @@
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
 import 'tema_ayarlari.dart';
+import 'cad_arkaplan_servisi.dart';
 
 /// WebGL CAD Donanım Motoru Görüntüleyici Ekranı
 /// Büyük ve karmaşık CAD projelerini GPU hızlandırmasıyla yüksek hızda görüntüler.
@@ -50,6 +52,20 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
       ..setOnConsoleMessage((JavaScriptConsoleMessage message) {
         debugPrint('[WebGL CAD Console] [${message.level.name.toUpperCase()}]: ${message.message}');
       })
+      ..addJavaScriptChannel(
+        'FlutterCadChannel',
+        onMessageReceived: (JavaScriptMessage message) {
+          try {
+            final data = jsonDecode(message.message) as Map<String, dynamic>;
+            final action = data['action'] ?? data['type'];
+            if (action == 'minimize' || action == 'arka_plan') {
+              _arkaPlanaAl();
+            }
+          } catch (e) {
+            debugPrint('[FlutterCadChannel Error] $e');
+          }
+        },
+      )
       ..setNavigationDelegate(
         NavigationDelegate(
           onProgress: (int progress) {
@@ -83,6 +99,24 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
       );
 
     _controller = controller;
+  }
+
+  void _arkaPlanaAl() {
+    String fileId = '';
+    try {
+      final uri = Uri.parse(widget.webglUrl);
+      fileId = uri.queryParameters['id'] ?? uri.queryParameters['file'] ?? '';
+    } catch (_) {}
+    if (fileId.isNotEmpty) {
+      CadArkaplanServisi().projeyiArkaPlanaAl(
+        fileId: fileId,
+        projeAdi: widget.projeAdi,
+        webglUrl: widget.webglUrl,
+      );
+    }
+    if (mounted) {
+      Navigator.of(context).pop();
+    }
   }
 
   static const String _kActiveServerHost = 'urge-beliefs-number-unless.trycloudflare.com';
@@ -217,6 +251,13 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
                   ),
                 ),
 
+                IconButton(
+                  icon: Icon(Icons.picture_in_picture_alt_rounded, color: accentColor, size: 20),
+                  tooltip: 'Arka Plana Al (Bittiğinde Bildir)',
+                  onPressed: _arkaPlanaAl,
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
+                  constraints: const BoxConstraints(),
+                ),
                 IconButton(
                   icon: Icon(Icons.open_in_browser_rounded, color: appBarFg.withValues(alpha: 0.7), size: 19),
                   tooltip: 'Tarayıcıda Aç',

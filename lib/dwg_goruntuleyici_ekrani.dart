@@ -8,6 +8,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'cad_intent_service.dart';
 import 'cad_webgl_ekrani.dart';
+import 'cad_arkaplan_servisi.dart';
 import 'widgets/glass_surface.dart';
 
 /// Önbelleğe kaydedilen ve son açılan CAD projeleri modeli
@@ -82,7 +83,60 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   String _loadingSubText = 'Çizim GPU donanım motoruna aktarılıyor';
   String _loadingFileName = '';
   String _loadingFileSize = '';
+  String _loadingFileId = '';
+  bool _runInBackgroundRequested = false;
   Timer? _stageTimer;
+  Timer? _ipucuTimer;
+  int _guncelIpucuIndeksi = 0;
+
+  static const List<Map<String, String>> _kMuhendislikIpuclari = [
+    {
+      'kategori': '💡 Biliyor muydunuz?',
+      'ipucu': '24 MB\'lık bir DWG dosyası, CAD motorumuz tarafından 4.8 milyon çizgi ve 2.1 milyon dolgu geometrisine ayrıştırılarak sıfır-kopya WebGL ikili formatına çevrilir.',
+    },
+    {
+      'kategori': '🏗️ Şantiye İpucu',
+      'ipucu': 'Beton dökümü esnasında vibratörün kalıba ve donatıya direkt temas etmemesi, segregasyon riskini ve hava boşluklarını minimuma indirir.',
+    },
+    {
+      'kategori': '📐 CAD Motoru',
+      'ipucu': 'Projenizdeki 7 seviyeli iç içe bloklar ve Türkçe SHX karakterler, akıllı vektör motoru ile aslına sadık biçimde tam koordinatlarıyla çözümleniyor.',
+    },
+    {
+      'kategori': '🏛️ Statik Analiz',
+      'ipucu': 'Kolon-kiriş birleşim bölgelerindeki etriye sıklaştırması, deprem yatay kuvvetlerinin güvenle karşılanmasında en kritik taşıyıcı detaydır.',
+    },
+    {
+      'kategori': '⚡ GPU Hızlandırma',
+      'ipucu': 'Çiziminiz doğrudan telefonunuzun grafik işlemcisine (GPU VBO) aktarılarak 60 FPS akıcı kaydırma (pan) ve yakınlaştırma (zoom) performansı sunulur.',
+    },
+    {
+      'kategori': '🔩 Donatı Detayı',
+      'ipucu': 'Paspayı mesnetleri, donatının korozyona uğramasını önleyen ve yangın dayanımını artıran hayati bir şantiye emniyet unsurudur.',
+    },
+    {
+      'kategori': '🎨 Akıllı Katmanlar',
+      'ipucu': 'Çizim yüklendikten sonra \'Katmanlar\' menüsünden mimari, statik, mekanik ve tefriş katmanlarını tek dokunuşla açıp kapatabilirsiniz.',
+    },
+    {
+      'kategori': '📏 Hassas Ölçüm',
+      'ipucu': 'OSNAP mıknatıs modu ile çizimdeki herhangi iki köşe, orta nokta veya kesişim noktasını milimetrik kesinlikle ölçebilirsiniz.',
+    },
+  ];
+
+  void _startTipRotation() {
+    _ipucuTimer?.cancel();
+    _guncelIpucuIndeksi = 0;
+    _ipucuTimer = Timer.periodic(const Duration(seconds: 4), (timer) {
+      if (mounted && _isLoading) {
+        setState(() {
+          _guncelIpucuIndeksi = (_guncelIpucuIndeksi + 1) % _kMuhendislikIpuclari.length;
+        });
+      } else {
+        timer.cancel();
+      }
+    });
+  }
 
   List<SavedCadProject> _savedProjects = [];
   StreamSubscription<CadFilePayload>? _cadStreamSub;
@@ -160,6 +214,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   void dispose() {
     DwgGoruntuleyiciEkrani.isScreenActive = false;
     _stageTimer?.cancel();
+    _ipucuTimer?.cancel();
     _cadStreamSub?.cancel();
     super.dispose();
   }
@@ -324,6 +379,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
 
     // 2. Yeni dosya -> V2 Sunucu Motorunda dönüştür ve WebGL ile aç
     _stageTimer?.cancel();
+    _runInBackgroundRequested = false;
+    _loadingFileId = '';
+    _startTipRotation();
     setState(() {
       _isLoading = true;
       _loadingStep = 1;
@@ -372,6 +430,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         final data = jsonDecode(responseBody) as Map<String, dynamic>;
         final String? webglUrl = data['webglUrl'] as String?;
         final String? fileId = data['id'] as String?;
+        _loadingFileId = fileId ?? '';
 
         String resolvedWebglUrl;
         if (webglUrl != null && webglUrl.isNotEmpty) {
@@ -399,6 +458,17 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
 
         await _saveProjectToRecent(newProj);
 
+        // Kullanıcı bu süreçte "Arka Plana Al" butonuna bastıysa doğrudan arka plan servisine aktar
+        if (_runInBackgroundRequested) {
+          _ipucuTimer?.cancel();
+          CadArkaplanServisi().projeyiArkaPlanaAl(
+            fileId: fileId ?? '',
+            projeAdi: fileName,
+            webglUrl: resolvedWebglUrl,
+          );
+          return;
+        }
+
         if (mounted) {
           setState(() {
             _loadingStep = 4;
@@ -409,6 +479,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         }
 
         await Future.delayed(const Duration(milliseconds: 300));
+        _ipucuTimer?.cancel();
 
         setState(() {
           _isLoading = false;
@@ -430,6 +501,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       }
     } catch (e) {
       _stageTimer?.cancel();
+      _ipucuTimer?.cancel();
       debugPrint('[CAD Direct Open Error V2] $e');
       setState(() {
         _isLoading = false;
@@ -683,8 +755,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                 physics: const BouncingScrollPhysics(),
                 padding: const EdgeInsets.fromLTRB(16, 12, 16, 36),
                 child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
+                    // 0. Arka Planda Çözümlenen Projeler Varsa Göster
+                    _buildActiveBackgroundTasksBanner(),
+
                     // 1. Hero / Hızlı Eylem Kartı (Tam Ortalanmış & Ana Menü Cam Tasarımı)
                     _buildHeroUploadCard(isDark, textPrimary, textSecondary),
 
@@ -1346,30 +1420,126 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                     ],
                   ),
                   const SizedBox(height: 20),
-                  SizedBox(
+                  const SizedBox(height: 16),
+                  // Mühendislik & Şantiye İpucu Kartı (Dinamik Dönen Bilgiler)
+                  Container(
                     width: double.infinity,
-                    height: 38,
-                    child: OutlinedButton(
-                      style: OutlinedButton.styleFrom(
-                        foregroundColor: textSecondary,
-                        side: BorderSide(
-                          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.16),
-                        ),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                      ),
-                      onPressed: () {
-                        _stageTimer?.cancel();
-                        setState(() {
-                          _isLoading = false;
-                        });
-                      },
-                      child: const Text(
-                        'İptal Et',
-                        style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                    decoration: BoxDecoration(
+                      color: (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)).withValues(alpha: 0.8),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color: _kBrandTeal.withValues(alpha: 0.25),
                       ),
                     ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Text(
+                              _kMuhendislikIpuclari[_guncelIpucuIndeksi]['kategori'] ?? '💡 Bilgi',
+                              style: const TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w700,
+                                color: _kBrandTeal,
+                              ),
+                            ),
+                            const Spacer(),
+                            const Icon(Icons.touch_app_outlined, size: 12, color: Colors.grey),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
+                        AnimatedSwitcher(
+                          duration: const Duration(milliseconds: 300),
+                          child: Text(
+                            _kMuhendislikIpuclari[_guncelIpucuIndeksi]['ipucu'] ?? '',
+                            key: ValueKey<int>(_guncelIpucuIndeksi),
+                            style: TextStyle(
+                              fontSize: 11,
+                              color: textPrimary.withValues(alpha: 0.9),
+                              height: 1.35,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Row(
+                    children: [
+                      Expanded(
+                        child: OutlinedButton(
+                          style: OutlinedButton.styleFrom(
+                            foregroundColor: textSecondary,
+                            side: BorderSide(
+                              color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.16),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          onPressed: () {
+                            _stageTimer?.cancel();
+                            _ipucuTimer?.cancel();
+                            setState(() {
+                              _isLoading = false;
+                            });
+                          },
+                          child: const Text(
+                            'İptal Et',
+                            style: TextStyle(fontSize: 12, fontWeight: FontWeight.w500),
+                          ),
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Expanded(
+                        flex: 2,
+                        child: ElevatedButton.icon(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _kBrandTeal,
+                            foregroundColor: Colors.white,
+                            elevation: 0,
+                            padding: const EdgeInsets.symmetric(vertical: 10),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                          ),
+                          icon: const Icon(Icons.picture_in_picture_alt_rounded, size: 16),
+                          label: const Text(
+                            'Arka Plana Al (Bildir)',
+                            style: TextStyle(fontSize: 11.5, fontWeight: FontWeight.w700),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                          onPressed: () {
+                            _runInBackgroundRequested = true;
+                            _stageTimer?.cancel();
+                            _ipucuTimer?.cancel();
+                            setState(() {
+                              _isLoading = false;
+                            });
+                            if (_loadingFileId.isNotEmpty) {
+                              CadArkaplanServisi().projeyiArkaPlanaAl(
+                                fileId: _loadingFileId,
+                                projeAdi: _loadingFileName,
+                                webglUrl: '$_kCadServerUrl/webgl-cad-v2.html?id=$_loadingFileId&title=${Uri.encodeComponent(_loadingFileName)}',
+                              );
+                            } else {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text('$_loadingFileName arka planda hazırlanıyor. Tamamlandığında bildirim alacaksınız.'),
+                                  backgroundColor: const Color(0xFF0F7C86),
+                                  behavior: SnackBarBehavior.floating,
+                                  duration: const Duration(seconds: 4),
+                                ),
+                              );
+                            }
+                          },
+                        ),
+                      ),
+                    ],
                   ),
                 ],
               ),
@@ -1377,6 +1547,79 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           ),
         ),
       ),
+    );
+  }
+
+  /// Arka planda devam eden çizimler varsa üst banner olarak gösterir
+  Widget _buildActiveBackgroundTasksBanner() {
+    return ValueListenableBuilder<List<CadArkaplanGorevi>>(
+      valueListenable: CadArkaplanServisi().aktifGorevlerNotifier,
+      builder: (context, gorevler, _) {
+        final aktifler = gorevler.where((g) => !g.tamamlandi).toList();
+        if (aktifler.isEmpty) return const SizedBox.shrink();
+
+        return Padding(
+          padding: const EdgeInsets.only(bottom: 14),
+          child: Column(
+            children: aktifler.map((g) {
+              return Container(
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF0F7C86).withValues(alpha: 0.16),
+                      const Color(0xFF38BDF8).withValues(alpha: 0.12),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(color: const Color(0xFF0F7C86).withValues(alpha: 0.3)),
+                ),
+                child: Row(
+                  children: [
+                    const SizedBox(
+                      width: 18,
+                      height: 18,
+                      child: CircularProgressIndicator(
+                        strokeWidth: 2.2,
+                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F7C86)),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Text(
+                                'CAD Arka Planda Hazırlanıyor',
+                                style: TextStyle(fontWeight: FontWeight.w700, fontSize: 12.5),
+                              ),
+                              const Spacer(),
+                              Text(
+                                '%${g.tahminYuzde} (${g.gecenSaniye} sn)',
+                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0F7C86)),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 2),
+                          Text(
+                            g.projeAdi,
+                            style: const TextStyle(fontSize: 11, color: Colors.grey),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            }).toList(),
+          ),
+        );
+      },
     );
   }
 
