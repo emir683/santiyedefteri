@@ -1645,7 +1645,8 @@
           const req = store.get(id);
           req.onsuccess = () => {
             const res = req.result;
-            if (!res || !res.v || res.v < 10 || !res.meta || !res.meta.totalLines || res.meta.totalLines <= 0) {
+            // Eski kaymış ve çift ofsetlenmiş kayıtları (v < 12) temizle ve yok say
+            if (!res || !res.v || res.v < 12 || !res.meta || !res.meta.totalLines || res.meta.totalLines <= 0) {
               resolve(null);
             } else {
               resolve(res);
@@ -1656,16 +1657,32 @@
       } catch (e) { return null; }
     }
 
-    async function setCachedDrawing(id, meta, vertexData, triVertexBuffer = null) {
-      try {
-        const db = await openCadDb();
+    function setCachedDrawing(id, meta, vertexData, triVertexBuffer = null) {
+      if (!id || !meta || !vertexData) return;
+      // KRİTİK DÜZELTME: vertexData üzerinde in-place RTC (merkez) çıkarma işlemi yapılmadan ÖNCE,
+      // temiz ham dünya koordinatlarının kopyasını HEMEN SENKRON olarak al!
+      // Aksi halde async openCadDb beklerken vertexData in-place güncellenir ve önbelleğe
+      // ofsetlenmiş koordinatlar yazılarak ikinci açılışta çizimlerin kaymasına/taşmasına neden olur.
+      const copyBuf = vertexData.buffer.slice(0);
+      const copyTriBuf = triVertexBuffer ? triVertexBuffer.slice(0) : null;
+
+      openCadDb().then((db) => {
         if (!db) return;
-        const tx = db.transaction('drawings', 'readwrite');
-        const store = tx.objectStore('drawings');
-        const copyBuf = vertexData.buffer.slice(0);
-        const copyTriBuf = triVertexBuffer ? triVertexBuffer.slice(0) : null;
-        store.put({ id, meta, vertexBuffer: copyBuf, triBuffer: copyTriBuf, v: 10, savedAt: Date.now() });
-      } catch (e) {}
+        try {
+          const tx = db.transaction('drawings', 'readwrite');
+          const store = tx.objectStore('drawings');
+          store.put({
+            id,
+            meta,
+            vertexBuffer: copyBuf,
+            triBuffer: copyTriBuf,
+            v: 12, // Eski kaymış önbellekleri geçersiz kılmak için sürüm 12
+            savedAt: Date.now()
+          });
+        } catch (e) {
+          console.warn('[Cache Put Error]', e);
+        }
+      }).catch(() => {});
     }
 
     function applyDetectedUnits(metaObj) {
