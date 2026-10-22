@@ -473,11 +473,20 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         // Kullanıcı bu süreçte "Arka Plana Al" butonuna bastıysa doğrudan arka plan servisine aktar
         if (_runInBackgroundRequested) {
           _ipucuTimer?.cancel();
-          CadArkaplanServisi().projeyiArkaPlanaAl(
-            fileId: fileId ?? '',
-            projeAdi: fileName,
-            webglUrl: resolvedWebglUrl,
-          );
+          if (_loadingFileId.isNotEmpty && _loadingFileId.startsWith('temp_')) {
+            CadArkaplanServisi().gorevGuncelleVeyaDegistir(
+              eskiFileId: _loadingFileId,
+              yeniFileId: fileId ?? '',
+              projeAdi: fileName,
+              webglUrl: resolvedWebglUrl,
+            );
+          } else {
+            CadArkaplanServisi().projeyiArkaPlanaAl(
+              fileId: fileId ?? '',
+              projeAdi: fileName,
+              webglUrl: resolvedWebglUrl,
+            );
+          }
           return;
         }
 
@@ -1539,13 +1548,12 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                                 webglUrl: '$_kCadServerUrl/webgl-cad-v2.html?id=$_loadingFileId&title=${Uri.encodeComponent(_loadingFileName)}',
                               );
                             } else {
-                              ScaffoldMessenger.of(context).showSnackBar(
-                                SnackBar(
-                                  content: Text('$_loadingFileName arka planda hazırlanıyor. Tamamlandığında bildirim alacaksınız.'),
-                                  backgroundColor: const Color(0xFF0F7C86),
-                                  behavior: SnackBarBehavior.floating,
-                                  duration: const Duration(seconds: 4),
-                                ),
+                              final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
+                              _loadingFileId = tempId;
+                              CadArkaplanServisi().projeyiArkaPlanaAl(
+                                fileId: tempId,
+                                projeAdi: _loadingFileName,
+                                webglUrl: '$_kCadServerUrl/webgl-cad-v2.html?title=${Uri.encodeComponent(_loadingFileName)}',
                               );
                             }
                           },

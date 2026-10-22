@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications_plus/flutter_local_notifications_plus.dart';
 import 'main.dart' show navigatorKey;
 import 'cad_webgl_ekrani.dart' show CadWebglEkrani;
+import 'bildirim_servisi.dart' show BildirimServisi;
 
 // Uygulama KAPALI iken gelen FCM mesajlarını işleyen top-level handler.
 // Bu fonksiyon main() dışında, global scope'ta olmalı.
@@ -61,6 +62,9 @@ class FcmServisi {
     const iosSettings = DarwinInitializationSettings();
     await _localNotif.initialize(
       const InitializationSettings(android: androidSettings, iOS: iosSettings),
+      onDidReceiveNotificationResponse: (response) {
+        BildirimServisi.handleNotificationPayload(response.payload);
+      },
     );
 
     // 3. Bildirim izni iste (iOS ve Android 13+)

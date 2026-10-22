@@ -68,10 +68,61 @@ class CadArkaplanServisi {
     // Kullanıcıya ekranın altında şık bir bilgi göster
     _gosterBaslangicSnack(projeAdi);
 
+    // Bildirim çekmecesinde hemen canlı yükleme çubuğu bildirimini göster
+    BildirimServisi().cadIlerlemeBildirimiGuncelle(
+      fileId: fileId,
+      projeAdi: projeAdi,
+      webglUrl: webglUrl,
+      progressPercent: 20,
+      durumAciklamasi: 'V2 Motoru çizimi hazırlıyor (%20)...',
+    );
+
     // Sunucuyu her 3 saniyede bir yokla
     _pollingTimers[fileId]?.cancel();
     _pollingTimers[fileId] = Timer.periodic(const Duration(seconds: 3), (timer) {
       _kontrolEt(fileId);
+    });
+  }
+
+  /// Eğer yükleme esnasında geçici bir ID ile arka plana alındıysa, sunucudan dönen gerçek ID ile bağla
+  void gorevGuncelleVeyaDegistir({
+    required String eskiFileId,
+    required String yeniFileId,
+    required String projeAdi,
+    required String webglUrl,
+  }) {
+    // Eski geçici bildirimi kapat
+    BildirimServisi().cadIlerlemeBildiriminiKapat(eskiFileId);
+    _pollingTimers[eskiFileId]?.cancel();
+    final eskiGorev = _gorevler.remove(eskiFileId);
+
+    final baslangic = eskiGorev?.baslangicZamani ?? DateTime.now();
+    final gecen = eskiGorev?.gecenSaniye ?? 1;
+    final yuzde = (eskiGorev?.tahminYuzde ?? 25).clamp(20, 95);
+
+    final gorev = CadArkaplanGorevi(
+      fileId: yeniFileId,
+      projeAdi: projeAdi,
+      webglUrl: webglUrl,
+      baslangicZamani: baslangic,
+      gecenSaniye: gecen,
+      tahminYuzde: yuzde,
+    );
+
+    _gorevler[yeniFileId] = gorev;
+    _bildirGuncelleme();
+
+    BildirimServisi().cadIlerlemeBildirimiGuncelle(
+      fileId: yeniFileId,
+      projeAdi: projeAdi,
+      webglUrl: webglUrl,
+      progressPercent: yuzde,
+      durumAciklamasi: 'V2 Motoru çizimi hazırlıyor (%$yuzde)...',
+    );
+
+    _pollingTimers[yeniFileId]?.cancel();
+    _pollingTimers[yeniFileId] = Timer.periodic(const Duration(seconds: 3), (timer) {
+      _kontrolEt(yeniFileId);
     });
   }
 
@@ -83,15 +134,26 @@ class CadArkaplanServisi {
     }
 
     gorev.gecenSaniye = DateTime.now().difference(gorev.baslangicZamani).inSeconds;
-    // Tahmini ilerleme (0-92 arası artar)
-    gorev.tahminYuzde = (20 + (gorev.gecenSaniye * 2.5)).clamp(20, 92).toInt();
+    // Tahmini ilerleme (20-94 arası dinamik artar)
+    gorev.tahminYuzde = (20 + (gorev.gecenSaniye * 2.5)).clamp(20, 94).toInt();
     _bildirGuncelleme();
+
+    // Bildirim çekmecesindeki yükleme çubuğunu güncelle!
+    BildirimServisi().cadIlerlemeBildirimiGuncelle(
+      fileId: fileId,
+      projeAdi: gorev.projeAdi,
+      webglUrl: gorev.webglUrl,
+      progressPercent: gorev.tahminYuzde,
+      durumAciklamasi: 'V2 Motoru geometrileri çözümlüyor (%${gorev.tahminYuzde})...',
+    );
 
     // 10 dakika (600 sn) zaman aşımı kontrolü
     if (gorev.gecenSaniye > 600) {
       _pollingTimers[fileId]?.cancel();
       gorev.hataVar = true;
       _bildirGuncelleme();
+      // Zaman aşımında progress bildirimini kaldır
+      BildirimServisi().cadIlerlemeBildiriminiKapat(fileId);
       return;
     }
 
@@ -106,14 +168,17 @@ class CadArkaplanServisi {
         gorev.tahminYuzde = 100;
         _bildirGuncelleme();
 
-        // 1. Sistem Push Bildirimi Gönder
+        // 1. Önce devam eden progress bar bildirimini temizle
+        await BildirimServisi().cadIlerlemeBildiriminiKapat(fileId);
+
+        // 2. Tamamlandı Sistem Push Bildirimi Gönder (Sesli & Titreşimli)
         await BildirimServisi().cadCizimiHazirBildirimiGonder(
           projeAdi: gorev.projeAdi,
           webglUrl: gorev.webglUrl,
           fileId: fileId,
         );
 
-        // 2. Uygulama içi Üst Bildirim / Banner Göster
+        // 3. Uygulama içi Üst Bildirim / Banner Göster
         _gosterTamamlandiBanner(gorev);
       }
     } catch (_) {

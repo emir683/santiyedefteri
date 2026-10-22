@@ -40,25 +40,113 @@ class BildirimServisi {
     await flutterLocalNotificationsPlugin.initialize(
       initSettings,
       onDidReceiveNotificationResponse: (NotificationResponse response) {
-        final payload = response.payload;
-        if (payload != null && payload.startsWith('cad_project:')) {
-          final data = payload.substring('cad_project:'.length).split('|');
-          if (data.isNotEmpty) {
-            final url = data[0];
-            final title = data.length > 1 ? data[1] : 'CAD Çizimi';
-            navigatorKey.currentState?.push(
-              MaterialPageRoute(
-                builder: (_) => CadWebglEkrani(
-                  webglUrl: url,
-                  projeAdi: title,
-                ),
-              ),
-            );
-          }
-        }
+        handleNotificationPayload(response.payload);
       },
     );
+
+    // Soğuk başlatma: Uygulama tamamen kapalıyken bildirime tıklanarak açıldıysa
+    try {
+      final launchDetails =
+          await flutterLocalNotificationsPlugin.getNotificationAppLaunchDetails();
+      if (launchDetails != null && launchDetails.didNotificationLaunchApp) {
+        final payload = launchDetails.notificationResponse?.payload;
+        if (payload != null && payload.isNotEmpty) {
+          handleNotificationPayload(payload);
+        }
+      }
+    } catch (e) {
+      debugPrint("Bildirim soğuk başlatma kontrolü hatası: $e");
+    }
+
     await _izinleriIste();
+  }
+
+  static void handleNotificationPayload(String? payload) {
+    if (payload == null || payload.isEmpty) return;
+    debugPrint('🔔 Bildirim payload alındı: $payload');
+    if (payload.startsWith('cad_project:')) {
+      final data = payload.substring('cad_project:'.length).split('|');
+      if (data.isNotEmpty) {
+        final url = data[0];
+        final title = data.length > 1 ? data[1] : 'CAD Çizimi';
+        _navigateToCadViewer(url, title);
+      }
+    }
+  }
+
+  static void _navigateToCadViewer(String url, String title) {
+    void doNavigate() {
+      final navState = navigatorKey.currentState;
+      if (navState == null) {
+        Future.delayed(const Duration(milliseconds: 200), doNavigate);
+        return;
+      }
+      navState.push(
+        MaterialPageRoute(
+          builder: (_) => CadWebglEkrani(
+            webglUrl: url,
+            projeAdi: title,
+          ),
+        ),
+      );
+    }
+
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      doNavigate();
+    });
+  }
+
+  static int _notifIdFromFileId(String fileId) {
+    if (fileId.isEmpty) return 77777;
+    return (fileId.hashCode.abs() % 80000) + 10000;
+  }
+
+  /// Arka planda işlenen CAD çizimi için canlı progress bar bildirimini gösterir/günceller
+  Future<void> cadIlerlemeBildirimiGuncelle({
+    required String fileId,
+    required String projeAdi,
+    required String webglUrl,
+    required int progressPercent,
+    String? durumAciklamasi,
+  }) async {
+    final int notifId = _notifIdFromFileId(fileId);
+    final int clampedProgress = progressPercent.clamp(0, 100);
+
+    final androidDetails = AndroidNotificationDetails(
+      'cad_progress_kanali',
+      'CAD Çizim İlerlemesi',
+      channelDescription: 'CAD çizimleri arka planda hazırlanırken canlı ilerleme durumu',
+      icon: _androidNotificationIcon,
+      color: const Color(0xFF0F7C86),
+      importance: Importance.low,
+      priority: Priority.low,
+      ongoing: true,
+      onlyAlertOnce: true,
+      autoCancel: false,
+      showProgress: true,
+      maxProgress: 100,
+      progress: clampedProgress,
+      subText: '%$clampedProgress',
+    );
+
+    final details = NotificationDetails(android: androidDetails);
+    final String body = durumAciklamasi ?? '$projeAdi (%$clampedProgress tamamlandı)';
+
+    await flutterLocalNotificationsPlugin.show(
+      notifId,
+      'CAD Çizimi Hazırlanıyor... 🏗️',
+      body,
+      details,
+      payload: 'cad_project:$webglUrl|$projeAdi',
+    );
+  }
+
+  /// Arka plan işlemi bittiğinde veya iptal edildiğinde progress bar bildirimini kapatır
+  Future<void> cadIlerlemeBildiriminiKapat(String fileId) async {
+    final int notifId = _notifIdFromFileId(fileId);
+    try {
+      await flutterLocalNotificationsPlugin.cancel(notifId);
+    } catch (_) {}
   }
 
   /// CAD Çizimi hazır olduğunda anında yerel bildirim gönderir
