@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:webview_flutter/webview_flutter.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'tema_ayarlari.dart';
 import 'cad_arkaplan_servisi.dart';
 
@@ -33,6 +34,36 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
   void initState() {
     super.initState();
     _initWebView();
+    _recordToRecent();
+  }
+
+  Future<void> _recordToRecent() async {
+    try {
+      final uri = Uri.tryParse(widget.webglUrl);
+      final fileId = uri?.queryParameters['id'] ?? uri?.queryParameters['file'];
+      if (fileId == null || fileId.isEmpty || fileId.startsWith('temp_')) return;
+
+      final prefs = await SharedPreferences.getInstance();
+      final list = prefs.getStringList('saved_cad_projects_list') ?? [];
+      final List<Map<String, dynamic>> decoded = [];
+      for (final raw in list) {
+        try {
+          decoded.add(jsonDecode(raw) as Map<String, dynamic>);
+        } catch (_) {}
+      }
+      decoded.removeWhere((p) => p['id'] == fileId || p['fileName'] == widget.projeAdi);
+      decoded.insert(0, {
+        'id': fileId,
+        'fileName': widget.projeAdi,
+        'fileSize': 0,
+        'savedAt': DateTime.now().toIso8601String(),
+        'webglUrl': widget.webglUrl,
+      });
+      await prefs.setStringList(
+        'saved_cad_projects_list',
+        decoded.take(25).map((p) => jsonEncode(p)).toList(),
+      );
+    } catch (_) {}
   }
 
   final ValueNotifier<double?> _progressNotifier = ValueNotifier<double?>(null);

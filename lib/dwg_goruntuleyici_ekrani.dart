@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:math';
 import 'package:flutter/material.dart';
 import 'package:file_picker/file_picker.dart';
 import 'package:http/http.dart' as http;
@@ -230,7 +231,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         try {
           final map = jsonDecode(raw) as Map<String, dynamic>;
           final proj = SavedCadProject.fromJson(map);
-          if (proj.webglUrl.isNotEmpty) {
+          if (proj.webglUrl.isNotEmpty && !proj.id.startsWith('temp_')) {
             loaded.add(proj);
           }
         } catch (_) {}
@@ -359,6 +360,15 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     }
   }
 
+  static String _generateCadUuid() {
+    final rnd = Random.secure();
+    final bytes = List<int>.generate(16, (_) => rnd.nextInt(256));
+    bytes[6] = (bytes[6] & 0x0f) | 0x40;
+    bytes[8] = (bytes[8] & 0x3f) | 0x80;
+    final hex = bytes.map((b) => b.toRadixString(16).padLeft(2, '0')).join();
+    return '${hex.substring(0, 8)}-${hex.substring(8, 12)}-${hex.substring(12, 16)}-${hex.substring(16, 20)}-${hex.substring(20)}';
+  }
+
   /// CAD dosyasını doğrudan WebGL ile açar (Daha önce açılmışsa anında açar, yoksa dönüştürür)
   Future<void> _openCadFileDirectly(File file, String fileName) async {
     final fileSize = file.existsSync() ? file.lengthSync() : 0;
@@ -366,14 +376,16 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     // 1. Önbellekte bu dosya zaten var mı kontrol et (Beklemeden anında açılış)
     SavedCadProject? existing;
     for (final p in _savedProjects) {
-      if ((p.originalFilePath != null && p.originalFilePath == file.path) ||
-          (p.fileName == fileName && p.fileSize == fileSize && p.webglUrl.isNotEmpty)) {
+      final samePath = p.originalFilePath != null && p.originalFilePath == file.path;
+      final sameNameAndSize = p.fileName == fileName && (fileSize == 0 || p.fileSize == 0 || p.fileSize == fileSize);
+      if ((samePath || sameNameAndSize) && p.webglUrl.isNotEmpty && !p.id.startsWith('temp_')) {
         existing = p;
         break;
       }
     }
 
-    if (existing != null && existing.webglUrl.isNotEmpty) {
+    if (existing != null) {
+      debugPrint('[CAD Cache Hit] Proje önceden açılmış, doğrudan WebGL motoru başlatılıyor: ${existing.fileName}');
       await _openSavedProject(existing);
       return;
     }
@@ -381,7 +393,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     // 2. Yeni dosya -> V2 Sunucu Motorunda dönüştür ve WebGL ile aç
     _stageTimer?.cancel();
     _runInBackgroundRequested = false;
-    _loadingFileId = '';
+    _loadingFileId = _generateCadUuid(); // Baştan gerçek bir UUID ata
     _startTipRotation();
     setState(() {
       _isLoading = true;
@@ -406,8 +418,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     try {
       final request = http.MultipartRequest(
         'POST',
-        Uri.parse('$_kCadServerUrl/api/convert-v2'),
+        Uri.parse('$_kCadServerUrl/api/convert-v2?file_id=$_loadingFileId'),
       );
+      request.fields['file_id'] = _loadingFileId;
       request.files.add(
         await http.MultipartFile.fromPath('file', file.path, filename: fileName),
       );
@@ -441,8 +454,8 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       if (streamedResponse.statusCode == 200) {
         final data = jsonDecode(responseBody) as Map<String, dynamic>;
         final String? webglUrl = data['webglUrl'] as String?;
-        final String? fileId = data['id'] as String?;
-        _loadingFileId = fileId ?? '';
+        final String fileId = (data['id'] as String?) ?? _loadingFileId;
+        _loadingFileId = fileId;
 
         String resolvedWebglUrl;
         if (webglUrl != null && webglUrl.isNotEmpty) {
@@ -451,16 +464,13 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           if (!resolvedWebglUrl.contains('title=')) {
             resolvedWebglUrl += '&title=${Uri.encodeComponent(fileName)}';
           }
-        } else if (fileId != null && fileId.isNotEmpty) {
-          resolvedWebglUrl =
-              '$_kCadServerUrl/webgl-cad-v2.html?id=$fileId&title=${Uri.encodeComponent(fileName)}';
         } else {
           resolvedWebglUrl =
-              '$_kCadServerUrl/webgl-cad-v2.html?title=${Uri.encodeComponent(fileName)}';
+              '$_kCadServerUrl/webgl-cad-v2.html?id=$fileId&title=${Uri.encodeComponent(fileName)}';
         }
 
         final newProj = SavedCadProject(
-          id: fileId ?? DateTime.now().millisecondsSinceEpoch.toString(),
+          id: fileId,
           fileName: fileName,
           originalFilePath: file.path,
           fileSize: fileSize,
@@ -470,23 +480,9 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
 
         await _saveProjectToRecent(newProj);
 
-        // Kullanıcı bu süreçte "Arka Plana Al" butonuna bastıysa doğrudan arka plan servisine aktar
+        // Kullanıcı bu süreçte "Arka Plana Al" butonuna bastıysa işlem arka plan servisinde zaten sürüyor
         if (_runInBackgroundRequested) {
           _ipucuTimer?.cancel();
-          if (_loadingFileId.isNotEmpty && _loadingFileId.startsWith('temp_')) {
-            CadArkaplanServisi().gorevGuncelleVeyaDegistir(
-              eskiFileId: _loadingFileId,
-              yeniFileId: fileId ?? '',
-              projeAdi: fileName,
-              webglUrl: resolvedWebglUrl,
-            );
-          } else {
-            CadArkaplanServisi().projeyiArkaPlanaAl(
-              fileId: fileId ?? '',
-              projeAdi: fileName,
-              webglUrl: resolvedWebglUrl,
-            );
-          }
           return;
         }
 
@@ -1541,21 +1537,14 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                             setState(() {
                               _isLoading = false;
                             });
-                            if (_loadingFileId.isNotEmpty) {
-                              CadArkaplanServisi().projeyiArkaPlanaAl(
-                                fileId: _loadingFileId,
-                                projeAdi: _loadingFileName,
-                                webglUrl: '$_kCadServerUrl/webgl-cad-v2.html?id=$_loadingFileId&title=${Uri.encodeComponent(_loadingFileName)}',
-                              );
-                            } else {
-                              final tempId = 'temp_${DateTime.now().millisecondsSinceEpoch}';
-                              _loadingFileId = tempId;
-                              CadArkaplanServisi().projeyiArkaPlanaAl(
-                                fileId: tempId,
-                                projeAdi: _loadingFileName,
-                                webglUrl: '$_kCadServerUrl/webgl-cad-v2.html?title=${Uri.encodeComponent(_loadingFileName)}',
-                              );
+                            if (_loadingFileId.isEmpty) {
+                              _loadingFileId = _generateCadUuid();
                             }
+                            CadArkaplanServisi().projeyiArkaPlanaAl(
+                              fileId: _loadingFileId,
+                              projeAdi: _loadingFileName,
+                              webglUrl: '$_kCadServerUrl/webgl-cad-v2.html?id=$_loadingFileId&title=${Uri.encodeComponent(_loadingFileName)}',
+                            );
                           },
                         ),
                       ),
@@ -1704,10 +1693,23 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
 
   /// Sunucu adresi (Cloudflare tunnel vb.) değişse bile kayıtlı projenin güncel sunucu üzerinden açılmasını sağlar
   String _resolveProjectWebglUrl(SavedCadProject project) {
-    if (project.id.isNotEmpty && !project.id.startsWith('17')) {
-      return '$_kCadServerUrl/webgl-cad-v2.html?id=${project.id}&title=${Uri.encodeComponent(project.fileName)}';
-    }
     String url = project.webglUrl;
+    String? extractedId;
+    try {
+      final uri = Uri.parse(url);
+      extractedId = uri.queryParameters['id'] ?? uri.queryParameters['file'];
+    } catch (_) {}
+
+    final validId = (extractedId != null && extractedId.isNotEmpty && !extractedId.startsWith('temp_'))
+        ? extractedId
+        : (project.id.isNotEmpty && !project.id.startsWith('temp_') && !project.id.startsWith('17')
+            ? project.id
+            : null);
+
+    if (validId != null && validId.isNotEmpty) {
+      return '$_kCadServerUrl/webgl-cad-v2.html?id=$validId&title=${Uri.encodeComponent(project.fileName)}';
+    }
+
     if (url.contains('/webgl-cad.html')) {
       url = url.replaceAll('/webgl-cad.html', '/webgl-cad-v2.html');
     }

@@ -58,7 +58,9 @@ const storage = multer.diskStorage({
   destination: (req, file, cb) => cb(null, UPLOAD_DIR),
   filename: (req, file, cb) => {
     const ext = path.extname(file.originalname || '').toLowerCase() || '.dwg';
-    cb(null, uuidv4() + ext);
+    const clientFileId = req.query.file_id;
+    const finalId = (clientFileId && /^[a-f0-9\-]+$/i.test(clientFileId)) ? clientFileId : uuidv4();
+    cb(null, finalId + ext);
   }
 });
 
@@ -251,14 +253,8 @@ app.get('/files/:filename', (req, res, next) => {
           .catch((err) => console.error(`[ON-DEMAND V2 ERROR] ${fileId}:`, err));
         return res.status(202).json({ converting: true, message: 'Dönüştürme başlatıldı...' });
       }
-      const svgPath = path.join(UPLOAD_DIR, `${fileId}.svg`);
-      if (fs.existsSync(svgPath)) {
-        const jsonTarget = path.join(UPLOAD_DIR, `${fileId}_cad_data.json`);
-        getOrCreateCadData(fileId, svgPath, jsonTarget)
-          .then(() => serveFile())
-          .catch(() => next());
-        return;
-      }
+      // V2 ikili/meta dosyaları için V1 motoru çağrılmamalıdır (V1 motoru uyumsuz format üretir)
+      return next();
     }
   }
 
