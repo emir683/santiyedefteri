@@ -1,8 +1,9 @@
 // lib/bildirim_ekrani.dart
 //
-// In-app bildirim gelen kutusu.
+// In-app bildirim gelen kutusu (Inbox).
 // - Firestore'dan gerçek zamanlı bildirim stream'i
 // - Okundu/okunmadı durumu
+// - Bildirime tıklandığında ilgili ekrana derin yönlendirme (Deep Navigation)
 // - Tümünü okundu yap butonu
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -15,6 +16,14 @@ import 'user_model.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/glass_empty_state.dart';
+
+import 'gunluk_rapor_ekrani.dart';
+import 'isci_ekrani.dart';
+import 'santiye_ekrani.dart';
+import 'odemeler_ekrani.dart';
+import 'ekip_yonetimi_ekrani.dart';
+import 'haftalik_ozet_ekrani.dart';
+import 'cad_webgl_ekrani.dart';
 
 const Color _kBrandTeal = Color(0xFF14B8A6);
 
@@ -68,7 +77,7 @@ class BildirimEkrani extends StatelessWidget {
                 icon: Icons.notifications_none_rounded,
                 title: 'Henüz Bildirim Yok',
                 description:
-                    'Ekip içi güncellemeler, duyurular ve sistem bildirimleri burada görüntülenecektir.',
+                    'Ekip içi güncellemeler, duyurular, puantaj ve sistem bildirimleri burada görüntülenecektir.',
               );
             }
 
@@ -115,7 +124,8 @@ class _BildirimKarti extends StatelessWidget {
       case 'ISCI_EKLEME':
         return {'icon': Icons.person_add_rounded, 'color': const Color(0xFF3B82F6)};
       case 'ISCI_GUNCELLEME':
-        return {'icon': Icons.manage_accounts_rounded, 'color': const Color(0xFFF59E0B)};
+      case 'ISCI_KART_ESLESMESI':
+        return {'icon': Icons.badge_rounded, 'color': const Color(0xFFF59E0B)};
       case 'ISCI_SILME':
       case 'UYE_CIKARMA':
         return {'icon': Icons.person_remove_rounded, 'color': const Color(0xFFEF4444)};
@@ -132,8 +142,58 @@ class _BildirimKarti extends StatelessWidget {
         return {'icon': Icons.account_balance_wallet_rounded, 'color': const Color(0xFFEC4899)};
       case 'ROL_DEGISIMI':
         return {'icon': Icons.admin_panel_settings_rounded, 'color': const Color(0xFF6366F1)};
+      case 'EKIBE_KATILIM':
+        return {'icon': Icons.group_add_rounded, 'color': const Color(0xFF06B6D4)};
+      case 'HAFTALIK_OZET':
+        return {'icon': Icons.analytics_rounded, 'color': const Color(0xFFF97316)};
       default:
         return {'icon': Icons.notifications_rounded, 'color': Colors.grey};
+    }
+  }
+
+  void _ilgiliSayfayaGit(BuildContext context, String islemTipi, Map<String, dynamic> detaylar) {
+    Widget? hedefSayfa;
+
+    switch (islemTipi) {
+      case 'GUNLUK_RAPOR_EKLEME':
+      case 'GUNLUK_RAPOR_GUNCELLEME':
+        hedefSayfa = GunlukRaporEkrani(teamId: teamId);
+        break;
+      case 'ISCI_EKLEME':
+      case 'ISCI_GUNCELLEME':
+      case 'ISCI_SILME':
+      case 'ISCI_KART_ESLESMESI':
+        hedefSayfa = IsciEkrani(teamId: teamId);
+        break;
+      case 'SANTIYE_EKLEME':
+      case 'SANTIYE_SILME':
+        hedefSayfa = SantiyeEkrani(teamId: teamId);
+        break;
+      case 'ODEME_EKLEME':
+      case 'AVANS_EKLEME':
+        hedefSayfa = OdemelerEkrani(teamId: teamId);
+        break;
+      case 'ROL_DEGISIMI':
+      case 'EKIBE_KATILIM':
+      case 'UYE_CIKARMA':
+        hedefSayfa = EkipYonetimiEkrani(teamId: teamId);
+        break;
+      case 'HAFTALIK_OZET':
+        hedefSayfa = HaftalikOzetEkrani(teamId: teamId);
+        break;
+      case 'CAD_PROJECT':
+        final webglUrl = detaylar['webgl_url']?.toString() ?? '';
+        final projectName = detaylar['project_name']?.toString() ?? 'CAD Çizimi';
+        if (webglUrl.isNotEmpty) {
+          hedefSayfa = CadWebglEkrani(webglUrl: webglUrl, projeAdi: projectName);
+        }
+        break;
+    }
+
+    if (hedefSayfa != null) {
+      Navigator.of(context).push(
+        MaterialPageRoute(builder: (_) => hedefSayfa!),
+      );
     }
   }
 
@@ -143,6 +203,9 @@ class _BildirimKarti extends StatelessWidget {
     final String islemTipi = bildirim['islemTipi'] ?? '';
     final String mesaj = bildirim['mesaj'] ?? '';
     final String bildirimId = bildirim['id'] ?? '';
+    final Map<String, dynamic> detaylar = bildirim['detaylar'] != null
+        ? Map<String, dynamic>.from(bildirim['detaylar'])
+        : {};
     final timestamp = bildirim['tarih'] as Timestamp?;
     final zaman =
         timestamp != null
@@ -157,6 +220,9 @@ class _BildirimKarti extends StatelessWidget {
       onTap: () async {
         if (!okundu && bildirimId.isNotEmpty) {
           await servisi.bildirimiOkunduIsaretle(teamId, bildirimId);
+        }
+        if (context.mounted) {
+          _ilgiliSayfayaGit(context, islemTipi, detaylar);
         }
       },
       child: AnimatedContainer(
@@ -209,15 +275,24 @@ class _BildirimKarti extends StatelessWidget {
                     children: [
                       Icon(
                         Icons.access_time_rounded,
-                        size: 11,
+                        size: 13,
                         color: isDark ? Colors.white38 : Colors.black38,
                       ),
                       const SizedBox(width: 4),
                       Text(
                         zaman,
                         style: TextStyle(
-                          fontSize: 12,
+                          fontSize: 11.5,
                           color: isDark ? Colors.white38 : Colors.black38,
+                        ),
+                      ),
+                      const Spacer(),
+                      Text(
+                        'İncele →',
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          fontWeight: FontWeight.w700,
+                          color: renk,
                         ),
                       ),
                     ],
@@ -225,17 +300,6 @@ class _BildirimKarti extends StatelessWidget {
                 ],
               ),
             ),
-            // Okunmadı noktası
-            if (!okundu)
-              Container(
-                width: 8,
-                height: 8,
-                margin: const EdgeInsets.only(top: 4),
-                decoration: BoxDecoration(
-                  color: renk,
-                  shape: BoxShape.circle,
-                ),
-              ),
           ],
         ),
       ),

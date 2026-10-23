@@ -73,6 +73,10 @@ class FirestoreServisi {
       await teamDoc.reference.update({
         'uyeler': FieldValue.arrayUnion([kullaniciId]),
       });
+      await logIslem(teamDoc.id, 'EKIBE_KATILIM', {
+        'uyeUid': kullaniciId,
+        'ekipAdi': ekipAdi,
+      });
       return teamDoc.id;
     } catch (e) {
       rethrow;
@@ -106,6 +110,11 @@ class FirestoreServisi {
       await _kullaniciRef.update({'teamId': teamDoc.id});
       await teamDoc.reference.update({
         'uyeler': FieldValue.arrayUnion([kullaniciId]),
+      });
+      await logIslem(teamDoc.id, 'EKIBE_KATILIM', {
+        'uyeUid': kullaniciId,
+        'ekipAdi': ekipAdi,
+        'yontem': 'davet_linki',
       });
       return teamDoc.id;
     } catch (e) {
@@ -340,9 +349,11 @@ class FirestoreServisi {
     final doc = await _ekipRef(ekipId).collection('workers').doc(isciId).get();
     final isciAdi = doc.data()?['ad'] ?? '';
     await _ekipRef(ekipId).collection('workers').doc(isciId).update({'linkedUserId': targetUserId});
-    await logIslem(ekipId, 'ISCI_GUNCELLEME', {
+    await logIslem(ekipId, 'ISCI_KART_ESLESMESI', {
+      'isciId': isciId,
       'isciAdi': isciAdi,
-      'detay': 'Hesap bağlandı: $email',
+      'targetUserId': targetUserId,
+      'email': email,
     });
   }
 
@@ -1944,7 +1955,13 @@ class FirestoreServisi {
       case 'AVANS_GERI_YUKLEME':
         return "$username silinen avansı geri yükledi.";
       case 'ROL_DEGISIMI':
-        return "$username ekipte rol değişikliği yaptı.";
+        final rolAdi = detaylar['yeniRol'] == 'yonetici' ? 'Yönetici' : 'Puantör/Üye';
+        return "$username ekipte rol değişikliği yaptı ($rolAdi).";
+      case 'EKIBE_KATILIM':
+        return "$username ekibe katıldı.";
+      case 'ISCI_KART_ESLESMESI':
+        final isciAdi = detaylar['isciAdi'] ?? 'işçi';
+        return "$username, $isciAdi kartını kullanıcı hesabıyla eşleştirdi.";
       default:
         return "$username bir işlem gerçekleştirdi.";
     }

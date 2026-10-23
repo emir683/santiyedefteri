@@ -3,7 +3,7 @@
 // FCM (Firebase Cloud Messaging) token yönetimi ve mesaj işleme.
 // - Kullanıcı giriş yaptığında token'ı Firestore'a kaydeder
 // - Uygulama arka planda/kapalıyken gelen bildirimler için handler sağlar
-// - Uygulama açılınca bildirime tıklanma durumunu işler
+// - Uygulama açılınca bildirime tıklanma durumunu işler ve ilgili ekrana yönlendirir
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
@@ -13,14 +13,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications_plus/flutter_local_notifications_plus.dart';
 import 'main.dart' show navigatorKey;
 import 'cad_webgl_ekrani.dart' show CadWebglEkrani;
+import 'haftalik_ozet_ekrani.dart' show HaftalikOzetEkrani;
+import 'gunluk_rapor_ekrani.dart' show GunlukRaporEkrani;
+import 'isci_ekrani.dart' show IsciEkrani;
+import 'odemeler_ekrani.dart' show OdemelerEkrani;
+import 'ekip_yonetimi_ekrani.dart' show EkipYonetimiEkrani;
 import 'bildirim_servisi.dart' show BildirimServisi;
 
 // Uygulama KAPALI iken gelen FCM mesajlarını işleyen top-level handler.
 // Bu fonksiyon main() dışında, global scope'ta olmalı.
 @pragma('vm:entry-point')
 Future<void> firebaseMessagingBackgroundHandler(RemoteMessage message) async {
-  // Arka planda/kapalıyken FCM zaten sistem bildirimi gösterir.
-  // Ek işlem gerekirse burada yapılabilir (örn. local notification).
   debugPrint('🔔 [FCM Arka Plan] Mesaj geldi: ${message.messageId}');
 }
 
@@ -46,7 +49,7 @@ class FcmServisi {
   /// Uygulamayı ilk başlatınca çağrılır.
   /// İzinleri ister, token'ı kaydeder, handler'ları ayarlar.
   Future<void> init() async {
-    if (kIsWeb) return; // Web'de FCM farklı çalışır, şimdilik atla
+    if (kIsWeb) return;
 
     // 1. Yerel bildirim kanalını Android'e kaydet
     await _localNotif
@@ -67,36 +70,26 @@ class FcmServisi {
       },
     );
 
-    // 3. Bildirim izni iste (iOS ve Android 13+)
-    final settings = await _fcm.requestPermission(
-      alert: true,
-      badge: true,
-      sound: true,
-      provisional: false,
-    );
-
-    debugPrint(
-      '🔔 FCM izin durumu: ${settings.authorizationStatus}',
-    );
+    // 3. FCM izin durumu kontrolü (Onboarding dialog ile isteniyor)
+    final settings = await _fcm.getNotificationSettings();
+    debugPrint('🔔 FCM izin durumu: ${settings.authorizationStatus}');
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
         settings.authorizationStatus == AuthorizationStatus.provisional) {
-      // 4. Token'ı kaydet
       await _tokenKaydet();
 
-      // 5. Token yenilenince güncelle
       _fcm.onTokenRefresh.listen((yeniToken) {
         _tokenFirestoreGuncelle(yeniToken);
       });
     }
 
-    // 6. Uygulama AÇIK/ÖN PLANDA iken gelen FCM mesajını göster
+    // 4. Uygulama AÇIK/ÖN PLANDA iken gelen FCM mesajını göster
     FirebaseMessaging.onMessage.listen(_onMesajGeldi);
 
-    // 7. Uygulama ARKA PLANDA iken bildirime tıklanınca
+    // 5. Uygulama ARKA PLANDA iken bildirime tıklanınca
     FirebaseMessaging.onMessageOpenedApp.listen(_onBildirimTiklandi);
 
-    // 8. Uygulama KAPALI iken bildirime tıklanınca başlatma
+    // 6. Uygulama KAPALI iken bildirime tıklanınca başlatma
     final initialMessage = await _fcm.getInitialMessage();
     if (initialMessage != null) {
       _onBildirimTiklandi(initialMessage);
@@ -104,14 +97,13 @@ class FcmServisi {
   }
 
   /// Kullanıcı giriş yaptıktan sonra token'ını Firestore'a kaydet.
-  /// Bu metot login/register başarılı olduktan sonra çağrılmalı.
   Future<void> kullaniciBagla() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     await _tokenKaydet();
   }
 
-  /// Kullanıcı çıkış yaptığında token'ı temizle (isteğe bağlı).
+  /// Kullanıcı çıkış yaptığında token'ı temizle
   Future<void> kullaniciAyril() async {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
@@ -157,11 +149,18 @@ class FcmServisi {
     debugPrint('🔔 FCM ön plan mesaj: ${notification.title}');
 
     String? payload;
-    if (message.data['action'] == 'cad_project') {
+    final action = message.data['action'] ?? message.data['islemTipi'];
+    final teamId = message.data['teamId']?.toString() ?? '';
+
+    if (action == 'cad_project') {
       final webglUrl = message.data['webgl_url']?.toString() ?? '';
       final projectName =
           message.data['project_name']?.toString() ?? 'CAD Çizimi';
       payload = 'cad_project:$webglUrl|$projectName';
+    } else if (action == 'HAFTALIK_OZET' || action == 'weekly_summary') {
+      payload = 'weekly_summary:$teamId';
+    } else if (action == 'daily_report' || action == 'GUNLUK_RAPOR_EKLEME') {
+      payload = 'daily_report:$teamId';
     }
 
     await _localNotif.show(
@@ -188,26 +187,46 @@ class FcmServisi {
     );
   }
 
-  /// Bildirime tıklanınca ne yapılacağı.
+  /// Bildirime tıklanınca ne yapılacağı (Deep Navigation).
   void _onBildirimTiklandi(RemoteMessage message) {
     debugPrint('🔔 Bildirime tıklandı: ${message.data}');
-    if (message.data['action'] == 'cad_project') {
+    final action = message.data['action'] ?? message.data['islemTipi'];
+    final teamId = message.data['teamId']?.toString() ?? '';
+
+    void navigate(Widget page) {
+      Future.delayed(const Duration(milliseconds: 350), () {
+        navigatorKey.currentState?.push(
+          MaterialPageRoute(builder: (_) => page),
+        );
+      });
+    }
+
+    if (action == 'cad_project') {
       final webglUrl = message.data['webgl_url']?.toString();
       final projectName =
           message.data['project_name']?.toString() ?? 'CAD Çizimi';
       if (webglUrl != null && webglUrl.isNotEmpty) {
-        // Uygulama yeni açılıyorsa navigatorKey context'inin oturması için küçük gecikme
-        Future.delayed(const Duration(milliseconds: 350), () {
-          navigatorKey.currentState?.push(
-            MaterialPageRoute(
-              builder: (_) => CadWebglEkrani(
-                webglUrl: webglUrl,
-                projeAdi: projectName,
-              ),
-            ),
-          );
-        });
-        return;
+        navigate(CadWebglEkrani(webglUrl: webglUrl, projeAdi: projectName));
+      }
+    } else if (action == 'HAFTALIK_OZET' || action == 'weekly_summary') {
+      if (teamId.isNotEmpty) {
+        navigate(HaftalikOzetEkrani(teamId: teamId));
+      }
+    } else if (action == 'daily_report' || action == 'GUNLUK_RAPOR_EKLEME' || action == 'GUNLUK_RAPOR_GUNCELLEME') {
+      if (teamId.isNotEmpty) {
+        navigate(GunlukRaporEkrani(teamId: teamId));
+      }
+    } else if (action == 'ISCI_EKLEME' || action == 'ISCI_GUNCELLEME' || action == 'ISCI_KART_ESLESMESI') {
+      if (teamId.isNotEmpty) {
+        navigate(IsciEkrani(teamId: teamId));
+      }
+    } else if (action == 'ODEME_EKLEME' || action == 'AVANS_EKLEME') {
+      if (teamId.isNotEmpty) {
+        navigate(OdemelerEkrani(teamId: teamId));
+      }
+    } else if (action == 'ROL_DEGISIMI' || action == 'EKIBE_KATILIM') {
+      if (teamId.isNotEmpty) {
+        navigate(EkipYonetimiEkrani(teamId: teamId));
       }
     }
   }

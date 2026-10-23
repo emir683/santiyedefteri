@@ -1,11 +1,11 @@
 /**
  * Firebase Cloud Functions — Şantiye Puantaj Defteri
  *
- * 1. onHistoryWrite: İşlem geçmişine yeni kayıt gelince ilgili kişilere
- *    FCM push bildirimi gönderir (uygulama kapalı olsa bile çalışır).
- *
- * 2. onWeeklySummary: Her Pazartesi 08:00 (Türkiye saati) ekip kurucularına
- *    haftalık özet bildirimi gönderir.
+ * 1. notifyCadReady: CAD çizimi tamamlandığında uzaktan FCM push bildirimi gönderir.
+ * 2. onHistoryWrite: İşlem geçmişine yeni kayıt gelince (rapor, işçi, ödeme, yetki, üye katılımı)
+ *    kategori tercihlerine göre ilgili kişilere anlık bildirim iletir.
+ * 3. onDailyPuantajReminder: Her gün 20:00 (Türkiye saati) rapor girilmemiş şantiyeler için akıllı uyarı atar.
+ * 4. onWeeklySummary: Her Pazartesi 09:00 (Türkiye saati) ekip kurucularına haftalık özet bildirimi gönderir.
  */
 
 const { onDocumentCreated } = require('firebase-functions/v2/firestore');
@@ -82,7 +82,7 @@ exports.notifyCadReady = onRequest(
 
 /**
  * teams/{teamId}/history/{docId} koleksiyonuna yeni belge yazılınca tetiklenir.
- * İlgili kullanıcılara FCM push bildirimi gönderir.
+ * İlgili kullanıcılara kategori tercihlerine göre FCM push bildirimi gönderir.
  */
 exports.onHistoryWrite = onDocumentCreated(
   {
@@ -115,7 +115,21 @@ exports.onHistoryWrite = onDocumentCreated(
     const hedefUidler = new Set([kurucuUid, ...yoneticiler]);
     hedefUidler.delete(islemYapanUid); // Kendi işlemini kendine gönderme
 
-    // İşçiye bağlı kullanıcı varsa ekle
+    // 1. Rol değişikliğinde hedef kullanıcıya bildir
+    if (islemTipi === 'ROL_DEGISIMI' && detaylar.uyeUid) {
+      if (detaylar.uyeUid !== islemYapanUid) {
+        hedefUidler.add(detaylar.uyeUid);
+      }
+    }
+
+    // 2. İşçi kartı eşleştiğinde hedef kullanıcıya bildir
+    if (islemTipi === 'ISCI_KART_ESLESMESI' && detaylar.targetUserId) {
+      if (detaylar.targetUserId !== islemYapanUid) {
+        hedefUidler.add(detaylar.targetUserId);
+      }
+    }
+
+    // 3. İşçiye bağlı kullanıcı varsa ekle
     const isciAdi = detaylar.isciAdi;
     if (isciAdi) {
       const workerSnap = await db
@@ -137,7 +151,7 @@ exports.onHistoryWrite = onDocumentCreated(
 
     if (hedefUidler.size === 0) return;
 
-    // FCM token'larını topla
+    // FCM token'larını kategori tercihlerine göre topla
     const tokens = [];
     const hedefArray = Array.from(hedefUidler);
 
@@ -146,8 +160,26 @@ exports.onHistoryWrite = onDocumentCreated(
       if (!userDoc.exists) continue;
       const userData = userDoc.data();
       const token = userData.fcmToken;
-      const islemBildirimleriAktif = userData.islemBildirimleriAktif !== false; // varsayılan true
-      if (token && islemBildirimleriAktif) tokens.push(token);
+      const islemBildirimleriAktif = userData.islemBildirimleriAktif !== false;
+
+      // Kategori bazlı filtreleme
+      let categoryAllowed = true;
+      if (islemTipi.startsWith('ODEME') || islemTipi.startsWith('AVANS')) {
+        categoryAllowed = userData.odemeBildirimleriAktif !== false;
+      } else if (islemTipi.startsWith('GUNLUK_RAPOR')) {
+        categoryAllowed = userData.puantajHatirlaticiAktif !== false;
+      } else if (
+        islemTipi === 'EKIBE_KATILIM' ||
+        islemTipi === 'ROL_DEGISIMI' ||
+        islemTipi === 'ISCI_KART_ESLESMESI' ||
+        islemTipi === 'UYE_CIKARMA'
+      ) {
+        categoryAllowed = userData.ekipBildirimleriAktif !== false;
+      }
+
+      if (token && islemBildirimleriAktif && categoryAllowed) {
+        tokens.push(token);
+      }
     }
 
     if (tokens.length === 0) return;
@@ -201,7 +233,6 @@ exports.onHistoryWrite = onDocumentCreated(
             errorCode === 'messaging/invalid-registration-token' ||
             errorCode === 'messaging/registration-token-not-registered'
           ) {
-            // Token geçersiz, kullanıcı kaydından sil
             const invalidUid = hedefArray[idx];
             if (invalidUid) {
               await db.collection('users').doc(invalidUid).update({
@@ -217,15 +248,85 @@ exports.onHistoryWrite = onDocumentCreated(
   }
 );
 
-// ─── 2. HAFTALIK ÖZET ────────────────────────────────────────────────────────
+// ─── 2. AKILLI EKSİK PUANTAJ VE RAPOR HATIRLATICISI (HER GÜN 20:00 TR) ──────
 
-/**
- * Her Pazartesi sabahı 08:00 Türkiye saati (UTC+3 → 05:00 UTC)
- * ekip kurucularına haftalık özet bildirimi gönderir.
- */
+exports.onDailyPuantajReminder = onSchedule(
+  {
+    schedule: '0 20 * * *', // Her gün 20:00 Türkiye Saati
+    timeZone: 'Europe/Istanbul',
+    region: 'europe-west1',
+  },
+  async () => {
+    const simdi = new Date();
+    const bugunBaslangic = new Date(simdi.getFullYear(), simdi.getMonth(), simdi.getDate(), 0, 0, 0);
+
+    const teamsSnap = await db.collection('teams').get();
+
+    for (const teamDoc of teamsSnap.docs) {
+      try {
+        const teamData = teamDoc.data();
+        if (teamData.isPersonal) continue;
+
+        // Bugün bu ekibe herhangi bir rapor girilmiş mi?
+        const reportsSnap = await db
+          .collection('teams')
+          .doc(teamDoc.id)
+          .collection('reports')
+          .where('tarih', '>=', Timestamp.fromDate(bugunBaslangic))
+          .limit(1)
+          .get();
+
+        if (!reportsSnap.empty) continue; // Bugün zaten girilmiş, uyarılmayacak
+
+        // Kurucu ve yöneticileri bul
+        const kurucuUid = teamData.kurucu;
+        const yoneticiler = Array.isArray(teamData.yoneticiler) ? teamData.yoneticiler : [];
+        const targetUids = new Set([kurucuUid, ...yoneticiler]);
+
+        for (const uid of targetUids) {
+          if (!uid) continue;
+          const userDoc = await db.collection('users').doc(uid).get();
+          if (!userDoc.exists) continue;
+          const uData = userDoc.data();
+          const token = uData.fcmToken;
+          const puantajAktif =
+            uData.puantajHatirlaticiAktif !== false &&
+            uData.islemBildirimleriAktif !== false;
+
+          if (token && puantajAktif) {
+            await fcm.send({
+              token,
+              notification: {
+                title: '⚠️ Eksik Puantaj & Rapor Hatırlatması',
+                body: `${teamData.ad || 'Şantiye'} için bugünkü puantaj veya rapor henüz girilmedi.`,
+              },
+              data: {
+                teamId: teamDoc.id,
+                action: 'daily_report',
+              },
+              android: {
+                notification: {
+                  channelId: 'santiye_bildirim_kanali',
+                  icon: 'notification_icon',
+                  color: '#14B8A6',
+                  priority: 'high',
+                },
+              },
+            });
+          }
+        }
+      } catch (err) {
+        console.error(`onDailyPuantajReminder error (${teamDoc.id}):`, err);
+      }
+    }
+  }
+);
+
+// ─── 3. HAFTALIK ÖZET (HER PAZARTESİ SABAH 09:00 TR) ─────────────────────────
+
 exports.onWeeklySummary = onSchedule(
   {
-    schedule: '0 5 * * 1', // Her Pazartesi 05:00 UTC = 08:00 TR
+    schedule: '0 9 * * 1', // Her Pazartesi 09:00 TR (Sabah 5 değil, iş başı saati)
     timeZone: 'Europe/Istanbul',
     region: 'europe-west1',
   },
@@ -262,11 +363,12 @@ exports.onWeeklySummary = onSchedule(
         await fcm.send({
           token,
           notification: {
-            title: '📊 Haftalık Şantiye Özeti',
-            body: `Geçen hafta ${raporSayisi} rapor girildi. Detayları görmek için aç!`,
+            title: '📊 Haftalık Şantiye Durum Özeti',
+            body: `Geçen hafta ${raporSayisi} rapor girildi. Haftalık analiz ekranını incelemek için dokunun!`,
           },
           data: {
             teamId: teamDoc.id,
+            action: 'weekly_summary',
             islemTipi: 'HAFTALIK_OZET',
           },
           android: {
@@ -274,6 +376,7 @@ exports.onWeeklySummary = onSchedule(
               channelId: 'santiye_bildirim_kanali',
               icon: 'notification_icon',
               color: '#14B8A6',
+              priority: 'high',
             },
           },
           apns: {
@@ -311,6 +414,11 @@ function buildNotificationMessage(islemTipi, detaylar, username) {
         title: '🗑️ İşçi Silindi',
         body: `${username} bir işçiyi ekipten çıkardı.`,
       };
+    case 'ISCI_KART_ESLESMESI':
+      return {
+        title: '📋 İşçi Kartınız Eşleştirildi',
+        body: `${username}, ${detaylar.isciAdi || 'işçi'} kartınızı hesabınızla eşleştirdi. Puantaj ve hakediş dökümünüz güncellendi.`,
+      };
     case 'SANTIYE_EKLEME':
       return {
         title: '🏗️ Yeni Şantiye',
@@ -343,8 +451,13 @@ function buildNotificationMessage(islemTipi, detaylar, username) {
       };
     case 'ROL_DEGISIMI':
       return {
-        title: '🔑 Rol Değişikliği',
-        body: `${username} ekipte rol değişikliği yaptı.`,
+        title: '🔑 Rol / Yetki Ataması',
+        body: `${username}, ekibinizde ${detaylar.yeniRol === 'yonetici' ? 'Yönetici' : 'Puantör/Üye'} yetkisi tanımladı.`,
+      };
+    case 'EKIBE_KATILIM':
+      return {
+        title: '👷 Ekibe Yeni Katılım',
+        body: `${username}, ${detaylar.ekipAdi ? detaylar.ekipAdi + ' ' : ''}ekibinize katıldı.`,
       };
     default:
       return {

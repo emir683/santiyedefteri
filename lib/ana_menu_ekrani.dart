@@ -42,6 +42,11 @@ import 'widgets/floating_liquid_bottom_bar.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/offline_sync_banner.dart';
 import 'ai_chat_screen.dart';
+import 'haftalik_ozet_ekrani.dart';
+import 'widgets/bildirim_onboarding_dialog.dart';
+import 'data/turkiye_il_ilce.dart';
+import 'bildirim_servisi.dart';
+import 'package:intl/intl.dart';
 
 class AnaMenuEkrani extends StatefulWidget {
   final String teamId;
@@ -137,7 +142,42 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       _klavuzKontrol();
+      BildirimOnboardingDialog.kontrolEtVeGoster(context);
+      _proaktifSahaVeHavaDurumuKontrolu();
     });
+  }
+
+  Future<void> _proaktifSahaVeHavaDurumuKontrolu() async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      if (prefs.getBool('havaDurumuBildirimleriAktif') == false) return;
+      final todayStr = DateFormat('yyyy-MM-dd').format(DateTime.now());
+      if (prefs.getString('son_hava_uyarisi_gunu') == todayStr) return;
+
+      final santiyeler = _panelSantiyeler ?? [];
+      final il = santiyeler.isNotEmpty ? (santiyeler.first.il ?? 'İstanbul') : 'İstanbul';
+      final ilce = santiyeler.isNotEmpty ? santiyeler.first.ilce : null;
+      final w = await TurkiyeIlIlce.fetchWeather(il: il, ilce: ilce);
+      if (w != null) {
+        final code = w['weathercode'] as int? ?? 0;
+        final temp = (w['temperature'] as num?)?.toDouble() ?? 15.0;
+        final isRainy = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || (code >= 95);
+        final isFreezing = temp <= 3.0;
+
+        if (isRainy || isFreezing) {
+          await prefs.setString('son_hava_uyarisi_gunu', todayStr);
+          final desc = w['description'] ?? 'Hava uyarısı';
+          final tavsiye = isFreezing
+              ? 'Hava sıcaklığı $temp°C. Beton dökümünde donma riskine karşı antifriz ve priz hızlandırıcı tedbirlerini alın.'
+              : 'Yoğun yağış bekleniyor. Açık saha kazı, beton döküm ve dış cephe çalışmalarında emniyet tedbirlerini gözden geçirin.';
+          await BildirimServisi().havaDurumuSahaUyarisiGonder(
+            sehir: il,
+            aciklama: '$desc ($temp°C)',
+            tavsiye: tavsiye,
+          );
+        }
+      }
+    } catch (_) {}
   }
 
   @override
@@ -740,6 +780,8 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                             const SizedBox(height: 18),
                             const WeatherDashboardCard(),
                             const SizedBox(height: 18),
+                            _buildWeeklySummaryCardMinimal(),
+                            const SizedBox(height: 18),
                             _buildMonthSummaryCardMinimal(
                               tarih: panel.tarih,
                               raporGirilenGun: panel.ayRaporGirilenGun,
@@ -836,6 +878,57 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
               ],
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildWeeklySummaryCardMinimal() {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+
+    return AnimasyonluButon(
+      onPressed:
+          () => Navigator.push(
+            context,
+            SayfaGecisi(sayfa: HaftalikOzetEkrani(teamId: widget.teamId)),
+          ),
+      child: _buildPanelGlassCard(
+        child: Row(
+          children: [
+            _buildPanelGlassIconBadge(
+              icon: Icons.analytics_rounded,
+              accentColor: const Color(0xFFF97316),
+            ),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    'Haftalık Durum Özeti',
+                    style: TextStyle(
+                      fontSize: 17,
+                      fontWeight: FontWeight.w700,
+                      color: isDark ? Colors.white : const Color(0xFF102A43),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    'Puantaj, rapor ve saha analizi dökümü.',
+                    style: TextStyle(
+                      fontSize: 12,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+            Icon(
+              Icons.arrow_forward_ios_rounded,
+              size: 16,
+              color: isDark ? Colors.white38 : Colors.black38,
+            ),
+          ],
         ),
       ),
     );
@@ -2730,6 +2823,21 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                             context,
                             SayfaGecisi(
                               sayfa: IslemGecmisiEkrani(teamId: teamId),
+                            ),
+                          );
+                        },
+                      ),
+                      _buildGlassDrawerItem(
+                        context,
+                        icon: Icons.analytics_rounded,
+                        title: 'Haftalık Durum Özeti',
+                        color: const Color(0xFFF97316),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            SayfaGecisi(
+                              sayfa: HaftalikOzetEkrani(teamId: widget.teamId),
                             ),
                           );
                         },
