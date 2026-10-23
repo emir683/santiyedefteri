@@ -2078,59 +2078,32 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                     builder:
                         (_, scrollController) => Column(
                           children: [
-                            // Üst Bar: Tutamaç ve Soru İşareti / Rehber Turu
-                            Padding(
-                              padding: const EdgeInsets.fromLTRB(16, 6, 16, 2),
-                              child: Row(
-                                children: [
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.close_rounded,
-                                      size: 22,
-                                    ),
-                                    tooltip: "Kapat",
-                                    onPressed: kapatmayiDene,
+                            // Tutamaç
+                            Center(
+                              child: GestureDetector(
+                                behavior: HitTestBehavior.opaque,
+                                onTap: kapatmayiDene,
+                                onVerticalDragEnd: (details) async {
+                                  if ((details.primaryVelocity ?? 0) > 0) {
+                                    await kapatmayiDene();
+                                  }
+                                },
+                                child: Padding(
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 10,
+                                    horizontal: 24,
                                   ),
-                                  Expanded(
-                                    child: Center(
-                                      child: GestureDetector(
-                                        behavior: HitTestBehavior.opaque,
-                                        onTap: kapatmayiDene,
-                                        onVerticalDragEnd: (details) async {
-                                          if ((details.primaryVelocity ?? 0) >
-                                              0) {
-                                            await kapatmayiDene();
-                                          }
-                                        },
-                                        child: Container(
-                                          width: 44,
-                                          height: 4,
-                                          decoration: BoxDecoration(
-                                            color: Colors.grey.withValues(
-                                              alpha: 0.35,
-                                            ),
-                                            borderRadius: BorderRadius.circular(
-                                              10,
-                                            ),
-                                          ),
-                                        ),
+                                  child: Container(
+                                    width: 40,
+                                    height: 4,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey.withValues(
+                                        alpha: 0.35,
                                       ),
+                                      borderRadius: BorderRadius.circular(10),
                                     ),
                                   ),
-                                  IconButton(
-                                    icon: const Icon(
-                                      Icons.help_outline_rounded,
-                                      size: 22,
-                                      color: Color(0xFF14B8A6),
-                                    ),
-                                    tooltip: "Ekran Rehberi & Tur",
-                                    onPressed:
-                                        () => _puantajRehberiniGoster(
-                                          ctx,
-                                          isDark,
-                                        ),
-                                  ),
-                                ],
+                                ),
                               ),
                             ),
 
@@ -2190,59 +2163,216 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                         ),
                                       ],
                                     ),
-                                    child: Row(
+                                    child: Column(
+                                      mainAxisSize: MainAxisSize.min,
                                       children: [
-                                        Container(
-                                          padding: const EdgeInsets.all(11),
-                                          decoration: BoxDecoration(
-                                            gradient: LinearGradient(
-                                              begin: Alignment.topLeft,
-                                              end: Alignment.bottomRight,
-                                              colors: [
-                                                const Color(
-                                                  0xFF14B8A6,
-                                                ).withValues(alpha: 0.28),
-                                                const Color(
-                                                  0xFF0D9488,
-                                                ).withValues(alpha: 0.14),
+                                        // Üst Köşeler: Kapatma Tuşu (Sol Köşe) ve Soru İşareti + Kayıtlı Rapor Rozeti (Sağ Köşe)
+                                        Row(
+                                          mainAxisAlignment:
+                                              MainAxisAlignment.spaceBetween,
+                                          children: [
+                                            // Sol Köşe: Kapatma Tuşu
+                                            Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(12),
+                                                onTap: kapatmayiDene,
+                                                child: Container(
+                                                  padding: const EdgeInsets.all(
+                                                    7,
+                                                  ),
+                                                  decoration: BoxDecoration(
+                                                    color: (isDark
+                                                            ? Colors.white
+                                                            : Colors.black)
+                                                        .withValues(
+                                                          alpha: 0.06,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: (isDark
+                                                              ? Colors.white
+                                                              : Colors.black)
+                                                          .withValues(
+                                                            alpha: 0.10,
+                                                          ),
+                                                    ),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.close_rounded,
+                                                    size: 18,
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+
+                                            // Sağ Köşe: Soru Tuşu & Kayıtlı/Yeni Rapor Rozeti
+                                            Row(
+                                              mainAxisSize: MainAxisSize.min,
+                                              children: [
+                                                // Soru Tuşu (?)
+                                                Material(
+                                                  color: Colors.transparent,
+                                                  child: InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          12,
+                                                        ),
+                                                    onTap:
+                                                        () =>
+                                                            _puantajRehberiniGoster(
+                                                              ctx,
+                                                              isDark,
+                                                            ),
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            7,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFF14B8A6,
+                                                        ).withValues(
+                                                          alpha:
+                                                              isDark
+                                                                  ? 0.20
+                                                                  : 0.14,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                        border: Border.all(
+                                                          color: const Color(
+                                                            0xFF14B8A6,
+                                                          ).withValues(
+                                                            alpha: 0.45,
+                                                          ),
+                                                        ),
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons
+                                                            .help_outline_rounded,
+                                                        size: 18,
+                                                        color: Color(
+                                                          0xFF14B8A6,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ),
+                                                ),
+                                                const SizedBox(width: 8),
+                                                // Kayıtlı / Yeni Rapor Rozeti
+                                                Container(
+                                                  padding:
+                                                      const EdgeInsets.symmetric(
+                                                        horizontal: 10,
+                                                        vertical: 6,
+                                                      ),
+                                                  decoration: BoxDecoration(
+                                                    color: (dahaOnceGirildi
+                                                            ? const Color(
+                                                              0xFF14B8A6,
+                                                            )
+                                                            : const Color(
+                                                              0xFF3B82F6,
+                                                            ))
+                                                        .withValues(
+                                                          alpha:
+                                                              isDark
+                                                                  ? 0.22
+                                                                  : 0.14,
+                                                        ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          14,
+                                                        ),
+                                                    border: Border.all(
+                                                      color: (dahaOnceGirildi
+                                                              ? const Color(
+                                                                0xFF14B8A6,
+                                                              )
+                                                              : const Color(
+                                                                0xFF3B82F6,
+                                                              ))
+                                                          .withValues(
+                                                            alpha: 0.4,
+                                                          ),
+                                                      width: 1,
+                                                    ),
+                                                  ),
+                                                  child: Row(
+                                                    mainAxisSize:
+                                                        MainAxisSize.min,
+                                                    children: [
+                                                      Container(
+                                                        width: 7,
+                                                        height: 7,
+                                                        decoration: BoxDecoration(
+                                                          color:
+                                                              dahaOnceGirildi
+                                                                  ? const Color(
+                                                                    0xFF14B8A6,
+                                                                  )
+                                                                  : const Color(
+                                                                    0xFF3B82F6,
+                                                                  ),
+                                                          shape:
+                                                              BoxShape.circle,
+                                                        ),
+                                                      ),
+                                                      const SizedBox(width: 6),
+                                                      Text(
+                                                        dahaOnceGirildi
+                                                            ? "Kayıtlı Rapor"
+                                                            : "Yeni Rapor",
+                                                        style: TextStyle(
+                                                          fontSize: 11.5,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          color:
+                                                              dahaOnceGirildi
+                                                                  ? const Color(
+                                                                    0xFF14B8A6,
+                                                                  )
+                                                                  : const Color(
+                                                                    0xFF3B82F6,
+                                                                  ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ),
                                               ],
                                             ),
-                                            borderRadius: BorderRadius.circular(
-                                              15,
-                                            ),
-                                            border: Border.all(
-                                              color: const Color(
-                                                0xFF14B8A6,
-                                              ).withValues(alpha: 0.4),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.apartment_rounded,
-                                            color: Color(0xFF14B8A6),
-                                            size: 26,
-                                          ),
+                                          ],
                                         ),
-                                        const SizedBox(width: 12),
-                                        Expanded(
+                                        const SizedBox(height: 10),
+
+                                        // Ortalanmış Şantiye Adı ve Tarih (Kartal - 23 Ekim Cuma)
+                                        Center(
                                           child: Column(
-                                            crossAxisAlignment:
-                                                CrossAxisAlignment.start,
+                                            mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Text(
                                                 santiyeAdi,
+                                                textAlign: TextAlign.center,
                                                 style: const TextStyle(
-                                                  fontSize: 18.5,
+                                                  fontSize: 20,
                                                   fontWeight: FontWeight.w900,
                                                   letterSpacing: -0.4,
                                                 ),
                                               ),
-                                              const SizedBox(height: 4),
+                                              const SizedBox(height: 6),
                                               Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
-                                                      horizontal: 8,
-                                                      vertical: 3,
+                                                      horizontal: 12,
+                                                      vertical: 4,
                                                     ),
                                                 decoration: BoxDecoration(
                                                   color:
@@ -2256,7 +2386,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                                 alpha: 0.65,
                                                               ),
                                                   borderRadius:
-                                                      BorderRadius.circular(8),
+                                                      BorderRadius.circular(10),
                                                   border: Border.all(
                                                     color:
                                                         isDark
@@ -2273,7 +2403,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                     Icon(
                                                       Icons
                                                           .calendar_month_rounded,
-                                                      size: 13,
+                                                      size: 14,
                                                       color:
                                                           isDark
                                                               ? const Color(
@@ -2283,28 +2413,22 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                                 0xFF0F766E,
                                                               ),
                                                     ),
-                                                    const SizedBox(width: 5),
-                                                    Flexible(
-                                                      child: Text(
-                                                        DateFormat(
-                                                          'd MMMM EEEE',
-                                                          'tr_TR',
-                                                        ).format(_seciliGun),
-                                                        overflow:
-                                                            TextOverflow
-                                                                .ellipsis,
-                                                        style: TextStyle(
-                                                          fontSize: 12,
-                                                          fontWeight:
-                                                              FontWeight.w700,
-                                                          color:
-                                                              isDark
-                                                                  ? Colors
-                                                                      .white70
-                                                                  : const Color(
-                                                                    0xFF334155,
-                                                                  ),
-                                                        ),
+                                                    const SizedBox(width: 6),
+                                                    Text(
+                                                      DateFormat(
+                                                        'd MMMM EEEE',
+                                                        'tr_TR',
+                                                      ).format(_seciliGun),
+                                                      style: TextStyle(
+                                                        fontSize: 12.5,
+                                                        fontWeight:
+                                                            FontWeight.w700,
+                                                        color:
+                                                            isDark
+                                                                ? Colors.white70
+                                                                : const Color(
+                                                                  0xFF334155,
+                                                                ),
                                                       ),
                                                     ),
                                                   ],
@@ -2313,104 +2437,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                             ],
                                           ),
                                         ),
-                                        Container(
-                                          padding: const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 6,
-                                          ),
-                                          decoration: BoxDecoration(
-                                            color: (dahaOnceGirildi
-                                                    ? const Color(0xFF14B8A6)
-                                                    : const Color(0xFF3B82F6))
-                                                .withValues(
-                                                  alpha: isDark ? 0.22 : 0.14,
-                                                ),
-                                            borderRadius: BorderRadius.circular(
-                                              14,
-                                            ),
-                                            border: Border.all(
-                                              color: (dahaOnceGirildi
-                                                      ? const Color(0xFF14B8A6)
-                                                      : const Color(0xFF3B82F6))
-                                                  .withValues(alpha: 0.4),
-                                              width: 1,
-                                            ),
-                                          ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Container(
-                                                width: 7,
-                                                height: 7,
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      dahaOnceGirildi
-                                                          ? const Color(
-                                                            0xFF14B8A6,
-                                                          )
-                                                          : const Color(
-                                                            0xFF3B82F6,
-                                                          ),
-                                                  shape: BoxShape.circle,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 6),
-                                              Text(
-                                                dahaOnceGirildi
-                                                    ? "Kayıtlı Rapor"
-                                                    : "Yeni Rapor",
-                                                style: TextStyle(
-                                                  fontSize: 11.5,
-                                                  fontWeight: FontWeight.w800,
-                                                  color:
-                                                      dahaOnceGirildi
-                                                          ? const Color(
-                                                            0xFF14B8A6,
-                                                          )
-                                                          : const Color(
-                                                            0xFF3B82F6,
-                                                          ),
-                                                ),
-                                              ),
-                                            ],
-                                          ),
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Material(
-                                          color: Colors.transparent,
-                                          child: InkWell(
-                                            borderRadius: BorderRadius.circular(
-                                              16,
-                                            ),
-                                            onTap:
-                                                () => _puantajRehberiniGoster(
-                                                  ctx,
-                                                  isDark,
-                                                ),
-                                            child: Container(
-                                              padding: const EdgeInsets.all(7),
-                                              decoration: BoxDecoration(
-                                                color: const Color(
-                                                  0xFF14B8A6,
-                                                ).withValues(
-                                                  alpha: isDark ? 0.20 : 0.14,
-                                                ),
-                                                shape: BoxShape.circle,
-                                                border: Border.all(
-                                                  color: const Color(
-                                                    0xFF14B8A6,
-                                                  ).withValues(alpha: 0.45),
-                                                  width: 1,
-                                                ),
-                                              ),
-                                              child: const Icon(
-                                                Icons.help_outline_rounded,
-                                                size: 16,
-                                                color: Color(0xFF14B8A6),
-                                              ),
-                                            ),
-                                          ),
-                                        ),
+                                        const SizedBox(height: 2),
                                       ],
                                     ),
                                   ),
@@ -2876,7 +2903,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                   ),
                                                 ),
                                                 const SizedBox(width: 10),
-                                                // Başlık (Tek satır, açıklama kaldırıldı)
+                                                // Başlık (Tek satır, sade)
                                                 const Expanded(
                                                   child: Text(
                                                     "Günlük Masraflar",
@@ -2887,56 +2914,6 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                     ),
                                                   ),
                                                 ),
-                                                // Soru İşareti / Ekran Turu Butonu
-                                                Material(
-                                                  color: Colors.transparent,
-                                                  child: InkWell(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          16,
-                                                        ),
-                                                    onTap:
-                                                        () =>
-                                                            _puantajRehberiniGoster(
-                                                              ctx,
-                                                              isDark,
-                                                            ),
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                            6,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                          0xFF14B8A6,
-                                                        ).withValues(
-                                                          alpha:
-                                                              isDark
-                                                                  ? 0.20
-                                                                  : 0.14,
-                                                        ),
-                                                        shape: BoxShape.circle,
-                                                        border: Border.all(
-                                                          color: const Color(
-                                                            0xFF14B8A6,
-                                                          ).withValues(
-                                                            alpha: 0.40,
-                                                          ),
-                                                          width: 1,
-                                                        ),
-                                                      ),
-                                                      child: const Icon(
-                                                        Icons
-                                                            .help_outline_rounded,
-                                                        size: 16,
-                                                        color: Color(
-                                                          0xFF14B8A6,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
                                                 Container(
                                                   padding:
                                                       const EdgeInsets.symmetric(
@@ -4873,7 +4850,8 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                               children: [
                                                 Flexible(
                                                   child: Text(
-                                                    DateFormat.yMMMMEEEEd(
+                                                    DateFormat(
+                                                      'd MMMM EEEE',
                                                       'tr_TR',
                                                     ).format(_seciliGun),
                                                     textAlign: TextAlign.center,
@@ -5143,6 +5121,9 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                               headerStyle: HeaderStyle(
                                 formatButtonVisible: false,
                                 titleCentered: true,
+                                titleTextFormatter:
+                                    (date, locale) =>
+                                        DateFormat('MMMM', locale).format(date),
                                 headerPadding: const EdgeInsets.symmetric(
                                   vertical: 4,
                                 ),
