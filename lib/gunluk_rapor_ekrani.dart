@@ -2086,102 +2086,365 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                           ),
                                         ),
 
-                                      const SizedBox(height: 24),
-                                      const Text(
-                                        "Günlük Masraflar",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 12),
+                                      // ==========================================
+                                      // GÜNLÜK MASRAFLAR (YENİLENMİŞ TASARIM) 💰
+                                      // ==========================================
+                                      Builder(
+                                        builder: (context) {
+                                          final double toplamYemek =
+                                              double.tryParse(yemekCtrl.text) ??
+                                              0;
+                                          final double toplamBenzin =
+                                              double.tryParse(
+                                                benzinCtrl.text,
+                                              ) ??
+                                              0;
+                                          final double toplamEk =
+                                              double.tryParse(
+                                                ekMasrafCtrl.text,
+                                              ) ??
+                                              0;
+                                          final double toplamMasraf =
+                                              toplamYemek +
+                                              toplamBenzin +
+                                              toplamEk;
+                                          final santiyedekiIsciler =
+                                              rapor.calisanlar
+                                                  .map((c) => c.isci)
+                                                  .toList();
 
-                                      // Giderler (Focus Modlu)
-                                      _buildFocusInput(
-                                        context: context,
-                                        controller: benzinCtrl,
-                                        label: "Benzin Gideri",
-                                        icon: Icons.local_gas_station_outlined,
-                                        isDark: isDark,
-                                        tumIsciler: tumIsciler,
-                                        seciliIsciAdi: benzinHarcayanAd,
-                                        onIsciSecildi: (isci) {
-                                          setModalState(() {
-                                            benzinHarcayanId = isci?.id;
-                                            benzinHarcayanAd = isci?.ad;
-                                            degisiklikVar = true;
-                                          });
-                                        },
-                                        onChanged:
-                                            () => setModalState(
-                                              () => degisiklikVar = true,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _buildFocusInput(
-                                        context: context,
-                                        controller: yemekCtrl,
-                                        label: "Yemek Gideri",
-                                        icon: Icons.restaurant_outlined,
-                                        isDark: isDark,
-                                        tumIsciler: tumIsciler,
-                                        seciliIsciAdi: yemekHarcayanAd,
-                                        onIsciSecildi: (isci) {
-                                          setModalState(() {
-                                            yemekHarcayanId = isci?.id;
-                                            yemekHarcayanAd = isci?.ad;
-                                            degisiklikVar = true;
-                                          });
-                                        },
-                                        onChanged:
-                                            () => setModalState(
-                                              () => degisiklikVar = true,
-                                            ),
-                                      ),
-                                      const SizedBox(height: 12),
-                                      _buildFocusInput(
-                                        context: context,
-                                        controller: ekMasrafCtrl,
-                                        label: "Ek Masraflar",
-                                        icon: Icons.add_shopping_cart_outlined,
-                                        isDark: isDark,
-                                        tumIsciler: tumIsciler,
-                                        seciliIsciAdi: ekMasrafHarcayanAd,
-                                        onIsciSecildi: (isci) {
-                                          setModalState(() {
-                                            ekMasrafHarcayanId = isci?.id;
-                                            ekMasrafHarcayanAd = isci?.ad;
-                                            degisiklikVar = true;
-                                          });
-                                        },
-                                        onChanged:
-                                            () => setModalState(
-                                              () => degisiklikVar = true,
-                                            ),
-                                      ),
+                                          return Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.start,
+                                            children: [
+                                              const SizedBox(height: 24),
+                                              // Toplam Masraf Başlık & Canlı Özet Kartı
+                                              Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 14,
+                                                      vertical: 12,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      isDark
+                                                          ? const Color(
+                                                            0xFF1E293B,
+                                                          ).withValues(
+                                                            alpha: 0.6,
+                                                          )
+                                                          : const Color(
+                                                            0xFFF8FAFC,
+                                                          ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                  border: Border.all(
+                                                    color:
+                                                        toplamMasraf > 0
+                                                            ? const Color(
+                                                              0xFF14B8A6,
+                                                            ).withValues(
+                                                              alpha: 0.45,
+                                                            )
+                                                            : (isDark
+                                                                ? Colors.white10
+                                                                : const Color(
+                                                                  0xFFE2E8F0,
+                                                                )),
+                                                    width: 1,
+                                                  ),
+                                                ),
+                                                child: Row(
+                                                  children: [
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.all(
+                                                            8,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFF14B8A6,
+                                                        ).withValues(
+                                                          alpha: 0.15,
+                                                        ),
+                                                        shape: BoxShape.circle,
+                                                      ),
+                                                      child: const Icon(
+                                                        Icons.payments_rounded,
+                                                        size: 18,
+                                                        color: Color(
+                                                          0xFF14B8A6,
+                                                        ),
+                                                      ),
+                                                    ),
+                                                    const SizedBox(width: 10),
+                                                    Expanded(
+                                                      child: Column(
+                                                        crossAxisAlignment:
+                                                            CrossAxisAlignment
+                                                                .start,
+                                                        children: [
+                                                          const Text(
+                                                            "Günlük Masraflar",
+                                                            style: TextStyle(
+                                                              fontSize: 15,
+                                                              fontWeight:
+                                                                  FontWeight
+                                                                      .w800,
+                                                            ),
+                                                          ),
+                                                          Text(
+                                                            "Yemek, yakıt ve ek saha harcamaları",
+                                                            style: TextStyle(
+                                                              fontSize: 11.5,
+                                                              color:
+                                                                  isDark
+                                                                      ? Colors
+                                                                          .white60
+                                                                      : const Color(
+                                                                        0xFF64748B,
+                                                                      ),
+                                                            ),
+                                                          ),
+                                                        ],
+                                                      ),
+                                                    ),
+                                                    Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 10,
+                                                            vertical: 5,
+                                                          ),
+                                                      decoration: BoxDecoration(
+                                                        color: const Color(
+                                                          0xFF14B8A6,
+                                                        ).withValues(
+                                                          alpha:
+                                                              isDark
+                                                                  ? 0.22
+                                                                  : 0.12,
+                                                        ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              12,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        "${toplamMasraf.toStringAsFixed(2)} TL",
+                                                        style: TextStyle(
+                                                          fontSize: 13.5,
+                                                          fontWeight:
+                                                              FontWeight.w800,
+                                                          color:
+                                                              isDark
+                                                                  ? const Color(
+                                                                    0xFF5EEAD4,
+                                                                  )
+                                                                  : const Color(
+                                                                    0xFF0F766E,
+                                                                  ),
+                                                        ),
+                                                      ),
+                                                    ),
+                                                  ],
+                                                ),
+                                              ),
 
-                                      const SizedBox(height: 24),
-                                      const Text(
-                                        "Açıklama / Not",
-                                        style: TextStyle(
-                                          fontSize: 16,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 8),
+                                              const SizedBox(height: 14),
 
-                                      // Not Alanı (Focus Modlu - MultiLine)
-                                      _buildFocusInput(
-                                        context: context,
-                                        controller: aciklamaCtrl,
-                                        label: "Notunuzu girin...",
-                                        icon: Icons.note_alt_outlined,
-                                        isDark: isDark,
-                                        onChanged:
-                                            () => setModalState(
-                                              () => degisiklikVar = true,
-                                            ),
-                                        isMultiLine: true,
+                                              // 1. YEMEK GİDERİ (BAŞTA) 🍲
+                                              _buildGiderKarti(
+                                                context: context,
+                                                baslik: "Yemek Gideri",
+                                                altBaslik:
+                                                    "Öğle yemeği, kumanya, ekmek, su vb.",
+                                                icon: Icons.restaurant_rounded,
+                                                temaRengi: const Color(
+                                                  0xFFF59E0B,
+                                                ),
+                                                controller: yemekCtrl,
+                                                seciliIsciAdi: yemekHarcayanAd,
+                                                seciliIsciId: yemekHarcayanId,
+                                                santiyedekiIsciler:
+                                                    santiyedekiIsciler,
+                                                tumIsciler: tumIsciler,
+                                                onIsciSecildi: (isci) {
+                                                  setModalState(() {
+                                                    yemekHarcayanId = isci?.id;
+                                                    yemekHarcayanAd = isci?.ad;
+                                                    degisiklikVar = true;
+                                                  });
+                                                },
+                                                onChanged:
+                                                    () => setModalState(
+                                                      () =>
+                                                          degisiklikVar = true,
+                                                    ),
+                                                isDark: isDark,
+                                              ),
+
+                                              // 2. BENZİN GİDERİ ⛽
+                                              _buildGiderKarti(
+                                                context: context,
+                                                baslik: "Benzin / Yakıt Gideri",
+                                                altBaslik:
+                                                    "Akaryakıt, mazot, jeneratör yakıtı",
+                                                icon:
+                                                    Icons
+                                                        .local_gas_station_rounded,
+                                                temaRengi: const Color(
+                                                  0xFF0284C7,
+                                                ),
+                                                controller: benzinCtrl,
+                                                seciliIsciAdi: benzinHarcayanAd,
+                                                seciliIsciId: benzinHarcayanId,
+                                                santiyedekiIsciler:
+                                                    santiyedekiIsciler,
+                                                tumIsciler: tumIsciler,
+                                                onIsciSecildi: (isci) {
+                                                  setModalState(() {
+                                                    benzinHarcayanId = isci?.id;
+                                                    benzinHarcayanAd = isci?.ad;
+                                                    degisiklikVar = true;
+                                                  });
+                                                },
+                                                onChanged:
+                                                    () => setModalState(
+                                                      () =>
+                                                          degisiklikVar = true,
+                                                    ),
+                                                isDark: isDark,
+                                              ),
+
+                                              // 3. EK MASRAFLAR 🛒
+                                              _buildGiderKarti(
+                                                context: context,
+                                                baslik: "Ek Masraflar",
+                                                altBaslik:
+                                                    "Hırdavat, sarf malzeme, nakliye vb.",
+                                                icon:
+                                                    Icons
+                                                        .add_shopping_cart_rounded,
+                                                temaRengi: const Color(
+                                                  0xFF8B5CF6,
+                                                ),
+                                                controller: ekMasrafCtrl,
+                                                seciliIsciAdi:
+                                                    ekMasrafHarcayanAd,
+                                                seciliIsciId:
+                                                    ekMasrafHarcayanId,
+                                                santiyedekiIsciler:
+                                                    santiyedekiIsciler,
+                                                tumIsciler: tumIsciler,
+                                                onIsciSecildi: (isci) {
+                                                  setModalState(() {
+                                                    ekMasrafHarcayanId =
+                                                        isci?.id;
+                                                    ekMasrafHarcayanAd =
+                                                        isci?.ad;
+                                                    degisiklikVar = true;
+                                                  });
+                                                },
+                                                onChanged:
+                                                    () => setModalState(
+                                                      () =>
+                                                          degisiklikVar = true,
+                                                    ),
+                                                isDark: isDark,
+                                              ),
+
+                                              const SizedBox(height: 16),
+
+                                              // AÇIKLAMA / NOT ALANI 📝
+                                              const Text(
+                                                "Açıklama / Saha Notu",
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w700,
+                                                ),
+                                              ),
+                                              const SizedBox(height: 8),
+                                              Container(
+                                                decoration: BoxDecoration(
+                                                  color:
+                                                      isDark
+                                                          ? const Color(
+                                                            0xFF1E293B,
+                                                          ).withValues(
+                                                            alpha: 0.5,
+                                                          )
+                                                          : Colors.white,
+                                                  borderRadius:
+                                                      BorderRadius.circular(16),
+                                                  border: Border.all(
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white12
+                                                            : const Color(
+                                                              0xFFE2E8F0,
+                                                            ),
+                                                  ),
+                                                ),
+                                                child: TextField(
+                                                  controller: aciklamaCtrl,
+                                                  maxLines: 3,
+                                                  style: TextStyle(
+                                                    fontSize: 14,
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white
+                                                            : const Color(
+                                                              0xFF0F172A,
+                                                            ),
+                                                  ),
+                                                  decoration: InputDecoration(
+                                                    hintText:
+                                                        "Bugün yapılan işler, beton dökümü, teslimat notları...",
+                                                    hintStyle: TextStyle(
+                                                      fontSize: 13,
+                                                      color:
+                                                          isDark
+                                                              ? Colors.white38
+                                                              : const Color(
+                                                                0xFF94A3B8,
+                                                              ),
+                                                    ),
+                                                    prefixIcon: Padding(
+                                                      padding:
+                                                          const EdgeInsets.only(
+                                                            bottom: 34,
+                                                          ),
+                                                      child: Icon(
+                                                        Icons.edit_note_rounded,
+                                                        color:
+                                                            isDark
+                                                                ? Colors.white60
+                                                                : const Color(
+                                                                  0xFF64748B,
+                                                                ),
+                                                        size: 24,
+                                                      ),
+                                                    ),
+                                                    border: InputBorder.none,
+                                                    contentPadding:
+                                                        const EdgeInsets.fromLTRB(
+                                                          4,
+                                                          14,
+                                                          14,
+                                                          14,
+                                                        ),
+                                                  ),
+                                                  onChanged:
+                                                      (val) => setModalState(
+                                                        () =>
+                                                            degisiklikVar =
+                                                                true,
+                                                      ),
+                                                ),
+                                              ),
+                                            ],
+                                          );
+                                        },
                                       ),
 
                                       const SizedBox(height: 32),
@@ -2250,87 +2513,946 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
   Future<Isci?> _harcamaIscisiSec(
     BuildContext context,
     List<Isci> tumIsciler,
-    String? seciliIsciAdi,
-  ) async {
+    String? seciliIsciAdi, {
+    List<Isci>? santiyedekiIsciler,
+  }) async {
     return showModalBottomSheet<Isci?>(
       context: context,
+      isScrollControlled: true,
       backgroundColor: Colors.transparent,
       builder: (sheetContext) {
         final isDark = Theme.of(sheetContext).brightness == Brightness.dark;
-        return SafeArea(
-          child: Container(
-            decoration: BoxDecoration(
-              color: isDark ? const Color(0xFF171B20) : const Color(0xFFF7FBFD),
-              borderRadius: const BorderRadius.vertical(
-                top: Radius.circular(24),
-              ),
-              border: Border.all(
-                color:
-                    isDark
-                        ? Colors.white.withValues(alpha: 0.08)
-                        : const Color(0xFFD5E6EC),
-              ),
-            ),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                const SizedBox(height: 12),
-                Container(
-                  width: 42,
-                  height: 4,
-                  decoration: BoxDecoration(
-                    color: Colors.grey.withValues(alpha: 0.35),
-                    borderRadius: BorderRadius.circular(999),
+        String aramaMetni = '';
+
+        return StatefulBuilder(
+          builder: (dialogCtx, setSheetState) {
+            final filtrelenmisTum =
+                tumIsciler.where((isci) {
+                  if (aramaMetni.isEmpty) return true;
+                  return isci.ad.toLowerCase().contains(
+                    aramaMetni.toLowerCase(),
+                  );
+                }).toList();
+
+            final santiyedeOlanlar =
+                (santiyedekiIsciler ?? []).where((isci) {
+                  if (aramaMetni.isEmpty) return true;
+                  return isci.ad.toLowerCase().contains(
+                    aramaMetni.toLowerCase(),
+                  );
+                }).toList();
+
+            final digerIsciler =
+                filtrelenmisTum.where((isci) {
+                  return !santiyedeOlanlar.any(
+                    (s) => (s.id != null && s.id == isci.id) || s.ad == isci.ad,
+                  );
+                }).toList();
+
+            return SafeArea(
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.of(sheetContext).size.height * 0.78,
+                ),
+                decoration: BoxDecoration(
+                  color: isDark ? const Color(0xFF1E293B) : Colors.white,
+                  borderRadius: const BorderRadius.vertical(
+                    top: Radius.circular(24),
+                  ),
+                  border: Border.all(
+                    color:
+                        isDark
+                            ? Colors.white.withValues(alpha: 0.12)
+                            : const Color(0xFFE2E8F0),
                   ),
                 ),
-                const SizedBox(height: 16),
-                const Text(
-                  "Masraf Kimin Kartından Yapıldı?",
-                  style: TextStyle(fontSize: 16, fontWeight: FontWeight.w700),
-                ),
-                const SizedBox(height: 12),
-                Flexible(
-                  child: ListView(
-                    shrinkWrap: true,
-                    children: [
-                      ListTile(
-                        leading: const Icon(Icons.close_rounded),
-                        title: const Text("Seçimi Temizle"),
-                        onTap: () => Navigator.pop(sheetContext, null),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    const SizedBox(height: 12),
+                    Container(
+                      width: 44,
+                      height: 4.5,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.withValues(alpha: 0.35),
+                        borderRadius: BorderRadius.circular(999),
                       ),
-                      ...tumIsciler.map(
-                        (isci) => ListTile(
-                          leading: CircleAvatar(
-                            backgroundColor: Colors.teal.withValues(
-                              alpha: 0.14,
+                    ),
+                    const SizedBox(height: 14),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 20),
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: const Color(
+                                0xFF14B8A6,
+                              ).withValues(alpha: 0.15),
+                              shape: BoxShape.circle,
                             ),
-                            child: Text(
-                              isci.ad.isEmpty ? "?" : isci.ad[0].toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.teal,
-                                fontWeight: FontWeight.bold,
-                              ),
+                            child: const Icon(
+                              Icons.credit_card_rounded,
+                              size: 18,
+                              color: Color(0xFF14B8A6),
                             ),
                           ),
-                          title: Text(isci.ad),
-                          trailing:
-                              seciliIsciAdi == isci.ad
-                                  ? const Icon(
-                                    Icons.check_circle,
-                                    color: Colors.teal,
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  "Harcayan Kişiyi Seç",
+                                  style: TextStyle(
+                                    fontSize: 16.5,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                                Text(
+                                  "Masraf hangi personelin hesabından/kartından ödendi?",
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    color:
+                                        isDark
+                                            ? Colors.white60
+                                            : const Color(0xFF64748B),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 16),
+                      child: TextField(
+                        onChanged:
+                            (val) =>
+                                setSheetState(() => aramaMetni = val.trim()),
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                        decoration: InputDecoration(
+                          hintText: "Personel adı ile ara...",
+                          hintStyle: TextStyle(
+                            fontSize: 13.5,
+                            color: isDark ? Colors.white38 : Colors.black38,
+                          ),
+                          prefixIcon: const Icon(
+                            Icons.search_rounded,
+                            size: 20,
+                          ),
+                          suffixIcon:
+                              aramaMetni.isNotEmpty
+                                  ? IconButton(
+                                    icon: const Icon(
+                                      Icons.clear_rounded,
+                                      size: 18,
+                                    ),
+                                    onPressed:
+                                        () => setSheetState(
+                                          () => aramaMetni = '',
+                                        ),
                                   )
                                   : null,
-                          onTap: () => Navigator.pop(sheetContext, isci),
+                          isDense: true,
+                          contentPadding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          filled: true,
+                          fillColor:
+                              isDark
+                                  ? Colors.black.withValues(alpha: 0.25)
+                                  : const Color(0xFFF1F5F9),
+                          border: OutlineInputBorder(
+                            borderRadius: BorderRadius.circular(14),
+                            borderSide: BorderSide.none,
+                          ),
+                        ),
+                      ),
+                    ),
+                    if (seciliIsciAdi != null && seciliIsciAdi.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 16),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(12),
+                          onTap: () => Navigator.pop(sheetContext, null),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 14,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: Colors.red.withValues(
+                                alpha: isDark ? 0.2 : 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: Colors.red.withValues(alpha: 0.3),
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                const Icon(
+                                  Icons.clear_rounded,
+                                  size: 16,
+                                  color: Colors.redAccent,
+                                ),
+                                const SizedBox(width: 8),
+                                const Expanded(
+                                  child: Text(
+                                    "Seçili Harcayanı Kaldır",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w600,
+                                      color: Colors.redAccent,
+                                    ),
+                                  ),
+                                ),
+                                Text(
+                                  "($seciliIsciAdi)",
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.redAccent,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ),
+                    ],
+                    const SizedBox(height: 8),
+                    Expanded(
+                      child: ListView(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 6,
+                        ),
+                        children: [
+                          if (santiyedeOlanlar.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 4,
+                                bottom: 6,
+                                top: 4,
+                              ),
+                              child: Row(
+                                children: [
+                                  Container(
+                                    width: 6,
+                                    height: 6,
+                                    decoration: const BoxDecoration(
+                                      color: Color(0xFF10B981),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    "Bugün Şantiyede Olanlar",
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color: Color(0xFF10B981),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            ...santiyedeOlanlar.map(
+                              (isci) => _buildIsciSecimTile(
+                                isci: isci,
+                                secili: seciliIsciAdi == isci.ad,
+                                santiyede: true,
+                                isDark: isDark,
+                                onTap: () => Navigator.pop(sheetContext, isci),
+                              ),
+                            ),
+                            const SizedBox(height: 12),
+                          ],
+                          if (digerIsciler.isNotEmpty) ...[
+                            Padding(
+                              padding: const EdgeInsets.only(
+                                left: 4,
+                                bottom: 6,
+                                top: 4,
+                              ),
+                              child: Text(
+                                santiyedeOlanlar.isNotEmpty
+                                    ? "Diğer Ekip Personeli"
+                                    : "Tüm Personeller",
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? Colors.white60
+                                          : const Color(0xFF64748B),
+                                ),
+                              ),
+                            ),
+                            ...digerIsciler.map(
+                              (isci) => _buildIsciSecimTile(
+                                isci: isci,
+                                secili: seciliIsciAdi == isci.ad,
+                                santiyede: false,
+                                isDark: isDark,
+                                onTap: () => Navigator.pop(sheetContext, isci),
+                              ),
+                            ),
+                          ],
+                          if (santiyedeOlanlar.isEmpty && digerIsciler.isEmpty)
+                            Padding(
+                              padding: const EdgeInsets.all(24),
+                              child: Center(
+                                child: Text(
+                                  aramaMetni.isNotEmpty
+                                      ? "Aradığınız kriterde personel bulunamadı."
+                                      : "Kayıtlı personel bulunmuyor.",
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color:
+                                        isDark
+                                            ? Colors.white54
+                                            : Colors.black45,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Widget _buildIsciSecimTile({
+    required Isci isci,
+    required bool secili,
+    required bool santiyede,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 6),
+      decoration: BoxDecoration(
+        color:
+            secili
+                ? const Color(
+                  0xFF14B8A6,
+                ).withValues(alpha: isDark ? 0.22 : 0.12)
+                : (isDark
+                    ? Colors.white.withValues(alpha: 0.04)
+                    : const Color(0xFFF8FAFC)),
+        borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color:
+              secili
+                  ? const Color(0xFF14B8A6)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : const Color(0xFFE2E8F0)),
+          width: secili ? 1.4 : 1.0,
+        ),
+      ),
+      child: ListTile(
+        dense: true,
+        contentPadding: const EdgeInsets.symmetric(horizontal: 12, vertical: 2),
+        onTap: onTap,
+        leading: CircleAvatar(
+          radius: 17,
+          backgroundColor: (santiyede
+                  ? const Color(0xFF10B981)
+                  : const Color(0xFF3B82F6))
+              .withValues(alpha: 0.18),
+          child: Text(
+            isci.ad.isEmpty ? "?" : isci.ad[0].toUpperCase(),
+            style: TextStyle(
+              color:
+                  santiyede ? const Color(0xFF10B981) : const Color(0xFF3B82F6),
+              fontWeight: FontWeight.bold,
+              fontSize: 13,
+            ),
+          ),
+        ),
+        title: Row(
+          children: [
+            Flexible(
+              child: Text(
+                isci.ad,
+                style: TextStyle(
+                  fontWeight: secili ? FontWeight.w800 : FontWeight.w600,
+                  fontSize: 14.5,
+                  color: isDark ? Colors.white : const Color(0xFF1E293B),
+                ),
+              ),
+            ),
+            if (santiyede) ...[
+              const SizedBox(width: 6),
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 6,
+                  vertical: 1.5,
+                ),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  borderRadius: BorderRadius.circular(6),
+                ),
+                child: const Text(
+                  "Şantiyede",
+                  style: TextStyle(
+                    fontSize: 9.5,
+                    fontWeight: FontWeight.w700,
+                    color: Color(0xFF10B981),
+                  ),
+                ),
+              ),
+            ],
+          ],
+        ),
+        trailing:
+            secili
+                ? const Icon(
+                  Icons.check_circle_rounded,
+                  color: Color(0xFF14B8A6),
+                  size: 20,
+                )
+                : null,
+      ),
+    );
+  }
+
+  Widget _buildGiderKarti({
+    required BuildContext context,
+    required String baslik,
+    required String altBaslik,
+    required IconData icon,
+    required Color temaRengi,
+    required TextEditingController controller,
+    required String? seciliIsciAdi,
+    required String? seciliIsciId,
+    required List<Isci> santiyedekiIsciler,
+    required List<Isci> tumIsciler,
+    required ValueChanged<Isci?> onIsciSecildi,
+    required VoidCallback onChanged,
+    required bool isDark,
+  }) {
+    final double miktar = double.tryParse(controller.text) ?? 0;
+    final bool girildi = miktar > 0;
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 14),
+      decoration: BoxDecoration(
+        color:
+            isDark
+                ? const Color(0xFF1E293B).withValues(alpha: 0.55)
+                : Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(
+          color:
+              girildi
+                  ? temaRengi.withValues(alpha: isDark ? 0.6 : 0.45)
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.08)
+                      : const Color(0xFFE2E8F0)),
+          width: girildi ? 1.4 : 1.0,
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: (girildi ? temaRengi : Colors.black).withValues(
+              alpha: isDark ? 0.15 : 0.04,
+            ),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Row(
+              children: [
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    color: temaRengi.withValues(alpha: isDark ? 0.22 : 0.14),
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  child: Icon(icon, color: temaRengi, size: 22),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        baslik,
+                        style: const TextStyle(
+                          fontSize: 15.5,
+                          fontWeight: FontWeight.w800,
+                        ),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        altBaslik,
+                        style: TextStyle(
+                          fontSize: 11.5,
+                          color:
+                              isDark ? Colors.white60 : const Color(0xFF64748B),
                         ),
                       ),
                     ],
                   ),
                 ),
+                const SizedBox(width: 8),
+                SizedBox(
+                  width: 120,
+                  child: TextField(
+                    controller: controller,
+                    keyboardType: const TextInputType.numberWithOptions(
+                      decimal: true,
+                    ),
+                    textAlign: TextAlign.right,
+                    style: TextStyle(
+                      fontWeight: FontWeight.w800,
+                      fontSize: 16,
+                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                    ),
+                    decoration: InputDecoration(
+                      hintText: "0.00",
+                      hintStyle: TextStyle(
+                        color: isDark ? Colors.white30 : Colors.black26,
+                        fontWeight: FontWeight.w500,
+                      ),
+                      suffixText: " TL",
+                      suffixStyle: TextStyle(
+                        fontWeight: FontWeight.bold,
+                        fontSize: 12,
+                        color: temaRengi,
+                      ),
+                      isDense: true,
+                      contentPadding: const EdgeInsets.symmetric(
+                        horizontal: 10,
+                        vertical: 9,
+                      ),
+                      filled: true,
+                      fillColor:
+                          isDark
+                              ? Colors.black.withValues(alpha: 0.28)
+                              : const Color(0xFFF8FAFC),
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color:
+                              isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      enabledBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(
+                          color:
+                              isDark ? Colors.white12 : const Color(0xFFE2E8F0),
+                        ),
+                      ),
+                      focusedBorder: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(12),
+                        borderSide: BorderSide(color: temaRengi, width: 1.6),
+                      ),
+                    ),
+                    onChanged: (val) => onChanged(),
+                  ),
+                ),
               ],
             ),
-          ),
-        );
-      },
+
+            const SizedBox(height: 10),
+
+            Row(
+              children: [
+                ...[100, 250, 500, 1000].map((m) {
+                  return Padding(
+                    padding: const EdgeInsets.only(right: 6),
+                    child: InkWell(
+                      borderRadius: BorderRadius.circular(8),
+                      onTap: () {
+                        final mevcut = double.tryParse(controller.text) ?? 0;
+                        controller.text = (mevcut + m).toStringAsFixed(0);
+                        onChanged();
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 8,
+                          vertical: 3.5,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(8),
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? Colors.white10
+                                    : const Color(0xFFE2E8F0),
+                            width: 0.8,
+                          ),
+                        ),
+                        child: Text(
+                          "+$m",
+                          style: TextStyle(
+                            fontSize: 11,
+                            fontWeight: FontWeight.w600,
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF475569),
+                          ),
+                        ),
+                      ),
+                    ),
+                  );
+                }),
+                if (girildi)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(8),
+                    onTap: () {
+                      controller.clear();
+                      onChanged();
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: const Text(
+                        "Sıfırla",
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.redAccent,
+                        ),
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            const SizedBox(height: 12),
+            Container(
+              height: 1,
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : const Color(0xFFF1F5F9),
+            ),
+            const SizedBox(height: 10),
+
+            Row(
+              children: [
+                Icon(
+                  Icons.credit_card_rounded,
+                  size: 15,
+                  color:
+                      seciliIsciAdi != null
+                          ? temaRengi
+                          : (isDark ? Colors.white54 : const Color(0xFF64748B)),
+                ),
+                const SizedBox(width: 6),
+                Text(
+                  "Kartı Kullanan / Harcayan:",
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w700,
+                    color:
+                        seciliIsciAdi != null
+                            ? (isDark ? Colors.white : const Color(0xFF1E293B))
+                            : (isDark
+                                ? Colors.white60
+                                : const Color(0xFF64748B)),
+                  ),
+                ),
+                const Spacer(),
+                if (seciliIsciAdi != null && seciliIsciAdi.isNotEmpty)
+                  InkWell(
+                    borderRadius: BorderRadius.circular(20),
+                    onTap: () => onIsciSecildi(null),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2.5,
+                      ),
+                      decoration: BoxDecoration(
+                        color: temaRengi.withValues(
+                          alpha: isDark ? 0.22 : 0.14,
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: temaRengi.withValues(alpha: 0.4),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Text(
+                            seciliIsciAdi,
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              fontWeight: FontWeight.w800,
+                              color:
+                                  isDark
+                                      ? Colors.white
+                                      : const Color(0xFF0F172A),
+                            ),
+                          ),
+                          const SizedBox(width: 4),
+                          const Icon(
+                            Icons.close_rounded,
+                            size: 14,
+                            color: Colors.grey,
+                          ),
+                        ],
+                      ),
+                    ),
+                  )
+                else
+                  InkWell(
+                    borderRadius: BorderRadius.circular(12),
+                    onTap: () async {
+                      final isci = await _harcamaIscisiSec(
+                        context,
+                        tumIsciler,
+                        seciliIsciAdi,
+                        santiyedekiIsciler: santiyedekiIsciler,
+                      );
+                      onIsciSecildi(isci);
+                    },
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 3,
+                      ),
+                      decoration: BoxDecoration(
+                        color:
+                            isDark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : const Color(0xFFF1F5F9),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.person_add_alt_1_rounded,
+                            size: 13,
+                            color:
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF475569),
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            "Kişi Seç",
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF475569),
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+              ],
+            ),
+
+            if (santiyedekiIsciler.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: Row(
+                  children: [
+                    ...santiyedekiIsciler.map((isci) {
+                      final bool secilimi = seciliIsciAdi == isci.ad;
+                      return Padding(
+                        padding: const EdgeInsets.only(right: 6),
+                        child: InkWell(
+                          borderRadius: BorderRadius.circular(20),
+                          onTap: () {
+                            if (secilimi) {
+                              onIsciSecildi(null);
+                            } else {
+                              onIsciSecildi(isci);
+                            }
+                          },
+                          child: AnimatedContainer(
+                            duration: const Duration(milliseconds: 180),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 5,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  secilimi
+                                      ? temaRengi.withValues(
+                                        alpha: isDark ? 0.30 : 0.20,
+                                      )
+                                      : (isDark
+                                          ? Colors.white.withValues(alpha: 0.05)
+                                          : const Color(0xFFF1F5F9)),
+                              borderRadius: BorderRadius.circular(20),
+                              border: Border.all(
+                                color:
+                                    secilimi
+                                        ? temaRengi
+                                        : (isDark
+                                            ? Colors.white12
+                                            : const Color(0xFFE2E8F0)),
+                                width: secilimi ? 1.4 : 1.0,
+                              ),
+                            ),
+                            child: Row(
+                              mainAxisSize: MainAxisSize.min,
+                              children: [
+                                CircleAvatar(
+                                  radius: 8.5,
+                                  backgroundColor:
+                                      secilimi
+                                          ? temaRengi
+                                          : (isDark
+                                              ? Colors.white24
+                                              : Colors.black26),
+                                  child: Text(
+                                    isci.ad.isNotEmpty
+                                        ? isci.ad[0].toUpperCase()
+                                        : "?",
+                                    style: const TextStyle(
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.bold,
+                                      color: Colors.white,
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 5),
+                                Text(
+                                  isci.ad,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight:
+                                        secilimi
+                                            ? FontWeight.w800
+                                            : FontWeight.w600,
+                                    color:
+                                        secilimi
+                                            ? (isDark
+                                                ? Colors.white
+                                                : const Color(0xFF0F172A))
+                                            : (isDark
+                                                ? Colors.white70
+                                                : const Color(0xFF475569)),
+                                  ),
+                                ),
+                                if (secilimi) ...[
+                                  const SizedBox(width: 4),
+                                  Icon(
+                                    Icons.check_rounded,
+                                    size: 13,
+                                    color: temaRengi,
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ),
+                      );
+                    }),
+                    InkWell(
+                      borderRadius: BorderRadius.circular(20),
+                      onTap: () async {
+                        final isci = await _harcamaIscisiSec(
+                          context,
+                          tumIsciler,
+                          seciliIsciAdi,
+                          santiyedekiIsciler: santiyedekiIsciler,
+                        );
+                        onIsciSecildi(isci);
+                      },
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 5,
+                        ),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.04)
+                                  : const Color(0xFFF8FAFC),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(
+                            color:
+                                isDark
+                                    ? Colors.white12
+                                    : const Color(0xFFCBD5E1),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(
+                              Icons.search_rounded,
+                              size: 13,
+                              color:
+                                  isDark
+                                      ? Colors.white60
+                                      : const Color(0xFF64748B),
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              "+ Diğer...",
+                              style: TextStyle(
+                                fontSize: 11,
+                                fontWeight: FontWeight.w600,
+                                color:
+                                    isDark
+                                        ? Colors.white60
+                                        : const Color(0xFF64748B),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
     );
   }
 
