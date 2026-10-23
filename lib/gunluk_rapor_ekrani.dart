@@ -2388,84 +2388,170 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                         ),
                       ),
                       if (_calendarVisible)
-                        Center(
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 0, 16, 10),
                           child: GlassSectionCard(
-                            borderRadius: 24,
-                            padding: const EdgeInsets.symmetric(vertical: 8),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 0,
+                            borderRadius: 20,
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 8,
+                            ),
+                            child: TableCalendar(
+                              locale: 'tr_TR',
+                              startingDayOfWeek: StartingDayOfWeek.monday,
+                              firstDay: genisBaslangic,
+                              lastDay: genisBitis,
+                              focusedDay: _odaklanilanGun,
+                              currentDay: _seciliGun,
+                              rowHeight: 38,
+                              daysOfWeekHeight: 22,
+                              eventLoader: gununEtkinlikleri,
+                              calendarStyle: CalendarStyle(
+                                isTodayHighlighted: true,
+                                cellMargin: const EdgeInsets.all(2.5),
+                                cellPadding: EdgeInsets.zero,
+                                defaultTextStyle: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
+                                ),
+                                weekendTextStyle: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF5EEAD4).withValues(alpha: 0.8)
+                                          : const Color(0xFF0F7C86),
+                                ),
+                                outsideTextStyle: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w400,
+                                  color:
+                                      isDark ? Colors.white24 : Colors.black26,
+                                ),
+                                selectedTextStyle: const TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  color: Colors.white,
+                                ),
+                                todayTextStyle: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w800,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF5EEAD4)
+                                          : const Color(0xFF0F7C86),
+                                ),
+                                defaultDecoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                weekendDecoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                outsideDecoration: BoxDecoration(
+                                  borderRadius: BorderRadius.circular(10),
+                                ),
+                                todayDecoration: BoxDecoration(
+                                  color: const Color(0xFF14B8A6).withValues(
+                                    alpha: isDark ? 0.22 : 0.14,
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  border: Border.all(
+                                    color: const Color(0xFF14B8A6).withValues(
+                                      alpha: isDark ? 0.6 : 0.45,
+                                    ),
+                                    width: 1.2,
+                                  ),
+                                ),
+                                selectedDecoration: BoxDecoration(
+                                  gradient: const LinearGradient(
+                                    begin: Alignment.topLeft,
+                                    end: Alignment.bottomRight,
+                                    colors: [
+                                      Color(0xFF14B8A6),
+                                      Color(0xFF0D9488),
+                                    ],
+                                  ),
+                                  borderRadius: BorderRadius.circular(10),
+                                  boxShadow: [
+                                    BoxShadow(
+                                      color: const Color(
+                                        0xFF0D9488,
+                                      ).withValues(alpha: 0.35),
+                                      blurRadius: 6,
+                                      offset: const Offset(0, 2),
+                                    ),
+                                  ],
+                                ),
+                                markerDecoration: const BoxDecoration(
+                                  color: Color(0xFF14B8A6),
+                                  shape: BoxShape.circle,
+                                ),
+                                markerSize: 4.5,
+                                markerMargin: const EdgeInsets.symmetric(
+                                  horizontal: 1,
+                                ),
+                                markersMaxCount: 3,
                               ),
-                              child: TableCalendar(
-                                locale: 'tr_TR',
-                                startingDayOfWeek: StartingDayOfWeek.monday,
-                                firstDay: genisBaslangic,
-                                lastDay: genisBitis,
-                                focusedDay: _odaklanilanGun,
-                                currentDay: _seciliGun,
-                                eventLoader: gununEtkinlikleri,
-                                calendarStyle: CalendarStyle(
-                                  markerDecoration: const BoxDecoration(
-                                    color: Color(0xFF14B8A6),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  todayDecoration: BoxDecoration(
-                                    color: const Color(
-                                      0xFF14B8A6,
-                                    ).withValues(alpha: 0.25),
-                                    shape: BoxShape.circle,
-                                  ),
-                                  selectedDecoration: const BoxDecoration(
-                                    color: Color(0xFF14B8A6),
-                                    shape: BoxShape.circle,
-                                  ),
+                              headerStyle: HeaderStyle(
+                                formatButtonVisible: false,
+                                titleCentered: true,
+                                headerPadding: const EdgeInsets.symmetric(
+                                  vertical: 4,
                                 ),
-                                headerStyle: HeaderStyle(
-                                  formatButtonVisible: false,
-                                  titleCentered: true,
-                                  titleTextStyle: TextStyle(
-                                    fontWeight: FontWeight.w700,
-                                    color:
-                                        isDark
-                                            ? Colors.white
-                                            : const Color(0xFF0F172A),
-                                  ),
-                                  leftChevronIcon: Icon(
-                                    Icons.chevron_left_rounded,
-                                    color:
-                                        isDark
-                                            ? Colors.white70
-                                            : const Color(0xFF516772),
-                                  ),
-                                  rightChevronIcon: Icon(
-                                    Icons.chevron_right_rounded,
-                                    color:
-                                        isDark
-                                            ? Colors.white70
-                                            : const Color(0xFF516772),
-                                  ),
+                                titleTextStyle: TextStyle(
+                                  fontSize: 14,
+                                  fontWeight: FontWeight.w700,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF0F172A),
                                 ),
-                                daysOfWeekStyle: DaysOfWeekStyle(
-                                  weekdayStyle: TextStyle(
-                                    color:
-                                        isDark
-                                            ? Colors.white70
-                                            : const Color(0xFF516772),
-                                  ),
-                                  weekendStyle: TextStyle(
-                                    color:
-                                        isDark
-                                            ? Colors.white60
-                                            : const Color(0xFF7A8E98),
-                                  ),
+                                leftChevronPadding: const EdgeInsets.all(4),
+                                rightChevronPadding: const EdgeInsets.all(4),
+                                leftChevronIcon: Icon(
+                                  Icons.chevron_left_rounded,
+                                  size: 20,
+                                  color:
+                                      isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF516772),
                                 ),
-                                onDaySelected:
-                                    (s, f) => setState(() {
-                                      _seciliGun = s;
-                                      _odaklanilanGun = f;
-                                    }),
+                                rightChevronIcon: Icon(
+                                  Icons.chevron_right_rounded,
+                                  size: 20,
+                                  color:
+                                      isDark
+                                          ? Colors.white70
+                                          : const Color(0xFF516772),
+                                ),
                               ),
+                              daysOfWeekStyle: DaysOfWeekStyle(
+                                weekdayStyle: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark
+                                          ? Colors.white60
+                                          : const Color(0xFF64748B),
+                                ),
+                                weekendStyle: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark
+                                          ? const Color(0xFF5EEAD4)
+                                          : const Color(0xFF0F7C86),
+                                ),
+                              ),
+                              onDaySelected:
+                                  (s, f) => setState(() {
+                                    _seciliGun = s;
+                                    _odaklanilanGun = f;
+                                  }),
                             ),
                           ),
                         ),
