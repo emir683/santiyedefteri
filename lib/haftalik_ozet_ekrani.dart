@@ -237,6 +237,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     Widget content = _buildPanelGlassInset(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 12),
       child: Row(
         children: [
           Icon(
@@ -244,21 +245,24 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
             size: 18,
             color: isDark ? Colors.white70 : const Color(0xFF0F7C86),
           ),
-          const SizedBox(width: 10),
+          const SizedBox(width: 8),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  value,
-                  style: TextStyle(
-                    fontSize: 16.5,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF102A43),
+                FittedBox(
+                  fit: BoxFit.scaleDown,
+                  alignment: Alignment.centerLeft,
+                  child: Text(
+                    value,
+                    style: TextStyle(
+                      fontSize: 16.5,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF102A43),
+                    ),
+                    maxLines: 1,
                   ),
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
                 ),
                 const SizedBox(height: 1),
                 Text(
@@ -322,6 +326,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
       ),
       child: Text(
         text,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
         style: TextStyle(
           fontSize: 12,
           fontWeight: FontWeight.w600,
@@ -391,6 +397,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                   Expanded(
                                     child: Text(
                                       label,
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold,
@@ -414,15 +422,19 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                 ],
                               ),
                               const SizedBox(height: 16),
-                              Text(
-                                value,
-                                style: TextStyle(
-                                  fontSize: 26,
-                                  fontWeight: FontWeight.w900,
-                                  color:
-                                      isDark
-                                          ? Colors.white
-                                          : const Color(0xFF102A43),
+                              FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  value,
+                                  style: TextStyle(
+                                    fontSize: 26,
+                                    fontWeight: FontWeight.w900,
+                                    color:
+                                        isDark
+                                            ? Colors.white
+                                            : const Color(0xFF102A43),
+                                  ),
                                 ),
                               ),
                               const SizedBox(height: 12),
@@ -663,6 +675,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                             : (_seciliHaftaOfseti == -1
                                                 ? 'Geçen Hafta'
                                                 : '${_seciliHaftaOfseti.abs()} Hafta Önce'),
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
                                         style: TextStyle(
                                           fontSize: 12,
                                           fontWeight: FontWeight.w600,
@@ -673,20 +687,26 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                         ),
                                       ),
                                       const SizedBox(height: 3),
-                                      Text(
-                                        haftaMetni,
-                                        style: TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.w800,
-                                          color:
-                                              isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFF102A43),
+                                      FittedBox(
+                                        fit: BoxFit.scaleDown,
+                                        alignment: Alignment.centerLeft,
+                                        child: Text(
+                                          haftaMetni,
+                                          maxLines: 1,
+                                          style: TextStyle(
+                                            fontSize: 22,
+                                            fontWeight: FontWeight.w800,
+                                            color:
+                                                isDark
+                                                    ? Colors.white
+                                                    : const Color(0xFF102A43),
+                                          ),
                                         ),
                                       ),
                                     ],
                                   ),
                                 ),
+                                const SizedBox(width: 8),
                                 _buildPanelGlassInset(
                                   padding: const EdgeInsets.symmetric(
                                     horizontal: 10,
@@ -864,6 +884,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                   children: [
                                     Text(
                                       'Haftalık Özeti Paylaş',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 16.5,
                                         fontWeight: FontWeight.w700,
@@ -876,6 +898,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                     const SizedBox(height: 2),
                                     Text(
                                       'WhatsApp veya mesaj ile anında ilet.',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
                                       style: TextStyle(
                                         fontSize: 12,
                                         color:
@@ -916,17 +940,22 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Günlük Rapor Dağılımı',
-                                    style: TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w800,
-                                      color:
-                                          isDark
-                                              ? Colors.white
-                                              : const Color(0xFF102A43),
+                                  Expanded(
+                                    child: Text(
+                                      'Günlük Rapor Dağılımı',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w800,
+                                        color:
+                                            isDark
+                                                ? Colors.white
+                                                : const Color(0xFF102A43),
+                                      ),
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   Text(
                                     'Pzt - Paz',
                                     style: TextStyle(
@@ -956,17 +985,22 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                 mainAxisAlignment:
                                     MainAxisAlignment.spaceBetween,
                                 children: [
-                                  Text(
-                                    'Şantiyelere Göre Dağılım',
-                                    style: TextStyle(
-                                      fontSize: 17,
-                                      fontWeight: FontWeight.w800,
-                                      color:
-                                          isDark
-                                              ? Colors.white
-                                              : const Color(0xFF102A43),
+                                  Expanded(
+                                    child: Text(
+                                      'Şantiyelere Göre Dağılım',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 17,
+                                        fontWeight: FontWeight.w800,
+                                        color:
+                                            isDark
+                                                ? Colors.white
+                                                : const Color(0xFF102A43),
+                                      ),
                                     ),
                                   ),
+                                  const SizedBox(width: 8),
                                   _buildWorkerChipMinimal(
                                     '${santiyeRaporSayisi.length} Şantiye',
                                   ),
@@ -1006,6 +1040,9 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                                 children: [
                                                   Text(
                                                     entry.key,
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: TextStyle(
                                                       fontSize: 14.5,
                                                       fontWeight:
@@ -1021,6 +1058,9 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                                   const SizedBox(height: 2),
                                                   Text(
                                                     '${entry.value} gün çalışma raporu',
+                                                    maxLines: 1,
+                                                    overflow:
+                                                        TextOverflow.ellipsis,
                                                     style: TextStyle(
                                                       fontSize: 11.5,
                                                       color:
@@ -1032,12 +1072,16 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                                 ],
                                               ),
                                             ),
-                                            Text(
-                                              _formatTutar(santiyeMasraf),
-                                              style: const TextStyle(
-                                                fontSize: 14,
-                                                fontWeight: FontWeight.w800,
-                                                color: _kBrandTeal,
+                                            const SizedBox(width: 8),
+                                            FittedBox(
+                                              fit: BoxFit.scaleDown,
+                                              child: Text(
+                                                _formatTutar(santiyeMasraf),
+                                                style: const TextStyle(
+                                                  fontSize: 14,
+                                                  fontWeight: FontWeight.w800,
+                                                  color: _kBrandTeal,
+                                                ),
                                               ),
                                             ),
                                           ],
@@ -1080,17 +1124,22 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      'Personel Puantaj Dağılımı',
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        color:
-                                            isDark
-                                                ? Colors.white
-                                                : const Color(0xFF102A43),
+                                    Expanded(
+                                      child: Text(
+                                        'Personel Puantaj Dağılımı',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                          color:
+                                              isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF102A43),
+                                        ),
                                       ),
                                     ),
+                                    const SizedBox(width: 8),
                                     _buildWorkerChipMinimal(
                                       '${isciYevmiyeleri.length} Personel',
                                     ),
@@ -1118,6 +1167,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                           Expanded(
                                             child: Text(
                                               e.key,
+                                              maxLines: 1,
+                                              overflow: TextOverflow.ellipsis,
                                               style: TextStyle(
                                                 fontSize: 14.5,
                                                 fontWeight: FontWeight.w700,
@@ -1130,6 +1181,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                               ),
                                             ),
                                           ),
+                                          const SizedBox(width: 8),
                                           Container(
                                             padding: const EdgeInsets.symmetric(
                                               horizontal: 10,
@@ -1172,23 +1224,31 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                   mainAxisAlignment:
                                       MainAxisAlignment.spaceBetween,
                                   children: [
-                                    Text(
-                                      'Saha Harcama Dağılımı',
-                                      style: TextStyle(
-                                        fontSize: 17,
-                                        fontWeight: FontWeight.w800,
-                                        color:
-                                            isDark
-                                                ? Colors.white
-                                                : const Color(0xFF102A43),
+                                    Expanded(
+                                      child: Text(
+                                        'Saha Harcama Dağılımı',
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 17,
+                                          fontWeight: FontWeight.w800,
+                                          color:
+                                              isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF102A43),
+                                        ),
                                       ),
                                     ),
-                                    Text(
-                                      _formatTutar(toplamGider),
-                                      style: const TextStyle(
-                                        fontSize: 15,
-                                        fontWeight: FontWeight.w800,
-                                        color: _kBrandTeal,
+                                    const SizedBox(width: 8),
+                                    FittedBox(
+                                      fit: BoxFit.scaleDown,
+                                      child: Text(
+                                        _formatTutar(toplamGider),
+                                        style: const TextStyle(
+                                          fontSize: 15,
+                                          fontWeight: FontWeight.w800,
+                                          color: _kBrandTeal,
+                                        ),
                                       ),
                                     ),
                                   ],
@@ -1278,7 +1338,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
       onTap: onTap,
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 200),
-        padding: const EdgeInsets.symmetric(vertical: 9),
+        padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
         decoration: BoxDecoration(
           color:
               isSelected
@@ -1297,17 +1357,21 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                   : null,
         ),
         child: Center(
-          child: Text(
-            title,
-            style: TextStyle(
-              fontSize: 12.5,
-              fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
-              color:
-                  isSelected
-                      ? Colors.white
-                      : (Theme.of(context).brightness == Brightness.dark
-                          ? Colors.white70
-                          : const Color(0xFF486581)),
+          child: FittedBox(
+            fit: BoxFit.scaleDown,
+            child: Text(
+              title,
+              maxLines: 1,
+              style: TextStyle(
+                fontSize: 12.5,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                color:
+                    isSelected
+                        ? Colors.white
+                        : (Theme.of(context).brightness == Brightness.dark
+                            ? Colors.white70
+                            : const Color(0xFF486581)),
+              ),
             ),
           ),
         ),
@@ -1323,7 +1387,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
     }
 
     return _buildPanelGlassInset(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 14),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceAround,
         crossAxisAlignment: CrossAxisAlignment.end,
@@ -1347,7 +1411,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
               const SizedBox(height: 4),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                width: 22,
+                width: 20,
                 height: barHeight,
                 decoration: BoxDecoration(
                   gradient:
@@ -1420,6 +1484,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
               Expanded(
                 child: Text(
                   title,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: TextStyle(
                     fontSize: 13.5,
                     fontWeight: FontWeight.w600,
@@ -1427,12 +1493,16 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                   ),
                 ),
               ),
-              Text(
-                _formatTutar(amount),
-                style: TextStyle(
-                  fontSize: 14,
-                  fontWeight: FontWeight.w700,
-                  color: isDark ? Colors.white : const Color(0xFF102A43),
+              const SizedBox(width: 8),
+              FittedBox(
+                fit: BoxFit.scaleDown,
+                child: Text(
+                  _formatTutar(amount),
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF102A43),
+                  ),
                 ),
               ),
             ],
@@ -1459,16 +1529,24 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
-        Text(
-          title,
-          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+        Expanded(
+          child: Text(
+            title,
+            maxLines: 1,
+            overflow: TextOverflow.ellipsis,
+            style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w500),
+          ),
         ),
-        Text(
-          _formatTutar(amount),
-          style: const TextStyle(
-            fontSize: 13.5,
-            fontWeight: FontWeight.w700,
-            color: _kBrandTeal,
+        const SizedBox(width: 8),
+        FittedBox(
+          fit: BoxFit.scaleDown,
+          child: Text(
+            _formatTutar(amount),
+            style: const TextStyle(
+              fontSize: 13.5,
+              fontWeight: FontWeight.w700,
+              color: _kBrandTeal,
+            ),
           ),
         ),
       ],
