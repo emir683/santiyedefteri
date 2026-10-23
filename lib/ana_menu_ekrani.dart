@@ -2611,7 +2611,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   }
 
   double _gunDegeri(String durum) {
-    return durum.toLowerCase().contains('yar') ? 0.5 : 1;
+    return parseDurumCarpani(durum);
   }
 
   String _formatAmount(double tutar, {required bool privacyHidden}) {
@@ -3624,16 +3624,7 @@ class _AnaPanelVerisi {
         a.year == b.year && a.month == b.month && a.day == b.day;
 
     double gunDegeri(String durum) {
-      switch (durum) {
-        case 'Tam':
-          return 1.0;
-        case 'Yar\u0131m':
-          return 0.5;
-        case 'Mesai':
-          return 1.5;
-        default:
-          return 0.0;
-      }
+      return parseDurumCarpani(durum);
     }
 
     final bugunRaporlari =

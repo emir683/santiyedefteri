@@ -15,11 +15,7 @@ class Santiye {
   Santiye({this.id, required this.ad, this.il, this.ilce});
 
   Map<String, dynamic> toMap() {
-    return {
-      'ad': ad,
-      'il': il,
-      'ilce': ilce,
-    };
+    return {'ad': ad, 'il': il, 'ilce': ilce};
   }
 
   factory Santiye.fromMap(Map<String, dynamic> map, String documentId) {
@@ -36,7 +32,8 @@ class Isci {
   String? id;
   String ad;
   double gunlukMaas;
-  String? linkedUserId; // Bağlı Firebase kullanıcısının UID'si (admin tarafından atanır)
+  String?
+  linkedUserId; // Bağlı Firebase kullanıcısının UID'si (admin tarafından atanır)
   String isciTuru; // "Çekirdek Ekip" veya "Misafir"
 
   Isci({
@@ -69,11 +66,27 @@ class Isci {
   Map<String, dynamic> toJson() => toMap();
 }
 
+double parseDurumCarpani(String durum) {
+  if (durum == 'Yok') return 0.0;
+  if (durum.contains('Yarım') || durum.contains('yar')) return 0.5;
+  if (durum.contains('Mesai') || durum.contains('mesai')) {
+    final match = RegExp(r'(\d+([.,]\d+)?)').firstMatch(durum);
+    if (match != null) {
+      final val = double.tryParse(match.group(1)!.replaceAll(',', '.'));
+      if (val != null && val > 0) return val;
+    }
+    return 1.5;
+  }
+  return 1.0;
+}
+
 class GunlukCalisma {
   final Isci isci;
   final String durum;
 
   GunlukCalisma({required this.isci, required this.durum});
+
+  double get yevmiyeCarpani => parseDurumCarpani(durum);
 
   Map<String, dynamic> toMap() {
     return {'isci': isci.toMap(), 'durum': durum};
@@ -82,7 +95,7 @@ class GunlukCalisma {
   factory GunlukCalisma.fromMap(Map<String, dynamic> map) {
     return GunlukCalisma(
       isci: Isci.fromMap(map['isci'] ?? {}, ''),
-      durum: map['durum'] ?? 'Tam G\u00fcn',
+      durum: map['durum'] ?? 'Tam Gün',
     );
   }
 }

@@ -889,7 +889,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
@@ -1406,19 +1408,32 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                 if (hesaplar.containsKey(
                                                   c.isci.ad,
                                                 )) {
+                                                  final carpan =
+                                                      parseDurumCarpani(
+                                                        c.durum,
+                                                      );
                                                   if (c.durum == "Tam Gün") {
                                                     hesaplar[c.isci.ad]!
                                                         .tamGun++;
                                                     hesaplar[c.isci.ad]!
                                                             .toplamHakedis +=
                                                         c.isci.gunlukMaas;
-                                                  }
-                                                  if (c.durum == "Yarım Gün") {
+                                                  } else if (c.durum ==
+                                                      "Yarım Gün") {
                                                     hesaplar[c.isci.ad]!
                                                         .yarimGun++;
                                                     hesaplar[c.isci.ad]!
                                                             .toplamHakedis +=
                                                         (c.isci.gunlukMaas / 2);
+                                                  } else if (c.durum.contains(
+                                                    "Mesai",
+                                                  )) {
+                                                    hesaplar[c.isci.ad]!
+                                                        .tamGun++;
+                                                    hesaplar[c.isci.ad]!
+                                                            .toplamHakedis +=
+                                                        (c.isci.gunlukMaas *
+                                                            carpan);
                                                   }
                                                 }
                                               }
@@ -1672,7 +1687,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                             sEk = 0,
                                                             sMaas = 0,
                                                             sGelir = 0;
-                                                        for (var o in sOdemeler) {
+                                                        for (var o
+                                                            in sOdemeler) {
                                                           sGelir += o.miktar;
                                                         }
 
@@ -1686,13 +1702,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                           for (var c
                                                               in r.calisanlar) {
                                                             sMaas +=
-                                                                (c.durum ==
-                                                                        "Tam Gün"
-                                                                    ? c
-                                                                        .isci
-                                                                        .gunlukMaas
-                                                                    : (c.isci.gunlukMaas /
-                                                                        2));
+                                                                (c.isci.gunlukMaas *
+                                                                    parseDurumCarpani(
+                                                                      c.durum,
+                                                                    ));
                                                           }
                                                         }
 
@@ -1741,20 +1754,22 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                                         Alignment
                                                                             .bottomRight,
                                                                     colors: [
-                                                                      Colors.teal.withValues(alpha: 
-                                                                        isDark
-                                                                            ? 0.18
-                                                                            : 0.14,
+                                                                      Colors.teal.withValues(
+                                                                        alpha:
+                                                                            isDark
+                                                                                ? 0.18
+                                                                                : 0.14,
                                                                       ),
                                                                       (isDark
                                                                               ? const Color(
                                                                                 0xFF171B20,
                                                                               )
                                                                               : Colors.white)
-                                                                          .withValues(alpha: 
-                                                                            isDark
-                                                                                ? 0.82
-                                                                                : 0.92,
+                                                                          .withValues(
+                                                                            alpha:
+                                                                                isDark
+                                                                                    ? 0.82
+                                                                                    : 0.92,
                                                                           ),
                                                                     ],
                                                                   ),
@@ -1765,10 +1780,11 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                                   border: Border.all(
                                                                     color: Colors
                                                                         .teal
-                                                                        .withValues(alpha: 
-                                                                          isDark
-                                                                              ? 0.16
-                                                                              : 0.12,
+                                                                        .withValues(
+                                                                          alpha:
+                                                                              isDark
+                                                                                  ? 0.16
+                                                                                  : 0.12,
                                                                         ),
                                                                   ),
                                                                 ),
@@ -1920,7 +1936,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
         borderRadius: BorderRadius.circular(16),
         side: BorderSide(
           color:
-              isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0),
+              isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFD8EAF0),
           width: 1.5,
         ),
       ),
@@ -1934,13 +1952,15 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
               end: Alignment.bottomRight,
               colors: [
                 color.withValues(alpha: isDark ? 0.18 : 0.14),
-                (isDark ? const Color(0xFF171B20) : Colors.white).withValues(alpha: 
-                  isDark ? 0.82 : 0.92,
+                (isDark ? const Color(0xFF171B20) : Colors.white).withValues(
+                  alpha: isDark ? 0.82 : 0.92,
                 ),
               ],
             ),
             borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: color.withValues(alpha: isDark ? 0.16 : 0.12)),
+            border: Border.all(
+              color: color.withValues(alpha: isDark ? 0.16 : 0.12),
+            ),
           ),
           child: Icon(icon, color: color),
         ),
@@ -2285,7 +2305,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         const SizedBox(width: 5),
                         Flexible(
                           child: Text(
-                            isPositive ? "NET DÖNEM KÂRI" : "BÜTÇE AŞIMI / ZARAR",
+                            isPositive
+                                ? "NET DÖNEM KÂRI"
+                                : "BÜTÇE AŞIMI / ZARAR",
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
                             style: GoogleFonts.poppins(
@@ -2655,8 +2677,11 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                 Flexible(
                   child: TextButton.icon(
                     onPressed:
-                        () =>
-                            _ekstraKalemEkleSecici(context, aylikFinans, servisi),
+                        () => _ekstraKalemEkleSecici(
+                          context,
+                          aylikFinans,
+                          servisi,
+                        ),
                     icon: const Icon(
                       Icons.add_circle_outline,
                       size: 16,
@@ -2726,7 +2751,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                 : Icons.keyboard_arrow_down_rounded,
                             size: 18,
                             color:
-                                isDark ? Colors.white70 : const Color(0xFF64748B),
+                                isDark
+                                    ? Colors.white70
+                                    : const Color(0xFF64748B),
                           ),
                         ],
                       ),
@@ -4841,7 +4868,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
         child: RichText(
           text: TextSpan(
             style: TextStyle(
-              color: isDark ? Colors.white.withValues(alpha: 0.90) : Colors.grey[800],
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.90)
+                      : Colors.grey[800],
               fontSize: 12,
             ),
             children: [
@@ -4957,11 +4987,15 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color:
-            isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8FCFE),
+            isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : const Color(0xFFF8FCFE),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color:
-              isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFDCE8EE),
+              isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : const Color(0xFFDCE8EE),
         ),
       ),
       child: Column(
@@ -5085,11 +5119,15 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color:
-            isDark ? Colors.white.withValues(alpha: 0.04) : const Color(0xFFF8FCFE),
+            isDark
+                ? Colors.white.withValues(alpha: 0.04)
+                : const Color(0xFFF8FCFE),
         borderRadius: BorderRadius.circular(14),
         border: Border.all(
           color:
-              isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFDCE8EE),
+              isDark
+                  ? Colors.white.withValues(alpha: 0.10)
+                  : const Color(0xFFDCE8EE),
         ),
       ),
       child: Column(

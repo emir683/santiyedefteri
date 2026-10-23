@@ -812,6 +812,21 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
   ) {
     List<Isci> yerelIsciler = List.from(secilebilirIsciler);
     Map<String, String> geciciDurumlar = {};
+
+    double seciliMesaiCarpani = 1.5;
+    for (var c in rapor.calisanlar) {
+      if (c.durum.contains("Mesai") || c.durum.contains("mesai")) {
+        seciliMesaiCarpani = parseDurumCarpani(c.durum);
+        break;
+      }
+    }
+
+    String formatCarpan(double carpan) {
+      return carpan % 1 == 0 ? carpan.toInt().toString() : carpan.toString();
+    }
+
+    String mesaiMetni(double carpan) => "Mesai (${formatCarpan(carpan)}x)";
+
     for (var isci in yerelIsciler) {
       var mevcutKayit =
           rapor.calisanlar.where((c) => c.isci.ad == isci.ad).firstOrNull;
@@ -842,9 +857,119 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
               final misafirler =
                   yerelIsciler.where((i) => i.isciTuru == "Misafir").toList();
 
+              void guncelleMesaiCarpani(double yeniCarpan) {
+                setSheetState(() {
+                  seciliMesaiCarpani = yeniCarpan;
+                  geciciDurumlar.forEach((id, durum) {
+                    if (durum.contains("Mesai")) {
+                      geciciDurumlar[id] = mesaiMetni(yeniCarpan);
+                    }
+                  });
+                });
+              }
+
+              void ozelCarpanSor() {
+                final ctrl = TextEditingController(
+                  text: formatCarpan(seciliMesaiCarpani),
+                );
+                showDialog(
+                  context: context,
+                  builder:
+                      (dialogCtx) => AlertDialog(
+                        backgroundColor:
+                            isDark ? const Color(0xFF1E2633) : Colors.white,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        title: Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF8B5CF6,
+                                ).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.more_time_rounded,
+                                color: Color(0xFF8B5CF6),
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Text(
+                              "Özel Mesai Çarpanı",
+                              style: TextStyle(
+                                fontSize: 17,
+                                fontWeight: FontWeight.bold,
+                              ),
+                            ),
+                          ],
+                        ),
+                        content: Column(
+                          mainAxisSize: MainAxisSize.min,
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const Text(
+                              "Mesaiye kalan personeller için uygulanacak yevmiye katsayısını girin (örnek: 1.25, 1.5, 2, 2.5):",
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey,
+                              ),
+                            ),
+                            const SizedBox(height: 14),
+                            TextField(
+                              controller: ctrl,
+                              keyboardType:
+                                  const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                              autofocus: true,
+                              decoration: InputDecoration(
+                                labelText: "Çarpan Değeri",
+                                hintText: "1.5",
+                                suffixText: "x",
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(dialogCtx),
+                            child: const Text("İptal"),
+                          ),
+                          ElevatedButton(
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: const Color(0xFF8B5CF6),
+                              foregroundColor: Colors.white,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                            ),
+                            onPressed: () {
+                              final val = double.tryParse(
+                                ctrl.text.replaceAll(',', '.'),
+                              );
+                              if (val != null && val > 0 && val <= 10) {
+                                guncelleMesaiCarpani(val);
+                                Navigator.pop(dialogCtx);
+                              }
+                            },
+                            child: const Text("Uygula"),
+                          ),
+                        ],
+                      ),
+                );
+              }
+
               Widget buildIsciKart(Isci isci) {
                 final String id = isci.id ?? isci.ad;
                 final String durum = geciciDurumlar[id] ?? "Yok";
+                final bool isMesai = durum.contains("Mesai");
                 return Container(
                   margin: const EdgeInsets.only(bottom: 12),
                   padding: const EdgeInsets.all(12),
@@ -864,12 +989,42 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
-                      Text(
-                        isci.ad,
-                        style: const TextStyle(
-                          fontWeight: FontWeight.bold,
-                          fontSize: 16,
-                        ),
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              isci.ad,
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                fontSize: 16,
+                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                            ),
+                          ),
+                          if (isMesai)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF8B5CF6,
+                                ).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                durum,
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.bold,
+                                  color: Color(0xFF8B5CF6),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                       const SizedBox(height: 8),
                       Row(
@@ -882,7 +1037,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                             () =>
                                 setSheetState(() => geciciDurumlar[id] = "Yok"),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           _buildYoklamaOption(
                             "Yarım",
                             durum == "Yarım Gün",
@@ -892,7 +1047,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                               () => geciciDurumlar[id] = "Yarım Gün",
                             ),
                           ),
-                          const SizedBox(width: 8),
+                          const SizedBox(width: 6),
                           _buildYoklamaOption(
                             "Tam",
                             durum == "Tam Gün",
@@ -900,6 +1055,19 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                             isDark,
                             () => setSheetState(
                               () => geciciDurumlar[id] = "Tam Gün",
+                            ),
+                          ),
+                          const SizedBox(width: 6),
+                          _buildYoklamaOption(
+                            "Mesai",
+                            isMesai,
+                            const Color(0xFF8B5CF6),
+                            isDark,
+                            () => setSheetState(
+                              () =>
+                                  geciciDurumlar[id] = mesaiMetni(
+                                    seciliMesaiCarpani,
+                                  ),
                             ),
                           ),
                         ],
@@ -918,7 +1086,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                       Text(
                         baslik,
                         style: TextStyle(
-                          fontSize: 16,
+                          fontSize: 15,
                           fontWeight: FontWeight.bold,
                           color: isDark ? Colors.white : Colors.black87,
                         ),
@@ -930,8 +1098,8 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 () => topluSecim(liste, "Yok", setSheetState),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
+                                horizontal: 8,
+                                vertical: 5,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.grey.withValues(alpha: 0.15),
@@ -940,14 +1108,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                               child: const Text(
                                 "Yok",
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: Colors.grey,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 5),
                           InkWell(
                             onTap:
                                 () => topluSecim(
@@ -957,8 +1125,8 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 ),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
+                                horizontal: 8,
+                                vertical: 5,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.orange.withValues(alpha: 0.15),
@@ -967,22 +1135,22 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                               child: const Text(
                                 "Yarım",
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: Colors.orange,
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
                             ),
                           ),
-                          const SizedBox(width: 6),
+                          const SizedBox(width: 5),
                           InkWell(
                             onTap:
                                 () =>
                                     topluSecim(liste, "Tam Gün", setSheetState),
                             child: Container(
                               padding: const EdgeInsets.symmetric(
-                                horizontal: 10,
-                                vertical: 6,
+                                horizontal: 8,
+                                vertical: 5,
                               ),
                               decoration: BoxDecoration(
                                 color: Colors.green.withValues(alpha: 0.15),
@@ -991,8 +1159,37 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                               child: const Text(
                                 "Tam",
                                 style: TextStyle(
-                                  fontSize: 12,
+                                  fontSize: 11,
                                   color: Colors.green,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                            ),
+                          ),
+                          const SizedBox(width: 5),
+                          InkWell(
+                            onTap:
+                                () => topluSecim(
+                                  liste,
+                                  mesaiMetni(seciliMesaiCarpani),
+                                  setSheetState,
+                                ),
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 5,
+                              ),
+                              decoration: BoxDecoration(
+                                color: const Color(
+                                  0xFF8B5CF6,
+                                ).withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Text(
+                                "Mesai (${formatCarpan(seciliMesaiCarpani)}x)",
+                                style: const TextStyle(
+                                  fontSize: 11,
+                                  color: Color(0xFF8B5CF6),
                                   fontWeight: FontWeight.w600,
                                 ),
                               ),
@@ -1065,6 +1262,262 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                           : const Color(0xFF516772),
                                 ),
                                 onPressed: () => Navigator.pop(context),
+                              ),
+                            ],
+                          ),
+                        ),
+                        // MESAI CARPANI AYARLAMA KARTI
+                        Container(
+                          margin: const EdgeInsets.fromLTRB(20, 0, 20, 10),
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 10,
+                          ),
+                          decoration: BoxDecoration(
+                            color:
+                                isDark
+                                    ? const Color(
+                                      0xFF1E1B2E,
+                                    ).withValues(alpha: 0.70)
+                                    : const Color(0xFFF5F3FF),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF8B5CF6,
+                              ).withValues(alpha: isDark ? 0.30 : 0.22),
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Row(
+                                mainAxisAlignment:
+                                    MainAxisAlignment.spaceBetween,
+                                children: [
+                                  Row(
+                                    children: [
+                                      Container(
+                                        padding: const EdgeInsets.all(5),
+                                        decoration: BoxDecoration(
+                                          color: const Color(
+                                            0xFF8B5CF6,
+                                          ).withValues(alpha: 0.20),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                        ),
+                                        child: const Icon(
+                                          Icons.more_time_rounded,
+                                          size: 16,
+                                          color: Color(0xFF8B5CF6),
+                                        ),
+                                      ),
+                                      const SizedBox(width: 8),
+                                      Text(
+                                        "Mesai Çarpanı",
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          fontWeight: FontWeight.w700,
+                                          color:
+                                              isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF1E1B2E),
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 9,
+                                      vertical: 3,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFF8B5CF6),
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      "${formatCarpan(seciliMesaiCarpani)}x",
+                                      style: const TextStyle(
+                                        fontSize: 12,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.white,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 8),
+                              SingleChildScrollView(
+                                scrollDirection: Axis.horizontal,
+                                child: Row(
+                                  children: [
+                                    ...[1.25, 1.5, 1.75, 2.0].map((carpan) {
+                                      final bool secili =
+                                          seciliMesaiCarpani == carpan;
+                                      return Padding(
+                                        padding: const EdgeInsets.only(
+                                          right: 6,
+                                        ),
+                                        child: InkWell(
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          onTap:
+                                              () =>
+                                                  guncelleMesaiCarpani(carpan),
+                                          child: Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 11,
+                                              vertical: 5,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color:
+                                                  secili
+                                                      ? const Color(0xFF8B5CF6)
+                                                      : (isDark
+                                                          ? Colors.white
+                                                              .withValues(
+                                                                alpha: 0.05,
+                                                              )
+                                                          : Colors.white),
+                                              borderRadius:
+                                                  BorderRadius.circular(8),
+                                              border: Border.all(
+                                                color:
+                                                    secili
+                                                        ? const Color(
+                                                          0xFF8B5CF6,
+                                                        )
+                                                        : (isDark
+                                                            ? Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.1,
+                                                                )
+                                                            : const Color(
+                                                              0xFFDDD6FE,
+                                                            )),
+                                              ),
+                                            ),
+                                            child: Text(
+                                              "${formatCarpan(carpan)}x",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight:
+                                                    secili
+                                                        ? FontWeight.bold
+                                                        : FontWeight.w600,
+                                                color:
+                                                    secili
+                                                        ? Colors.white
+                                                        : (isDark
+                                                            ? Colors.white70
+                                                            : const Color(
+                                                              0xFF6D28D9,
+                                                            )),
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      );
+                                    }),
+                                    InkWell(
+                                      borderRadius: BorderRadius.circular(8),
+                                      onTap: () => ozelCarpanSor(),
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 10,
+                                          vertical: 5,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              (![1.25, 1.5, 1.75, 2.0].contains(
+                                                    seciliMesaiCarpani,
+                                                  ))
+                                                  ? const Color(0xFF8B5CF6)
+                                                  : (isDark
+                                                      ? Colors.white.withValues(
+                                                        alpha: 0.05,
+                                                      )
+                                                      : Colors.white),
+                                          borderRadius: BorderRadius.circular(
+                                            8,
+                                          ),
+                                          border: Border.all(
+                                            color:
+                                                (![
+                                                      1.25,
+                                                      1.5,
+                                                      1.75,
+                                                      2.0,
+                                                    ].contains(
+                                                      seciliMesaiCarpani,
+                                                    ))
+                                                    ? const Color(0xFF8B5CF6)
+                                                    : (isDark
+                                                        ? Colors.white
+                                                            .withValues(
+                                                              alpha: 0.1,
+                                                            )
+                                                        : const Color(
+                                                          0xFFDDD6FE,
+                                                        )),
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Icon(
+                                              Icons.tune_rounded,
+                                              size: 13,
+                                              color:
+                                                  (![
+                                                        1.25,
+                                                        1.5,
+                                                        1.75,
+                                                        2.0,
+                                                      ].contains(
+                                                        seciliMesaiCarpani,
+                                                      ))
+                                                      ? Colors.white
+                                                      : (isDark
+                                                          ? Colors.white70
+                                                          : const Color(
+                                                            0xFF6D28D9,
+                                                          )),
+                                            ),
+                                            const SizedBox(width: 4),
+                                            Text(
+                                              (![1.25, 1.5, 1.75, 2.0].contains(
+                                                    seciliMesaiCarpani,
+                                                  ))
+                                                  ? "${formatCarpan(seciliMesaiCarpani)}x"
+                                                  : "Özel...",
+                                              style: TextStyle(
+                                                fontSize: 12,
+                                                fontWeight: FontWeight.w600,
+                                                color:
+                                                    (![
+                                                          1.25,
+                                                          1.5,
+                                                          1.75,
+                                                          2.0,
+                                                        ].contains(
+                                                          seciliMesaiCarpani,
+                                                        ))
+                                                        ? Colors.white
+                                                        : (isDark
+                                                            ? Colors.white70
+                                                            : const Color(
+                                                              0xFF6D28D9,
+                                                            )),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
                               ),
                             ],
                           ),
@@ -2723,44 +3176,98 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                     ),
                                                   ),
                                                   const SizedBox(height: 3),
-                                                  Container(
-                                                    padding:
-                                                        const EdgeInsets.symmetric(
-                                                          horizontal: 7,
-                                                          vertical: 2,
+                                                  InkWell(
+                                                    borderRadius:
+                                                        BorderRadius.circular(
+                                                          6,
                                                         ),
-                                                    decoration: BoxDecoration(
-                                                      color:
-                                                          c.durum == "Tam Gün"
-                                                              ? const Color(
-                                                                0xFF10B981,
-                                                              ).withValues(
-                                                                alpha: 0.18,
-                                                              )
-                                                              : const Color(
-                                                                0xFFF59E0B,
-                                                              ).withValues(
-                                                                alpha: 0.18,
-                                                              ),
-                                                      borderRadius:
-                                                          BorderRadius.circular(
-                                                            6,
+                                                    onTap: () {
+                                                      setModalState(() {
+                                                        degisiklikVar = true;
+                                                        final idx = rapor
+                                                            .calisanlar
+                                                            .indexOf(c);
+                                                        if (idx != -1) {
+                                                          String yeniDurum;
+                                                          if (c.durum.contains(
+                                                            'Tam',
+                                                          )) {
+                                                            yeniDurum =
+                                                                'Mesai (1.5x)';
+                                                          } else if (c.durum
+                                                              .contains(
+                                                                'Mesai',
+                                                              )) {
+                                                            yeniDurum =
+                                                                'Yarım Gün';
+                                                          } else {
+                                                            yeniDurum =
+                                                                'Tam Gün';
+                                                          }
+                                                          rapor.calisanlar[idx] =
+                                                              GunlukCalisma(
+                                                                isci: c.isci,
+                                                                durum:
+                                                                    yeniDurum,
+                                                              );
+                                                        }
+                                                      });
+                                                    },
+                                                    child: Container(
+                                                      padding:
+                                                          const EdgeInsets.symmetric(
+                                                            horizontal: 7,
+                                                            vertical: 2,
                                                           ),
-                                                    ),
-                                                    child: Text(
-                                                      c.durum,
-                                                      style: TextStyle(
-                                                        fontSize: 10.5,
-                                                        color:
-                                                            c.durum == "Tam Gün"
+                                                      decoration: BoxDecoration(
+                                                        color: (c.durum
+                                                                    .contains(
+                                                                      'Mesai',
+                                                                    )
                                                                 ? const Color(
-                                                                  0xFF10B981,
+                                                                  0xFF8B5CF6,
                                                                 )
-                                                                : const Color(
-                                                                  0xFFF59E0B,
-                                                                ),
-                                                        fontWeight:
-                                                            FontWeight.w700,
+                                                                : (c.durum
+                                                                        .contains(
+                                                                          'Tam',
+                                                                        )
+                                                                    ? const Color(
+                                                                      0xFF10B981,
+                                                                    )
+                                                                    : const Color(
+                                                                      0xFFF59E0B,
+                                                                    )))
+                                                            .withValues(
+                                                              alpha: 0.18,
+                                                            ),
+                                                        borderRadius:
+                                                            BorderRadius.circular(
+                                                              6,
+                                                            ),
+                                                      ),
+                                                      child: Text(
+                                                        c.durum,
+                                                        style: TextStyle(
+                                                          fontSize: 10.5,
+                                                          color:
+                                                              c.durum.contains(
+                                                                    'Mesai',
+                                                                  )
+                                                                  ? const Color(
+                                                                    0xFF8B5CF6,
+                                                                  )
+                                                                  : (c.durum.contains(
+                                                                        'Tam',
+                                                                      )
+                                                                      ? const Color(
+                                                                        0xFF10B981,
+                                                                      )
+                                                                      : const Color(
+                                                                        0xFFF59E0B,
+                                                                      )),
+                                                          fontWeight:
+                                                              FontWeight.w700,
+                                                        ),
                                                       ),
                                                     ),
                                                   ),

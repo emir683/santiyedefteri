@@ -67,7 +67,8 @@ class AIService {
 
     // ── SONRA: Genel soru → Rate limit kontrolü → Gemini API ──
     if (_geminiEnabled) {
-      final checker = _rateLimitChecker ?? (() => AiRateLimiter.checkAndIncrement());
+      final checker =
+          _rateLimitChecker ?? (() => AiRateLimiter.checkAndIncrement());
       final limitResult = await checker();
       if (!limitResult.allowed) {
         if (limitResult.reason == 'login_required') {
@@ -162,10 +163,12 @@ class AIService {
       'eleman ekle',
       'yeni isci',
       'yeni personel',
-      'ekibime ekle'
+      'ekibime ekle',
     ];
-    final bool isWorkerAdd = addWorkerKeywords
-            .any((k) => norm.contains(AkilliSesAyristirici.normalize(k))) ||
+    final bool isWorkerAdd =
+        addWorkerKeywords.any(
+          (k) => norm.contains(AkilliSesAyristirici.normalize(k)),
+        ) ||
         (norm.contains('ekle') &&
             (norm.contains('usta') ||
                 norm.contains('yevmiye') ||
@@ -175,32 +178,37 @@ class AIService {
       String name = '';
       double wage = 0.0;
 
-      final wageMatch =
-          RegExp(r'(\d+[\.,]?\d*)\s*(tl|lira|₺|yevmiye)', caseSensitive: false)
-              .firstMatch(text);
+      final wageMatch = RegExp(
+        r'(\d+[\.,]?\d*)\s*(tl|lira|₺|yevmiye)',
+        caseSensitive: false,
+      ).firstMatch(text);
       if (wageMatch != null) {
-        wage =
-            double.tryParse(wageMatch.group(1)!.replaceAll(',', '.')) ?? 0.0;
+        wage = double.tryParse(wageMatch.group(1)!.replaceAll(',', '.')) ?? 0.0;
       }
 
-      final isciTuru = (norm.contains('misafir') ||
-              norm.contains('taseron') ||
-              norm.contains('gunlukcu'))
-          ? 'Misafir'
-          : 'Çekirdek Ekip';
+      final isciTuru =
+          (norm.contains('misafir') ||
+                  norm.contains('taseron') ||
+                  norm.contains('gunlukcu'))
+              ? 'Misafir'
+              : 'Çekirdek Ekip';
 
-      final cleaned = userPrompt
-          .replaceAll(
-              RegExp(
+      final cleaned =
+          userPrompt
+              .replaceAll(
+                RegExp(
                   r'(yeni|işçi|isci|personel|eleman|olarak|ekle|usta|ustası|kalfa|çırak|yevmiye|maaş|tl|lira|₺|\d+)',
-                  caseSensitive: false),
-              ' ')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
+                  caseSensitive: false,
+                ),
+                ' ',
+              )
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
       if (cleaned.isNotEmpty) {
         name = cleaned.split(' ').first;
         if (name.isNotEmpty) {
-          name = name[0].toUpperCase() +
+          name =
+              name[0].toUpperCase() +
               (name.length > 1 ? name.substring(1) : '');
         }
       }
@@ -231,7 +239,8 @@ class AIService {
     }
 
     // 2. Avans Kontrolü (addPayment - VerilenAvans)
-    final bool isPayment = (norm.contains('avans') &&
+    final bool isPayment =
+        (norm.contains('avans') &&
             (norm.contains('ver') ||
                 norm.contains('yaz') ||
                 norm.contains('ekle') ||
@@ -289,15 +298,19 @@ class AIService {
     // 3. Şantiye Ekleme Kontrolü (addSite)
     final bool isSiteAdd =
         (norm.contains('santiye') || norm.contains('proje')) &&
-            norm.contains('ekle');
+        norm.contains('ekle');
     if (isSiteAdd) {
-      String siteName = userPrompt
-          .replaceAll(
-              RegExp(r'(yeni|şantiye|santiye|proje|ekle)',
-                  caseSensitive: false),
-              ' ')
-          .replaceAll(RegExp(r'\s+'), ' ')
-          .trim();
+      String siteName =
+          userPrompt
+              .replaceAll(
+                RegExp(
+                  r'(yeni|şantiye|santiye|proje|ekle)',
+                  caseSensitive: false,
+                ),
+                ' ',
+              )
+              .replaceAll(RegExp(r'\s+'), ' ')
+              .trim();
       if (siteName.isEmpty) siteName = 'Yeni Şantiye';
 
       final card = AIActionCardData(
@@ -325,8 +338,11 @@ class AIService {
     }
 
     // 4. İşçi Aylık Özeti Kontrolü (workerMonthlySummary)
-    final workerTargetMatch = isciler.any((w) => norm.contains(AkilliSesAyristirici.normalize(w.ad)));
-    final bool isWorkerWord = norm.contains('isci') ||
+    final workerTargetMatch = isciler.any(
+      (w) => norm.contains(AkilliSesAyristirici.normalize(w.ad)),
+    );
+    final bool isWorkerWord =
+        norm.contains('isci') ||
         norm.contains('işçi') ||
         norm.contains('personel') ||
         norm.contains('calisan') ||
@@ -339,7 +355,8 @@ class AIService {
         norm.contains('yevmiyeci') ||
         workerTargetMatch;
 
-    final bool isWorkerSummaryKeywords = norm.contains('ozet') ||
+    final bool isWorkerSummaryKeywords =
+        norm.contains('ozet') ||
         norm.contains('özet') ||
         norm.contains('aylik') ||
         norm.contains('aylık') ||
@@ -365,9 +382,22 @@ class AIService {
         norm.contains('kalan para') ||
         norm.contains('avansi ne kadar') ||
         norm.contains('avansı ne kadar') ||
-        (norm.contains('avans') && !norm.contains('verdim') && !norm.contains('ver') && !norm.contains('yaz')) ||
-        (norm.contains('puantaj') && (norm.contains('goster') || norm.contains('nasil') || norm.contains('durum') || norm.contains('bu ay') || norm.contains('ne') || norm.contains('ay'))) ||
-        (norm.contains('calisti') && (norm.contains('kac') || norm.contains('kaç') || norm.contains('bu ay') || norm.contains('ne kadar')));
+        (norm.contains('avans') &&
+            !norm.contains('verdim') &&
+            !norm.contains('ver') &&
+            !norm.contains('yaz')) ||
+        (norm.contains('puantaj') &&
+            (norm.contains('goster') ||
+                norm.contains('nasil') ||
+                norm.contains('durum') ||
+                norm.contains('bu ay') ||
+                norm.contains('ne') ||
+                norm.contains('ay'))) ||
+        (norm.contains('calisti') &&
+            (norm.contains('kac') ||
+                norm.contains('kaç') ||
+                norm.contains('bu ay') ||
+                norm.contains('ne kadar')));
 
     final bool isWorkerSummary = isWorkerWord && isWorkerSummaryKeywords;
 
@@ -394,7 +424,7 @@ class AIService {
         'Eylül',
         'Ekim',
         'Kasım',
-        'Aralık'
+        'Aralık',
       ];
       final donem = '${aylar[now.month]} ${now.year}';
 
@@ -407,25 +437,28 @@ class AIService {
 
       int tamGun = 0;
       int yarimGun = 0;
+      double toplamGun = 0.0;
       for (final r in allReports) {
         for (final c in r.calisanlar) {
-          if (c.isci.ad.trim().toLowerCase() == targetWorker.ad.trim().toLowerCase() ||
+          if (c.isci.ad.trim().toLowerCase() ==
+                  targetWorker.ad.trim().toLowerCase() ||
               (targetWorker.id != null && c.isci.id == targetWorker.id)) {
-            if (c.durum == 'Tam Gün') {
+            final carpan = parseDurumCarpani(c.durum);
+            toplamGun += carpan;
+            if (c.durum.contains('Tam') || c.durum.contains('Mesai')) {
               tamGun++;
-            } else if (c.durum == 'Yarım Gün') {
+            } else if (c.durum.contains('Yar')) {
               yarimGun++;
             }
           }
         }
       }
-
-      final toplamGun = tamGun + (yarimGun * 0.5);
       final toplamHakedis = toplamGun * targetWorker.gunlukMaas;
 
       double toplamAvans = 0.0;
       for (final a in allAdvances) {
-        if (a.isci.ad.trim().toLowerCase() == targetWorker.ad.trim().toLowerCase() ||
+        if (a.isci.ad.trim().toLowerCase() ==
+                targetWorker.ad.trim().toLowerCase() ||
             (targetWorker.id != null && a.isci.id == targetWorker.id)) {
           toplamAvans += a.miktar;
         }
@@ -464,15 +497,19 @@ class AIService {
     }
 
     // 5. Şantiye Aylık Özeti Kontrolü (siteMonthlySummary)
-    final siteTargetMatch = santiyeler.any((s) => norm.contains(AkilliSesAyristirici.normalize(s.ad)));
-    final bool isSiteWord = norm.contains('santiye') ||
+    final siteTargetMatch = santiyeler.any(
+      (s) => norm.contains(AkilliSesAyristirici.normalize(s.ad)),
+    );
+    final bool isSiteWord =
+        norm.contains('santiye') ||
         norm.contains('şantiye') ||
         norm.contains('proje') ||
         norm.contains('santiyeler') ||
         norm.contains('şantiyeler') ||
         siteTargetMatch;
 
-    final bool isSiteSummaryKeywords = norm.contains('ozet') ||
+    final bool isSiteSummaryKeywords =
+        norm.contains('ozet') ||
         norm.contains('özet') ||
         norm.contains('aylik') ||
         norm.contains('aylık') ||
@@ -526,7 +563,7 @@ class AIService {
         'Eylül',
         'Ekim',
         'Kasım',
-        'Aralık'
+        'Aralık',
       ];
       final donem = '${aylar[now.month]} ${now.year}';
 
@@ -537,16 +574,22 @@ class AIService {
         allPayments = await servisi.getAylikOdemelerOnce(teamId, now);
       }
 
-      final siteReports = allReports
-          .where((r) =>
-              r.santiyeAdi.trim().toLowerCase() ==
-              targetSite.ad.trim().toLowerCase())
-          .toList();
-      final sitePayments = allPayments
-          .where((p) =>
-              p.santiyeAdi.trim().toLowerCase() ==
-              targetSite.ad.trim().toLowerCase())
-          .toList();
+      final siteReports =
+          allReports
+              .where(
+                (r) =>
+                    r.santiyeAdi.trim().toLowerCase() ==
+                    targetSite.ad.trim().toLowerCase(),
+              )
+              .toList();
+      final sitePayments =
+          allPayments
+              .where(
+                (p) =>
+                    p.santiyeAdi.trim().toLowerCase() ==
+                    targetSite.ad.trim().toLowerCase(),
+              )
+              .toList();
 
       double toplamYemek = 0.0;
       double toplamBenzin = 0.0;
@@ -559,13 +602,9 @@ class AIService {
         toplamBenzin += r.benzinGideri;
         toplamEkMasraf += r.ekMasraflar;
         for (final c in r.calisanlar) {
-          if (c.durum == 'Tam Gün') {
-            toplamYevmiyeCount += 1.0;
-            toplamIscilikMaliyeti += c.isci.gunlukMaas;
-          } else if (c.durum == 'Yarım Gün') {
-            toplamYevmiyeCount += 0.5;
-            toplamIscilikMaliyeti += (c.isci.gunlukMaas * 0.5);
-          }
+          final carpan = parseDurumCarpani(c.durum);
+          toplamYevmiyeCount += carpan;
+          toplamIscilikMaliyeti += (c.isci.gunlukMaas * carpan);
         }
       }
 
@@ -608,7 +647,8 @@ class AIService {
     }
 
     // 6. Günlük Rapor / Puantaj Kontrolü (submitDailyLog)
-    final bool isDailyLog = norm.contains('puantaj') ||
+    final bool isDailyLog =
+        norm.contains('puantaj') ||
         norm.contains('rapor') ||
         norm.contains('calisti') ||
         norm.contains('gelmedi') ||
@@ -616,7 +656,10 @@ class AIService {
         (norm.contains('ekip') && norm.contains('tam'));
 
     if (isDailyLog) {
-      Santiye targetSite = santiyeler.isNotEmpty ? santiyeler.first : Santiye(ad: 'Merkez Şantiye');
+      Santiye targetSite =
+          santiyeler.isNotEmpty
+              ? santiyeler.first
+              : Santiye(ad: 'Merkez Şantiye');
       for (final s in santiyeler) {
         if (norm.contains(AkilliSesAyristirici.normalize(s.ad))) {
           targetSite = s;
@@ -643,33 +686,43 @@ class AIService {
       double benzin = 0;
       double ekMasraf = 0;
 
-      final yemekMatch = RegExp(r'(\d+[\.,]?\d*)\s*(tl|lira|₺)?\s*(yemek)',
-                  caseSensitive: false)
-              .firstMatch(text) ??
-          RegExp(r'(yemek)\s*(\d+[\.,]?\d*)', caseSensitive: false)
-              .firstMatch(text);
+      final yemekMatch =
+          RegExp(
+            r'(\d+[\.,]?\d*)\s*(tl|lira|₺)?\s*(yemek)',
+            caseSensitive: false,
+          ).firstMatch(text) ??
+          RegExp(
+            r'(yemek)\s*(\d+[\.,]?\d*)',
+            caseSensitive: false,
+          ).firstMatch(text);
       if (yemekMatch != null) {
-        yemek = double.tryParse(
-                (yemekMatch.group(1) == 'yemek'
-                        ? yemekMatch.group(2)
-                        : yemekMatch.group(1))!
-                    .replaceAll(',', '.')) ??
+        yemek =
+            double.tryParse(
+              (yemekMatch.group(1) == 'yemek'
+                      ? yemekMatch.group(2)
+                      : yemekMatch.group(1))!
+                  .replaceAll(',', '.'),
+            ) ??
             0;
       }
 
-      final benzinMatch = RegExp(
-                  r'(\d+[\.,]?\d*)\s*(tl|lira|₺)?\s*(benzin|yakıt|mazot)',
-                  caseSensitive: false)
-              .firstMatch(text) ??
-          RegExp(r'(benzin|yakıt|mazot)\s*(\d+[\.,]?\d*)',
-                  caseSensitive: false)
-              .firstMatch(text);
+      final benzinMatch =
+          RegExp(
+            r'(\d+[\.,]?\d*)\s*(tl|lira|₺)?\s*(benzin|yakıt|mazot)',
+            caseSensitive: false,
+          ).firstMatch(text) ??
+          RegExp(
+            r'(benzin|yakıt|mazot)\s*(\d+[\.,]?\d*)',
+            caseSensitive: false,
+          ).firstMatch(text);
       if (benzinMatch != null) {
-        benzin = double.tryParse(
-                (['benzin', 'yakıt', 'mazot'].contains(benzinMatch.group(1))
-                        ? benzinMatch.group(2)
-                        : benzinMatch.group(1))!
-                    .replaceAll(',', '.')) ??
+        benzin =
+            double.tryParse(
+              (['benzin', 'yakıt', 'mazot'].contains(benzinMatch.group(1))
+                      ? benzinMatch.group(2)
+                      : benzinMatch.group(1))!
+                  .replaceAll(',', '.'),
+            ) ??
             0;
       }
 
@@ -965,7 +1018,13 @@ class AIService {
       );
     }
 
-    if (_m(text, ['yeni işçi', 'işçi ekle', 'yeni isci', 'isci ekle', 'personel ekle'])) {
+    if (_m(text, [
+      'yeni işçi',
+      'işçi ekle',
+      'yeni isci',
+      'isci ekle',
+      'personel ekle',
+    ])) {
       return AIIntent(
         action: 'add_worker',
         message: '👷 Yeni işçi ekleme onay kartınız hazırlandı.',
@@ -1048,7 +1107,8 @@ class AIService {
         final response = await http
             .post(
               Uri.parse(
-                  'https://generativelanguage.googleapis.com/v1beta/models/$m:generateContent?key=$_apiKey'),
+                'https://generativelanguage.googleapis.com/v1beta/models/$m:generateContent?key=$_apiKey',
+              ),
               headers: {'Content-Type': 'application/json'},
               body: body,
             )
@@ -1061,11 +1121,7 @@ class AIService {
                   as String? ??
               '';
           if (text.isNotEmpty) {
-            return AIIntent(
-              action: 'chat_response',
-              message: text,
-              params: {},
-            );
+            return AIIntent(action: 'chat_response', message: text, params: {});
           }
         }
       } catch (_) {
@@ -1081,7 +1137,13 @@ class AIService {
   // ═══════════════════════════════════════════════════════
   static AIIntent _localFallback(String original, {bool isError = false}) {
     final text = original.toLowerCase();
-    if (_m(text, ['merhaba', 'selam', 'günaydın', 'iyi günler', 'kolay gelsin'])) {
+    if (_m(text, [
+      'merhaba',
+      'selam',
+      'günaydın',
+      'iyi günler',
+      'kolay gelsin',
+    ])) {
       return AIIntent(
         action: 'chat_response',
         message:

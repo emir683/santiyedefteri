@@ -218,11 +218,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
         ),
       ),
       child: Center(
-        child: Icon(
-          icon,
-          color: accentColor,
-          size: compact ? 18 : 24,
-        ),
+        child: Icon(icon, color: accentColor, size: compact ? 18 : 24),
       ),
     );
   }
@@ -417,7 +413,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                               ? Colors.white
                                               : Colors.black87,
                                     ),
-                                    onPressed: () => Navigator.of(context).pop(),
+                                    onPressed:
+                                        () => Navigator.of(context).pop(),
                                   ),
                                 ],
                               ),
@@ -523,12 +520,12 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                       center: Alignment.bottomCenter,
                       radius: 0.92,
                       colors: [
-                        const Color(0xFF5EEAD4).withValues(
-                          alpha: isDark ? 0.14 : 0.18,
-                        ),
-                        const Color(0xFFB6F5ED).withValues(
-                          alpha: isDark ? 0.08 : 0.10,
-                        ),
+                        const Color(
+                          0xFF5EEAD4,
+                        ).withValues(alpha: isDark ? 0.14 : 0.18),
+                        const Color(
+                          0xFFB6F5ED,
+                        ).withValues(alpha: isDark ? 0.08 : 0.10),
                         Colors.transparent,
                       ],
                     ),
@@ -600,9 +597,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                     for (final calisma in rapor.calisanlar) {
                       final isciAd = calisma.isci.ad;
                       buHaftaCalisanlar.add(isciAd);
-                      double carpan = 1.0;
-                      if (calisma.durum.contains('Yarım')) carpan = 0.5;
-                      if (calisma.durum.contains('Mesai')) carpan = 1.5;
+                      final carpan = parseDurumCarpani(calisma.durum);
                       toplamYevmiye += carpan;
                       isciYevmiyeleri[isciAd] =
                           (isciYevmiyeleri[isciAd] ?? 0) + carpan;
@@ -1340,10 +1335,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
         decoration: BoxDecoration(
-          color:
-              isSelected
-                  ? const Color(0xFF0F7C86)
-                  : Colors.transparent,
+          color: isSelected ? const Color(0xFF0F7C86) : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           boxShadow:
               isSelected

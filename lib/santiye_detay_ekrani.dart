@@ -109,7 +109,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
         preferSoftLightBackground: true,
         child: Column(
           children: [
-            SizedBox(height: FloatingLiquidAppBar.topPadding(context, extra: 0)),
+            SizedBox(
+              height: FloatingLiquidAppBar.topPadding(context, extra: 0),
+            ),
             Padding(
               padding: const EdgeInsets.all(16.0),
               child: Container(
@@ -137,10 +139,11 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                       ),
                       onPressed:
                           () => setState(
-                            () => _gosterilenAy = DateTime(
-                              _gosterilenAy.year,
-                              _gosterilenAy.month - 1,
-                            ),
+                            () =>
+                                _gosterilenAy = DateTime(
+                                  _gosterilenAy.year,
+                                  _gosterilenAy.month - 1,
+                                ),
                           ),
                     ),
                     Text(
@@ -157,10 +160,11 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                       ),
                       onPressed:
                           () => setState(
-                            () => _gosterilenAy = DateTime(
-                              _gosterilenAy.year,
-                              _gosterilenAy.month + 1,
-                            ),
+                            () =>
+                                _gosterilenAy = DateTime(
+                                  _gosterilenAy.year,
+                                  _gosterilenAy.month + 1,
+                                ),
                           ),
                     ),
                   ],
@@ -169,7 +173,11 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
             ),
             Expanded(
               child: StreamBuilder<List<GunlukSantiyeRaporu>>(
-                stream: servisi.getRaporlarStream(widget.teamId, baslangic, bitis),
+                stream: servisi.getRaporlarStream(
+                  widget.teamId,
+                  baslangic,
+                  bitis,
+                ),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
                     return const Center(child: CircularProgressIndicator());
@@ -205,12 +213,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                   double toplamYevmiyeSayisi = 0;
                   for (final rapor in raporlar) {
                     for (final calisma in rapor.calisanlar) {
-                      final durum = calisma.durum.toLowerCase();
-                      if (durum.contains('tam')) {
-                        toplamYevmiyeSayisi += 1;
-                      } else if (durum.contains('yar')) {
-                        toplamYevmiyeSayisi += 0.5;
-                      }
+                      toplamYevmiyeSayisi += parseDurumCarpani(calisma.durum);
                     }
                   }
 
@@ -264,10 +267,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                               ),
                               _buildSummaryItem(
                                 "Yevmiye Say\u0131s\u0131",
-                                toplamYevmiyeSayisi
-                                    .toStringAsFixed(
-                                      toplamYevmiyeSayisi % 1 == 0 ? 0 : 1,
-                                    ),
+                                toplamYevmiyeSayisi.toStringAsFixed(
+                                  toplamYevmiyeSayisi % 1 == 0 ? 0 : 1,
+                                ),
                                 isDark
                                     ? Colors.lightGreenAccent
                                     : const Color(0xFF1B7F4D),
@@ -275,9 +277,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                               _buildSummaryItem(
                                 "\u00c7al\u0131\u015f\u0131lan G\u00fcn",
                                 "$toplamCalisilanGun",
-                                isDark
-                                    ? Colors.white
-                                    : const Color(0xFF0F2A44),
+                                isDark ? Colors.white : const Color(0xFF0F2A44),
                               ),
                             ],
                           ),
@@ -325,8 +325,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                   donem: donemStr,
                                   raporlar: raporlar,
                                   toplamMasrafGenel: toplamMasrafGenel,
-                                  toplamYevmiyeSayisi:
-                                      toplamYevmiyeSayisi,
+                                  toplamYevmiyeSayisi: toplamYevmiyeSayisi,
                                   toplamCalisilanGun: toplamCalisilanGun,
                                 );
                                 _paylasimMenusunuGoster(
@@ -344,8 +343,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                         toplamMasrafGenel: toplamMasrafGenel,
                                         toplamYevmiyeSayisi:
                                             toplamYevmiyeSayisi,
-                                        toplamCalisilanGun:
-                                            toplamCalisilanGun,
+                                        toplamCalisilanGun: toplamCalisilanGun,
                                       ),
                                 );
                               },
@@ -360,7 +358,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                     Container(
                                       padding: const EdgeInsets.all(6),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         shape: BoxShape.circle,
                                       ),
                                       child: const Icon(
@@ -392,10 +392,14 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                         vertical: 2.5,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.2),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.2,
+                                        ),
                                         borderRadius: BorderRadius.circular(12),
                                         border: Border.all(
-                                          color: Colors.white.withValues(alpha: 0.3),
+                                          color: Colors.white.withValues(
+                                            alpha: 0.3,
+                                          ),
                                           width: 0.8,
                                         ),
                                       ),
@@ -426,157 +430,168 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           ),
                           itemCount: raporlar.length,
                           itemBuilder: (context, index) {
-                      final rapor = raporlar[index];
-                      final toplamMasraf =
-                          rapor.benzinGideri +
-                          rapor.yemekGideri +
-                          rapor.ekMasraflar;
+                            final rapor = raporlar[index];
+                            final toplamMasraf =
+                                rapor.benzinGideri +
+                                rapor.yemekGideri +
+                                rapor.ekMasraflar;
 
-                      final masrafDetaySatirlari = <Widget>[
-                        if (rapor.benzinGideri > 0)
-                          ListTile(
-                            dense: true,
-                            leading: const Icon(
-                              Icons.local_gas_station,
-                              size: 18,
-                              color: Colors.redAccent,
-                            ),
-                            title: Text(
-                              "Benzin: ${rapor.benzinGideri.toStringAsFixed(2)} TL",
-                            ),
-                            subtitle: Text(
-                              "Ödeyen: ${rapor.benzinGideriIsciAdi?.isNotEmpty == true ? rapor.benzinGideriIsciAdi : 'Belirtilmedi'}",
-                            ),
-                          ),
-                        if (rapor.yemekGideri > 0)
-                          ListTile(
-                            dense: true,
-                            leading: const Icon(
-                              Icons.restaurant,
-                              size: 18,
-                              color: Colors.redAccent,
-                            ),
-                            title: Text(
-                              "Yemek: ${rapor.yemekGideri.toStringAsFixed(2)} TL",
-                            ),
-                            subtitle: Text(
-                              "Ödeyen: ${rapor.yemekGideriIsciAdi?.isNotEmpty == true ? rapor.yemekGideriIsciAdi : 'Belirtilmedi'}",
-                            ),
-                          ),
-                        if (rapor.ekMasraflar > 0)
-                          ListTile(
-                            dense: true,
-                            leading: const Icon(
-                              Icons.receipt_long,
-                              size: 18,
-                              color: Colors.redAccent,
-                            ),
-                            title: Text(
-                              "Ek Masraf: ${rapor.ekMasraflar.toStringAsFixed(2)} TL",
-                            ),
-                            subtitle: Text(
-                              "Ödeyen: ${rapor.ekMasraflarIsciAdi?.isNotEmpty == true ? rapor.ekMasraflarIsciAdi : 'Belirtilmedi'}",
-                            ),
-                          ),
-                      ];
-
-                      return Card(
-                        elevation: 3,
-                        margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(
-                            color:
-                                isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : const Color(0xFFD8EAF0),
-                          ),
-                        ),
-                        color:
-                            isDark
-                                ? const Color(0xFF101317)
-                                : const Color(0xFFF7FBFD),
-                        child: ExpansionTile(
-                          leading: Container(
-                            padding: const EdgeInsets.all(8),
-                            decoration: BoxDecoration(
-                              color: _kBrandTeal.withValues(alpha: 0.14),
-                              borderRadius: BorderRadius.circular(8),
-                            ),
-                            child: Text(
-                              DateFormat('dd').format(rapor.tarih),
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: _kBrandTealDark,
-                              ),
-                            ),
-                          ),
-                          title: Text(
-                            DateFormat.EEEE('tr_TR').format(rapor.tarih),
-                            style: const TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            "${rapor.calisanlar.length} Çalışan • ${toplamMasraf.toStringAsFixed(2)} TL Masraf",
-                            style: TextStyle(fontSize: 12, color: Colors.grey[600]),
-                          ),
-                          children: [
-                            const Divider(height: 1),
-                            ...rapor.calisanlar.map(
-                              (c) => ListTile(
-                                dense: true,
-                                leading: const Icon(
-                                  Icons.person_outline,
-                                  size: 18,
-                                ),
-                                title: Text(c.isci.ad),
-                                trailing: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 8,
-                                    vertical: 2,
+                            final masrafDetaySatirlari = <Widget>[
+                              if (rapor.benzinGideri > 0)
+                                ListTile(
+                                  dense: true,
+                                  leading: const Icon(
+                                    Icons.local_gas_station,
+                                    size: 18,
+                                    color: Colors.redAccent,
                                   ),
+                                  title: Text(
+                                    "Benzin: ${rapor.benzinGideri.toStringAsFixed(2)} TL",
+                                  ),
+                                  subtitle: Text(
+                                    "Ödeyen: ${rapor.benzinGideriIsciAdi?.isNotEmpty == true ? rapor.benzinGideriIsciAdi : 'Belirtilmedi'}",
+                                  ),
+                                ),
+                              if (rapor.yemekGideri > 0)
+                                ListTile(
+                                  dense: true,
+                                  leading: const Icon(
+                                    Icons.restaurant,
+                                    size: 18,
+                                    color: Colors.redAccent,
+                                  ),
+                                  title: Text(
+                                    "Yemek: ${rapor.yemekGideri.toStringAsFixed(2)} TL",
+                                  ),
+                                  subtitle: Text(
+                                    "Ödeyen: ${rapor.yemekGideriIsciAdi?.isNotEmpty == true ? rapor.yemekGideriIsciAdi : 'Belirtilmedi'}",
+                                  ),
+                                ),
+                              if (rapor.ekMasraflar > 0)
+                                ListTile(
+                                  dense: true,
+                                  leading: const Icon(
+                                    Icons.receipt_long,
+                                    size: 18,
+                                    color: Colors.redAccent,
+                                  ),
+                                  title: Text(
+                                    "Ek Masraf: ${rapor.ekMasraflar.toStringAsFixed(2)} TL",
+                                  ),
+                                  subtitle: Text(
+                                    "Ödeyen: ${rapor.ekMasraflarIsciAdi?.isNotEmpty == true ? rapor.ekMasraflarIsciAdi : 'Belirtilmedi'}",
+                                  ),
+                                ),
+                            ];
+
+                            return Card(
+                              elevation: 3,
+                              margin: const EdgeInsets.only(bottom: 12),
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(16),
+                                side: BorderSide(
+                                  color:
+                                      isDark
+                                          ? Colors.white.withValues(alpha: 0.08)
+                                          : const Color(0xFFD8EAF0),
+                                ),
+                              ),
+                              color:
+                                  isDark
+                                      ? const Color(0xFF101317)
+                                      : const Color(0xFFF7FBFD),
+                              child: ExpansionTile(
+                                leading: Container(
+                                  padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color:
-                                        c.durum == "Tam Gün"
-                                            ? Colors.green.withValues(alpha: 0.2)
-                                            : Colors.orange.withValues(alpha: 0.2),
-                                    borderRadius: BorderRadius.circular(4),
+                                    color: _kBrandTeal.withValues(alpha: 0.14),
+                                    borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
-                                    c.durum,
-                                    style: TextStyle(
-                                      fontSize: 10,
+                                    DateFormat('dd').format(rapor.tarih),
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color:
-                                          c.durum == "Tam Gün"
-                                              ? Colors.green
-                                              : Colors.orange,
+                                      color: _kBrandTealDark,
                                     ),
                                   ),
                                 ),
-                              ),
-                            ),
-                            if (toplamMasraf > 0) ...[
-                              ListTile(
-                                dense: true,
-                                leading: const Icon(
-                                  Icons.attach_money,
-                                  size: 18,
-                                  color: Colors.redAccent,
-                                ),
-                                title: const Text("Günlük Masraf Detayı"),
-                                trailing: Text(
-                                  "${toplamMasraf.toStringAsFixed(2)} TL",
+                                title: Text(
+                                  DateFormat.EEEE('tr_TR').format(rapor.tarih),
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
-                                    color: Colors.redAccent,
                                   ),
                                 ),
+                                subtitle: Text(
+                                  "${rapor.calisanlar.length} Çalışan • ${toplamMasraf.toStringAsFixed(2)} TL Masraf",
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                children: [
+                                  const Divider(height: 1),
+                                  ...rapor.calisanlar.map(
+                                    (c) => ListTile(
+                                      dense: true,
+                                      leading: const Icon(
+                                        Icons.person_outline,
+                                        size: 18,
+                                      ),
+                                      title: Text(c.isci.ad),
+                                      trailing: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 8,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color:
+                                              c.durum == "Tam Gün"
+                                                  ? Colors.green.withValues(
+                                                    alpha: 0.2,
+                                                  )
+                                                  : Colors.orange.withValues(
+                                                    alpha: 0.2,
+                                                  ),
+                                          borderRadius: BorderRadius.circular(
+                                            4,
+                                          ),
+                                        ),
+                                        child: Text(
+                                          c.durum,
+                                          style: TextStyle(
+                                            fontSize: 10,
+                                            fontWeight: FontWeight.bold,
+                                            color:
+                                                c.durum == "Tam Gün"
+                                                    ? Colors.green
+                                                    : Colors.orange,
+                                          ),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                  if (toplamMasraf > 0) ...[
+                                    ListTile(
+                                      dense: true,
+                                      leading: const Icon(
+                                        Icons.attach_money,
+                                        size: 18,
+                                        color: Colors.redAccent,
+                                      ),
+                                      title: const Text("Günlük Masraf Detayı"),
+                                      trailing: Text(
+                                        "${toplamMasraf.toStringAsFixed(2)} TL",
+                                        style: const TextStyle(
+                                          fontWeight: FontWeight.bold,
+                                          color: Colors.redAccent,
+                                        ),
+                                      ),
+                                    ),
+                                    ...masrafDetaySatirlari,
+                                  ],
+                                ],
                               ),
-                              ...masrafDetaySatirlari,
-                            ],
-                          ],
-                        ),
-                      );
+                            );
                           },
                         ),
                       ),
@@ -617,11 +632,12 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
 
   Widget _buildSantiyeHavaDurumuKarti(bool isDark) {
     final hasLocation = _secilenIl != null && _secilenIl!.isNotEmpty;
-    final konumTitle = hasLocation
-        ? ((_secilenIlce != null && _secilenIlce!.isNotEmpty)
-            ? '$_secilenIlce, $_secilenIl'
-            : '$_secilenIl (Merkez)')
-        : 'Konum Belirtilmedi';
+    final konumTitle =
+        hasLocation
+            ? ((_secilenIlce != null && _secilenIlce!.isNotEmpty)
+                ? '$_secilenIlce, $_secilenIl'
+                : '$_secilenIl (Merkez)')
+            : 'Konum Belirtilmedi';
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
@@ -641,9 +657,14 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
           ),
           borderRadius: BorderRadius.circular(_isWeatherExpanded ? 20 : 16),
           border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: _isWeatherExpanded ? 0.12 : 0.07)
-                : const Color(0xFF14B8A6).withValues(alpha: _isWeatherExpanded ? 0.3 : 0.2),
+            color:
+                isDark
+                    ? Colors.white.withValues(
+                      alpha: _isWeatherExpanded ? 0.12 : 0.07,
+                    )
+                    : const Color(
+                      0xFF14B8A6,
+                    ).withValues(alpha: _isWeatherExpanded ? 0.3 : 0.2),
           ),
           boxShadow: [
             BoxShadow(
@@ -660,7 +681,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
             children: [
               // Başlık / Kapalı Özet Satırı (Tıklanabilir)
               InkWell(
-                borderRadius: BorderRadius.circular(_isWeatherExpanded ? 20 : 16),
+                borderRadius: BorderRadius.circular(
+                  _isWeatherExpanded ? 20 : 16,
+                ),
                 onTap: () {
                   setState(() {
                     _isWeatherExpanded = !_isWeatherExpanded;
@@ -682,11 +705,16 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                         ),
                         child: Icon(
                           _weatherData != null
-                              ? TurkiyeIlIlce.getWeatherIcon(_weatherData!['weathercode'] ?? 0)
+                              ? TurkiyeIlIlce.getWeatherIcon(
+                                _weatherData!['weathercode'] ?? 0,
+                              )
                               : Icons.location_on_rounded,
-                          color: _weatherData != null
-                              ? TurkiyeIlIlce.getWeatherColor(_weatherData!['weathercode'] ?? 0)
-                              : _kBrandTeal,
+                          color:
+                              _weatherData != null
+                                  ? TurkiyeIlIlce.getWeatherColor(
+                                    _weatherData!['weathercode'] ?? 0,
+                                  )
+                                  : _kBrandTeal,
                           size: 19,
                         ),
                       ),
@@ -706,16 +734,25 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                     style: TextStyle(
                                       fontSize: 14.5,
                                       fontWeight: FontWeight.bold,
-                                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                      color:
+                                          isDark
+                                              ? Colors.white
+                                              : const Color(0xFF0F172A),
                                     ),
                                   ),
                                 ),
-                                if (!_isWeatherExpanded && _weatherData != null) ...[
+                                if (!_isWeatherExpanded &&
+                                    _weatherData != null) ...[
                                   const SizedBox(width: 8),
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
                                     decoration: BoxDecoration(
-                                      color: _kBrandTeal.withValues(alpha: 0.15),
+                                      color: _kBrandTeal.withValues(
+                                        alpha: 0.15,
+                                      ),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
@@ -737,7 +774,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                       ? "${_weatherData!['description'] ?? 'Hava Durumu'} • 💨 ${_weatherData!['windspeed']} km/s"
                                       : (_isLoadingWeather
                                           ? "Hava durumu güncelleniyor..."
-                                          : (hasLocation ? "Detayları görmek için dokunun" : "İl/ilçe seçmek için dokunun")))
+                                          : (hasLocation
+                                              ? "Detayları görmek için dokunun"
+                                              : "İl/ilçe seçmek için dokunun")))
                                   : "Şantiye Sahası Canlı Hava Durumu",
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
@@ -755,16 +794,26 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           child: SizedBox(
                             width: 16,
                             height: 16,
-                            child: CircularProgressIndicator(strokeWidth: 2, color: _kBrandTeal),
+                            child: CircularProgressIndicator(
+                              strokeWidth: 2,
+                              color: _kBrandTeal,
+                            ),
                           ),
                         ),
                       if (_isWeatherExpanded) ...[
                         IconButton(
                           tooltip: "İl / İlçe Değiştir",
-                          icon: const Icon(Icons.tune_rounded, size: 20, color: _kBrandTeal),
+                          icon: const Icon(
+                            Icons.tune_rounded,
+                            size: 20,
+                            color: _kBrandTeal,
+                          ),
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
-                          constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
+                          constraints: const BoxConstraints(
+                            minWidth: 32,
+                            minHeight: 32,
+                          ),
                           onPressed: () async {
                             final res = await IlIlceSeciciModal.goster(
                               context,
@@ -783,13 +832,24 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                         if (hasLocation)
                           IconButton(
                             tooltip: "Yenile",
-                            icon: const Icon(Icons.refresh_rounded, size: 20, color: Colors.grey),
+                            icon: const Icon(
+                              Icons.refresh_rounded,
+                              size: 20,
+                              color: Colors.grey,
+                            ),
                             visualDensity: VisualDensity.compact,
                             padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 32, minHeight: 32),
-                            onPressed: _isLoadingWeather
-                                ? null
-                                : () => _fetchWeather(_secilenIl!, _secilenIlce),
+                            constraints: const BoxConstraints(
+                              minWidth: 32,
+                              minHeight: 32,
+                            ),
+                            onPressed:
+                                _isLoadingWeather
+                                    ? null
+                                    : () => _fetchWeather(
+                                      _secilenIl!,
+                                      _secilenIlce,
+                                    ),
                           ),
                       ],
                       // Açma / Kapama Oku
@@ -813,9 +873,10 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
               // Açılır Gövde (Detaylı Bilgiler)
               AnimatedCrossFade(
                 duration: const Duration(milliseconds: 280),
-                crossFadeState: _isWeatherExpanded
-                    ? CrossFadeState.showSecond
-                    : CrossFadeState.showFirst,
+                crossFadeState:
+                    _isWeatherExpanded
+                        ? CrossFadeState.showSecond
+                        : CrossFadeState.showFirst,
                 firstChild: const SizedBox(width: double.infinity, height: 0),
                 secondChild: Padding(
                   padding: const EdgeInsets.fromLTRB(16, 4, 16, 16),
@@ -838,16 +899,25 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                             }
                           },
                           child: Container(
-                            padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 14),
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 14,
+                            ),
                             decoration: BoxDecoration(
                               color: _kBrandTeal.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(14),
-                              border: Border.all(color: _kBrandTeal.withValues(alpha: 0.3)),
+                              border: Border.all(
+                                color: _kBrandTeal.withValues(alpha: 0.3),
+                              ),
                             ),
                             child: const Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
-                                Icon(Icons.add_location_alt_rounded, color: _kBrandTeal, size: 20),
+                                Icon(
+                                  Icons.add_location_alt_rounded,
+                                  color: _kBrandTeal,
+                                  size: 20,
+                                ),
                                 SizedBox(width: 8),
                                 Text(
                                   "İl ve İlçe Seçerek Hava Durumunu Aktifleştir",
@@ -871,12 +941,18 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                 SizedBox(
                                   width: 18,
                                   height: 18,
-                                  child: CircularProgressIndicator(strokeWidth: 2, color: _kBrandTeal),
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: _kBrandTeal,
+                                  ),
                                 ),
                                 SizedBox(width: 12),
                                 Text(
                                   "Hava durumu verisi alınıyor...",
-                                  style: TextStyle(fontSize: 13, color: Colors.grey),
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey,
+                                  ),
                                 ),
                               ],
                             ),
@@ -888,9 +964,13 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           crossAxisAlignment: CrossAxisAlignment.center,
                           children: [
                             Icon(
-                              TurkiyeIlIlce.getWeatherIcon(_weatherData!['weathercode'] ?? 0),
+                              TurkiyeIlIlce.getWeatherIcon(
+                                _weatherData!['weathercode'] ?? 0,
+                              ),
                               size: 42,
-                              color: TurkiyeIlIlce.getWeatherColor(_weatherData!['weathercode'] ?? 0),
+                              color: TurkiyeIlIlce.getWeatherColor(
+                                _weatherData!['weathercode'] ?? 0,
+                              ),
                             ),
                             const SizedBox(width: 14),
                             Column(
@@ -905,7 +985,10 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                         fontSize: 32,
                                         fontWeight: FontWeight.w800,
                                         height: 1.0,
-                                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                        color:
+                                            isDark
+                                                ? Colors.white
+                                                : const Color(0xFF0F172A),
                                       ),
                                     ),
                                     const Text(
@@ -923,7 +1006,10 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                   style: TextStyle(
                                     fontSize: 13,
                                     fontWeight: FontWeight.w500,
-                                    color: isDark ? Colors.white70 : Colors.black87,
+                                    color:
+                                        isDark
+                                            ? Colors.white70
+                                            : Colors.black87,
                                   ),
                                 ),
                               ],
@@ -931,23 +1017,34 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                             const Spacer(),
                             // Rüzgar ve Diğer Göstergeler
                             Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 10,
+                                vertical: 6,
+                              ),
                               decoration: BoxDecoration(
-                                color: isDark
-                                    ? Colors.white.withValues(alpha: 0.05)
-                                    : Colors.black.withValues(alpha: 0.04),
+                                color:
+                                    isDark
+                                        ? Colors.white.withValues(alpha: 0.05)
+                                        : Colors.black.withValues(alpha: 0.04),
                                 borderRadius: BorderRadius.circular(12),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.air_rounded, size: 16, color: Colors.blueAccent),
+                                  const Icon(
+                                    Icons.air_rounded,
+                                    size: 16,
+                                    color: Colors.blueAccent,
+                                  ),
                                   const SizedBox(width: 4),
                                   Text(
                                     "${_weatherData!['windspeed']} km/s",
                                     style: TextStyle(
                                       fontSize: 12.5,
                                       fontWeight: FontWeight.w600,
-                                      color: isDark ? Colors.white70 : Colors.black87,
+                                      color:
+                                          isDark
+                                              ? Colors.white70
+                                              : Colors.black87,
                                     ),
                                   ),
                                 ],
@@ -962,14 +1059,22 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                         if (_weatherData!['sahaYorumu'] != null)
                           Container(
                             width: double.infinity,
-                            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 9),
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 9,
+                            ),
                             decoration: BoxDecoration(
-                              color: isDark
-                                  ? const Color(0xFF064E3B).withValues(alpha: 0.3)
-                                  : const Color(0xFFDEF7EC),
+                              color:
+                                  isDark
+                                      ? const Color(
+                                        0xFF064E3B,
+                                      ).withValues(alpha: 0.3)
+                                      : const Color(0xFFDEF7EC),
                               borderRadius: BorderRadius.circular(12),
                               border: Border.all(
-                                color: const Color(0xFF059669).withValues(alpha: 0.3),
+                                color: const Color(
+                                  0xFF059669,
+                                ).withValues(alpha: 0.3),
                               ),
                             ),
                             child: Text(
@@ -978,7 +1083,10 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                 fontSize: 12,
                                 height: 1.4,
                                 fontWeight: FontWeight.w500,
-                                color: isDark ? const Color(0xFF34D399) : const Color(0xFF047857),
+                                color:
+                                    isDark
+                                        ? const Color(0xFF34D399)
+                                        : const Color(0xFF047857),
                               ),
                             ),
                           ),
@@ -991,59 +1099,98 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                             height: 72,
                             child: ListView.separated(
                               scrollDirection: Axis.horizontal,
-                              itemCount: (_weatherData!['daily'] as List).take(6).length,
-                              separatorBuilder: (_, __) => const SizedBox(width: 8),
+                              itemCount:
+                                  (_weatherData!['daily'] as List)
+                                      .take(6)
+                                      .length,
+                              separatorBuilder:
+                                  (_, __) => const SizedBox(width: 8),
                               itemBuilder: (context, index) {
-                                final gun = (_weatherData!['daily'] as List)[index];
+                                final gun =
+                                    (_weatherData!['daily'] as List)[index];
                                 final rawTime = gun['time']?.toString() ?? '';
                                 String gunEtiketi = "Gün";
                                 try {
                                   final parsedDate = DateTime.parse(rawTime);
                                   final now = DateTime.now();
-                                  if (parsedDate.day == now.day && parsedDate.month == now.month) {
+                                  if (parsedDate.day == now.day &&
+                                      parsedDate.month == now.month) {
                                     gunEtiketi = "Bugün";
                                   } else {
-                                    const gunAdlari = ["Pzt", "Sal", "Çar", "Per", "Cum", "Cmt", "Paz"];
-                                    gunEtiketi = gunAdlari[parsedDate.weekday - 1];
+                                    const gunAdlari = [
+                                      "Pzt",
+                                      "Sal",
+                                      "Çar",
+                                      "Per",
+                                      "Cum",
+                                      "Cmt",
+                                      "Paz",
+                                    ];
+                                    gunEtiketi =
+                                        gunAdlari[parsedDate.weekday - 1];
                                   }
                                 } catch (_) {}
 
                                 return Container(
                                   width: 58,
-                                  padding: const EdgeInsets.symmetric(vertical: 6, horizontal: 4),
+                                  padding: const EdgeInsets.symmetric(
+                                    vertical: 6,
+                                    horizontal: 4,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: isDark
-                                        ? Colors.white.withValues(alpha: 0.04)
-                                        : Colors.white.withValues(alpha: 0.7),
+                                    color:
+                                        isDark
+                                            ? Colors.white.withValues(
+                                              alpha: 0.04,
+                                            )
+                                            : Colors.white.withValues(
+                                              alpha: 0.7,
+                                            ),
                                     borderRadius: BorderRadius.circular(12),
                                     border: Border.all(
-                                      color: isDark
-                                          ? Colors.white.withValues(alpha: 0.06)
-                                          : Colors.black.withValues(alpha: 0.05),
+                                      color:
+                                          isDark
+                                              ? Colors.white.withValues(
+                                                alpha: 0.06,
+                                              )
+                                              : Colors.black.withValues(
+                                                alpha: 0.05,
+                                              ),
                                     ),
                                   ),
                                   child: Column(
-                                    mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+                                    mainAxisAlignment:
+                                        MainAxisAlignment.spaceEvenly,
                                     children: [
                                       Text(
                                         gunEtiketi,
                                         style: TextStyle(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w600,
-                                          color: isDark ? Colors.white60 : Colors.black54,
+                                          color:
+                                              isDark
+                                                  ? Colors.white60
+                                                  : Colors.black54,
                                         ),
                                       ),
                                       Icon(
-                                        TurkiyeIlIlce.getWeatherIcon(gun['code'] ?? 0),
+                                        TurkiyeIlIlce.getWeatherIcon(
+                                          gun['code'] ?? 0,
+                                        ),
                                         size: 18,
-                                        color: TurkiyeIlIlce.getWeatherColor(gun['code'] ?? 0),
+                                        color: TurkiyeIlIlce.getWeatherColor(
+                                          gun['code'] ?? 0,
+                                        ),
                                       ),
                                       Text(
                                         "${gun['max']?.round() ?? '-'}°",
                                         style: TextStyle(
                                           fontSize: 11,
                                           fontWeight: FontWeight.bold,
-                                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                          color:
+                                              isDark
+                                                  ? Colors.white
+                                                  : const Color(0xFF0F172A),
                                         ),
                                       ),
                                     ],
@@ -1116,14 +1263,15 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
 
       for (final c in r.calisanlar) {
         final ad = c.isci.ad.trim();
-        final durum = c.durum.toLowerCase();
-        if (durum.contains('tam')) {
+        final carpan = parseDurumCarpani(c.durum);
+        if (c.durum.contains('tam') || c.durum.contains('Tam')) {
           isciTamGun[ad] = (isciTamGun[ad] ?? 0) + 1;
-          isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + 1.0;
-        } else if (durum.contains('yar')) {
+        } else if (c.durum.contains('yar') || c.durum.contains('Yar')) {
           isciYarimGun[ad] = (isciYarimGun[ad] ?? 0) + 1;
-          isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + 0.5;
+        } else if (c.durum.contains('mesai') || c.durum.contains('Mesai')) {
+          isciTamGun[ad] = (isciTamGun[ad] ?? 0) + 1;
         }
+        isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + carpan;
       }
     }
 
@@ -1135,7 +1283,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
     sb.writeln('• Yemek Gideri: ${Formatlayici.yap(topYemek)}');
     sb.writeln('• Ek Masraflar: ${Formatlayici.yap(topEk)}');
     sb.writeln('──────────────────────────────');
-    sb.writeln('💳 TOPLAM OPERASYONEL MASRAF: ${Formatlayici.yap(toplamMasrafGenel)}');
+    sb.writeln(
+      '💳 TOPLAM OPERASYONEL MASRAF: ${Formatlayici.yap(toplamMasrafGenel)}',
+    );
 
     // Personel Listesi
     if (isciYevmiyeleri.isNotEmpty) {
@@ -1210,14 +1360,15 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
 
       for (final c in r.calisanlar) {
         final ad = c.isci.ad.trim();
-        final durum = c.durum.toLowerCase();
-        if (durum.contains('tam')) {
+        final carpan = parseDurumCarpani(c.durum);
+        if (c.durum.contains('tam') || c.durum.contains('Tam')) {
           isciTamGun[ad] = (isciTamGun[ad] ?? 0) + 1;
-          isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + 1.0;
-        } else if (durum.contains('yar')) {
+        } else if (c.durum.contains('yar') || c.durum.contains('Yar')) {
           isciYarimGun[ad] = (isciYarimGun[ad] ?? 0) + 1;
-          isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + 0.5;
+        } else if (c.durum.contains('mesai') || c.durum.contains('Mesai')) {
+          isciTamGun[ad] = (isciTamGun[ad] ?? 0) + 1;
         }
+        isciYevmiyeleri[ad] = (isciYevmiyeleri[ad] ?? 0) + carpan;
       }
     }
 
@@ -1613,7 +1764,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                         Container(
                           padding: const EdgeInsets.all(8),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF0D9488).withValues(alpha: 0.15),
+                            color: const Color(
+                              0xFF0D9488,
+                            ).withValues(alpha: 0.15),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: const Icon(
