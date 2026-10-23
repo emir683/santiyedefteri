@@ -1477,6 +1477,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
     String? ekMasrafHarcayanId = rapor.ekMasraflarIsciId;
     String? ekMasrafHarcayanAd = rapor.ekMasraflarIsciAdi;
 
+    final bool dahaOnceGirildi = mevcutRapor != null;
     bool degisiklikVar = false;
     bool kaydetmeDevamEdiyor = false;
 
@@ -1817,36 +1818,228 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                     controller: scrollController,
                                     padding: const EdgeInsets.all(24),
                                     children: [
-                                      Text(
-                                        santiyeAdi,
-                                        style: const TextStyle(
-                                          fontSize: 22,
-                                          fontWeight: FontWeight.bold,
+                                      // Şantiye Başlık Kartı (Ana Ekran Cam Kutu Tasarımı) 🏢
+                                      Container(
+                                        padding: const EdgeInsets.all(16),
+                                        decoration: BoxDecoration(
+                                          gradient: LinearGradient(
+                                            begin: Alignment.topLeft,
+                                            end: Alignment.bottomRight,
+                                            colors: [
+                                              (isDark
+                                                      ? const Color(0xFF171A1F)
+                                                      : const Color(0xFFE0EAEE))
+                                                  .withValues(
+                                                    alpha: isDark ? 0.94 : 0.90,
+                                                  ),
+                                              (isDark
+                                                      ? const Color(0xFF0D0F13)
+                                                      : const Color(0xFFCCD9DE))
+                                                  .withValues(
+                                                    alpha: isDark ? 0.98 : 0.94,
+                                                  ),
+                                            ],
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            20,
+                                          ),
+                                          border: Border.all(
+                                            color:
+                                                isDark
+                                                    ? Colors.white.withValues(
+                                                      alpha: 0.08,
+                                                    )
+                                                    : const Color(
+                                                      0xFFBFD0D6,
+                                                    ).withValues(alpha: 0.90),
+                                          ),
+                                          boxShadow: [
+                                            BoxShadow(
+                                              color: Colors.black.withValues(
+                                                alpha: isDark ? 0.20 : 0.05,
+                                              ),
+                                              blurRadius: 12,
+                                              offset: const Offset(0, 4),
+                                            ),
+                                          ],
+                                        ),
+                                        child: Row(
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.all(10),
+                                              decoration: BoxDecoration(
+                                                color: const Color(
+                                                  0xFF14B8A6,
+                                                ).withValues(
+                                                  alpha: isDark ? 0.22 : 0.15,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(14),
+                                              ),
+                                              child: const Icon(
+                                                Icons.apartment_rounded,
+                                                color: Color(0xFF14B8A6),
+                                                size: 24,
+                                              ),
+                                            ),
+                                            const SizedBox(width: 12),
+                                            Expanded(
+                                              child: Column(
+                                                crossAxisAlignment:
+                                                    CrossAxisAlignment.start,
+                                                children: [
+                                                  Text(
+                                                    santiyeAdi,
+                                                    style: const TextStyle(
+                                                      fontSize: 18.5,
+                                                      fontWeight:
+                                                          FontWeight.w800,
+                                                      letterSpacing: -0.3,
+                                                    ),
+                                                  ),
+                                                  const SizedBox(height: 3),
+                                                  Row(
+                                                    children: [
+                                                      Icon(
+                                                        Icons
+                                                            .calendar_today_rounded,
+                                                        size: 13,
+                                                        color:
+                                                            isDark
+                                                                ? Colors.white60
+                                                                : const Color(
+                                                                  0xFF64748B,
+                                                                ),
+                                                      ),
+                                                      const SizedBox(width: 5),
+                                                      Text(
+                                                        DateFormat(
+                                                          'dd MMMM yyyy, EEEE',
+                                                          'tr_TR',
+                                                        ).format(_seciliGun),
+                                                        style: TextStyle(
+                                                          fontSize: 12.5,
+                                                          fontWeight:
+                                                              FontWeight.w600,
+                                                          color:
+                                                              isDark
+                                                                  ? Colors
+                                                                      .white70
+                                                                  : const Color(
+                                                                    0xFF64748B,
+                                                                  ),
+                                                        ),
+                                                      ),
+                                                    ],
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                            Container(
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 10,
+                                                    vertical: 4.5,
+                                                  ),
+                                              decoration: BoxDecoration(
+                                                color: (dahaOnceGirildi
+                                                        ? const Color(
+                                                          0xFF14B8A6,
+                                                        )
+                                                        : const Color(
+                                                          0xFF3B82F6,
+                                                        ))
+                                                    .withValues(
+                                                      alpha:
+                                                          isDark ? 0.22 : 0.14,
+                                                    ),
+                                                borderRadius:
+                                                    BorderRadius.circular(20),
+                                                border: Border.all(
+                                                  color: (dahaOnceGirildi
+                                                          ? const Color(
+                                                            0xFF14B8A6,
+                                                          )
+                                                          : const Color(
+                                                            0xFF3B82F6,
+                                                          ))
+                                                      .withValues(alpha: 0.35),
+                                                  width: 1,
+                                                ),
+                                              ),
+                                              child: Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    dahaOnceGirildi
+                                                        ? Icons
+                                                            .edit_note_rounded
+                                                        : Icons
+                                                            .add_circle_outline_rounded,
+                                                    size: 13,
+                                                    color:
+                                                        dahaOnceGirildi
+                                                            ? const Color(
+                                                              0xFF14B8A6,
+                                                            )
+                                                            : const Color(
+                                                              0xFF3B82F6,
+                                                            ),
+                                                  ),
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    dahaOnceGirildi
+                                                        ? "Kayıtlı Rapor"
+                                                        : "Yeni Rapor",
+                                                    style: TextStyle(
+                                                      fontSize: 11,
+                                                      fontWeight:
+                                                          FontWeight.w700,
+                                                      color:
+                                                          dahaOnceGirildi
+                                                              ? const Color(
+                                                                0xFF14B8A6,
+                                                              )
+                                                              : const Color(
+                                                                0xFF3B82F6,
+                                                              ),
+                                                    ),
+                                                  ),
+                                                ],
+                                              ),
+                                            ),
+                                          ],
                                         ),
                                       ),
-                                      Text(
-                                        DateFormat(
-                                          'dd MMMM yyyy',
-                                          'tr_TR',
-                                        ).format(_seciliGun),
-                                        style: TextStyle(
-                                          fontSize: 14,
-                                          color: Colors.grey[600],
-                                        ),
-                                      ),
-                                      const SizedBox(height: 24),
+                                      const SizedBox(height: 22),
 
                                       // Çalışanlar Başlığı ve Butonlar
                                       Row(
                                         mainAxisAlignment:
                                             MainAxisAlignment.spaceBetween,
                                         children: [
-                                          const Text(
-                                            "Çalışan Personeller",
-                                            style: TextStyle(
-                                              fontSize: 16,
-                                              fontWeight: FontWeight.w600,
-                                            ),
+                                          Row(
+                                            children: [
+                                              Container(
+                                                width: 4,
+                                                height: 16,
+                                                decoration: BoxDecoration(
+                                                  color: const Color(
+                                                    0xFF14B8A6,
+                                                  ),
+                                                  borderRadius:
+                                                      BorderRadius.circular(2),
+                                                ),
+                                              ),
+                                              const SizedBox(width: 8),
+                                              const Text(
+                                                "Çalışan Personeller",
+                                                style: TextStyle(
+                                                  fontSize: 16,
+                                                  fontWeight: FontWeight.w800,
+                                                ),
+                                              ),
+                                            ],
                                           ),
                                           Expanded(
                                             child: Wrap(
@@ -1856,31 +2049,40 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                               children: [
                                                 ElevatedButton.icon(
                                                   icon: const Icon(
-                                                    Icons.copy,
-                                                    size: 16,
+                                                    Icons.copy_rounded,
+                                                    size: 14,
                                                   ),
                                                   label: const Text(
                                                     "Dünü Kopyala",
                                                     style: TextStyle(
-                                                      fontSize: 12,
+                                                      fontSize: 11.5,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                     ),
                                                   ),
                                                   style: ElevatedButton.styleFrom(
                                                     backgroundColor:
-                                                        Colors.blueGrey,
+                                                        isDark
+                                                            ? const Color(
+                                                              0xFF334155,
+                                                            )
+                                                            : const Color(
+                                                              0xFF64748B,
+                                                            ),
                                                     foregroundColor:
                                                         Colors.white,
                                                     padding:
                                                         const EdgeInsets.symmetric(
                                                           horizontal: 10,
-                                                          vertical: 8,
+                                                          vertical: 7,
                                                         ),
                                                     shape: RoundedRectangleBorder(
                                                       borderRadius:
                                                           BorderRadius.circular(
-                                                            10,
+                                                            12,
                                                           ),
                                                     ),
+                                                    elevation: 0,
                                                   ),
                                                   onPressed:
                                                       () => dunuKopyala(
@@ -1892,13 +2094,15 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                   key: _hizliYoklamaKey,
                                                   icon: const Icon(
                                                     Icons
-                                                        .person_add_alt_1_rounded,
+                                                        .playlist_add_check_rounded,
                                                     size: 16,
                                                   ),
                                                   label: const Text(
                                                     "Hızlı Yoklama",
                                                     style: TextStyle(
-                                                      fontSize: 12,
+                                                      fontSize: 11.5,
+                                                      fontWeight:
+                                                          FontWeight.w700,
                                                     ),
                                                   ),
                                                   style: ElevatedButton.styleFrom(
@@ -1908,15 +2112,16 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                         Colors.white,
                                                     padding:
                                                         const EdgeInsets.symmetric(
-                                                          horizontal: 10,
-                                                          vertical: 8,
+                                                          horizontal: 12,
+                                                          vertical: 7,
                                                         ),
                                                     shape: RoundedRectangleBorder(
                                                       borderRadius:
                                                           BorderRadius.circular(
-                                                            10,
+                                                            12,
                                                           ),
                                                     ),
+                                                    elevation: 1,
                                                   ),
                                                   onPressed:
                                                       () => _hizliYoklamaBaslat(
@@ -1935,19 +2140,43 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                         ],
                                       ),
 
-                                      const SizedBox(height: 16),
+                                      const SizedBox(height: 14),
 
-                                      // Çalışan Listesi
+                                      // Çalışan Listesi (Ana Ekran Kutucuk Tasarımı)
                                       if (rapor.calisanlar.isEmpty)
                                         Container(
                                           padding: const EdgeInsets.all(20),
                                           decoration: BoxDecoration(
-                                            color:
-                                                isDark
-                                                    ? const Color(0xFF171D25)
-                                                    : const Color(0xFFF9FCFD),
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: [
+                                                (isDark
+                                                        ? const Color(
+                                                          0xFF171A1F,
+                                                        )
+                                                        : const Color(
+                                                          0xFFE0EAEE,
+                                                        ))
+                                                    .withValues(
+                                                      alpha:
+                                                          isDark ? 0.88 : 0.82,
+                                                    ),
+                                                (isDark
+                                                        ? const Color(
+                                                          0xFF0D0F13,
+                                                        )
+                                                        : const Color(
+                                                          0xFFCCD9DE,
+                                                        ))
+                                                    .withValues(
+                                                      alpha:
+                                                          isDark ? 0.96 : 0.90,
+                                                    ),
+                                              ],
+                                            ),
                                             borderRadius: BorderRadius.circular(
-                                              12,
+                                              16,
                                             ),
                                             border: Border.all(
                                               color:
@@ -1955,7 +2184,9 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                       ? Colors.white.withValues(
                                                         alpha: 0.08,
                                                       )
-                                                      : const Color(0xFFDCE8ED),
+                                                      : const Color(
+                                                        0xFFBFD0D6,
+                                                      ).withValues(alpha: 0.90),
                                             ),
                                           ),
                                           child: const Center(
@@ -1963,6 +2194,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                               "Henüz çalışan eklenmedi.",
                                               style: TextStyle(
                                                 color: Colors.grey,
+                                                fontSize: 13,
                                               ),
                                             ),
                                           ),
@@ -1973,42 +2205,93 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                             margin: const EdgeInsets.only(
                                               bottom: 8,
                                             ),
-                                            padding: const EdgeInsets.all(12),
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 12,
+                                              vertical: 9,
+                                            ),
                                             decoration: BoxDecoration(
-                                              color:
-                                                  isDark
-                                                      ? const Color(0xFF171D25)
-                                                      : const Color(0xFFF9FCFD),
+                                              gradient: LinearGradient(
+                                                begin: Alignment.topLeft,
+                                                end: Alignment.bottomRight,
+                                                colors: [
+                                                  (isDark
+                                                          ? const Color(
+                                                            0xFF171A1F,
+                                                          )
+                                                          : const Color(
+                                                            0xFFE0EAEE,
+                                                          ))
+                                                      .withValues(
+                                                        alpha:
+                                                            isDark
+                                                                ? 0.88
+                                                                : 0.82,
+                                                      ),
+                                                  (isDark
+                                                          ? const Color(
+                                                            0xFF0D0F13,
+                                                          )
+                                                          : const Color(
+                                                            0xFFCCD9DE,
+                                                          ))
+                                                      .withValues(
+                                                        alpha:
+                                                            isDark
+                                                                ? 0.96
+                                                                : 0.90,
+                                                      ),
+                                                ],
+                                              ),
                                               borderRadius:
-                                                  BorderRadius.circular(12),
+                                                  BorderRadius.circular(16),
                                               border: Border.all(
                                                 color:
                                                     isDark
                                                         ? Colors.white
                                                             .withValues(
-                                                              alpha: 0.06,
+                                                              alpha: 0.08,
                                                             )
                                                         : const Color(
-                                                          0xFFDCE8ED,
+                                                          0xFFBFD0D6,
+                                                        ).withValues(
+                                                          alpha: 0.90,
                                                         ),
                                               ),
+                                              boxShadow: [
+                                                BoxShadow(
+                                                  color: Colors.black
+                                                      .withValues(
+                                                        alpha:
+                                                            isDark
+                                                                ? 0.16
+                                                                : 0.04,
+                                                      ),
+                                                  blurRadius: 8,
+                                                  offset: const Offset(0, 2),
+                                                ),
+                                              ],
                                             ),
                                             child: Row(
                                               children: [
                                                 CircleAvatar(
-                                                  radius: 18,
-                                                  backgroundColor: Colors.blue
-                                                      .withValues(alpha: 0.2),
+                                                  radius: 17,
+                                                  backgroundColor: const Color(
+                                                    0xFF14B8A6,
+                                                  ).withValues(alpha: 0.18),
                                                   child: Text(
-                                                    c.isci.ad[0].toUpperCase(),
+                                                    c.isci.ad.isEmpty
+                                                        ? "?"
+                                                        : c.isci.ad[0]
+                                                            .toUpperCase(),
                                                     style: const TextStyle(
-                                                      color: Colors.blue,
+                                                      color: Color(0xFF14B8A6),
                                                       fontWeight:
                                                           FontWeight.bold,
+                                                      fontSize: 13,
                                                     ),
                                                   ),
                                                 ),
-                                                const SizedBox(width: 12),
+                                                const SizedBox(width: 10),
                                                 Expanded(
                                                   child: Column(
                                                     crossAxisAlignment:
@@ -2017,51 +2300,59 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                     children: [
                                                       Text(
                                                         c.isci.ad,
-                                                        style: const TextStyle(
+                                                        style: TextStyle(
                                                           fontWeight:
-                                                              FontWeight.w600,
-                                                          fontSize: 15,
+                                                              FontWeight.w700,
+                                                          fontSize: 14.5,
+                                                          color:
+                                                              isDark
+                                                                  ? Colors.white
+                                                                  : const Color(
+                                                                    0xFF0F172A,
+                                                                  ),
                                                         ),
                                                       ),
+                                                      const SizedBox(height: 3),
                                                       Container(
                                                         padding:
                                                             const EdgeInsets.symmetric(
-                                                              horizontal: 8,
+                                                              horizontal: 7,
                                                               vertical: 2,
                                                             ),
                                                         decoration: BoxDecoration(
                                                           color:
                                                               c.durum ==
                                                                       "Tam Gün"
-                                                                  ? Colors.green
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.2,
-                                                                      )
-                                                                  : Colors
-                                                                      .orange
-                                                                      .withValues(
-                                                                        alpha:
-                                                                            0.2,
-                                                                      ),
+                                                                  ? const Color(
+                                                                    0xFF10B981,
+                                                                  ).withValues(
+                                                                    alpha: 0.18,
+                                                                  )
+                                                                  : const Color(
+                                                                    0xFFF59E0B,
+                                                                  ).withValues(
+                                                                    alpha: 0.18,
+                                                                  ),
                                                           borderRadius:
                                                               BorderRadius.circular(
-                                                                4,
+                                                                6,
                                                               ),
                                                         ),
                                                         child: Text(
                                                           c.durum,
                                                           style: TextStyle(
-                                                            fontSize: 11,
+                                                            fontSize: 10.5,
                                                             color:
                                                                 c.durum ==
                                                                         "Tam Gün"
-                                                                    ? Colors
-                                                                        .green
-                                                                    : Colors
-                                                                        .orange,
+                                                                    ? const Color(
+                                                                      0xFF10B981,
+                                                                    )
+                                                                    : const Color(
+                                                                      0xFFF59E0B,
+                                                                    ),
                                                             fontWeight:
-                                                                FontWeight.bold,
+                                                                FontWeight.w700,
                                                           ),
                                                         ),
                                                       ),
@@ -2070,9 +2361,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                 ),
                                                 IconButton(
                                                   icon: const Icon(
-                                                    Icons.delete_outline,
+                                                    Icons
+                                                        .delete_outline_rounded,
                                                     color: Colors.redAccent,
+                                                    size: 20,
                                                   ),
+                                                  padding: EdgeInsets.zero,
+                                                  constraints:
+                                                      const BoxConstraints(),
                                                   onPressed:
                                                       () => setModalState(() {
                                                         rapor.calisanlar.remove(
@@ -2118,7 +2414,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                 CrossAxisAlignment.start,
                                             children: [
                                               const SizedBox(height: 24),
-                                              // Toplam Masraf Başlık & Canlı Özet Kartı
+                                              // Toplam Masraf Başlık & Canlı Özet Kartı (Ana Ekran Cam Kutu Tasarımı)
                                               Container(
                                                 padding:
                                                     const EdgeInsets.symmetric(
@@ -2126,33 +2422,77 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                       vertical: 12,
                                                     ),
                                                 decoration: BoxDecoration(
-                                                  color:
-                                                      isDark
-                                                          ? const Color(
-                                                            0xFF1E293B,
-                                                          ).withValues(
-                                                            alpha: 0.6,
-                                                          )
-                                                          : const Color(
-                                                            0xFFF8FAFC,
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      (isDark
+                                                              ? const Color(
+                                                                0xFF171A1F,
+                                                              )
+                                                              : const Color(
+                                                                0xFFE0EAEE,
+                                                              ))
+                                                          .withValues(
+                                                            alpha:
+                                                                isDark
+                                                                    ? 0.92
+                                                                    : 0.88,
                                                           ),
+                                                      (isDark
+                                                              ? const Color(
+                                                                0xFF0D0F13,
+                                                              )
+                                                              : const Color(
+                                                                0xFFCCD9DE,
+                                                              ))
+                                                          .withValues(
+                                                            alpha:
+                                                                isDark
+                                                                    ? 0.98
+                                                                    : 0.94,
+                                                          ),
+                                                    ],
+                                                  ),
                                                   borderRadius:
-                                                      BorderRadius.circular(16),
+                                                      BorderRadius.circular(18),
                                                   border: Border.all(
                                                     color:
                                                         toplamMasraf > 0
                                                             ? const Color(
                                                               0xFF14B8A6,
                                                             ).withValues(
-                                                              alpha: 0.45,
+                                                              alpha: 0.5,
                                                             )
                                                             : (isDark
-                                                                ? Colors.white10
+                                                                ? Colors.white
+                                                                    .withValues(
+                                                                      alpha:
+                                                                          0.08,
+                                                                    )
                                                                 : const Color(
-                                                                  0xFFE2E8F0,
+                                                                  0xFFBFD0D6,
+                                                                ).withValues(
+                                                                  alpha: 0.90,
                                                                 )),
                                                     width: 1,
                                                   ),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                            alpha:
+                                                                isDark
+                                                                    ? 0.16
+                                                                    : 0.04,
+                                                          ),
+                                                      blurRadius: 10,
+                                                      offset: const Offset(
+                                                        0,
+                                                        3,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                                 child: Row(
                                                   children: [
@@ -2178,11 +2518,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                       ),
                                                     ),
                                                     const SizedBox(width: 10),
+                                                    // Başlık ve alt başlık YAN YANA
                                                     Expanded(
-                                                      child: Column(
+                                                      child: Wrap(
                                                         crossAxisAlignment:
-                                                            CrossAxisAlignment
-                                                                .start,
+                                                            WrapCrossAlignment
+                                                                .center,
+                                                        spacing: 6,
+                                                        runSpacing: 2,
                                                         children: [
                                                           const Text(
                                                             "Günlük Masraflar",
@@ -2194,7 +2537,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                             ),
                                                           ),
                                                           Text(
-                                                            "Yemek, yakıt ve ek saha harcamaları",
+                                                            "(Yemek, yakıt, ek saha harcamaları)",
                                                             style: TextStyle(
                                                               fontSize: 11.5,
                                                               color:
@@ -2257,7 +2600,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                 context: context,
                                                 baslik: "Yemek Gideri",
                                                 altBaslik:
-                                                    "Öğle yemeği, kumanya, ekmek, su vb.",
+                                                    "Öğle yemeği, kumanya, su vb.",
                                                 icon: Icons.restaurant_rounded,
                                                 temaRengi: const Color(
                                                   0xFFF59E0B,
@@ -2321,7 +2664,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                 context: context,
                                                 baslik: "Ek Masraflar",
                                                 altBaslik:
-                                                    "Hırdavat, sarf malzeme, nakliye vb.",
+                                                    "Hırdavat, sarf malzeme, nakliye",
                                                 icon:
                                                     Icons
                                                         .add_shopping_cart_rounded,
@@ -2354,7 +2697,6 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                               ),
 
                                               const SizedBox(height: 16),
-
                                               // AÇIKLAMA / NOT ALANI 📝
                                               const Text(
                                                 "Açıklama / Saha Notu",
@@ -2366,24 +2708,69 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                               const SizedBox(height: 8),
                                               Container(
                                                 decoration: BoxDecoration(
-                                                  color:
-                                                      isDark
-                                                          ? const Color(
-                                                            0xFF1E293B,
-                                                          ).withValues(
-                                                            alpha: 0.5,
-                                                          )
-                                                          : Colors.white,
+                                                  gradient: LinearGradient(
+                                                    begin: Alignment.topLeft,
+                                                    end: Alignment.bottomRight,
+                                                    colors: [
+                                                      (isDark
+                                                              ? const Color(
+                                                                0xFF171A1F,
+                                                              )
+                                                              : const Color(
+                                                                0xFFE0EAEE,
+                                                              ))
+                                                          .withValues(
+                                                            alpha:
+                                                                isDark
+                                                                    ? 0.92
+                                                                    : 0.88,
+                                                          ),
+                                                      (isDark
+                                                              ? const Color(
+                                                                0xFF0D0F13,
+                                                              )
+                                                              : const Color(
+                                                                0xFFCCD9DE,
+                                                              ))
+                                                          .withValues(
+                                                            alpha:
+                                                                isDark
+                                                                    ? 0.98
+                                                                    : 0.94,
+                                                          ),
+                                                    ],
+                                                  ),
                                                   borderRadius:
-                                                      BorderRadius.circular(16),
+                                                      BorderRadius.circular(18),
                                                   border: Border.all(
                                                     color:
                                                         isDark
-                                                            ? Colors.white12
+                                                            ? Colors.white
+                                                                .withValues(
+                                                                  alpha: 0.08,
+                                                                )
                                                             : const Color(
-                                                              0xFFE2E8F0,
+                                                              0xFFBFD0D6,
+                                                            ).withValues(
+                                                              alpha: 0.90,
                                                             ),
                                                   ),
+                                                  boxShadow: [
+                                                    BoxShadow(
+                                                      color: Colors.black
+                                                          .withValues(
+                                                            alpha:
+                                                                isDark
+                                                                    ? 0.16
+                                                                    : 0.04,
+                                                          ),
+                                                      blurRadius: 10,
+                                                      offset: const Offset(
+                                                        0,
+                                                        3,
+                                                      ),
+                                                    ),
+                                                  ],
                                                 ),
                                                 child: TextField(
                                                   controller: aciklamaCtrl,
@@ -2453,46 +2840,102 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                         minimum: const EdgeInsets.only(
                                           bottom: 12,
                                         ),
-                                        child: ElevatedButton(
-                                          key: _kaydetKapatKey,
-                                          style: ElevatedButton.styleFrom(
-                                            backgroundColor: Colors.green,
-                                            foregroundColor: Colors.white,
-                                            padding: const EdgeInsets.symmetric(
-                                              vertical: 18,
+                                        child: Container(
+                                          width: double.infinity,
+                                          height: 54,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              colors:
+                                                  dahaOnceGirildi
+                                                      ? const [
+                                                        Color(0xFF0D9488),
+                                                        Color(0xFF0F766E),
+                                                      ]
+                                                      : const [
+                                                        Color(0xFF16A34A),
+                                                        Color(0xFF15803D),
+                                                      ],
                                             ),
-                                            shape: RoundedRectangleBorder(
-                                              borderRadius:
-                                                  BorderRadius.circular(16),
+                                            borderRadius: BorderRadius.circular(
+                                              16,
                                             ),
-                                            elevation: 4,
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: (dahaOnceGirildi
+                                                        ? const Color(
+                                                          0xFF0D9488,
+                                                        )
+                                                        : const Color(
+                                                          0xFF16A34A,
+                                                        ))
+                                                    .withValues(alpha: 0.35),
+                                                blurRadius: 12,
+                                                offset: const Offset(0, 4),
+                                              ),
+                                            ],
                                           ),
-                                          onPressed:
-                                              kaydetmeDevamEdiyor
-                                                  ? null
-                                                  : verileriKaydet,
-                                          child:
-                                              kaydetmeDevamEdiyor
-                                                  ? const SizedBox(
-                                                    height: 22,
-                                                    width: 22,
-                                                    child: CircularProgressIndicator(
-                                                      strokeWidth: 2.4,
-                                                      valueColor:
-                                                          AlwaysStoppedAnimation<
-                                                            Color
-                                                          >(Colors.white),
+                                          child: ElevatedButton(
+                                            key: _kaydetKapatKey,
+                                            style: ElevatedButton.styleFrom(
+                                              backgroundColor:
+                                                  Colors.transparent,
+                                              shadowColor: Colors.transparent,
+                                              foregroundColor: Colors.white,
+                                              shape: RoundedRectangleBorder(
+                                                borderRadius:
+                                                    BorderRadius.circular(16),
+                                              ),
+                                            ),
+                                            onPressed:
+                                                kaydetmeDevamEdiyor
+                                                    ? null
+                                                    : verileriKaydet,
+                                            child:
+                                                kaydetmeDevamEdiyor
+                                                    ? const SizedBox(
+                                                      height: 22,
+                                                      width: 22,
+                                                      child: CircularProgressIndicator(
+                                                        strokeWidth: 2.4,
+                                                        valueColor:
+                                                            AlwaysStoppedAnimation<
+                                                              Color
+                                                            >(Colors.white),
+                                                      ),
+                                                    )
+                                                    : Row(
+                                                      mainAxisAlignment:
+                                                          MainAxisAlignment
+                                                              .center,
+                                                      children: [
+                                                        Icon(
+                                                          dahaOnceGirildi
+                                                              ? Icons
+                                                                  .sync_rounded
+                                                              : Icons
+                                                                  .check_circle_rounded,
+                                                          size: 20,
+                                                        ),
+                                                        const SizedBox(
+                                                          width: 8,
+                                                        ),
+                                                        Text(
+                                                          dahaOnceGirildi
+                                                              ? "KAYDET VE GÜNCELLE"
+                                                              : "KAYDET VE KAPAT",
+                                                          style:
+                                                              const TextStyle(
+                                                                fontSize: 15.5,
+                                                                fontWeight:
+                                                                    FontWeight
+                                                                        .w800,
+                                                                letterSpacing:
+                                                                    0.8,
+                                                              ),
+                                                        ),
+                                                      ],
                                                     ),
-                                                  )
-                                                  : const Text(
-                                                    "KAYDET VE KAPAT",
-                                                    style: TextStyle(
-                                                      fontSize: 16,
-                                                      fontWeight:
-                                                          FontWeight.bold,
-                                                      letterSpacing: 1,
-                                                    ),
-                                                  ),
+                                          ),
                                         ),
                                       ),
                                     ],
@@ -2603,14 +3046,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 const Text(
-                                  "Harcayan Kişiyi Seç",
+                                  "Ödeyen Kişiyi Seç",
                                   style: TextStyle(
                                     fontSize: 16.5,
                                     fontWeight: FontWeight.w800,
                                   ),
                                 ),
                                 Text(
-                                  "Masraf hangi personelin hesabından/kartından ödendi?",
+                                  "Masrafı hangi personel ödedi?",
                                   style: TextStyle(
                                     fontSize: 11.5,
                                     color:
@@ -2708,7 +3151,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 const SizedBox(width: 8),
                                 const Expanded(
                                   child: Text(
-                                    "Seçili Harcayanı Kaldır",
+                                    "Seçili Ödeyeni Kaldır",
                                     style: TextStyle(
                                       fontSize: 13,
                                       fontWeight: FontWeight.w600,
@@ -2957,27 +3400,33 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
     return Container(
       margin: const EdgeInsets.only(bottom: 14),
       decoration: BoxDecoration(
-        color:
-            isDark
-                ? const Color(0xFF1E293B).withValues(alpha: 0.55)
-                : Colors.white,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [
+            (isDark ? const Color(0xFF171A1F) : const Color(0xFFE0EAEE))
+                .withValues(alpha: isDark ? 0.92 : 0.88),
+            (isDark ? const Color(0xFF0D0F13) : const Color(0xFFCCD9DE))
+                .withValues(alpha: isDark ? 0.98 : 0.94),
+          ],
+        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color:
               girildi
-                  ? temaRengi.withValues(alpha: isDark ? 0.6 : 0.45)
+                  ? temaRengi.withValues(alpha: isDark ? 0.65 : 0.50)
                   : (isDark
                       ? Colors.white.withValues(alpha: 0.08)
-                      : const Color(0xFFE2E8F0)),
+                      : const Color(0xFFBFD0D6).withValues(alpha: 0.90)),
           width: girildi ? 1.4 : 1.0,
         ),
         boxShadow: [
           BoxShadow(
             color: (girildi ? temaRengi : Colors.black).withValues(
-              alpha: isDark ? 0.15 : 0.04,
+              alpha: isDark ? 0.18 : 0.05,
             ),
-            blurRadius: 10,
-            offset: const Offset(0, 3),
+            blurRadius: 12,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
@@ -2998,21 +3447,22 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                 ),
                 const SizedBox(width: 12),
                 Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
+                  child: Wrap(
+                    crossAxisAlignment: WrapCrossAlignment.center,
+                    spacing: 6,
+                    runSpacing: 2,
                     children: [
                       Text(
                         baslik,
                         style: const TextStyle(
-                          fontSize: 15.5,
+                          fontSize: 15,
                           fontWeight: FontWeight.w800,
                         ),
                       ),
-                      const SizedBox(height: 2),
                       Text(
-                        altBaslik,
+                        "($altBaslik)",
                         style: TextStyle(
-                          fontSize: 11.5,
+                          fontSize: 11,
                           color:
                               isDark ? Colors.white60 : const Color(0xFF64748B),
                         ),
@@ -3180,7 +3630,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                 ),
                 const SizedBox(width: 6),
                 Text(
-                  "Kartı Kullanan / Harcayan:",
+                  "Ödeyen Kişi:",
                   style: TextStyle(
                     fontSize: 12,
                     fontWeight: FontWeight.w700,
@@ -3273,7 +3723,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            "Kişi Seç",
+                            "Ödeyen Seç",
                             style: TextStyle(
                               fontSize: 11,
                               fontWeight: FontWeight.w600,
