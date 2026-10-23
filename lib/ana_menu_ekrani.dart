@@ -83,6 +83,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   bool _klavuzAciliyor = false;
   bool _turAktif = false;
   bool _turDenendiBuAcilis = false;
+  bool _cikisYapiliyor = false;
 
   void _hizliErisimAc(int index, bool finansalErisim) {
     final finansSekmesi = index == 3 || index == 4;
@@ -216,6 +217,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     FirestoreServisi servisi,
     bool finansalErisim,
   ) {
+    if (_cikisYapiliyor) {
+      return const Stream.empty();
+    }
     final now = DateTime.now();
     final ayBaslangic = DateTime(now.year, now.month, 1);
     final ayBitis = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
@@ -666,8 +670,27 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     required bool finansalErisim,
   }) {
     final user = Provider.of<UserModel?>(context, listen: false);
-    if (user == null) {
-      return const Center(child: CircularProgressIndicator());
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    if (user == null || _cikisYapiliyor) {
+      return Center(
+        child: Column(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            const CircularProgressIndicator(color: Color(0xFF10B981)),
+            if (_cikisYapiliyor) ...[
+              const SizedBox(height: 16),
+              Text(
+                "Oturum kapatılıyor...",
+                style: TextStyle(
+                  color: isDark ? Colors.white70 : const Color(0xFF334155),
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ],
+        ),
+      );
     }
 
     final servisi = FirestoreServisi(kullaniciId: user.uid);
@@ -2638,8 +2661,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
 
         // RolProvider'Ä± baÅŸlat
         final user = Provider.of<UserModel?>(context, listen: false);
-        if (user != null) {
+        if (user != null && !_cikisYapiliyor) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
+            if (!mounted || _cikisYapiliyor) return;
             Provider.of<RolProvider>(
               context,
               listen: false,
@@ -3112,23 +3136,25 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                         ],
                       ),
                 );
-                if (onayla == true && mounted && context.mounted) {
-                  // Çekmeceyi kapat ve navigation stack'i kök sayfaya getir
-                  Navigator.of(
-                    context,
-                    rootNavigator: true,
-                  ).popUntil((route) => route.isFirst);
+                if (onayla == true && mounted) {
+                  setState(() {
+                    _cikisYapiliyor = true;
+                  });
 
                   // Aktif panel veri dinleyicilerini durdur
                   _disposePanelStream();
 
                   // RolProvider'ın Firestore dinleyicisini iptal et ve sıfırla
-                  if (mounted && context.mounted) {
+                  if (context.mounted) {
                     Provider.of<RolProvider>(context, listen: false).sifirla();
                   }
 
                   // Hesaptan güvenle çıkış yap
-                  await authServisi.signOut();
+                  try {
+                    await authServisi.signOut();
+                  } catch (e) {
+                    debugPrint("Çıkış hatası: $e");
+                  }
                 }
               },
             ),

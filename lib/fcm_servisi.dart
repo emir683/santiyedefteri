@@ -108,10 +108,14 @@ class FcmServisi {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
     try {
-      await _db.collection('users').doc(user.uid).update({
-        'fcmToken': FieldValue.delete(),
-        'fcmTokenUpdatedAt': FieldValue.delete(),
-      });
+      await _db
+          .collection('users')
+          .doc(user.uid)
+          .update({
+            'fcmToken': FieldValue.delete(),
+            'fcmTokenUpdatedAt': FieldValue.delete(),
+          })
+          .timeout(const Duration(milliseconds: 800));
     } catch (_) {}
   }
 
@@ -212,11 +216,15 @@ class FcmServisi {
       if (teamId.isNotEmpty) {
         navigate(HaftalikOzetEkrani(teamId: teamId));
       }
-    } else if (action == 'daily_report' || action == 'GUNLUK_RAPOR_EKLEME' || action == 'GUNLUK_RAPOR_GUNCELLEME') {
+    } else if (action == 'daily_report' ||
+        action == 'GUNLUK_RAPOR_EKLEME' ||
+        action == 'GUNLUK_RAPOR_GUNCELLEME') {
       if (teamId.isNotEmpty) {
         navigate(GunlukRaporEkrani(teamId: teamId));
       }
-    } else if (action == 'ISCI_EKLEME' || action == 'ISCI_GUNCELLEME' || action == 'ISCI_KART_ESLESMESI') {
+    } else if (action == 'ISCI_EKLEME' ||
+        action == 'ISCI_GUNCELLEME' ||
+        action == 'ISCI_KART_ESLESMESI') {
       if (teamId.isNotEmpty) {
         navigate(IsciEkrani(teamId: teamId));
       }

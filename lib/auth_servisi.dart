@@ -145,15 +145,20 @@ class AuthServisi {
   }
 
   Future<void> signOut() async {
-    // 1. FCM bildirim aboneliğini temizle
+    // 1. FCM token temizliğini arka planda çalıştır (UI'ı asla bekletmez)
     try {
-      await FcmServisi().kullaniciAyril();
+      final user = _auth.currentUser;
+      if (user != null) {
+        await FcmServisi().kullaniciAyril().timeout(
+          const Duration(milliseconds: 600),
+          onTimeout: () => null,
+        );
+      }
     } catch (e) {
       debugPrint("FCM token temizleme hatası: $e");
     }
 
     // 2. Google oturumu: Yalnızca kullanıcı gerçekten Google sağlayıcısı ile giriş yaptıysa kapat
-    // Google Play Services DEVELOPER_ERROR (SHA-1 hatası) verse dahi Firebase çıkışını ASLA engellememelidir.
     if (!kIsWeb) {
       try {
         final currentUser = _auth.currentUser;
@@ -164,19 +169,28 @@ class AuthServisi {
             false;
 
         if (isGoogleUser) {
-          await _googleSignIn.signOut().timeout(
-            const Duration(seconds: 2),
-            onTimeout: () => null,
+          final isGSignedIn = await _googleSignIn.isSignedIn().timeout(
+            const Duration(milliseconds: 500),
+            onTimeout: () => false,
           );
+          if (isGSignedIn) {
+            await _googleSignIn.signOut().timeout(
+              const Duration(seconds: 1),
+              onTimeout: () => null,
+            );
+          }
         }
       } catch (e) {
         debugPrint("GoogleSignIn signOut hatası (güvenle yoksayıldı): $e");
       }
     }
 
-    // 3. Firebase Auth oturumunu her koşulda mutlaka kapat
+    // 3. Firebase Auth oturumunu her koşulda mutlaka kapat (asla donmaz)
     try {
-      await _auth.signOut();
+      await _auth.signOut().timeout(
+        const Duration(seconds: 2),
+        onTimeout: () => null,
+      );
     } catch (e) {
       debugPrint("FirebaseAuth signOut kritik hata: $e");
       rethrow;
