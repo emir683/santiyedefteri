@@ -2829,21 +2829,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       ),
                       _buildGlassDrawerItem(
                         context,
-                        icon: Icons.analytics_rounded,
-                        title: 'Haftalık Durum Özeti',
-                        color: const Color(0xFFF97316),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(
-                              sayfa: HaftalikOzetEkrani(teamId: widget.teamId),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
                         icon: Icons.notifications_active_outlined,
                         title: 'Hatırlatmalar',
                         onTap: () {
