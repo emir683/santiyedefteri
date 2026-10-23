@@ -2256,44 +2256,51 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Durum Kapsülü
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 5,
-                  ),
-                  decoration: BoxDecoration(
-                    color: primaryStatusColor.withValues(
-                      alpha: isDark ? 0.16 : 0.12,
+                Flexible(
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 5,
                     ),
-                    borderRadius: BorderRadius.circular(10),
-                    border: Border.all(
-                      color: primaryStatusColor.withValues(alpha: 0.25),
-                      width: 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        isPositive
-                            ? Icons.trending_up_rounded
-                            : Icons.trending_down_rounded,
-                        size: 15,
-                        color: primaryStatusColor,
+                    decoration: BoxDecoration(
+                      color: primaryStatusColor.withValues(
+                        alpha: isDark ? 0.16 : 0.12,
                       ),
-                      const SizedBox(width: 5),
-                      Text(
-                        isPositive ? "NET DÖNEM KÂRI" : "BÜTÇE AŞIMI / ZARAR",
-                        style: GoogleFonts.poppins(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 0.4,
+                      borderRadius: BorderRadius.circular(10),
+                      border: Border.all(
+                        color: primaryStatusColor.withValues(alpha: 0.25),
+                        width: 1,
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          isPositive
+                              ? Icons.trending_up_rounded
+                              : Icons.trending_down_rounded,
+                          size: 15,
                           color: primaryStatusColor,
                         ),
-                      ),
-                    ],
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            isPositive ? "NET DÖNEM KÂRI" : "BÜTÇE AŞIMI / ZARAR",
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: GoogleFonts.poppins(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w700,
+                              letterSpacing: 0.4,
+                              color: primaryStatusColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
 
                 // Kâr / Aşım Oranı Rozeti
                 if (toplamGelir > 0)
@@ -2313,6 +2320,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                       isPositive
                           ? "+%${margin.toStringAsFixed(0)} Kâr Oranı"
                           : "-%${margin.abs().toStringAsFixed(0)} Açık",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
                       style: GoogleFonts.poppins(
                         fontSize: 11,
                         fontWeight: FontWeight.w600,
@@ -2368,7 +2377,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                 child: Row(
                   children: [
                     Expanded(
-                      flex: (gelirShare * 1000).toInt(),
+                      flex: (gelirShare * 1000).toInt().clamp(1, 1000),
                       child: Container(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
@@ -2379,7 +2388,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                     ),
                     const SizedBox(width: 2),
                     Expanded(
-                      flex: (giderShare * 1000).toInt(),
+                      flex: (giderShare * 1000).toInt().clamp(1, 1000),
                       child: Container(
                         decoration: const BoxDecoration(
                           gradient: LinearGradient(
@@ -2396,20 +2405,30 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  "%${(gelirShare * 100).toStringAsFixed(0)} Gelir Hacmi",
-                  style: GoogleFonts.poppins(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFF10B981),
+                Expanded(
+                  child: Text(
+                    "%${(gelirShare * 100).toStringAsFixed(0)} Gelir Hacmi",
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFF10B981),
+                    ),
                   ),
                 ),
-                Text(
-                  "%${(giderShare * 100).toStringAsFixed(0)} Gider Yükü",
-                  style: GoogleFonts.poppins(
-                    fontSize: 10.5,
-                    fontWeight: FontWeight.w500,
-                    color: const Color(0xFFEF4444),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    "%${(giderShare * 100).toStringAsFixed(0)} Gider Yükü",
+                    textAlign: TextAlign.right,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: GoogleFonts.poppins(
+                      fontSize: 10.5,
+                      fontWeight: FontWeight.w500,
+                      color: const Color(0xFFEF4444),
+                    ),
                   ),
                 ),
               ],
@@ -2447,12 +2466,16 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              "GELİR",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFF10B981),
+                            Expanded(
+                              child: Text(
+                                "GELİR",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFF10B981),
+                                ),
                               ),
                             ),
                           ],
@@ -2460,19 +2483,23 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         const SizedBox(height: 6),
                         Consumer<PrivacyProvider>(
                           builder:
-                              (context, privacy, child) => Text(
-                                privacy.isHidden
-                                    ? "**** TL"
-                                    : Formatlayici.yap(toplamGelir),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color:
-                                      isDark
-                                          ? Colors.white
-                                          : const Color(0xFF0F172A),
+                              (context, privacy, child) => FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  privacy.isHidden
+                                      ? "**** TL"
+                                      : Formatlayici.yap(toplamGelir),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A),
+                                  ),
                                 ),
                               ),
                         ),
@@ -2528,12 +2555,16 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                               ),
                             ),
                             const SizedBox(width: 6),
-                            Text(
-                              "GİDER",
-                              style: GoogleFonts.poppins(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: const Color(0xFFEF4444),
+                            Expanded(
+                              child: Text(
+                                "GİDER",
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: GoogleFonts.poppins(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w700,
+                                  color: const Color(0xFFEF4444),
+                                ),
                               ),
                             ),
                           ],
@@ -2541,19 +2572,23 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         const SizedBox(height: 6),
                         Consumer<PrivacyProvider>(
                           builder:
-                              (context, privacy, child) => Text(
-                                privacy.isHidden
-                                    ? "**** TL"
-                                    : Formatlayici.yap(toplamGider),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                                style: GoogleFonts.poppins(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w700,
-                                  color:
-                                      isDark
-                                          ? Colors.white
-                                          : const Color(0xFF0F172A),
+                              (context, privacy, child) => FittedBox(
+                                fit: BoxFit.scaleDown,
+                                alignment: Alignment.centerLeft,
+                                child: Text(
+                                  privacy.isHidden
+                                      ? "**** TL"
+                                      : Formatlayici.yap(toplamGider),
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 15,
+                                    fontWeight: FontWeight.w700,
+                                    color:
+                                        isDark
+                                            ? Colors.white
+                                            : const Color(0xFF0F172A),
+                                  ),
                                 ),
                               ),
                         ),
@@ -2617,73 +2652,84 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 // Ekstra Kalem Ekle Butonu
-                TextButton.icon(
-                  onPressed:
-                      () =>
-                          _ekstraKalemEkleSecici(context, aylikFinans, servisi),
-                  icon: const Icon(
-                    Icons.add_circle_outline,
-                    size: 16,
-                    color: Color(0xFF14B8A6),
-                  ),
-                  label: Text(
-                    "Ek Kalem Ekle",
-                    style: GoogleFonts.poppins(
-                      fontSize: 12,
-                      fontWeight: FontWeight.w600,
-                      color: const Color(0xFF14B8A6),
+                Flexible(
+                  child: TextButton.icon(
+                    onPressed:
+                        () =>
+                            _ekstraKalemEkleSecici(context, aylikFinans, servisi),
+                    icon: const Icon(
+                      Icons.add_circle_outline,
+                      size: 16,
+                      color: Color(0xFF14B8A6),
                     ),
-                  ),
-                  style: TextButton.styleFrom(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 6,
+                    label: Text(
+                      "Ek Kalem Ekle",
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: GoogleFonts.poppins(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: const Color(0xFF14B8A6),
+                      ),
                     ),
-                    minimumSize: Size.zero,
-                    tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    style: TextButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      minimumSize: Size.zero,
+                      tapTargetSize: MaterialTapTargetSize.shrinkWrap,
+                    ),
                   ),
                 ),
+                const SizedBox(width: 8),
 
                 // Grafik & Detayları Aç/Kapat Butonu
-                InkWell(
-                  onTap: () {
-                    HapticFeedback.lightImpact();
-                    setState(() {
-                      _finansDetayAcik = !_finansDetayAcik;
-                    });
-                  },
-                  borderRadius: BorderRadius.circular(8),
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Text(
-                          _finansDetayAcik
-                              ? "Detayları Gizle"
-                              : "Grafik & Kalemler",
-                          style: GoogleFonts.poppins(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color:
-                                isDark
-                                    ? Colors.white70
-                                    : const Color(0xFF64748B),
+                Flexible(
+                  child: InkWell(
+                    onTap: () {
+                      HapticFeedback.lightImpact();
+                      setState(() {
+                        _finansDetayAcik = !_finansDetayAcik;
+                      });
+                    },
+                    borderRadius: BorderRadius.circular(8),
+                    child: Padding(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 6,
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Flexible(
+                            child: Text(
+                              _finansDetayAcik
+                                  ? "Detayları Gizle"
+                                  : "Grafik & Kalemler",
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: GoogleFonts.poppins(
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                                color:
+                                    isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF64748B),
+                              ),
+                            ),
                           ),
-                        ),
-                        const SizedBox(width: 4),
-                        Icon(
-                          _finansDetayAcik
-                              ? Icons.keyboard_arrow_up_rounded
-                              : Icons.keyboard_arrow_down_rounded,
-                          size: 18,
-                          color:
-                              isDark ? Colors.white70 : const Color(0xFF64748B),
-                        ),
-                      ],
+                          const SizedBox(width: 4),
+                          Icon(
+                            _finansDetayAcik
+                                ? Icons.keyboard_arrow_up_rounded
+                                : Icons.keyboard_arrow_down_rounded,
+                            size: 18,
+                            color:
+                                isDark ? Colors.white70 : const Color(0xFF64748B),
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),
