@@ -141,7 +141,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _klavuzKontrol();
+      _turuGuvenliSekildeBaslat();
       BildirimOnboardingDialog.kontrolEtVeGoster(context);
       _proaktifSahaVeHavaDurumuKontrolu();
     });
@@ -155,21 +155,28 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       if (prefs.getString('son_hava_uyarisi_gunu') == todayStr) return;
 
       final santiyeler = _panelSantiyeler ?? [];
-      final il = santiyeler.isNotEmpty ? (santiyeler.first.il ?? 'İstanbul') : 'İstanbul';
+      final il =
+          santiyeler.isNotEmpty
+              ? (santiyeler.first.il ?? 'İstanbul')
+              : 'İstanbul';
       final ilce = santiyeler.isNotEmpty ? santiyeler.first.ilce : null;
       final w = await TurkiyeIlIlce.fetchWeather(il: il, ilce: ilce);
       if (w != null) {
         final code = w['weathercode'] as int? ?? 0;
         final temp = (w['temperature'] as num?)?.toDouble() ?? 15.0;
-        final isRainy = (code >= 51 && code <= 67) || (code >= 80 && code <= 82) || (code >= 95);
+        final isRainy =
+            (code >= 51 && code <= 67) ||
+            (code >= 80 && code <= 82) ||
+            (code >= 95);
         final isFreezing = temp <= 3.0;
 
         if (isRainy || isFreezing) {
           await prefs.setString('son_hava_uyarisi_gunu', todayStr);
           final desc = w['description'] ?? 'Hava uyarısı';
-          final tavsiye = isFreezing
-              ? 'Hava sıcaklığı $temp°C. Beton dökümünde donma riskine karşı antifriz ve priz hızlandırıcı tedbirlerini alın.'
-              : 'Yoğun yağış bekleniyor. Açık saha kazı, beton döküm ve dış cephe çalışmalarında emniyet tedbirlerini gözden geçirin.';
+          final tavsiye =
+              isFreezing
+                  ? 'Hava sıcaklığı $temp°C. Beton dökümünde donma riskine karşı antifriz ve priz hızlandırıcı tedbirlerini alın.'
+                  : 'Yoğun yağış bekleniyor. Açık saha kazı, beton döküm ve dış cephe çalışmalarında emniyet tedbirlerini gözden geçirin.';
           await BildirimServisi().havaDurumuSahaUyarisiGonder(
             sehir: il,
             aciklama: '$desc ($temp°C)',
@@ -470,7 +477,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 child: Container(
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.18),
+                    ),
                     borderRadius: BorderRadius.circular(18),
                   ),
                   child: Icon(
@@ -710,15 +719,17 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                       center: Alignment.bottomCenter,
                       radius: 0.92,
                       colors: [
-                        const Color(0xFF5EEAD4).withValues(alpha: 
-                          Theme.of(context).brightness == Brightness.dark
-                              ? 0.14
-                              : 0.18,
+                        const Color(0xFF5EEAD4).withValues(
+                          alpha:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? 0.14
+                                  : 0.18,
                         ),
-                        const Color(0xFFB6F5ED).withValues(alpha: 
-                          Theme.of(context).brightness == Brightness.dark
-                              ? 0.08
-                              : 0.10,
+                        const Color(0xFFB6F5ED).withValues(
+                          alpha:
+                              Theme.of(context).brightness == Brightness.dark
+                                  ? 0.08
+                                  : 0.10,
                         ),
                         Colors.transparent,
                       ],
@@ -1685,7 +1696,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.03 : 0.08),
+            color: const Color(
+              0xFF79E9D7,
+            ).withValues(alpha: isDark ? 0.03 : 0.08),
             blurRadius: isDark ? 12 : 18,
             offset: const Offset(0, 10),
           ),
@@ -2205,7 +2218,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         borderRadius: BorderRadius.circular(26),
         border: Border.all(
           color:
-              isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFDAE6F2),
+              isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFDAE6F2),
         ),
         boxShadow: [
           BoxShadow(
@@ -2686,455 +2701,441 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
 
     Widget drawerBody = Container(
       decoration: BoxDecoration(
-        color: isPerfMode
-            ? (isDarkMode ? const Color(0xFF13171F) : Colors.white)
-            : (isDarkMode
-                ? const Color(0xFF1E1E1E).withValues(alpha: 0.15)
-                : const Color(0xFFFFFFFF).withValues(alpha: 0.25)),
+        color:
+            isPerfMode
+                ? (isDarkMode ? const Color(0xFF13171F) : Colors.white)
+                : (isDarkMode
+                    ? const Color(0xFF1E1E1E).withValues(alpha: 0.15)
+                    : const Color(0xFFFFFFFF).withValues(alpha: 0.25)),
         border: Border(
           right: BorderSide(
-            color: isDarkMode
-                ? Colors.white.withValues(alpha: isPerfMode ? 0.08 : 0.5)
-                : Colors.black.withValues(alpha: isPerfMode ? 0.06 : 0.2),
+            color:
+                isDarkMode
+                    ? Colors.white.withValues(alpha: isPerfMode ? 0.08 : 0.5)
+                    : Colors.black.withValues(alpha: isPerfMode ? 0.06 : 0.2),
             width: 1,
           ),
         ),
       ),
       child: Column(
+        children: [
+          // BAÅLIK
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
+            decoration: BoxDecoration(
+              color:
+                  isDarkMode
+                      ? Colors.black.withValues(alpha: 0.3)
+                      : const Color(0xFFEAF2F8).withValues(alpha: 0.15),
+              border: Border(
+                bottom: BorderSide(
+                  color:
+                      isDarkMode
+                          ? Colors.white.withValues(alpha: 0.5)
+                          : const Color(0xFFD4E2EC).withValues(alpha: 0.52),
+                  width: 1,
+                ),
+              ),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // BAÅLIK
-                Container(
-                  width: double.infinity,
-                  padding: const EdgeInsets.fromLTRB(20, 60, 20, 30),
-                  decoration: BoxDecoration(
-                    color:
-                        isDarkMode
-                            ? Colors.black.withValues(alpha: 0.3)
-                            : const Color(0xFFEAF2F8).withValues(alpha: 0.15),
-                    border: Border(
-                      bottom: BorderSide(
-                        color:
-                            isDarkMode
-                                ? Colors.white.withValues(alpha: 0.5)
-                                : const Color(0xFFD4E2EC).withValues(alpha: 0.52),
-                        width: 1,
-                      ),
-                    ),
-                  ),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Icon(
-                        Icons.business,
-                        color:
-                            isDarkMode ? Colors.white : const Color(0xFF1E6F78),
-                        size: 40,
-                      ),
-                      const SizedBox(height: 16),
-                      Text(
-                        ekipBaslik,
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white : Colors.black87,
-                          fontSize: 24,
-                          fontWeight: FontWeight.bold,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        "Yönetim Paneli",
-                        style: TextStyle(
-                          color: isDarkMode ? Colors.white70 : Colors.black54,
-                          fontSize: 14,
-                        ),
-                      ),
-                    ],
-                  ),
+                Icon(
+                  Icons.business,
+                  color: isDarkMode ? Colors.white : const Color(0xFF1E6F78),
+                  size: 40,
                 ),
-
                 const SizedBox(height: 16),
-
-                // MENÃœ
-                Expanded(
-                  child: ListView(
-                    padding: const EdgeInsets.symmetric(horizontal: 12),
-                    children: [
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.auto_awesome_rounded,
-                        title: 'ŞPD AI Asistanı',
-                        color: const Color(0xFF10B981),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            MaterialPageRoute(
-                              builder:
-                                  (_) => AIChatScreen(
-                                    teamId: teamId,
-                                    isciler: _panelIsciler ?? const [],
-                                    santiyeler: _panelSantiyeler ?? const [],
-                                  ),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.cloud_sync_rounded,
-                        title: 'Çevrimdışı & Eşitleme Durumu',
-                        color: const Color(0xFF0F7C86),
-                        onTap: () {
-                          Navigator.pop(context);
-                          OfflineSyncBanner.showSyncDetailSheet(context);
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.person_outline,
-                        title: 'Profilim',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(sayfa: const ProfilEkrani()),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.admin_panel_settings_outlined,
-                        title: 'Ekip Yönetimi',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(
-                              sayfa: EkipYonetimiEkrani(teamId: teamId),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.history_edu_outlined,
-                        title: 'İşlem Geçmişi',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(
-                              sayfa: IslemGecmisiEkrani(teamId: teamId),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.notifications_active_outlined,
-                        title: 'Hatırlatmalar',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(sayfa: const HatirlatmalarEkrani()),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.architecture_rounded,
-                        title: 'DWG / CAD Proje Aç',
-                        color: const Color(0xFF5EEAD4),
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(sayfa: const DwgGoruntuleyiciEkrani()),
-                          );
-                        },
-                      ),
-
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Divider(),
-                      ),
-
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.help_outline,
-                        title: 'Kullanım Kılavuzu',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(
-                              sayfa: const KlavuzEkrani(isFromMenu: true),
-                            ),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.support_agent_outlined,
-                        title: 'Destek',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(sayfa: const DestekEkrani()),
-                          );
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.star_rate_rounded,
-                        title: 'Uygulamayı Puanla',
-                        color: const Color(0xFFFFB300),
-                        onTap: () {
-                          Navigator.pop(context);
-                          PuanlamaServisi.diyalogGoster(context);
-                        },
-                      ),
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.info_outline,
-                        title: 'Hakkında',
-                        onTap: () {
-                          Navigator.pop(context);
-                          Navigator.push(
-                            context,
-                            SayfaGecisi(sayfa: const HakkindaEkrani()),
-                          );
-                        },
-                      ),
-
-                      // -----------------------
-                      const Padding(
-                        padding: EdgeInsets.symmetric(vertical: 8),
-                        child: Divider(),
-                      ),
-
-                      // PERFORMANS MODU ŞALTERİ
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color: isDarkMode
-                              ? Colors.white.withValues(alpha: 0.05)
-                              : Colors.black.withValues(alpha: 0.03),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            width: 0.5,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 2,
-                          ),
-                          title: Text(
-                            "Performans Modu",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isDarkMode ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                          subtitle: Text(
-                            perfProvider.isPerformanceMode
-                                ? (perfProvider.isAutoDetected
-                                    ? "Cihaza göre otomatik aktif (${perfProvider.detectionReason})"
-                                    : "Açık - Cam ve gölge efektleri kapalı")
-                                : "Kapalı - Zayıf telefonlarda açınız",
-                            style: TextStyle(
-                              fontSize: 11.5,
-                              color: isDarkMode ? Colors.white60 : Colors.black54,
-                            ),
-                          ),
-                          value: isPerfMode,
-                          activeThumbColor: Colors.white,
-                          activeTrackColor: const Color(0xFF10B981),
-                          inactiveThumbColor: isDarkMode
-                              ? const Color(0xFF9CA3AF)
-                              : const Color(0xFF64748B),
-                          inactiveTrackColor: isDarkMode
-                              ? Colors.white12
-                              : const Color(0xFFD7E3EC),
-                          secondary: const Icon(
-                            Icons.bolt_rounded,
-                            color: Color(0xFF10B981),
-                          ),
-                          onChanged: (val) => perfProvider.togglePerformanceMode(val),
-                        ),
-                      ),
-
-                      Container(
-                        margin: const EdgeInsets.only(bottom: 8),
-                        decoration: BoxDecoration(
-                          color:
-                              isDarkMode
-                                  ? Colors.white.withValues(alpha: 0.05)
-                                  : Colors.black.withValues(alpha: 0.03),
-                          border: Border.all(
-                            color: Colors.white.withValues(alpha: 0.1),
-                            width: 0.5,
-                          ),
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 2,
-                          ),
-                          title: Text(
-                            isDarkMode ? "Aydınlık Mod" : "Karanlık Mod",
-                            style: TextStyle(
-                              fontWeight: FontWeight.w600,
-                              color: isDarkMode ? Colors.white : Colors.black87,
-                            ),
-                          ),
-                          value: isDarkMode,
-                          activeThumbColor: Colors.white,
-                          activeTrackColor: const Color(0xFF14B8A6),
-                          inactiveThumbColor:
-                              isDarkMode
-                                  ? const Color(0xFF9CA3AF)
-                                  : const Color(0xFF64748B),
-                          inactiveTrackColor:
-                              isDarkMode
-                                  ? Colors.white12
-                                  : const Color(0xFFD7E3EC),
-                          secondary: Icon(
-                            isDarkMode ? Icons.dark_mode : Icons.light_mode,
-                            color: isDarkMode ? Colors.white70 : Colors.black87,
-                          ),
-                          onChanged: (val) => themeProvider.toggleTheme(val),
-                        ),
-                      ),
-
-                      // SIFIRLAMA BUTONU
-                      _buildGlassDrawerItem(
-                        context,
-                        icon: Icons.delete_forever_outlined,
-                        title: 'Tüm Verileri Sıfırla',
-                        color: Colors.redAccent,
-                        onTap: () async {
-                          Navigator.pop(context);
-                          final onayla = await AnimasyonluDialog.goster<bool>(
-                            context: context,
-                            builder:
-                                (ctx) => _buildDrawerConfirmDialog(
-                                  title: const Text("DİKKAT: Veri Sıfırlama"),
-                                  content: const Text(
-                                    "TÜM Şantiyeler, İşler, Raporlar ve Finansal veriler KALICI OLARAK silinecektir.\n\nBu işlem geri alınamaz. Onaylıyor musunuz?",
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                  actions: [
-                                    TextButton(
-                                      onPressed:
-                                          () => Navigator.pop(ctx, false),
-                                      child: const Text("İptal"),
-                                    ),
-                                    ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.red,
-                                        foregroundColor: Colors.white,
-                                      ),
-                                      onPressed: () => Navigator.pop(ctx, true),
-                                      child: const Text("EVET, SİL"),
-                                    ),
-                                  ],
-                                ),
-                          );
-                          if (onayla == true && context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Tüm veriler siliniyor..."),
-                              ),
-                            );
-                            await FirestoreServisi(
-                              kullaniciId: "temp",
-                            ).tumVerileriSil(widget.teamId);
-                            if (!context.mounted) return;
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text(
-                                  " Tüm veriler başarıyla sıfırlandı.",
-                                ),
-                                backgroundColor: Colors.red,
-                              ),
-                            );
-                          }
-                        },
-                      ),
-                    ],
+                Text(
+                  ekipBaslik,
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white : Colors.black87,
+                    fontSize: 24,
+                    fontWeight: FontWeight.bold,
                   ),
                 ),
-
-                SafeArea(
-                  top: false,
-                  minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-                  child: _buildGlassDrawerItem(
-                    context,
-                    icon: Icons.logout,
-                    title: 'Çıkış Yap',
-                    color: Colors.redAccent,
-                    isTransparent: false,
-                    onTap: () async {
-                      Navigator.pop(context);
-                      await Future<void>.delayed(
-                        const Duration(milliseconds: 180),
-                      );
-                      if (!mounted || !context.mounted) return;
-                      final onayla = await AnimasyonluDialog.goster<bool>(
-                        context: context,
-                        builder:
-                            (ctx) => _buildDrawerConfirmDialog(
-                              title: const Text("Çıkış Yap"),
-                              content: const Text(
-                                "Oturumu kapatmak istiyor musunuz?",
-                              ),
-                              actions: [
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, false),
-                                  child: const Text("İptal"),
-                                ),
-                                TextButton(
-                                  onPressed: () => Navigator.pop(ctx, true),
-                                  child: const Text(
-                                    "Çıkış Yap",
-                                    style: TextStyle(color: Colors.red),
-                                  ),
-                                ),
-                              ],
-                            ),
-                      );
-                      if (onayla == true && mounted && context.mounted) {
-                        // Çekmeceyi kapat ve navigation stack'i kök sayfaya getir
-                        Navigator.of(
-                          context,
-                          rootNavigator: true,
-                        ).popUntil((route) => route.isFirst);
-
-                        // Aktif panel veri dinleyicilerini durdur
-                        _disposePanelStream();
-
-                        // RolProvider'ın Firestore dinleyicisini iptal et ve sıfırla
-                        if (mounted && context.mounted) {
-                          Provider.of<RolProvider>(
-                            context,
-                            listen: false,
-                          ).sifirla();
-                        }
-
-                        // Hesaptan güvenle çıkış yap
-                        await authServisi.signOut();
-                      }
-                    },
+                const SizedBox(height: 4),
+                Text(
+                  "Yönetim Paneli",
+                  style: TextStyle(
+                    color: isDarkMode ? Colors.white70 : Colors.black54,
+                    fontSize: 14,
                   ),
                 ),
               ],
             ),
-          );
+          ),
+
+          const SizedBox(height: 16),
+
+          // MENÃœ
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: [
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.auto_awesome_rounded,
+                  title: 'ŞPD AI Asistanı',
+                  color: const Color(0xFF10B981),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder:
+                            (_) => AIChatScreen(
+                              teamId: teamId,
+                              isciler: _panelIsciler ?? const [],
+                              santiyeler: _panelSantiyeler ?? const [],
+                            ),
+                      ),
+                    );
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.cloud_sync_rounded,
+                  title: 'Çevrimdışı & Eşitleme Durumu',
+                  color: const Color(0xFF0F7C86),
+                  onTap: () {
+                    Navigator.pop(context);
+                    OfflineSyncBanner.showSyncDetailSheet(context);
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.person_outline,
+                  title: 'Profilim',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: const ProfilEkrani()),
+                    );
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.admin_panel_settings_outlined,
+                  title: 'Ekip Yönetimi',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: EkipYonetimiEkrani(teamId: teamId)),
+                    );
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.history_edu_outlined,
+                  title: 'İşlem Geçmişi',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: IslemGecmisiEkrani(teamId: teamId)),
+                    );
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.notifications_active_outlined,
+                  title: 'Hatırlatmalar',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: const HatirlatmalarEkrani()),
+                    );
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.architecture_rounded,
+                  title: 'DWG / CAD Proje Aç',
+                  color: const Color(0xFF5EEAD4),
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: const DwgGoruntuleyiciEkrani()),
+                    );
+                  },
+                ),
+
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(),
+                ),
+
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.help_outline,
+                  title: 'Kullanım Kılavuzu',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: const KlavuzEkrani(isFromMenu: true)),
+                    );
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.support_agent_outlined,
+                  title: 'Destek',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: const DestekEkrani()),
+                    );
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.star_rate_rounded,
+                  title: 'Uygulamayı Puanla',
+                  color: const Color(0xFFFFB300),
+                  onTap: () {
+                    Navigator.pop(context);
+                    PuanlamaServisi.diyalogGoster(context);
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.info_outline,
+                  title: 'Hakkında',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: const HakkindaEkrani()),
+                    );
+                  },
+                ),
+
+                // -----------------------
+                const Padding(
+                  padding: EdgeInsets.symmetric(vertical: 8),
+                  child: Divider(),
+                ),
+
+                // PERFORMANS MODU ŞALTERİ
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color:
+                        isDarkMode
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.03),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 2,
+                    ),
+                    title: Text(
+                      "Performans Modu",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    subtitle: Text(
+                      perfProvider.isPerformanceMode
+                          ? (perfProvider.isAutoDetected
+                              ? "Cihaza göre otomatik aktif (${perfProvider.detectionReason})"
+                              : "Açık - Cam ve gölge efektleri kapalı")
+                          : "Kapalı - Zayıf telefonlarda açınız",
+                      style: TextStyle(
+                        fontSize: 11.5,
+                        color: isDarkMode ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                    value: isPerfMode,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: const Color(0xFF10B981),
+                    inactiveThumbColor:
+                        isDarkMode
+                            ? const Color(0xFF9CA3AF)
+                            : const Color(0xFF64748B),
+                    inactiveTrackColor:
+                        isDarkMode ? Colors.white12 : const Color(0xFFD7E3EC),
+                    secondary: const Icon(
+                      Icons.bolt_rounded,
+                      color: Color(0xFF10B981),
+                    ),
+                    onChanged: (val) => perfProvider.togglePerformanceMode(val),
+                  ),
+                ),
+
+                Container(
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(
+                    color:
+                        isDarkMode
+                            ? Colors.white.withValues(alpha: 0.05)
+                            : Colors.black.withValues(alpha: 0.03),
+                    border: Border.all(
+                      color: Colors.white.withValues(alpha: 0.1),
+                      width: 0.5,
+                    ),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: SwitchListTile(
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 14,
+                      vertical: 2,
+                    ),
+                    title: Text(
+                      isDarkMode ? "Aydınlık Mod" : "Karanlık Mod",
+                      style: TextStyle(
+                        fontWeight: FontWeight.w600,
+                        color: isDarkMode ? Colors.white : Colors.black87,
+                      ),
+                    ),
+                    value: isDarkMode,
+                    activeThumbColor: Colors.white,
+                    activeTrackColor: const Color(0xFF14B8A6),
+                    inactiveThumbColor:
+                        isDarkMode
+                            ? const Color(0xFF9CA3AF)
+                            : const Color(0xFF64748B),
+                    inactiveTrackColor:
+                        isDarkMode ? Colors.white12 : const Color(0xFFD7E3EC),
+                    secondary: Icon(
+                      isDarkMode ? Icons.dark_mode : Icons.light_mode,
+                      color: isDarkMode ? Colors.white70 : Colors.black87,
+                    ),
+                    onChanged: (val) => themeProvider.toggleTheme(val),
+                  ),
+                ),
+
+                // SIFIRLAMA BUTONU
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.delete_forever_outlined,
+                  title: 'Tüm Verileri Sıfırla',
+                  color: Colors.redAccent,
+                  onTap: () async {
+                    Navigator.pop(context);
+                    final onayla = await AnimasyonluDialog.goster<bool>(
+                      context: context,
+                      builder:
+                          (ctx) => _buildDrawerConfirmDialog(
+                            title: const Text("DİKKAT: Veri Sıfırlama"),
+                            content: const Text(
+                              "TÜM Şantiyeler, İşler, Raporlar ve Finansal veriler KALICI OLARAK silinecektir.\n\nBu işlem geri alınamaz. Onaylıyor musunuz?",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                            actions: [
+                              TextButton(
+                                onPressed: () => Navigator.pop(ctx, false),
+                                child: const Text("İptal"),
+                              ),
+                              ElevatedButton(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: Colors.red,
+                                  foregroundColor: Colors.white,
+                                ),
+                                onPressed: () => Navigator.pop(ctx, true),
+                                child: const Text("EVET, SİL"),
+                              ),
+                            ],
+                          ),
+                    );
+                    if (onayla == true && context.mounted) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text("Tüm veriler siliniyor..."),
+                        ),
+                      );
+                      await FirestoreServisi(
+                        kullaniciId: "temp",
+                      ).tumVerileriSil(widget.teamId);
+                      if (!context.mounted) return;
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(
+                          content: Text(" Tüm veriler başarıyla sıfırlandı."),
+                          backgroundColor: Colors.red,
+                        ),
+                      );
+                    }
+                  },
+                ),
+              ],
+            ),
+          ),
+
+          SafeArea(
+            top: false,
+            minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: _buildGlassDrawerItem(
+              context,
+              icon: Icons.logout,
+              title: 'Çıkış Yap',
+              color: Colors.redAccent,
+              isTransparent: false,
+              onTap: () async {
+                Navigator.pop(context);
+                await Future<void>.delayed(const Duration(milliseconds: 180));
+                if (!mounted || !context.mounted) return;
+                final onayla = await AnimasyonluDialog.goster<bool>(
+                  context: context,
+                  builder:
+                      (ctx) => _buildDrawerConfirmDialog(
+                        title: const Text("Çıkış Yap"),
+                        content: const Text(
+                          "Oturumu kapatmak istiyor musunuz?",
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, false),
+                            child: const Text("İptal"),
+                          ),
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx, true),
+                            child: const Text(
+                              "Çıkış Yap",
+                              style: TextStyle(color: Colors.red),
+                            ),
+                          ),
+                        ],
+                      ),
+                );
+                if (onayla == true && mounted && context.mounted) {
+                  // Çekmeceyi kapat ve navigation stack'i kök sayfaya getir
+                  Navigator.of(
+                    context,
+                    rootNavigator: true,
+                  ).popUntil((route) => route.isFirst);
+
+                  // Aktif panel veri dinleyicilerini durdur
+                  _disposePanelStream();
+
+                  // RolProvider'ın Firestore dinleyicisini iptal et ve sıfırla
+                  if (mounted && context.mounted) {
+                    Provider.of<RolProvider>(context, listen: false).sifirla();
+                  }
+
+                  // Hesaptan güvenle çıkış yap
+                  await authServisi.signOut();
+                }
+              },
+            ),
+          ),
+        ],
+      ),
+    );
 
     return Drawer(
       backgroundColor: Colors.transparent,
@@ -3144,12 +3145,13 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           topRight: Radius.circular(20),
           bottomRight: Radius.circular(20),
         ),
-        child: isPerfMode
-            ? drawerBody
-            : BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
-                child: drawerBody,
-              ),
+        child:
+            isPerfMode
+                ? drawerBody
+                : BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 15, sigmaY: 15),
+                  child: drawerBody,
+                ),
       ),
     );
   }
@@ -3161,16 +3163,20 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     final dockContent = Container(
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
       decoration: BoxDecoration(
-        color: isPerfMode
-            ? (isDark ? const Color(0xFF141A22) : Colors.white)
-            : (isDark
-                ? Colors.black.withValues(alpha: 0.40)
-                : Colors.white.withValues(alpha: 0.70)),
+        color:
+            isPerfMode
+                ? (isDark ? const Color(0xFF141A22) : Colors.white)
+                : (isDark
+                    ? Colors.black.withValues(alpha: 0.40)
+                    : Colors.white.withValues(alpha: 0.70)),
         borderRadius: BorderRadius.circular(28),
         border: Border.all(
-          color: isPerfMode
-              ? (isDark ? Colors.white.withValues(alpha: 0.10) : const Color(0xFFD0DDE3))
-              : Colors.white.withValues(alpha: 0.20),
+          color:
+              isPerfMode
+                  ? (isDark
+                      ? Colors.white.withValues(alpha: 0.10)
+                      : const Color(0xFFD0DDE3))
+                  : Colors.white.withValues(alpha: 0.20),
           width: 1.0,
         ),
         boxShadow: [
@@ -3181,87 +3187,84 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           ),
         ],
       ),
-            child: Row(
-              children: [
-                Expanded(
-                  child: _buildDockItem(
-                    context,
-                    icon: Icons.home_rounded,
-                    label: 'Panel',
-                    color: const Color(0xFF14B8A6),
-                    isSelected: _selectedIndex == 0,
-                    onTap: () => _hizliErisimAc(0, finansalErisim),
-                  ),
-                ),
-                Expanded(
-                  child: _buildDockItem(
-                    context,
-                    itemKey: _santiyeKey,
-                    icon: Icons.home_work_outlined,
-                    label: '\u015Eantiye',
-                    color: AppColors.tealDark,
-                    isSelected: _selectedIndex == 1,
-                    onTap: () => _hizliErisimAc(1, finansalErisim),
-                  ),
-                ),
-                Expanded(
-                  child: _buildDockItem(
-                    context,
-                    itemKey: _isciKey,
-                    icon: Icons.groups_outlined,
-                    label: '\u0130\u015F\u00E7i',
-                    color: AppColors.blueDark,
-                    isSelected: _selectedIndex == 2,
-                    onTap: () => _hizliErisimAc(2, finansalErisim),
-                  ),
-                ),
-                Expanded(
-                  child: _buildDockItem(
-                    context,
-                    icon:
-                        finansalErisim
-                            ? Icons.assessment_rounded
-                            : Icons.lock_outline_rounded,
-                    label: 'Ay Sonu',
-                    color:
-                        finansalErisim
-                            ? AppColors.orangeDark
-                            : Colors.grey.shade500,
-                    isSelected: _selectedIndex == 3,
-                    onTap: () => _hizliErisimAc(3, finansalErisim),
-                  ),
-                ),
-                Expanded(
-                  child: _buildDockItem(
-                    context,
-                    itemKey: _odemeKey,
-                    icon:
-                        finansalErisim
-                            ? Icons.receipt_long_outlined
-                            : Icons.lock_outline_rounded,
-                    label: '\u00D6deme',
-                    color:
-                        finansalErisim
-                            ? AppColors.purpleDark
-                            : Colors.grey.shade500,
-                    isSelected: _selectedIndex == 4,
-                    onTap: () => _hizliErisimAc(4, finansalErisim),
-                  ),
-                ),
-              ],
+      child: Row(
+        children: [
+          Expanded(
+            child: _buildDockItem(
+              context,
+              icon: Icons.home_rounded,
+              label: 'Panel',
+              color: const Color(0xFF14B8A6),
+              isSelected: _selectedIndex == 0,
+              onTap: () => _hizliErisimAc(0, finansalErisim),
             ),
-          );
+          ),
+          Expanded(
+            child: _buildDockItem(
+              context,
+              itemKey: _santiyeKey,
+              icon: Icons.home_work_outlined,
+              label: '\u015Eantiye',
+              color: AppColors.tealDark,
+              isSelected: _selectedIndex == 1,
+              onTap: () => _hizliErisimAc(1, finansalErisim),
+            ),
+          ),
+          Expanded(
+            child: _buildDockItem(
+              context,
+              itemKey: _isciKey,
+              icon: Icons.groups_outlined,
+              label: '\u0130\u015F\u00E7i',
+              color: AppColors.blueDark,
+              isSelected: _selectedIndex == 2,
+              onTap: () => _hizliErisimAc(2, finansalErisim),
+            ),
+          ),
+          Expanded(
+            child: _buildDockItem(
+              context,
+              icon:
+                  finansalErisim
+                      ? Icons.assessment_rounded
+                      : Icons.lock_outline_rounded,
+              label: 'Ay Sonu',
+              color:
+                  finansalErisim ? AppColors.orangeDark : Colors.grey.shade500,
+              isSelected: _selectedIndex == 3,
+              onTap: () => _hizliErisimAc(3, finansalErisim),
+            ),
+          ),
+          Expanded(
+            child: _buildDockItem(
+              context,
+              itemKey: _odemeKey,
+              icon:
+                  finansalErisim
+                      ? Icons.receipt_long_outlined
+                      : Icons.lock_outline_rounded,
+              label: '\u00D6deme',
+              color:
+                  finansalErisim ? AppColors.purpleDark : Colors.grey.shade500,
+              isSelected: _selectedIndex == 4,
+              onTap: () => _hizliErisimAc(4, finansalErisim),
+            ),
+          ),
+        ],
+      ),
+    );
 
     return SafeArea(
       minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
       child: ClipRRect(
         borderRadius: BorderRadius.circular(28),
-        child: isPerfMode
-            ? dockContent
-            : BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                child: dockContent,
-              ),
+        child:
+            isPerfMode
+                ? dockContent
+                : BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
+                  child: dockContent,
+                ),
       ),
     );
   }
@@ -3296,7 +3299,9 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(
                   color:
-                      isSelected ? color.withValues(alpha: 0.34) : Colors.transparent,
+                      isSelected
+                          ? color.withValues(alpha: 0.34)
+                          : Colors.transparent,
                 ),
               ),
               child: Icon(icon, color: color, size: 22),
@@ -3338,7 +3343,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     : Colors.black.withValues(alpha: 0.03))
                 : (isDark ? const Color(0xFF2C2C2E) : Colors.white),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.3), width: 0.4),
+        border: Border.all(
+          color: Colors.white.withValues(alpha: 0.3),
+          width: 0.4,
+        ),
       ),
       child: ListTile(
         leading: Icon(
