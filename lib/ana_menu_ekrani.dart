@@ -1182,6 +1182,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                             padding: const EdgeInsets.all(8),
                             child: TableCalendar(
                               locale: 'tr_TR',
+                              startingDayOfWeek: StartingDayOfWeek.monday,
                               firstDay: DateTime(tarih.year, tarih.month, 1),
                               lastDay: DateTime(tarih.year, tarih.month + 1, 0),
                               focusedDay: tarih,

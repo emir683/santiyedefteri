@@ -2399,6 +2399,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                               ),
                               child: TableCalendar(
                                 locale: 'tr_TR',
+                                startingDayOfWeek: StartingDayOfWeek.monday,
                                 firstDay: genisBaslangic,
                                 lastDay: genisBitis,
                                 focusedDay: _odaklanilanGun,
