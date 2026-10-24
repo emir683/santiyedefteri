@@ -43,7 +43,9 @@ jobs:
           flutter doctor
 
       - name: Bağımlılıkları İndir (flutter pub get)
-        run: flutter pub get
+        run: |
+          flutter config --no-enable-swift-package-manager
+          flutter pub get
 
       - name: iOS Release Derlemesi (--no-codesign)
         run: |

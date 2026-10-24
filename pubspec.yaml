@@ -66,6 +66,9 @@ dev_dependencies:
 flutter:
   uses-material-design: true
 
+  config:
+    enable-swift-package-manager: false
+
   assets:
     - assets/logo.png
     - assets/fonts/
