@@ -138,6 +138,160 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
     );
   }
 
+  // --- HESAP SİLME DİYALOĞU (APPLE GUIDELINE 5.1.1(v) UYUMLU) ---
+  void _hesabiSilDialog() {
+    bool loading = false;
+    String hataMesaji = "";
+
+    showGeneralDialog(
+      context: context,
+      barrierDismissible: true,
+      barrierLabel: "Kapat",
+      barrierColor: Colors.black.withValues(alpha: 0.8),
+      transitionDuration: const Duration(milliseconds: 200),
+      pageBuilder: (ctx, anim1, anim2) {
+        return StatefulBuilder(
+          builder: (context, setDialogState) => Stack(
+            children: [
+              BackdropFilter(
+                filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+                child: Container(color: Colors.transparent),
+              ),
+              Center(
+                child: Container(
+                  margin: const EdgeInsets.symmetric(horizontal: 24),
+                  padding: const EdgeInsets.all(24),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                    borderRadius: BorderRadius.circular(24),
+                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.red.withValues(alpha: 0.2),
+                        blurRadius: 20,
+                      ),
+                    ],
+                  ),
+                  child: Material(
+                    color: Colors.transparent,
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        const Icon(
+                          Icons.warning_amber_rounded,
+                          color: Colors.redAccent,
+                          size: 48,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Hesabımı ve Verilerimi Sil",
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 20,
+                            fontWeight: FontWeight.bold,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 16),
+                        const Text(
+                          "Hesabınızı sildiğinizde profil bilgileriniz, giriş yetkileriniz ve kullanıcı hesabınız KALICI OLARAK silinecektir.\n\nBu işlem geri alınamaz. Onaylıyor musunuz?",
+                          style: TextStyle(
+                            color: Colors.white70,
+                            fontSize: 14,
+                            height: 1.4,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                        if (hataMesaji.isNotEmpty) ...[
+                          const SizedBox(height: 12),
+                          Text(
+                            hataMesaji,
+                            style: const TextStyle(
+                              color: Colors.redAccent,
+                              fontSize: 13,
+                              fontWeight: FontWeight.bold,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                        ],
+                        const SizedBox(height: 24),
+                        Row(
+                          children: [
+                            Expanded(
+                              child: TextButton(
+                                onPressed: () => Navigator.pop(ctx),
+                                child: const Text(
+                                  "Vazgeç",
+                                  style: TextStyle(color: Colors.grey),
+                                ),
+                              ),
+                            ),
+                            Expanded(
+                              child: loading
+                                  ? const Center(
+                                      child: CircularProgressIndicator(
+                                        color: Colors.redAccent,
+                                      ),
+                                    )
+                                  : ElevatedButton(
+                                      style: ElevatedButton.styleFrom(
+                                        backgroundColor: Colors.redAccent,
+                                        foregroundColor: Colors.white,
+                                        padding: const EdgeInsets.symmetric(
+                                          vertical: 12,
+                                        ),
+                                        shape: RoundedRectangleBorder(
+                                          borderRadius: BorderRadius.circular(12),
+                                        ),
+                                      ),
+                                      onPressed: () async {
+                                        setDialogState(() {
+                                          loading = true;
+                                          hataMesaji = "";
+                                        });
+                                        try {
+                                          await _authServisi.hesabiVeVerileriSil();
+                                          if (!ctx.mounted) return;
+                                          Navigator.pop(ctx);
+                                          if (!mounted || !context.mounted) return;
+                                          Navigator.of(
+                                            context,
+                                            rootNavigator: true,
+                                          ).popUntil((route) => route.isFirst);
+                                          ScaffoldMessenger.of(context).showSnackBar(
+                                            const SnackBar(
+                                              content: Text(
+                                                "Hesabınız ve verileriniz başarıyla silindi.",
+                                              ),
+                                              backgroundColor: Colors.redAccent,
+                                            ),
+                                          );
+                                        } catch (e) {
+                                          setDialogState(() {
+                                            loading = false;
+                                            hataMesaji = e
+                                                .toString()
+                                                .replaceAll("Exception: ", "");
+                                          });
+                                        }
+                                      },
+                                      child: const Text("EVET, SİL"),
+                                    ),
+                            ),
+                          ],
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
   // --- 2. KULLANICI ADI İÇİN ODAK MODU (FOCUS MODE) ---
   Widget _buildFocusInput(BuildContext context, TextEditingController controller, String label, IconData icon) {
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
@@ -367,11 +521,29 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                     label: const Text("Giriş Parolasını Değiştir"),
                     style: OutlinedButton.styleFrom(
                       padding: const EdgeInsets.symmetric(vertical: 18),
-                      side: BorderSide(color: Colors.red.shade300),
-                      foregroundColor: Colors.red.shade300,
+                      side: BorderSide(color: Colors.teal.shade300),
+                      foregroundColor: Colors.teal.shade300,
                       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                     ),
                     onPressed: _kisiselParolaDegistirDialog,
+                  ),
+                ),
+
+                const SizedBox(height: 16),
+
+                // 4. HESABIMI VE VERİLERİMİ SİL (APPLE GUIDELINE 5.1.1(v) UYUMLU)
+                SizedBox(
+                  width: double.infinity,
+                  child: OutlinedButton.icon(
+                    icon: const Icon(Icons.delete_forever_outlined),
+                    label: const Text("Hesabımı ve Verilerimi Sil"),
+                    style: OutlinedButton.styleFrom(
+                      padding: const EdgeInsets.symmetric(vertical: 18),
+                      side: BorderSide(color: Colors.red.shade400),
+                      foregroundColor: Colors.red.shade400,
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    ),
+                    onPressed: _hesabiSilDialog,
                   ),
                 ),
               ],

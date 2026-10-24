@@ -252,4 +252,32 @@ class AuthServisi {
       rethrow;
     }
   }
+
+  /// Kullanıcının hesabını ve Firestore kullanıcı kaydını kalıcı olarak siler (Apple App Store 5.1.1(v) uyumlu)
+  Future<void> hesabiVeVerileriSil() async {
+    final user = _auth.currentUser;
+    if (user == null) throw Exception("Kullanıcı oturumu bulunamadı.");
+
+    final uid = user.uid;
+
+    // 1. FCM Token ve Firestore kullanıcı profil kaydını temizle
+    try {
+      await FcmServisi().kullaniciAyril();
+      await _firestore.collection('users').doc(uid).delete();
+    } catch (e) {
+      debugPrint("Firestore kullanıcı verisi silme uyarısı: $e");
+    }
+
+    // 2. Firebase Authentication'dan kullanıcıyı kalıcı olarak sil
+    try {
+      await user.delete();
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'requires-recent-login') {
+        throw Exception(
+          "Güvenlik nedeniyle hesabınızı silmeden önce lütfen oturumu kapatıp yeniden giriş yapın.",
+        );
+      }
+      rethrow;
+    }
+  }
 }
