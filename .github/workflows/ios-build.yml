@@ -1,0 +1,60 @@
+name: Build iOS IPA (No Mac Needed)
+
+on:
+  workflow_dispatch: # GitHub arayüzünden "Run workflow" butonuna basarak elle başlatabilmek için
+  push:
+    branches: [ main ]
+    paths:
+      - 'lib/**'
+      - 'ios/**'
+      - 'pubspec.yaml'
+      - '.github/workflows/ios-build.yml'
+
+jobs:
+  build-ios:
+    name: Build iOS (IPA)
+    runs-on: macos-14 # Apple Silicon (M1/M2) bulut Mac sunucusu
+
+    steps:
+      - name: Kodu Klonla
+        uses: actions/checkout@v4
+
+      - name: Java Kurulumu (Gerekiyorsa)
+        uses: actions/setup-java@v4
+        with:
+          distribution: 'temurin'
+          java-version: '17'
+
+      - name: Flutter Ortamını Hazırla
+        uses: subosito/flutter-action@v2
+        with:
+          channel: 'stable'
+          cache: true
+
+      - name: Flutter Sürümü ve Doctor Kontrolü
+        run: |
+          flutter --version
+          flutter doctor
+
+      - name: Bağımlılıkları İndir (flutter pub get)
+        run: flutter pub get
+
+      - name: iOS Release Derlemesi (--no-codesign)
+        run: |
+          flutter build ios --release --no-codesign
+
+      - name: IPA Paketini Oluştur (Payload -> .ipa)
+        run: |
+          cd build/ios/iphoneos
+          mkdir -p Payload
+          cp -r Runner.app Payload/
+          zip -r -q SantiyePuantajDefteri.ipa Payload
+          echo "IPA boyutu:"
+          ls -lh SantiyePuantajDefteri.ipa
+
+      - name: IPA Dosyasını GitHub Artifacts Olarak Yükle
+        uses: actions/upload-artifact@v4
+        with:
+          name: SantiyePuantajDefteri-iOS-IPA
+          path: build/ios/iphoneos/SantiyePuantajDefteri.ipa
+          retention-days: 14
