@@ -51,15 +51,11 @@ void main() async {
   final prefs = await SharedPreferences.getInstance();
   final perfProvider = PerformanceProvider.createSync(prefs);
 
-  // Firebase başlatma (Android'de options vermeden yerel google-services.json kullanılır)
+  // Firebase başlatma (Tüm platformlar için DefaultFirebaseOptions kullanılır)
   try {
-    if (kIsWeb) {
-      await Firebase.initializeApp(
-        options: DefaultFirebaseOptions.currentPlatform,
-      ).timeout(const Duration(seconds: 4));
-    } else {
-      await Firebase.initializeApp().timeout(const Duration(seconds: 4));
-    }
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    ).timeout(const Duration(seconds: 6));
     _firebaseReady = true;
     debugPrint("✅ Firebase başarıyla başlatıldı.");
 
