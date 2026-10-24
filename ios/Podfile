@@ -30,6 +30,9 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
+  # Firestore C++ bağımlılıklarını (gRPC, BoringSSL, abseil) sıfırdan derlemek yerine hazır precompiled binary çeker (10-12 dk tasarruf):
+  pod 'FirebaseFirestore', :git => 'https://github.com/invertase/firestore-ios-sdk-frameworks.git', :tag => '11.8.0'
+
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
   target 'RunnerTests' do
     inherit! :search_paths
