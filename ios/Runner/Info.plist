@@ -74,5 +74,7 @@
 	<true/>
 	<key>NSPhotoLibraryUsageDescription</key>
 	<string>Şantiye raporlarına ve projelere fotoğraf veya belge eklemek için galeri erişimi gereklidir.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>Şantiye raporlarına ve belgelere fotoğraf çekip eklemek için kamera erişimi gereklidir.</string>
 </dict>
 </plist>
