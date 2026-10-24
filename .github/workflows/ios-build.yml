@@ -84,9 +84,6 @@ jobs:
             DEVELOPMENT_TEAM=QML2RQ244F \
             CODE_SIGN_STYLE=Manual \
             CODE_SIGN_IDENTITY="Apple Distribution" \
-            PROVISIONING_PROFILE_SPECIFIER="SantiyePuantajDefteri_AppStore" \
-            CODE_SIGNING_REQUIRED=YES \
-            CODE_SIGNING_ALLOWED=YES \
             COMPILER_INDEX_STORE_ENABLE=NO \
             archive
 
