@@ -64,7 +64,7 @@ class DefaultFirebaseOptions {
         '250320257023-storl5i479r7is37ms382jcn89j2gpbj.apps.googleusercontent.com',
     iosClientId:
         '250320257023-pab7el0d4m6dff3vd0bpld3njft0k8k9.apps.googleusercontent.com',
-    iosBundleId: 'com.example.santiyeyonetim2',
+    iosBundleId: 'com.emrcore.santiyepuantajdefteri',
   );
 
   static const FirebaseOptions web = FirebaseOptions(
