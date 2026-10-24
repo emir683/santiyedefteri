@@ -33,13 +33,25 @@ jobs:
           KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
           KEYCHAIN_PASSWORD="emrcoretempkeychain987"
 
-          # 1. Base64'ten çöz ve diske yaz (Python ile macOS BSD uyumlu)
+          # 1. Secret doğrulaması ve Base64 çözümü
           python3 -c "
-          import base64, os
+          import base64, os, sys
+
+          cert_b64 = os.environ.get('BUILD_CERTIFICATE_BASE64', '').strip()
+          pp_b64 = os.environ.get('BUILD_PROVISION_PROFILE_BASE64', '').strip()
+          p12_pass = os.environ.get('P12_PASSWORD', '').strip()
+
+          if not cert_b64:
+              sys.exit('HATA: BUILD_CERTIFICATE_BASE64 secret bulunamadi veya bos!')
+          if not pp_b64:
+              sys.exit('HATA: BUILD_PROVISION_PROFILE_BASE64 secret bulunamadi veya bos!')
+          if not p12_pass:
+              sys.exit('HATA: P12_PASSWORD secret bulunamadi veya bos!')
+
           with open('$CERTIFICATE_PATH', 'wb') as f:
-              f.write(base64.b64decode(os.environ['BUILD_CERTIFICATE_BASE64'].strip()))
+              f.write(base64.b64decode(cert_b64))
           with open('$PP_PATH', 'wb') as f:
-              f.write(base64.b64decode(os.environ['BUILD_PROVISION_PROFILE_BASE64'].strip()))
+              f.write(base64.b64decode(pp_b64))
           print('Sertifika ve Profil dosyalari basariyla cozuldu.')
           "
 
@@ -50,8 +62,8 @@ jobs:
 
           # 3. P12 Sertifikasini Keychain'e aktar
           security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
-          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
-          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed -e 's/^[ \t]*//' | tr -d '"')
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH" || true
+          security list-keychains -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed -e 's/^[ \t]*//' | tr -d '"')
 
           # 4. Provisioning Profile'in UUID'sini bul ve Xcode sistem klasorune kaydet
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
@@ -136,6 +148,14 @@ jobs:
           echo "Oluşturulan IPA dosyaları:"
           ls -lh build/ipa_out
 
+          IPA_PATH=$(find build/ipa_out -name "*.ipa" | head -n 1)
+          if [ -z "$IPA_PATH" ]; then
+            echo "HATA: Dışa aktarılan .ipa dosyası bulunamadı!"
+            exit 1
+          fi
+          cp "$IPA_PATH" build/ipa_out/app.ipa
+          echo "TestFlight icin hazirlanan dosya: build/ipa_out/app.ipa ($IPA_PATH)"
+
       - name: İmzalı IPA Dosyasını GitHub Artifacts Olarak Kaydet
         uses: actions/upload-artifact@v4
         with:
@@ -146,7 +166,7 @@ jobs:
       - name: TestFlight'a Otomatik Yükle (App Store Connect)
         uses: apple-actions/upload-testflight-build@v5
         with:
-          app-path: 'build/ipa_out/Runner.ipa'
+          app-path: 'build/ipa_out/app.ipa'
           issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
           api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
           api-private-key: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
