@@ -27,30 +27,43 @@ jobs:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
           P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
           BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
-          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'emrcoretemp123' }}
         run: |
-          # Değişkenleri tanımla
-          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
-          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
-          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+          CERTIFICATE_PATH="$RUNNER_TEMP/build_certificate.p12"
+          PP_PATH="$RUNNER_TEMP/build_pp.mobileprovision"
+          KEYCHAIN_PATH="$RUNNER_TEMP/app-signing.keychain-db"
+          KEYCHAIN_PASSWORD="emrcoretempkeychain987"
 
-          # Secret'lardan sertifika ve profili decode et
-          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
-          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+          # 1. Base64'ten çöz ve diske yaz (Python ile macOS BSD uyumlu)
+          python3 -c "
+          import base64, os
+          with open('$CERTIFICATE_PATH', 'wb') as f:
+              f.write(base64.b64decode(os.environ['BUILD_CERTIFICATE_BASE64'].strip()))
+          with open('$PP_PATH', 'wb') as f:
+              f.write(base64.b64decode(os.environ['BUILD_PROVISION_PROFILE_BASE64'].strip()))
+          print('Sertifika ve Profil dosyalari basariyla cozuldu.')
+          "
 
-          # Geçici anahtarlık (Keychain) oluştur ve kilidini aç
+          # 2. Gecici Keychain olustur
           security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
           security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
 
-          # P12 Sertifikasını Keychain'e içe aktar
+          # 3. P12 Sertifikasini Keychain'e aktar
           security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
           security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
           security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed -e 's/^[ \t]*//' | tr -d '"')
 
-          # Provisioning Profile'ı macOS sistem dizinine yerleştir
+          # 4. Provisioning Profile'in UUID'sini bul ve Xcode sistem klasorune kaydet
           mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
-          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
+          python3 -c "
+          import plistlib, subprocess, os, shutil
+          output = subprocess.check_output(['security', 'cms', '-D', '-i', '$PP_PATH'])
+          plist = plistlib.loads(output)
+          uuid = plist['UUID']
+          target = os.path.expanduser(f'~/Library/MobileDevice/Provisioning Profiles/{uuid}.mobileprovision')
+          shutil.copyfile('$PP_PATH', target)
+          print(f'Provisioning Profile UUID ile yuklendi: {uuid}.mobileprovision')
+          "
 
       - name: Java Kurulumu (Gerekiyorsa)
         uses: actions/setup-java@v4
