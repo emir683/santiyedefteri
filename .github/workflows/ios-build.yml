@@ -45,22 +45,48 @@ jobs:
           flutter config --no-enable-swift-package-manager
           flutter pub get
 
-      - name: iOS Release Derlemesi (--no-codesign)
+      - name: Flutter iOS Hazırlığı (Dart & Frameworks)
         run: |
-          flutter build ios --release --no-codesign
+          flutter build ios --config-only --release --no-codesign
+
+      - name: CocoaPods Bağımlılıklarını Kur
+        run: |
+          cd ios
+          pod install
+          cd ..
+
+      - name: Xcode ile İmzasız IPA Derlemesi (xcodebuild)
+        run: |
+          xcodebuild -workspace ios/Runner.xcworkspace \
+            -scheme Runner \
+            -configuration Release \
+            -sdk iphoneos \
+            -destination 'generic/platform=iOS' \
+            -derivedDataPath build/ios_build \
+            CODE_SIGNING_ALLOWED=NO \
+            CODE_SIGNING_REQUIRED=NO \
+            CODE_SIGN_IDENTITY="" \
+            build
 
       - name: IPA Paketini Oluştur (Payload -> .ipa)
         run: |
-          cd build/ios/iphoneos
-          mkdir -p Payload
-          cp -r Runner.app Payload/
+          APP_PATH=$(find build/ios_build/Build/Products -name "Runner.app" -type d | head -n 1)
+          if [ -z "$APP_PATH" ]; then
+            echo "HATA: Runner.app derleme klasöründe bulunamadı!"
+            find build -name "*.app"
+            exit 1
+          fi
+          echo "Bulunan uygulama yolu: $APP_PATH"
+          mkdir -p build/ipa_out/Payload
+          cp -R "$APP_PATH" build/ipa_out/Payload/
+          cd build/ipa_out
           zip -r -q SantiyePuantajDefteri.ipa Payload
-          echo "IPA boyutu:"
+          echo "Oluşturulan IPA boyutu:"
           ls -lh SantiyePuantajDefteri.ipa
 
       - name: IPA Dosyasını GitHub Artifacts Olarak Yükle
         uses: actions/upload-artifact@v4
         with:
           name: SantiyePuantajDefteri-iOS-IPA
-          path: build/ios/iphoneos/SantiyePuantajDefteri.ipa
+          path: build/ipa_out/SantiyePuantajDefteri.ipa
           retention-days: 14
