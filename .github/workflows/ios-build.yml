@@ -13,11 +13,14 @@ on:
 jobs:
   build-ios:
     name: Build iOS (IPA)
-    runs-on: macos-14 # Apple Silicon (M1/M2) bulut Mac sunucusu
+    runs-on: macos-15 # Apple Silicon macOS Sequoia & En Güncel Xcode 16
 
     steps:
       - name: Kodu Klonla
         uses: actions/checkout@v4
+
+      - name: Git Güvenli Dizin Yapılandırması
+        run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
       - name: Java Kurulumu (Gerekiyorsa)
         uses: actions/setup-java@v4
@@ -33,11 +36,6 @@ jobs:
 
       - name: Flutter Sürümü ve Doctor Kontrolü
         run: |
-          if [ -d "/Applications/Xcode_16.0.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_16.0.app
-          elif [ -d "/Applications/Xcode_15.4.app" ]; then
-            sudo xcode-select -s /Applications/Xcode_15.4.app
-          fi
           xcodebuild -version
           flutter --version
           flutter doctor
