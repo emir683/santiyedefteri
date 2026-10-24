@@ -17,6 +17,12 @@ migrate_working_dir/
 *.env
 *.env.*
 *.key
+*.p12
+*.p8
+*.mobileprovision
+*.cer
+*.certSigningRequest
+certificates/
 firebase-debug.log*
 
 # IntelliJ related

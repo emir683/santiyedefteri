@@ -1,7 +1,7 @@
-name: Build iOS IPA (No Mac Needed)
+name: Build & Deploy iOS to TestFlight
 
 on:
-  workflow_dispatch: # GitHub arayüzünden "Run workflow" butonuna basarak elle başlatabilmek için
+  workflow_dispatch: # GitHub arayüzünden "Run workflow" butonuyla elle başlatabilmek için
   push:
     branches: [ main ]
     paths:
@@ -11,8 +11,8 @@ on:
       - '.github/workflows/ios-build.yml'
 
 jobs:
-  build-ios:
-    name: Build iOS (IPA)
+  deploy-testflight:
+    name: Build & Upload to TestFlight
     runs-on: macos-15 # Apple Silicon macOS Sequoia & En Güncel Xcode 16
 
     steps:
@@ -21,6 +21,36 @@ jobs:
 
       - name: Git Güvenli Dizin Yapılandırması
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
+
+      - name: Apple Dağıtım Sertifikası ve Profilini Kur (Keychain)
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          BUILD_PROVISION_PROFILE_BASE64: ${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD || 'emrcoretemp123' }}
+        run: |
+          # Değişkenleri tanımla
+          CERTIFICATE_PATH=$RUNNER_TEMP/build_certificate.p12
+          PP_PATH=$RUNNER_TEMP/build_pp.mobileprovision
+          KEYCHAIN_PATH=$RUNNER_TEMP/app-signing.keychain-db
+
+          # Secret'lardan sertifika ve profili decode et
+          echo -n "$BUILD_CERTIFICATE_BASE64" | base64 --decode -o "$CERTIFICATE_PATH"
+          echo -n "$BUILD_PROVISION_PROFILE_BASE64" | base64 --decode -o "$PP_PATH"
+
+          # Geçici anahtarlık (Keychain) oluştur ve kilidini aç
+          security create-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security set-keychain-settings -lut 21600 "$KEYCHAIN_PATH"
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+
+          # P12 Sertifikasını Keychain'e içe aktar
+          security import "$CERTIFICATE_PATH" -P "$P12_PASSWORD" -A -t cert -f pkcs12 -k "$KEYCHAIN_PATH"
+          security set-key-partition-list -S apple-tool:,apple: -s -k "$KEYCHAIN_PASSWORD" "$KEYCHAIN_PATH"
+          security list-keychain -d user -s "$KEYCHAIN_PATH" $(security list-keychains -d user | sed -e 's/^[ \t]*//' | tr -d '"')
+
+          # Provisioning Profile'ı macOS sistem dizinine yerleştir
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          cp "$PP_PATH" ~/Library/MobileDevice/Provisioning\ Profiles/
 
       - name: Java Kurulumu (Gerekiyorsa)
         uses: actions/setup-java@v4
@@ -56,9 +86,9 @@ jobs:
           restore-keys: |
             ${{ runner.os }}-pods-
 
-      - name: Flutter iOS Hazırlığı (Dart & Frameworks)
+      - name: Flutter iOS Hazırlığı (Build Number Artırımı)
         run: |
-          flutter build ios --config-only --release --no-codesign
+          flutter build ios --config-only --release --build-number=${{ github.run_number }}
 
       - name: CocoaPods Bağımlılıklarını Kur
         run: |
@@ -66,40 +96,44 @@ jobs:
           pod install
           cd ..
 
-      - name: Xcode ile Hızlı & İmzasız IPA Derlemesi (xcodebuild)
+      - name: Xcode ile Resmi İmzalı Arşiv Oluştur (Archive)
         run: |
           xcodebuild -workspace ios/Runner.xcworkspace \
             -scheme Runner \
             -configuration Release \
             -sdk iphoneos \
             -destination 'generic/platform=iOS' \
-            -derivedDataPath build/ios_build \
+            -archivePath build/Runner.xcarchive \
+            DEVELOPMENT_TEAM=QML2RQ244F \
+            CODE_SIGN_STYLE=Manual \
+            CODE_SIGN_IDENTITY="Apple Distribution" \
+            PROVISIONING_PROFILE_SPECIFIER="SantiyePuantajDefteri_AppStore" \
+            CODE_SIGNING_REQUIRED=YES \
+            CODE_SIGNING_ALLOWED=YES \
             COMPILER_INDEX_STORE_ENABLE=NO \
-            CODE_SIGNING_ALLOWED=NO \
-            CODE_SIGNING_REQUIRED=NO \
-            CODE_SIGN_IDENTITY="" \
-            CODE_SIGN_ENTITLEMENTS="" \
-            build
+            archive
 
-      - name: IPA Paketini Oluştur (Payload -> .ipa)
+      - name: İmzalı IPA Paketini Dışa Aktar (Export Archive)
         run: |
-          APP_PATH=$(find build/ios_build/Build/Products -name "Runner.app" -type d | head -n 1)
-          if [ -z "$APP_PATH" ]; then
-            echo "HATA: Runner.app derleme klasöründe bulunamadı!"
-            find build -name "*.app"
-            exit 1
-          fi
-          echo "Bulunan uygulama yolu: $APP_PATH"
-          mkdir -p build/ipa_out/Payload
-          cp -R "$APP_PATH" build/ipa_out/Payload/
-          cd build/ipa_out
-          zip -qry SantiyePuantajDefteri.ipa Payload
-          echo "Oluşturulan IPA boyutu:"
-          ls -lh SantiyePuantajDefteri.ipa
+          xcodebuild -exportArchive \
+            -archivePath build/Runner.xcarchive \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -exportPath build/ipa_out
 
-      - name: IPA Dosyasını GitHub Artifacts Olarak Yükle
+          echo "Oluşturulan IPA dosyaları:"
+          ls -lh build/ipa_out
+
+      - name: İmzalı IPA Dosyasını GitHub Artifacts Olarak Kaydet
         uses: actions/upload-artifact@v4
         with:
-          name: SantiyePuantajDefteri-iOS-IPA
-          path: build/ipa_out/SantiyePuantajDefteri.ipa
+          name: SantiyePuantajDefteri-Signed-IPA
+          path: build/ipa_out/*.ipa
           retention-days: 14
+
+      - name: TestFlight'a Otomatik Yükle (App Store Connect)
+        uses: apple-actions/upload-testflight-build@v5
+        with:
+          app-path: 'build/ipa_out/Runner.ipa'
+          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          api-private-key: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
