@@ -30,19 +30,10 @@ target 'Runner' do
   use_frameworks!
   use_modular_headers!
 
+  # Firestore C++ bağımlılıklarını sıfırdan derlemek yerine hazır ikili (binary) olarak çeker (11.15.0):
+  pod 'FirebaseFirestore', :git => 'https://github.com/invertase/firestore-ios-sdk-frameworks.git', :tag => '11.15.0'
+
   flutter_install_all_ios_pods File.dirname(File.realpath(__FILE__))
-
-  # Firestore C++ bağımlılıklarını sıfırdan derlemek yerine hazır ikili (binary) olarak çeker:
-  # Sürümü firebase_core eklentisinin firebase_sdk_version.rb dosyasından otomatik okur:
-  firebase_sdk_version_file = File.join(__dir__, '.symlinks', 'plugins', 'firebase_core', 'ios', 'firebase_sdk_version.rb')
-  if File.exist?(firebase_sdk_version_file)
-    require firebase_sdk_version_file
-    firebase_version = defined?(firebase_sdk_version!) ? firebase_sdk_version! : (defined?(default_subspec_version) ? default_subspec_version : nil)
-    if firebase_version
-      pod 'FirebaseFirestore', :git => 'https://github.com/invertase/firestore-ios-sdk-frameworks.git', :tag => firebase_version
-    end
-  end
-
   target 'RunnerTests' do
     inherit! :search_paths
   end
