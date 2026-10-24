@@ -29,7 +29,7 @@ jobs:
         uses: subosito/flutter-action@v2
         with:
           channel: 'stable'
-          cache: true
+          cache: false
 
       - name: Flutter Sürümü ve Doctor Kontrolü
         run: |
@@ -42,8 +42,13 @@ jobs:
           flutter --version
           flutter doctor
 
-      - name: Bağımlılıkları İndir (flutter pub get)
-        run: flutter pub get
+      - name: Bağımlılıkları İndir ve Pod Güncelle
+        run: |
+          flutter clean
+          flutter pub get
+          cd ios
+          pod install --repo-update
+          cd ..
 
       - name: iOS Release Derlemesi (--no-codesign)
         run: |

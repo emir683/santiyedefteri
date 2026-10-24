@@ -1,5 +1,4 @@
 import 'dart:io';
-import 'package:device_info_plus/device_info_plus.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
@@ -70,23 +69,11 @@ class PerformanceProvider with ChangeNotifier {
     String reason = 'Standart Donanım';
 
     try {
-      if (!kIsWeb && Platform.isAndroid) {
-        final deviceInfo = DeviceInfoPlugin();
-        final androidInfo = await deviceInfo.androidInfo.timeout(const Duration(seconds: 1));
-
-        final isLowRam = androidInfo.isLowRamDevice;
+      if (!kIsWeb) {
         final cpuCount = Platform.numberOfProcessors;
-        final sdkInt = androidInfo.version.sdkInt;
-
-        if (isLowRam) {
-          autoEnable = true;
-          reason = 'Düşük RAM / Android Go Cihazı';
-        } else if (cpuCount <= 4) {
+        if (cpuCount <= 4) {
           autoEnable = true;
           reason = 'Giriş Seviye İşlemci ($cpuCount Çekirdek)';
-        } else if (sdkInt < 29) {
-          autoEnable = true;
-          reason = 'Eski Android Sürümü (SDK $sdkInt)';
         }
       }
     } catch (e) {
