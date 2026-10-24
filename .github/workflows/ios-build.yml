@@ -65,7 +65,7 @@ jobs:
 
       - name: Flutter iOS Hazırlığı (Build Number Artırımı)
         run: |
-          flutter build ios --config-only --release --build-number=${{ github.run_number }}
+          flutter build ios --config-only --release --no-codesign --build-number=${{ github.run_number }}
 
       - name: CocoaPods Bağımlılıklarını Kur
         run: |
