@@ -112,10 +112,9 @@ jobs:
           path: build/ipa_out/*.ipa
           retention-days: 14
 
-      - name: TestFlight'a Otomatik Yükle (App Store Connect)
-        uses: apple-actions/upload-testflight-build@v5
-        with:
-          app-path: 'build/ipa_out/app.ipa'
-          issuer-id: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          api-key-id: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          api-private-key: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+      - name: TestFlight'a Otomatik Yükle (Apple xcrun altool)
+        env:
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+        run: python3 ios/upload_testflight.py
