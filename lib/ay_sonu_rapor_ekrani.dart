@@ -1095,8 +1095,12 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       onTap: () {
+                        final box = context.findRenderObject() as RenderBox?;
+                        final origin = (box != null && box.hasSize)
+                            ? (box.localToGlobal(Offset.zero) & box.size)
+                            : const Rect.fromLTWH(0, 0, 100, 100);
                         Navigator.pop(c);
-                        Share.share(metin);
+                        Share.share(metin, sharePositionOrigin: origin);
                       },
                     ),
                     const SizedBox(height: 12),
@@ -1681,9 +1685,14 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                             toplamEkstraGider,
                                                             netDurum,
                                                           );
+                                                          final box = context.findRenderObject() as RenderBox?;
+                                                          final origin = (box != null && box.hasSize)
+                                                              ? (box.localToGlobal(Offset.zero) & box.size)
+                                                              : const Rect.fromLTWH(0, 0, 100, 100);
                                                           Share.share(
                                                             metin,
                                                             subject: "$_donemBaslikMetni Genel Raporu",
+                                                            sharePositionOrigin: origin,
                                                           );
                                                         },
                                                       ),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 
 class TanitimIzinEkrani extends StatefulWidget {
@@ -42,11 +43,28 @@ class _TanitimIzinEkraniState extends State<TanitimIzinEkrani>
 
   Future<void> _izinDurumlariniKontrolEt() async {
     final micStatus = await Permission.microphone.status;
-    final notifStatus = await Permission.notification.status;
+    bool notifIzinli = false;
+    try {
+      final notifStatus = await Permission.notification.status;
+      if (notifStatus.isGranted || notifStatus.isLimited || notifStatus.isProvisional) {
+        notifIzinli = true;
+      }
+    } catch (_) {}
+
+    if (!notifIzinli) {
+      try {
+        final settings = await FirebaseMessaging.instance.getNotificationSettings();
+        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional) {
+          notifIzinli = true;
+        }
+      } catch (_) {}
+    }
+
     if (mounted) {
       setState(() {
         _mikrofonIzinli = micStatus.isGranted;
-        _bildirimIzinli = notifStatus.isGranted;
+        _bildirimIzinli = notifIzinli;
       });
     }
   }
@@ -70,17 +88,42 @@ class _TanitimIzinEkraniState extends State<TanitimIzinEkrani>
 
   Future<void> _bildirimIzinIste() async {
     HapticFeedback.lightImpact();
-    final status = await Permission.notification.request();
+    bool izinAlindi = false;
+    try {
+      final status = await Permission.notification.request();
+      if (status.isGranted || status.isLimited || status.isProvisional) {
+        izinAlindi = true;
+      }
+    } catch (_) {}
+
+    if (!izinAlindi) {
+      try {
+        final settings = await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional) {
+          izinAlindi = true;
+        }
+      } catch (_) {}
+    }
+
     if (mounted) {
       setState(() {
-        _bildirimIzinli = status.isGranted;
+        _bildirimIzinli = izinAlindi;
       });
-      if (!status.isGranted && status.isPermanentlyDenied) {
-        _ayarlaraYonlendirDialog(
-          baslik: 'Bildirim İzni Gerekli',
-          aciklama:
-              'Günlük rapor hatırlatmaları ve şantiye uyarılarını alabilmek için ayarlardan bildirim iznini açabilirsiniz.',
-        );
+      if (!izinAlindi) {
+        final status = await Permission.notification.status;
+        if (status.isPermanentlyDenied) {
+          _ayarlaraYonlendirDialog(
+            baslik: 'Bildirim İzni Gerekli',
+            aciklama:
+                'Günlük rapor hatırlatmaları ve şantiye uyarılarını alabilmek için ayarlardan bildirim iznini açabilirsiniz.',
+          );
+        }
       }
     }
   }

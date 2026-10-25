@@ -94,19 +94,31 @@ class _LoginEkraniState extends State<LoginEkrani> {
         setState(() => _loading = false);
         return;
       }
+      String msg = e.message ?? e.code;
+      if (e.code == 'unknown' || (e.message != null && e.message!.toLowerCase().contains('unknown'))) {
+        msg = "Giriş tamamlanamadı. Firebase Console'da Apple sağlayıcısının kaydedildiğinden emin olun.";
+      } else if (e.code == 'account-exists-with-different-credential') {
+        msg = "Bu e-posta adresiyle ilişkili farklı bir hesap mevcut. Lütfen önceki giriş yönteminizi kullanın.";
+      }
       setState(() {
-        _error = "Apple ile giriş başarısız: ${e.message ?? e.code}";
+        _error = "Apple ile giriş: $msg";
         _loading = false;
       });
     } catch (e) {
       if (!mounted) return;
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('canceled') || errStr.contains('cancelled') || errStr.contains('1001')) {
+      if (errStr.contains('canceled') ||
+          errStr.contains('cancelled') ||
+          errStr.contains('1001')) {
         setState(() => _loading = false);
         return;
       }
+      String msg = e.toString();
+      if (errStr.contains('unknown')) {
+        msg = "Giriş tamamlanamadı. Firebase Console'da Apple sağlayıcısının kaydedildiğinden emin olun.";
+      }
       setState(() {
-        _error = "Apple ile giriş başarısız: $e";
+        _error = "Apple ile giriş: $msg";
         _loading = false;
       });
     }

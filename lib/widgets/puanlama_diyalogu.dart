@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../puanlama_servisi.dart';
 
@@ -46,7 +47,8 @@ class _PuanlamaDiyaloguState extends State<PuanlamaDiyalogu> {
     if (_seciliPuan == 0) {
       return 'Şantiye Puantaj Defteri size yardımcı oluyor mu? Deneyiminizi puanlayarak bize destek olabilirsiniz.';
     } else if (_seciliPuan >= 4) {
-      return 'Bunu duyduğumuza çok sevindik! 🎉 Play Store\'da bizi 5 yıldızla puanlayarak ekibimize destek olmak ister misiniz?';
+      final storeAdi = (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ? "App Store'da" : "Play Store'da";
+      return 'Bunu duyduğumuza çok sevindik! 🎉 $storeAdi bizi 5 yıldızla puanlayarak ekibimize destek olmak ister misiniz?';
     } else {
       return 'Deneyiminizi geliştirmek istiyoruz. Neyi daha iyi yapabilirdik? Birkaç cümleyle anlatabilir misiniz?';
     }
@@ -328,9 +330,11 @@ class _PuanlamaDiyaloguState extends State<PuanlamaDiyalogu> {
                                 if (_seciliPuan >= 4) ...[
                                   const Icon(Icons.open_in_new_rounded, size: 18),
                                   const SizedBox(width: 8),
-                                  const Text(
-                                    'Play Store\'da Puanla',
-                                    style: TextStyle(
+                                  Text(
+                                    (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS)
+                                        ? "App Store'da Puanla"
+                                        : "Play Store'da Puanla",
+                                    style: const TextStyle(
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15,
                                     ),

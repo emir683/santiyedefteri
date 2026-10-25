@@ -189,9 +189,14 @@ class _MaterialCalculationCardWidgetState
 
   void _shareReport() {
     HapticFeedback.lightImpact();
+    final box = context.findRenderObject() as RenderBox?;
+    final origin = (box != null && box.hasSize)
+        ? (box.localToGlobal(Offset.zero) & box.size)
+        : const Rect.fromLTWH(0, 0, 100, 100);
     Share.share(
       _model.raporMetni,
       subject: _model.title,
+      sharePositionOrigin: origin,
     );
   }
 

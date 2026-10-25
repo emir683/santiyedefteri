@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:google_fonts/google_fonts.dart';
 
@@ -53,17 +54,57 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
   }
 
   Future<void> _izinDurumunuKontrolEt() async {
-    final status = await Permission.notification.status;
+    bool izinli = false;
+    try {
+      final status = await Permission.notification.status;
+      if (status.isGranted || status.isLimited || status.isProvisional) {
+        izinli = true;
+      }
+    } catch (_) {}
+
+    if (!izinli) {
+      try {
+        final settings =
+            await FirebaseMessaging.instance.getNotificationSettings();
+        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional) {
+          izinli = true;
+        }
+      } catch (_) {}
+    }
+
     if (mounted) {
       setState(() {
-        _bildirimIzniVar = status.isGranted;
+        _bildirimIzniVar = izinli;
       });
     }
   }
 
   Future<void> _bildirimIzniniAktiflestir() async {
-    final status = await Permission.notification.request();
-    if (status.isGranted) {
+    bool izinAlindi = false;
+    try {
+      final status = await Permission.notification.request();
+      if (status.isGranted || status.isLimited || status.isProvisional) {
+        izinAlindi = true;
+      }
+    } catch (_) {}
+
+    if (!izinAlindi) {
+      try {
+        final settings = await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional) {
+          izinAlindi = true;
+        }
+      } catch (_) {}
+    }
+
+    if (izinAlindi) {
       if (mounted) {
         setState(() {
           _bildirimIzniVar = true;
@@ -77,44 +118,51 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
         );
       }
       await FcmServisi().kullaniciBagla();
-    } else if (status.isPermanentlyDenied) {
-      if (mounted) {
-        showDialog(
-          context: context,
-          builder: (ctx) => AlertDialog(
-            title: const Text('Bildirim İzni Gerekli'),
-            content: const Text(
-              'Bildirim izinleri cihaz ayarlarından kapatılmış. Hatırlatıcıların çalabilmesi için lütfen ayarlardan bildirim iznini açın.',
-            ),
-            actions: [
-              TextButton(
-                onPressed: () => Navigator.pop(ctx),
-                child: const Text('Vazgeç'),
-              ),
-              ElevatedButton(
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: _kBrandTeal,
-                  foregroundColor: Colors.white,
-                ),
-                onPressed: () {
-                  Navigator.pop(ctx);
-                  openAppSettings();
-                },
-                child: const Text('Ayarları Aç'),
-              ),
-            ],
-          ),
-        );
-      }
     } else {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bildirim izni verilmedi. Hatırlatıcılar sessiz kalabilir.'),
-            backgroundColor: Colors.orange,
-            behavior: SnackBarBehavior.floating,
-          ),
-        );
+      PermissionStatus? status;
+      try {
+        status = await Permission.notification.status;
+      } catch (_) {}
+
+      if (status != null && status.isPermanentlyDenied) {
+        if (mounted) {
+          showDialog(
+            context: context,
+            builder: (ctx) => AlertDialog(
+              title: const Text('Bildirim İzni Gerekli'),
+              content: const Text(
+                'Bildirim izinleri cihaz ayarlarından kapatılmış. Hatırlatıcıların çalabilmesi için lütfen ayarlardan bildirim iznini açın.',
+              ),
+              actions: [
+                TextButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  child: const Text('Vazgeç'),
+                ),
+                ElevatedButton(
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: _kBrandTeal,
+                    foregroundColor: Colors.white,
+                  ),
+                  onPressed: () {
+                    Navigator.pop(ctx);
+                    openAppSettings();
+                  },
+                  child: const Text('Ayarları Aç'),
+                ),
+              ],
+            ),
+          );
+        }
+      } else {
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              content: Text('Bildirim izni verilmedi. Hatırlatıcılar sessiz kalabilir.'),
+              backgroundColor: Colors.orange,
+              behavior: SnackBarBehavior.floating,
+            ),
+          );
+        }
       }
     }
   }
