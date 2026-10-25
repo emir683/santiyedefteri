@@ -1931,12 +1931,15 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      onPressed: () {
+                      onPressed: () async {
                         Navigator.pop(c);
-                        final box = context.findRenderObject() as RenderBox?;
-                        final origin = (box != null && box.hasSize)
-                            ? (box.localToGlobal(Offset.zero) & box.size)
-                            : const Rect.fromLTWH(0, 0, 100, 100);
+                        await Future.delayed(const Duration(milliseconds: 250));
+                        final size = MediaQuery.of(context).size;
+                        final origin = Rect.fromCenter(
+                          center: Offset(size.width / 2, size.height / 2),
+                          width: 10,
+                          height: 10,
+                        );
                         Share.share(metin, subject: baslik, sharePositionOrigin: origin);
                       },
                     ),

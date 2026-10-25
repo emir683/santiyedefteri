@@ -1,5 +1,4 @@
-// lib/bildirim_servisi.dart
-
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications_plus/flutter_local_notifications_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -217,7 +216,14 @@ class BildirimServisi {
       playSound: true,
       enableVibration: true,
     );
-    const details = NotificationDetails(android: androidDetails);
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
     await flutterLocalNotificationsPlugin.show(
       DateTime.now().millisecondsSinceEpoch % 100000,
       'CAD Çizimi Hazır! 🏗️',
@@ -244,7 +250,14 @@ class BildirimServisi {
       playSound: true,
       enableVibration: true,
     );
-    const details = NotificationDetails(android: androidDetails);
+    const details = NotificationDetails(
+      android: androidDetails,
+      iOS: DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      ),
+    );
 
     await flutterLocalNotificationsPlugin.show(
       9001,
@@ -289,7 +302,14 @@ class BildirimServisi {
         playSound: true,
         enableVibration: true,
       );
-      const details = NotificationDetails(android: androidDetails);
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      );
 
       await flutterLocalNotificationsPlugin.show(
         0,
@@ -304,15 +324,20 @@ class BildirimServisi {
   }
 
   Future<void> _zamanlanmisBildirimOlustur(TimeOfDay saat) async {
-    final androidPlugin =
-        flutterLocalNotificationsPlugin
-            .resolvePlatformSpecificImplementation<
-              AndroidFlutterLocalNotificationsPlugin
-            >();
-    final canSchedule =
-        await androidPlugin?.canScheduleExactNotifications() ?? false;
+    if (defaultTargetPlatform == TargetPlatform.android) {
+      final androidPlugin =
+          flutterLocalNotificationsPlugin
+              .resolvePlatformSpecificImplementation<
+                AndroidFlutterLocalNotificationsPlugin
+              >();
+      final canSchedule =
+          await androidPlugin?.canScheduleExactNotifications() ?? false;
 
-    if (!canSchedule) return;
+      if (!canSchedule) {
+        debugPrint("[BILDIRIM] Android exact alarm izni yok.");
+        return;
+      }
+    }
 
     await flutterLocalNotificationsPlugin.cancel(0);
     final tzTime = _sonrakiBildirimZamani(saat);
@@ -330,6 +355,12 @@ class BildirimServisi {
           color: Color(0xFF14B8A6),
           importance: Importance.max,
           priority: Priority.high,
+        ),
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+          sound: 'default',
         ),
       ),
       androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,

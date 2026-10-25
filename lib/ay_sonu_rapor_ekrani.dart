@@ -1094,12 +1094,15 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         "Metin Olarak Paylaş",
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
-                      onTap: () {
-                        final box = context.findRenderObject() as RenderBox?;
-                        final origin = (box != null && box.hasSize)
-                            ? (box.localToGlobal(Offset.zero) & box.size)
-                            : const Rect.fromLTWH(0, 0, 100, 100);
+                      onTap: () async {
                         Navigator.pop(c);
+                        await Future.delayed(const Duration(milliseconds: 250));
+                        final size = MediaQuery.of(context).size;
+                        final origin = Rect.fromCenter(
+                          center: Offset(size.width / 2, size.height / 2),
+                          width: 10,
+                          height: 10,
+                        );
                         Share.share(metin, sharePositionOrigin: origin);
                       },
                     ),
@@ -1685,10 +1688,12 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                             toplamEkstraGider,
                                                             netDurum,
                                                           );
-                                                          final box = context.findRenderObject() as RenderBox?;
-                                                          final origin = (box != null && box.hasSize)
-                                                              ? (box.localToGlobal(Offset.zero) & box.size)
-                                                              : const Rect.fromLTWH(0, 0, 100, 100);
+                                                          final size = MediaQuery.of(context).size;
+                                                          final origin = Rect.fromCenter(
+                                                            center: Offset(size.width / 2, size.height / 2),
+                                                            width: 10,
+                                                            height: 10,
+                                                          );
                                                           Share.share(
                                                             metin,
                                                             subject: "$_donemBaslikMetni Genel Raporu",
@@ -3603,10 +3608,12 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                       "• Alınan Avans: ${Formatlayici.yap(s.toplamAvans)}\n"
                       "--------------------------\n"
                       "• KALAN NET: ${Formatlayici.yap(s.odenecekTutar)}";
-                  final box = context.findRenderObject() as RenderBox?;
-                  final origin = (box != null && box.hasSize)
-                      ? (box.localToGlobal(Offset.zero) & box.size)
-                      : const Rect.fromLTWH(0, 0, 100, 100);
+                  final size = MediaQuery.of(context).size;
+                  final origin = Rect.fromCenter(
+                    center: Offset(size.width / 2, size.height / 2),
+                    width: 10,
+                    height: 10,
+                  );
                   Share.share(metin, subject: "${s.isci.ad} Ay Sonu Raporu", sharePositionOrigin: origin);
                 },
               ),

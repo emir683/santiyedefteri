@@ -9,11 +9,12 @@ import 'user_model.dart';
 class AuthServisi {
   final FirebaseAuth _auth = FirebaseAuth.instance;
   final GoogleSignIn _googleSignIn = GoogleSignIn(
-    clientId: kIsWeb
-        ? null
-        : (defaultTargetPlatform == TargetPlatform.iOS
-            ? DefaultFirebaseOptions.ios.iosClientId
-            : null),
+    clientId:
+        kIsWeb
+            ? null
+            : (defaultTargetPlatform == TargetPlatform.iOS
+                ? DefaultFirebaseOptions.ios.iosClientId
+                : null),
   );
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
@@ -158,8 +159,9 @@ class AuthServisi {
       appleProvider.addScope('email');
       appleProvider.addScope('name');
 
-      final UserCredential userCredential =
-          await _auth.signInWithProvider(appleProvider);
+      final UserCredential userCredential = await _auth.signInWithProvider(
+        appleProvider,
+      );
       final User? user = userCredential.user;
 
       if (user != null) {
@@ -309,8 +311,9 @@ class AuthServisi {
         throw Exception("Mevcut şifrenizi yanlış girdiniz.");
       }
     } else {
-      final isGoogleUser =
-          user.providerData.any((p) => p.providerId == 'google.com');
+      final isGoogleUser = user.providerData.any(
+        (p) => p.providerId == 'google.com',
+      );
       if (isGoogleUser) {
         try {
           final googleUser = await _googleSignIn.signIn();

@@ -583,86 +583,94 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
     Key? menuKey,
     bool isDemo = false,
   }) {
-    return AnimasyonluButon(
-      onPressed: () {
-        if (isDemo) return;
-        Navigator.push(
-          context,
-          SayfaGecisi(
-            sayfa: SantiyeDetayEkrani(
-              santiyeAdi: santiye.ad,
-              teamId: widget.teamId,
-              il: santiye.il,
-              ilce: santiye.ilce,
-            ),
-          ),
-        );
-      },
-      child: Card(
-        key: cardKey,
-        elevation: 2,
-        margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0),
-            width: 1,
-          ),
+    return Card(
+      key: cardKey,
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0),
+          width: 1,
         ),
-        color: isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              _buildGlassIconBadge(
-                isDark: isDark,
-                icon: Icons.domain_rounded,
-                color: _kBrandTealDark,
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      santiye.ad,
-                      style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+      ),
+      color: isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  if (isDemo) return;
+                  Navigator.push(
+                    context,
+                    SayfaGecisi(
+                      sayfa: SantiyeDetayEkrani(
+                        santiyeAdi: santiye.ad,
+                        teamId: widget.teamId,
+                        il: santiye.il,
+                        ilce: santiye.ilce,
+                      ),
                     ),
-                    Builder(
-                      builder: (context) {
-                        final hasLocation = (santiye.il != null && santiye.il!.isNotEmpty) ||
-                            (santiye.ilce != null && santiye.ilce!.isNotEmpty);
-                        if (!hasLocation) return const SizedBox.shrink();
-                        final konumText = (santiye.ilce != null && santiye.ilce!.isNotEmpty)
-                            ? '${santiye.ilce}, ${santiye.il ?? ""}'
-                            : (santiye.il ?? "");
-                        return Padding(
-                          padding: const EdgeInsets.only(top: 4),
-                          child: Row(
-                            children: [
-                              const Icon(Icons.location_on_rounded, size: 14, color: _kBrandTeal),
-                              const SizedBox(width: 4),
-                              Expanded(
-                                child: Text(
-                                  konumText,
-                                  maxLines: 1,
-                                  overflow: TextOverflow.ellipsis,
-                                  style: TextStyle(
-                                    fontSize: 13,
-                                    color: isDark ? Colors.white70 : Colors.black54,
-                                    fontWeight: FontWeight.w500,
-                                  ),
-                                ),
-                              ),
-                            ],
+                  );
+                },
+                child: Row(
+                  children: [
+                    _buildGlassIconBadge(
+                      isDark: isDark,
+                      icon: Icons.domain_rounded,
+                      color: _kBrandTealDark,
+                    ),
+                    const SizedBox(width: 16),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            santiye.ad,
+                            style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
                           ),
-                        );
-                      },
+                          Builder(
+                            builder: (context) {
+                              final hasLocation = (santiye.il != null && santiye.il!.isNotEmpty) ||
+                                  (santiye.ilce != null && santiye.ilce!.isNotEmpty);
+                              if (!hasLocation) return const SizedBox.shrink();
+                              final konumText = (santiye.ilce != null && santiye.ilce!.isNotEmpty)
+                                  ? '${santiye.ilce}, ${santiye.il ?? ""}'
+                                  : (santiye.il ?? "");
+                              return Padding(
+                                padding: const EdgeInsets.only(top: 4),
+                                child: Row(
+                                  children: [
+                                    const Icon(Icons.location_on_rounded, size: 14, color: _kBrandTeal),
+                                    const SizedBox(width: 4),
+                                    Expanded(
+                                      child: Text(
+                                        konumText,
+                                        maxLines: 1,
+                                        overflow: TextOverflow.ellipsis,
+                                        style: TextStyle(
+                                          fontSize: 13,
+                                          color: isDark ? Colors.white70 : Colors.black54,
+                                          fontWeight: FontWeight.w500,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              );
+                            },
+                          ),
+                        ],
+                      ),
                     ),
                   ],
                 ),
               ),
-              // Sağ Aksiyonlar - Üç Nokta Menüsü
+            ),
+            // Sağ Aksiyonlar - Üç Nokta Menüsü
               Theme(
                 data: Theme.of(context).copyWith(
                   popupMenuTheme: PopupMenuThemeData(
@@ -758,8 +766,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
             ],
           ),
         ),
-      ),
-    );
+      );
   }
 
   Widget _buildDemoList(bool isDark, FirestoreServisi servisi) {
@@ -826,10 +833,12 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
       sb.writeln('--------------------------------');
       sb.writeln('Santiye Puantaj Defteri');
 
-      final box = context.findRenderObject() as RenderBox?;
-      final origin = (box != null && box.hasSize)
-          ? (box.localToGlobal(Offset.zero) & box.size)
-          : const Rect.fromLTWH(0, 0, 100, 100);
+      final size = MediaQuery.of(context).size;
+      final origin = Rect.fromCenter(
+        center: Offset(size.width / 2, size.height / 2),
+        width: 10,
+        height: 10,
+      );
 
       await Share.share(sb.toString(), sharePositionOrigin: origin);
     } catch (e) {

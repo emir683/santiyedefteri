@@ -90,15 +90,19 @@ class _LoginEkraniState extends State<LoginEkrani> {
       await _authServisi.signInWithApple();
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
-      if (e.code == 'canceled' || e.code == 'cancelled') {
+      final msgLower = (e.message ?? '').toLowerCase();
+      if (e.code == 'canceled' ||
+          e.code == 'cancelled' ||
+          msgLower.contains('cancel') ||
+          msgLower.contains('1001')) {
         setState(() => _loading = false);
         return;
       }
       String msg = e.message ?? e.code;
-      if (e.code == 'unknown' || (e.message != null && e.message!.toLowerCase().contains('unknown'))) {
-        msg = "Giriş tamamlanamadı. Firebase Console'da Apple sağlayıcısının kaydedildiğinden emin olun.";
-      } else if (e.code == 'account-exists-with-different-credential') {
+      if (e.code == 'account-exists-with-different-credential') {
         msg = "Bu e-posta adresiyle ilişkili farklı bir hesap mevcut. Lütfen önceki giriş yönteminizi kullanın.";
+      } else if (e.code == 'unknown' || msgLower.contains('unknown')) {
+        msg = "Apple kimlik doğrulama tamamlanamadı. Apple Developer Console'da App ID için 'Sign in with Apple' özelliğinin ve Firebase Console'da Apple sağlayıcısının aktif olduğundan emin olun.";
       }
       setState(() {
         _error = "Apple ile giriş: $msg";
@@ -107,15 +111,15 @@ class _LoginEkraniState extends State<LoginEkrani> {
     } catch (e) {
       if (!mounted) return;
       final errStr = e.toString().toLowerCase();
-      if (errStr.contains('canceled') ||
-          errStr.contains('cancelled') ||
-          errStr.contains('1001')) {
+      if (errStr.contains('cancel') ||
+          errStr.contains('1001') ||
+          errStr.contains('com.apple.authenticationservices.authorizationerror')) {
         setState(() => _loading = false);
         return;
       }
       String msg = e.toString();
       if (errStr.contains('unknown')) {
-        msg = "Giriş tamamlanamadı. Firebase Console'da Apple sağlayıcısının kaydedildiğinden emin olun.";
+        msg = "Apple kimlik doğrulama tamamlanamadı. Apple Developer Console'da 'Sign in with Apple' özelliğinin ve Firebase Console'da Apple sağlayıcısının aktif olduğundan emin olun.";
       }
       setState(() {
         _error = "Apple ile giriş: $msg";

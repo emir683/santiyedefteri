@@ -967,10 +967,12 @@ class _IsciEkraniState extends State<IsciEkrani>
       sb.writeln('──────────────────────────────');
       sb.writeln('Şantiye Puantaj Defteri');
 
-      final box = context.findRenderObject() as RenderBox?;
-      final origin = (box != null && box.hasSize)
-          ? (box.localToGlobal(Offset.zero) & box.size)
-          : const Rect.fromLTWH(0, 0, 100, 100);
+      final size = MediaQuery.of(context).size;
+      final origin = Rect.fromCenter(
+        center: Offset(size.width / 2, size.height / 2),
+        width: 10,
+        height: 10,
+      );
 
       await Share.share(sb.toString(), sharePositionOrigin: origin);
     } catch (e) {
@@ -1159,116 +1161,122 @@ class _IsciEkraniState extends State<IsciEkrani>
     Key? moreKey,
     bool isDemo = false,
   }) {
-
-    return AnimasyonluButon(
-      onPressed: () {
-        if (isDemo) return;
-        // Detay sayfasına git
-        Navigator.push(
-          context,
-          SayfaGecisi(
-            sayfa: IsciDetayEkrani(
-              isci: isci,
-              teamId: widget.teamId,
-            ),
-          ),
-        );
-      },
-      child: Card(
-        elevation: 2,
-        margin: const EdgeInsets.only(bottom: 16),
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(16),
-          side: BorderSide(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFFD8EAF0),
-            width: 1,
-          ),
+    return Card(
+      elevation: 2,
+      margin: const EdgeInsets.only(bottom: 16),
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(16),
+        side: BorderSide(
+          color:
+              isDark
+                  ? Colors.white.withValues(alpha: 0.08)
+                  : const Color(0xFFD8EAF0),
+          width: 1,
         ),
-        color:
-            isDark
-                ? const Color(0xFF101317)
-                : const Color(0xFFF7FBFD),
-        child: Padding(
-          padding: const EdgeInsets.all(12.0),
-          child: Row(
-            children: [
-              // Sol İkon Kutusu - Ad & Soyad Baş Harfleri Rozeti
-              Stack(
-                clipBehavior: Clip.none,
-                children: [
-                  _buildGlassInitialsBadge(
-                    key: badgeKey,
-                    isDark: isDark,
-                    adSoyad: isci.ad,
-                    color: _kBrandTealDark,
-                  ),
-                                    // Bağlı hesap işareti
-                                    if (isci.linkedUserId != null)
-                                      Positioned(
-                                        right: -4,
-                                        bottom: -4,
-                                        child: Container(
-                                          padding: const EdgeInsets.all(2),
-                                          decoration: BoxDecoration(
-                                            color: const Color(0xFF3B82F6),
-                                            shape: BoxShape.circle,
-                                            border: Border.all(
-                                              color: isDark
-                                                  ? const Color(0xFF101317)
-                                                  : Colors.white,
-                                              width: 1.5,
-                                            ),
-                                          ),
-                                          child: const Icon(
-                                            Icons.link_rounded,
-                                            size: 10,
-                                            color: Colors.white,
-                                          ),
-                                        ),
-                                      ),
-                                  ],
+      ),
+      color:
+          isDark
+              ? const Color(0xFF101317)
+              : const Color(0xFFF7FBFD),
+      child: Padding(
+        padding: const EdgeInsets.all(12.0),
+        child: Row(
+          children: [
+            Expanded(
+              child: InkWell(
+                borderRadius: BorderRadius.circular(12),
+                onTap: () {
+                  if (isDemo) return;
+                  Navigator.push(
+                    context,
+                    SayfaGecisi(
+                      sayfa: IsciDetayEkrani(
+                        isci: isci,
+                        teamId: widget.teamId,
+                      ),
+                    ),
+                  );
+                },
+                child: Row(
+                  children: [
+                    // Sol İkon Kutusu - Ad & Soyad Baş Harfleri Rozeti
+                    Stack(
+                      clipBehavior: Clip.none,
+                      children: [
+                        _buildGlassInitialsBadge(
+                          key: badgeKey,
+                          isDark: isDark,
+                          adSoyad: isci.ad,
+                          color: _kBrandTealDark,
+                        ),
+                        // Bağlı hesap işareti
+                        if (isci.linkedUserId != null)
+                          Positioned(
+                            right: -4,
+                            bottom: -4,
+                            child: Container(
+                              padding: const EdgeInsets.all(2),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFF3B82F6),
+                                shape: BoxShape.circle,
+                                border: Border.all(
+                                  color: isDark
+                                      ? const Color(0xFF101317)
+                                      : Colors.white,
+                                  width: 1.5,
                                 ),
-                                const SizedBox(width: 16),
+                              ),
+                              child: const Icon(
+                                Icons.link_rounded,
+                                size: 10,
+                                color: Colors.white,
+                              ),
+                            ),
+                          ),
+                      ],
+                    ),
+                    const SizedBox(width: 16),
 
-                                // Orta Bilgi Alanı
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment: CrossAxisAlignment.start,
-                                    children: [
-                                      Text(
-                                        isci.ad,
-                                        style: const TextStyle(
-                                          fontWeight: FontWeight.bold,
-                                          fontSize: 16,
-                                        ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      if (isFinans)
-                                        Text(
-                                          '${isci.gunlukMaas.toStringAsFixed(2)} TL / Gün',
-                                          style: TextStyle(
-                                            fontWeight: FontWeight.w500,
-                                            color:
-                                                isDark
-                                                    ? Colors.grey[400]
-                                                    : Colors.grey[700],
-                                          ),
-                                        )
-                                      else
-                                        Text(
-                                          'Yevmiye gizli',
-                                          style: TextStyle(
-                                            fontSize: 13,
-                                            color: Colors.grey[500],
-                                            fontStyle: FontStyle.italic,
-                                          ),
-                                        ),
-                                    ],
-                                  ),
-                                ),
+                    // Orta Bilgi Alanı
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            isci.ad,
+                            style: const TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 16,
+                            ),
+                          ),
+                          const SizedBox(height: 4),
+                          if (isFinans)
+                            Text(
+                              '${isci.gunlukMaas.toStringAsFixed(2)} TL / Gün',
+                              style: TextStyle(
+                                fontWeight: FontWeight.w500,
+                                color:
+                                    isDark
+                                        ? Colors.grey[400]
+                                        : Colors.grey[700],
+                              ),
+                            )
+                          else
+                            Text(
+                              'Yevmiye gizli',
+                              style: TextStyle(
+                                fontSize: 13,
+                                color: Colors.grey[500],
+                                fontStyle: FontStyle.italic,
+                              ),
+                            ),
+                        ],
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
 
                                 // Sağ Aksiyonlar - Üç Nokta Menüsü (sadece yetkili kullanıcılar görür)
                                 if (isFinans)
@@ -1417,8 +1425,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                               ],
                             ),
                           ),
-                        ),
-                      );
+                        );
   }
 
 
