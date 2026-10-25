@@ -25,9 +25,9 @@ class BildirimServisi {
       _androidNotificationIcon,
     );
     const iosInit = DarwinInitializationSettings(
-      requestAlertPermission: false,
-      requestBadgePermission: false,
-      requestSoundPermission: false,
+      requestAlertPermission: true,
+      requestBadgePermission: true,
+      requestSoundPermission: true,
     );
     const initSettings = InitializationSettings(
       android: androidInit,

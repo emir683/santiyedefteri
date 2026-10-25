@@ -31,6 +31,7 @@ class IsciDetayEkrani extends StatefulWidget {
 }
 
 class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
+  VoidCallback? _onPaylasimTiklandi;
   late DateTime _gosterilenAy;
 
   @override
@@ -64,6 +65,23 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
       appBar: FloatingLiquidAppBar(
         title: widget.isci.ad,
         showPrivacyButton: true,
+        actions: [
+          Builder(
+            builder: (btnCtx) => IconButton(
+              icon: const Icon(Icons.share_rounded),
+              tooltip: 'Raporu Metin Olarak Paylaş',
+              onPressed: () {
+                if (_onPaylasimTiklandi != null) {
+                  _onPaylasimTiklandi!();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Veriler yükleniyor...')),
+                  );
+                }
+              },
+            ),
+          ),
+        ],
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
@@ -164,6 +182,8 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
 
                       int tamGun = 0;
                       int yarimGun = 0;
+                      int mesaiGun = 0;
+                      double toplamMesaiYevmiye = 0.0;
                       double toplamHakedis = 0;
                       double toplamAvans = 0;
                       double toplamKarsilananGider = 0;
@@ -197,7 +217,8 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                             } else if (calisma.durum == "Yarım Gün") {
                               yarimGun++;
                             } else if (calisma.durum.contains("Mesai")) {
-                              tamGun++;
+                              mesaiGun++;
+                              toplamMesaiYevmiye += carpan;
                             }
 
                             // Listeye ekle
@@ -320,6 +341,45 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                       double kalanAlacak =
                           toplamHakedis - toplamAvans + toplamKarsilananGider;
 
+                      _onPaylasimTiklandi = () {
+                        final donemStr = DateFormat.yMMMM('tr_TR').format(_gosterilenAy);
+                        final metin = _isciRaporuMetniOlustur(
+                          donem: donemStr,
+                          tamGun: tamGun,
+                          yarimGun: yarimGun,
+                          mesaiGun: mesaiGun,
+                          toplamMesaiYevmiye: toplamMesaiYevmiye,
+                          toplamHakedis: toplamHakedis,
+                          toplamAvans: toplamAvans,
+                          toplamKarsilananGider: toplamKarsilananGider,
+                          kalanAlacak: kalanAlacak,
+                          isFinans: isFinans,
+                          tumHareketler: tumHareketler,
+                          giderDetayGruplari: giderDetayGruplari,
+                        );
+                        _paylasimMenusunuGoster(
+                          context: context,
+                          baslik: "${widget.isci.ad} - Rapor Paylaşımı",
+                          metin: metin,
+                          isDark: isDark,
+                          pdfDosyaAdi: "isci_raporu_${widget.isci.ad}_$donemStr.pdf",
+                          pdfOlusturucu: () => _isciRaporuPdfOlustur(
+                            donem: donemStr,
+                            tamGun: tamGun,
+                            yarimGun: yarimGun,
+                            mesaiGun: mesaiGun,
+                            toplamMesaiYevmiye: toplamMesaiYevmiye,
+                            toplamHakedis: toplamHakedis,
+                            toplamAvans: toplamAvans,
+                            toplamKarsilananGider: toplamKarsilananGider,
+                            kalanAlacak: kalanAlacak,
+                            isFinans: isFinans,
+                            tumHareketler: tumHareketler,
+                            giderDetayGruplari: giderDetayGruplari,
+                          ),
+                        );
+                      };
+
                       // Listeyi tarihe göre sırala
                       tumHareketler.sort(
                         (a, b) =>
@@ -418,7 +478,7 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                                           children: [
                                             _buildSummaryItem(
                                               "Çalışılan",
-                                              "${tamGun}T, ${yarimGun}Y",
+                                              "${tamGun}T, ${yarimGun}Y${mesaiGun > 0 ? ', ${mesaiGun}M' : ''}",
                                               isDark
                                                   ? Colors.white
                                                   : const Color(0xFF0F2A44),
@@ -991,6 +1051,8 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
     required String donem,
     required int tamGun,
     required int yarimGun,
+    int mesaiGun = 0,
+    double toplamMesaiYevmiye = 0.0,
     required double toplamHakedis,
     required double toplamAvans,
     required double toplamKarsilananGider,
@@ -1009,7 +1071,7 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
     sb.writeln('📅 Dönem: $donem');
     sb.writeln('');
 
-    final double toplamYevmiye = tamGun + (yarimGun * 0.5);
+    final double toplamYevmiye = tamGun + (yarimGun * 0.5) + toplamMesaiYevmiye;
     final String yevmiyeStr =
         toplamYevmiye % 1 == 0
             ? toplamYevmiye.toInt().toString()
@@ -1019,6 +1081,9 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
     sb.writeln('• Tam Gün: $tamGun gün');
     if (yarimGun > 0) {
       sb.writeln('• Yarım Gün: $yarimGun gün');
+    }
+    if (mesaiGun > 0) {
+      sb.writeln('• Mesai: $mesaiGun gün ($toplamMesaiYevmiye yevmiye)');
     }
     sb.writeln('• Toplam Yevmiye: $yevmiyeStr yevmiye');
     if (isFinans) {
@@ -1127,6 +1192,8 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
     required String donem,
     required int tamGun,
     required int yarimGun,
+    int mesaiGun = 0,
+    double toplamMesaiYevmiye = 0.0,
     required double toplamHakedis,
     required double toplamAvans,
     required double toplamKarsilananGider,
@@ -1139,7 +1206,7 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
     final fontData = await rootBundle.load("assets/fonts/Roboto-Regular.ttf");
     final ttf = pw.Font.ttf(fontData);
 
-    final double toplamYevmiye = tamGun + (yarimGun * 0.5);
+    final double toplamYevmiye = tamGun + (yarimGun * 0.5) + toplamMesaiYevmiye;
     final String yevmiyeStr =
         toplamYevmiye % 1 == 0
             ? toplamYevmiye.toInt().toString()
@@ -1247,7 +1314,7 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                 children: [
                   _buildPdfInfoCard(
                     'Toplam Çalışma',
-                    '$yevmiyeStr Yevmiye ($tamGun Tam, $yarimGun Yarım)',
+                    '$yevmiyeStr Yevmiye ($tamGun Tam, $yarimGun Yarım${mesaiGun > 0 ? ", $mesaiGun Mesai" : ""})',
                     '#EFF6FF',
                     '#1D4ED8',
                     ttf,
@@ -1731,7 +1798,11 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                       ),
                       onPressed: () {
                         Navigator.pop(c);
-                        Share.share(metin, subject: baslik);
+                        final box = context.findRenderObject() as RenderBox?;
+                        final origin = (box != null && box.hasSize)
+                            ? (box.localToGlobal(Offset.zero) & box.size)
+                            : const Rect.fromLTWH(0, 0, 100, 100);
+                        Share.share(metin, subject: baslik, sharePositionOrigin: origin);
                       },
                     ),
                     const SizedBox(height: 10),

@@ -30,11 +30,15 @@ class MaasHesaplamaSonucu {
   final Isci isci;
   int tamGun = 0;
   int yarimGun = 0;
+  int mesaiGun = 0;
+  double toplamMesaiYevmiye = 0.0;
   double toplamHakedis = 0.0;
   double toplamGiderMasrafi = 0.0;
   double toplamAvans = 0.0;
   double odenecekTutar = 0.0;
   MaasHesaplamaSonucu(this.isci);
+
+  double get toplamYevmiye => tamGun + (yarimGun * 0.5) + toplamMesaiYevmiye;
 }
 
 class OperasyonelHarcamaOzeti {
@@ -378,8 +382,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
     sb.writeln('PERSONEL HAKED\u0130\u015e VE ALACAK \u00d6ZET\u0130:');
     sb.writeln('\nMAAŞLAR:');
     for (final s in personelSonuclari) {
+      final mesaiMetni = s.mesaiGun > 0 ? ', ${s.mesaiGun}M (${s.toplamMesaiYevmiye.toStringAsFixed(1)}Y)' : '';
       sb.writeln(
-        '${s.isci.ad}: ${s.tamGun}T, ${s.yarimGun}Y. Hakediş: ${Formatlayici.yap(s.toplamHakedis)} - Avans: ${Formatlayici.yap(s.toplamAvans)} = NET: ${Formatlayici.yap(s.odenecekTutar)}',
+        '${s.isci.ad}: ${s.tamGun}T, ${s.yarimGun}Y$mesaiMetni. Hakediş: ${Formatlayici.yap(s.toplamHakedis)} - Avans: ${Formatlayici.yap(s.toplamAvans)} = NET: ${Formatlayici.yap(s.odenecekTutar)}',
       );
     }
     sb.writeln('\nGİDERLER:');
@@ -432,8 +437,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       sb.writeln('Kay\u0131t bulunmuyor.');
     } else {
       for (final s in personelSonuclari) {
+        final mesaiMetin = s.mesaiGun > 0 ? ', ${s.mesaiGun} mesai (${s.toplamMesaiYevmiye.toStringAsFixed(1)} yevmiye)' : '';
         sb.writeln(
-          '${s.isci.ad}: ${s.tamGun} tam, ${s.yarimGun} yar\u0131m g\u00fcn | Hakedi\u015f: ${Formatlayici.yap(s.toplamHakedis)} | Gider Masraf\u0131: ${Formatlayici.yap(s.toplamGiderMasrafi)} | Avans: ${Formatlayici.yap(s.toplamAvans)} | Net: ${Formatlayici.yap(s.odenecekTutar)}',
+          '${s.isci.ad}: ${s.tamGun} tam, ${s.yarimGun} yarım$mesaiMetin gün | Hakediş: ${Formatlayici.yap(s.toplamHakedis)} | Gider Masrafı: ${Formatlayici.yap(s.toplamGiderMasrafi)} | Avans: ${Formatlayici.yap(s.toplamAvans)} | Net: ${Formatlayici.yap(s.odenecekTutar)}',
         );
       }
     }
@@ -667,7 +673,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                             .map(
                               (s) => [
                                 s.isci.ad,
-                                '${s.tamGun}T / ${s.yarimGun}Y',
+                                '${s.tamGun}T / ${s.yarimGun}Y${s.mesaiGun > 0 ? " / ${s.mesaiGun}M" : ""}',
                                 Formatlayici.yap(s.toplamHakedis),
                                 Formatlayici.yap(s.toplamGiderMasrafi),
                                 Formatlayici.yap(s.toplamAvans),
@@ -1427,9 +1433,12 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                         (c.isci.gunlukMaas / 2);
                                                   } else if (c.durum.contains(
                                                     "Mesai",
-                                                  )) {
+                                                  ) || c.durum.contains("mesai")) {
                                                     hesaplar[c.isci.ad]!
-                                                        .tamGun++;
+                                                        .mesaiGun++;
+                                                    hesaplar[c.isci.ad]!
+                                                        .toplamMesaiYevmiye +=
+                                                        carpan;
                                                     hesaplar[c.isci.ad]!
                                                             .toplamHakedis +=
                                                         (c.isci.gunlukMaas *
@@ -1627,6 +1636,56 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                                     netDurum,
                                                                   ),
                                                             ),
+                                                      ),
+                                                      const SizedBox(height: 10),
+                                                      OutlinedButton.icon(
+                                                        icon: const Icon(
+                                                          Icons.send_rounded,
+                                                          color: Color(0xFF10B981),
+                                                        ),
+                                                        label: const Text(
+                                                          "Metin Olarak Paylaş (WhatsApp / SMS)",
+                                                          style: TextStyle(
+                                                            fontWeight: FontWeight.bold,
+                                                          ),
+                                                        ),
+                                                        style: OutlinedButton.styleFrom(
+                                                          foregroundColor: isDark
+                                                              ? Colors.white
+                                                              : const Color(0xFF10B981),
+                                                          side: const BorderSide(
+                                                            color: Color(0xFF10B981),
+                                                          ),
+                                                          padding: const EdgeInsets.symmetric(
+                                                            vertical: 16,
+                                                          ),
+                                                          shape: RoundedRectangleBorder(
+                                                            borderRadius: BorderRadius.circular(12),
+                                                          ),
+                                                          minimumSize: const Size(
+                                                            double.infinity,
+                                                            50,
+                                                          ),
+                                                        ),
+                                                        onPressed: () {
+                                                          final metin = _raporuMetneDonusturDetayli(
+                                                            _donemBaslikMetni,
+                                                            hesaplar,
+                                                            operasyonelHarcamaSahipleri,
+                                                            toplamMaas,
+                                                            topBenzin,
+                                                            topYemek,
+                                                            topEk,
+                                                            kayitliGelir,
+                                                            toplamEkstraGelir,
+                                                            toplamEkstraGider,
+                                                            netDurum,
+                                                          );
+                                                          Share.share(
+                                                            metin,
+                                                            subject: "$_donemBaslikMetni Genel Raporu",
+                                                          );
+                                                        },
                                                       ),
                                                       const SizedBox(
                                                         height:
@@ -2930,7 +2989,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
 
     final int toplamTam = aktifHesaplar.fold(0, (sum, s) => sum + s.tamGun);
     final int toplamYarim = aktifHesaplar.fold(0, (sum, s) => sum + s.yarimGun);
-    final double toplamYevmiye = toplamTam + (toplamYarim * 0.5);
+    final double toplamMesaiYevmiye =
+        aktifHesaplar.fold(0.0, (sum, s) => sum + s.toplamMesaiYevmiye);
+    final double toplamYevmiye =
+        toplamTam + (toplamYarim * 0.5) + toplamMesaiYevmiye;
     final String yevmiyeMetni =
         "${toplamYevmiye % 1 == 0 ? toplamYevmiye.toInt() : toplamYevmiye.toStringAsFixed(1)} Yevmiye";
 
@@ -3444,7 +3506,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            "${s.tamGun} Tam${s.yarimGun > 0 ? ' / ${s.yarimGun} Yarım' : ''}",
+                            "${s.tamGun} Tam${s.yarimGun > 0 ? ' / ${s.yarimGun} Yarım' : ''}${s.mesaiGun > 0 ? ' / ${s.mesaiGun} Mesai (${s.toplamMesaiYevmiye.toStringAsFixed(1)} Yevmiye)' : ''}",
                             style: GoogleFonts.poppins(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
@@ -3515,6 +3577,25 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         ),
                   ),
                 ],
+              ),
+              const SizedBox(width: 4),
+              IconButton(
+                icon: const Icon(Icons.share_rounded, size: 18),
+                color: _kBrandTeal,
+                padding: EdgeInsets.zero,
+                constraints: const BoxConstraints(),
+                tooltip: "İşçi Raporunu Metin Olarak Paylaş",
+                onPressed: () {
+                  final metin =
+                      "🏗️ ${s.isci.ad} - Ay Sonu Hakediş Özeti ($_donemBaslikMetni)\n"
+                      "• Çalışma: ${s.tamGun} Tam, ${s.yarimGun} Yarım${s.mesaiGun > 0 ? ', ${s.mesaiGun} Mesai (${s.toplamMesaiYevmiye.toStringAsFixed(1)} Yevmiye)' : ''}\n"
+                      "• Toplam Hakediş: ${Formatlayici.yap(s.toplamHakedis)}\n"
+                      "${s.toplamGiderMasrafi > 0 ? '• Karşılanan Gider Masrafı: +${Formatlayici.yap(s.toplamGiderMasrafi)}\n' : ''}"
+                      "• Alınan Avans: ${Formatlayici.yap(s.toplamAvans)}\n"
+                      "--------------------------\n"
+                      "• KALAN NET: ${Formatlayici.yap(s.odenecekTutar)}";
+                  Share.share(metin, subject: "${s.isci.ad} Ay Sonu Raporu");
+                },
               ),
             ],
           ),

@@ -1,5 +1,7 @@
+import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter/material.dart';
 import 'package:package_info_plus/package_info_plus.dart';
 import 'package:shared_preferences/shared_preferences.dart';
@@ -109,6 +111,29 @@ class PuanlamaServisi {
   }
 
   static Future<void> openStore() async {
+    if (!kIsWeb && Platform.isIOS) {
+      final appStoreUri = Uri.parse('itms-apps://itunes.apple.com/app/id6741753947?action=write-review');
+      final webAppStoreUri = Uri.parse('https://apps.apple.com/app/santiye-puantaj-defteri/id6741753947');
+      final testflightUri = Uri.parse('itms-beta://');
+      try {
+        if (await canLaunchUrl(appStoreUri)) {
+          await launchUrl(appStoreUri, mode: LaunchMode.externalApplication);
+          return;
+        }
+        if (await canLaunchUrl(webAppStoreUri)) {
+          await launchUrl(webAppStoreUri, mode: LaunchMode.externalApplication);
+          return;
+        }
+        if (await canLaunchUrl(testflightUri)) {
+          await launchUrl(testflightUri, mode: LaunchMode.externalApplication);
+          return;
+        }
+      } catch (e) {
+        debugPrint('iOS mağaza açma hatası: $e');
+      }
+      return;
+    }
+
     final marketUri = Uri.parse('market://details?id=$_packageName');
     final webUri = Uri.parse(
       'https://play.google.com/store/apps/details?id=$_packageName',

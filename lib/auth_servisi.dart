@@ -3,11 +3,18 @@ import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'fcm_servisi.dart';
+import 'firebase_options.dart';
 import 'user_model.dart';
 
 class AuthServisi {
   final FirebaseAuth _auth = FirebaseAuth.instance;
-  final GoogleSignIn _googleSignIn = GoogleSignIn();
+  final GoogleSignIn _googleSignIn = GoogleSignIn(
+    clientId: kIsWeb
+        ? null
+        : (defaultTargetPlatform == TargetPlatform.iOS
+            ? DefaultFirebaseOptions.ios.iosClientId
+            : null),
+  );
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
 
   UserModel? _userFromFirebaseUser(User? user) {
@@ -254,13 +261,51 @@ class AuthServisi {
   }
 
   /// Kullanıcının hesabını ve Firestore kullanıcı kaydını kalıcı olarak siler (Apple App Store 5.1.1(v) uyumlu)
-  Future<void> hesabiVeVerileriSil() async {
+  Future<void> hesabiVeVerileriSil({String? parola}) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception("Kullanıcı oturumu bulunamadı.");
 
     final uid = user.uid;
 
-    // 1. FCM Token ve Firestore kullanıcı profil kaydını temizle
+    // 1. Gerekirse şifre ile Re-Auth yap
+    if (parola != null && parola.isNotEmpty && user.email != null) {
+      try {
+        final cred = EmailAuthProvider.credential(
+          email: user.email!,
+          password: parola,
+        );
+        await user.reauthenticateWithCredential(cred);
+      } catch (e) {
+        throw Exception("Mevcut şifrenizi yanlış girdiniz.");
+      }
+    } else {
+      final isGoogleUser =
+          user.providerData.any((p) => p.providerId == 'google.com');
+      if (isGoogleUser) {
+        try {
+          final googleUser = await _googleSignIn.signIn();
+          if (googleUser != null) {
+            final googleAuth = await googleUser.authentication;
+            final cred = GoogleAuthProvider.credential(
+              accessToken: googleAuth.accessToken,
+              idToken: googleAuth.idToken,
+            );
+            await user.reauthenticateWithCredential(cred);
+          }
+        } catch (_) {}
+      }
+    }
+
+    // 2. Kullanıcı verisini yedekle (Auth silme başarısız olursa geri yüklemek için)
+    Map<String, dynamic>? backupData;
+    try {
+      final userDoc = await _firestore.collection('users').doc(uid).get();
+      if (userDoc.exists) {
+        backupData = userDoc.data();
+      }
+    } catch (_) {}
+
+    // 3. FCM Token ve Firestore kullanıcı profil kaydını temizle
     try {
       await FcmServisi().kullaniciAyril();
       await _firestore.collection('users').doc(uid).delete();
@@ -268,14 +313,25 @@ class AuthServisi {
       debugPrint("Firestore kullanıcı verisi silme uyarısı: $e");
     }
 
-    // 2. Firebase Authentication'dan kullanıcıyı kalıcı olarak sil
+    // 4. Firebase Authentication'dan kullanıcıyı kalıcı olarak sil
     try {
       await user.delete();
     } on FirebaseAuthException catch (e) {
+      // Auth silme başarısız olduysa Firestore dokümanını hemen geri yükle!
+      if (backupData != null) {
+        try {
+          await _firestore.collection('users').doc(uid).set(backupData);
+        } catch (_) {}
+      }
       if (e.code == 'requires-recent-login') {
-        throw Exception(
-          "Güvenlik nedeniyle hesabınızı silmeden önce lütfen oturumu kapatıp yeniden giriş yapın.",
-        );
+        throw Exception("requires-recent-login");
+      }
+      throw Exception("Hesap silinemedi: ${e.message}");
+    } catch (e) {
+      if (backupData != null) {
+        try {
+          await _firestore.collection('users').doc(uid).set(backupData);
+        } catch (_) {}
       }
       rethrow;
     }

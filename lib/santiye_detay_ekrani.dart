@@ -41,6 +41,7 @@ class SantiyeDetayEkrani extends StatefulWidget {
 }
 
 class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
+  VoidCallback? _onPaylasimTiklandi;
   late DateTime _gosterilenAy;
   String? _secilenIl;
   String? _secilenIlce;
@@ -104,6 +105,23 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
       appBar: FloatingLiquidAppBar(
         title: widget.santiyeAdi,
         showPrivacyButton: true,
+        actions: [
+          Builder(
+            builder: (btnCtx) => IconButton(
+              icon: const Icon(Icons.share_rounded),
+              tooltip: 'Raporu Metin Olarak Paylaş',
+              onPressed: () {
+                if (_onPaylasimTiklandi != null) {
+                  _onPaylasimTiklandi!();
+                } else {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(content: Text('Veriler yükleniyor...')),
+                  );
+                }
+              },
+            ),
+          ),
+        ],
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
@@ -216,6 +234,31 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                       toplamYevmiyeSayisi += parseDurumCarpani(calisma.durum);
                     }
                   }
+
+                  _onPaylasimTiklandi = () {
+                    final donemStr = DateFormat.yMMMM('tr_TR').format(_gosterilenAy);
+                    final metin = _santiyeRaporuMetniOlustur(
+                      donem: donemStr,
+                      raporlar: raporlar,
+                      toplamMasrafGenel: toplamMasrafGenel,
+                      toplamYevmiyeSayisi: toplamYevmiyeSayisi,
+                      toplamCalisilanGun: toplamCalisilanGun,
+                    );
+                    _paylasimMenusunuGoster(
+                      context: context,
+                      baslik: "${widget.santiyeAdi} - Rapor Paylaşımı",
+                      metin: metin,
+                      isDark: isDark,
+                      pdfDosyaAdi: "santiye_raporu_${widget.santiyeAdi}_$donemStr.pdf",
+                      pdfOlusturucu: () => _santiyeRaporuPdfOlustur(
+                        donem: donemStr,
+                        raporlar: raporlar,
+                        toplamMasrafGenel: toplamMasrafGenel,
+                        toplamYevmiyeSayisi: toplamYevmiyeSayisi,
+                        toplamCalisilanGun: toplamCalisilanGun,
+                      ),
+                    );
+                  };
 
                   return Column(
                     children: [
@@ -1890,7 +1933,11 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                       ),
                       onPressed: () {
                         Navigator.pop(c);
-                        Share.share(metin, subject: baslik);
+                        final box = context.findRenderObject() as RenderBox?;
+                        final origin = (box != null && box.hasSize)
+                            ? (box.localToGlobal(Offset.zero) & box.size)
+                            : const Rect.fromLTWH(0, 0, 100, 100);
+                        Share.share(metin, subject: baslik, sharePositionOrigin: origin);
                       },
                     ),
                     const SizedBox(height: 10),

@@ -70,12 +70,22 @@ class FcmServisi {
       },
     );
 
-    // 3. FCM izin durumu kontrolü (Onboarding dialog ile isteniyor)
+    // iOS ön plan bildirimlerini etkinleştir
+    try {
+      await _fcm.setForegroundNotificationPresentationOptions(
+        alert: true,
+        badge: true,
+        sound: true,
+      );
+    } catch (_) {}
+
+    // 3. FCM izin durumu kontrolü
     final settings = await _fcm.getNotificationSettings();
     debugPrint('🔔 FCM izin durumu: ${settings.authorizationStatus}');
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional) {
+        settings.authorizationStatus == AuthorizationStatus.provisional ||
+        defaultTargetPlatform == TargetPlatform.iOS) {
       await _tokenKaydet();
 
       _fcm.onTokenRefresh.listen((yeniToken) {
@@ -123,6 +133,19 @@ class FcmServisi {
 
   Future<void> _tokenKaydet() async {
     try {
+      if (defaultTargetPlatform == TargetPlatform.iOS) {
+        final currentSettings = await _fcm.getNotificationSettings();
+        if (currentSettings.authorizationStatus ==
+            AuthorizationStatus.notDetermined) {
+          await _fcm.requestPermission(alert: true, badge: true, sound: true);
+        }
+        String? apnsToken = await _fcm.getAPNSToken();
+        if (apnsToken == null) {
+          await Future.delayed(const Duration(seconds: 1));
+          apnsToken = await _fcm.getAPNSToken();
+        }
+      }
+
       final token = await _fcm.getToken();
       if (token == null) return;
       await _tokenFirestoreGuncelle(token);

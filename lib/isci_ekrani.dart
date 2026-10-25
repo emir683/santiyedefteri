@@ -14,6 +14,8 @@ import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_empty_state.dart';
 import 'puanlama_servisi.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -937,6 +939,49 @@ class _IsciEkraniState extends State<IsciEkrani>
     );
   }
 
+  Future<void> _iscileriMetinOlarakPaylas(BuildContext context, bool isFinans, String teamId) async {
+    try {
+      final user = Provider.of<UserModel?>(context, listen: false);
+      final servisi = FirestoreServisi(kullaniciId: user?.uid ?? '');
+      final isciler = await servisi.getIscilerStream(teamId).first;
+      if (isciler.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Paylaşılacak işçi kaydı bulunamadı.')),
+          );
+        }
+        return;
+      }
+      isciler.sort((a, b) => _turkceMetinKarsilastir(a.ad, b.ad));
+      final dateStr = DateFormat('dd.MM.yyyy').format(DateTime.now());
+      final sb = StringBuffer();
+      sb.writeln('👷 İŞÇİ LİSTESİ');
+      sb.writeln('📅 Tarih: $dateStr');
+      sb.writeln('👥 Toplam: ${isciler.length} İşçi');
+      sb.writeln('──────────────────────────────');
+      for (int i = 0; i < isciler.length; i++) {
+        final isci = isciler[i];
+        final maasText = isFinans ? ' | Günlük: ${isci.gunlukMaas.toStringAsFixed(0)} ₺' : '';
+        sb.writeln('${i + 1}. ${isci.ad} (${isci.isciTuru})$maasText');
+      }
+      sb.writeln('──────────────────────────────');
+      sb.writeln('Şantiye Puantaj Defteri');
+
+      final box = context.findRenderObject() as RenderBox?;
+      final origin = (box != null && box.hasSize)
+          ? (box.localToGlobal(Offset.zero) & box.size)
+          : const Rect.fromLTWH(0, 0, 100, 100);
+
+      await Share.share(sb.toString(), sharePositionOrigin: origin);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Paylaşım hatası: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel?>(context, listen: false);
@@ -956,6 +1001,15 @@ class _IsciEkraniState extends State<IsciEkrani>
             showPrivacyButton: true,
             showTourButton: true,
             onTourPressed: () => _turBaslat(zorla: true),
+            actions: [
+              Builder(
+                builder: (btnCtx) => IconButton(
+                  icon: const Icon(Icons.share_rounded),
+                  tooltip: 'İşçi Listesini Paylaş',
+                  onPressed: () => _iscileriMetinOlarakPaylas(btnCtx, isFinans, widget.teamId),
+                ),
+              ),
+            ],
           ),
           body: GlassPageSurface(
             preferSoftLightBackground: true,

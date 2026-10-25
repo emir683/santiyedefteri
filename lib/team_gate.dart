@@ -3,6 +3,7 @@ import 'package:provider/provider.dart';
 
 import 'firestore_servisi.dart';
 import 'user_model.dart';
+import 'wrapper.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 
@@ -67,14 +68,27 @@ class _TeamGateState extends State<TeamGate> {
     if (!mounted) return;
 
     if (teamId != null) {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(
+              _isJoining
+                  ? "Tebrikler! Ekibe başarıyla katıldınız."
+                  : "Ekip başarıyla oluşturuldu.",
+            ),
+            backgroundColor: const Color(0xFF14B8A6),
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => Wrapper(userId: user.uid)),
+          (route) => false,
+        );
+      }
       return;
     }
 
     setState(() {
-      _error = errorMessage ?? "Islem basarisiz. Bilgileri kontrol edin.";
+      _error = errorMessage ?? "İşlem başarısız. Bilgileri kontrol edin.";
       _loading = false;
     });
   }
@@ -100,9 +114,18 @@ class _TeamGateState extends State<TeamGate> {
     if (!mounted) return;
 
     if (teamId != null) {
-      setState(() {
-        _loading = false;
-      });
+      if (mounted && context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text("Bireysel çalışma alanı hazırlandı."),
+            backgroundColor: Color(0xFF14B8A6),
+          ),
+        );
+        Navigator.of(context).pushAndRemoveUntil(
+          MaterialPageRoute(builder: (_) => Wrapper(userId: user.uid)),
+          (route) => false,
+        );
+      }
       return;
     }
 

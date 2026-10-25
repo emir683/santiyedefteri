@@ -13,6 +13,8 @@ import 'widgets/interactive_tour/interactive_tour_model.dart';
 import 'widgets/interactive_tour/interactive_tour_overlay.dart';
 import 'widgets/il_ilce_secici_modal.dart';
 import 'widgets/glass_empty_state.dart';
+import 'package:share_plus/share_plus.dart';
+import 'package:intl/intl.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -795,6 +797,50 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
     );
   }
 
+  Future<void> _santiyeleriMetinOlarakPaylas(BuildContext context, String teamId) async {
+    try {
+      final user = Provider.of<UserModel?>(context, listen: false);
+      final servisi = FirestoreServisi(kullaniciId: user?.uid ?? '');
+      final santiyeler = await servisi.getSantiyelerStream(teamId).first;
+      if (santiyeler.isEmpty) {
+        if (context.mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Paylasilacak santiye kaydi bulunamadi.')),
+          );
+        }
+        return;
+      }
+      santiyeler.sort((a, b) => a.ad.toLowerCase().compareTo(b.ad.toLowerCase()));
+      final dateStr = DateFormat('dd.MM.yyyy').format(DateTime.now());
+      final sb = StringBuffer();
+      sb.writeln('SANTİYE LİSTESİ');
+      sb.writeln('Tarih: $dateStr');
+      sb.writeln('Toplam: ${santiyeler.length} Santiye');
+      sb.writeln('--------------------------------');
+      for (int i = 0; i < santiyeler.length; i++) {
+        final s = santiyeler[i];
+        final yer = [s.il, s.ilce].where((e) => e != null && e.isNotEmpty).join(' / ');
+        final yerMetin = yer.isNotEmpty ? ' ($yer)' : '';
+        sb.writeln('${i + 1}. ${s.ad}$yerMetin');
+      }
+      sb.writeln('--------------------------------');
+      sb.writeln('Santiye Puantaj Defteri');
+
+      final box = context.findRenderObject() as RenderBox?;
+      final origin = (box != null && box.hasSize)
+          ? (box.localToGlobal(Offset.zero) & box.size)
+          : const Rect.fromLTWH(0, 0, 100, 100);
+
+      await Share.share(sb.toString(), sharePositionOrigin: origin);
+    } catch (e) {
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Paylasim hatasi: $e')),
+        );
+      }
+    }
+  }
+
   @override
   Widget build(BuildContext context) {
     final user = Provider.of<UserModel?>(context, listen: false);
@@ -809,6 +855,15 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
         showPrivacyButton: true,
         showTourButton: true,
         onTourPressed: () => _turBaslat(manual: true),
+        actions: [
+          Builder(
+            builder: (btnCtx) => IconButton(
+              icon: const Icon(Icons.share_rounded),
+              tooltip: 'Şantiye Listesini Paylaş',
+              onPressed: () => _santiyeleriMetinOlarakPaylas(btnCtx, widget.teamId),
+            ),
+          ),
+        ],
       ),
       body: Stack(
         children: [

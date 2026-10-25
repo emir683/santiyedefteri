@@ -1,4 +1,6 @@
+import 'dart:io' show Platform;
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:package_info_plus/package_info_plus.dart';
 
 class AppUpdateStatus {
@@ -29,8 +31,9 @@ class AppUpdateService {
 
   final FirebaseFirestore _db;
 
-  static const String defaultStoreUrl =
-      'https://play.google.com/store/apps/details?id=com.emircf.santiyepuantaj';
+  static String get defaultStoreUrl => (!kIsWeb && Platform.isIOS)
+      ? 'https://apps.apple.com/app/santiye-puantaj-defteri/id6741753947'
+      : 'https://play.google.com/store/apps/details?id=com.emircf.santiyepuantaj';
 
   Future<AppUpdateStatus> checkStatus() async {
     final info = await PackageInfo.fromPlatform();
@@ -72,7 +75,10 @@ class AppUpdateService {
           (data['message'] ??
                   'Devam etmek icin uygulamayi guncellemeniz gerekiyor.')
               .toString();
-      final storeUrl = (data['storeUrl'] ?? defaultStoreUrl).toString();
+      final storeUrl = (!kIsWeb && Platform.isIOS
+              ? (data['iosStoreUrl'] ?? data['storeUrl'] ?? defaultStoreUrl)
+              : (data['storeUrl'] ?? defaultStoreUrl))
+          .toString();
       final requiresUpdate = minimumBuildNumber > currentBuildNumber;
 
       return AppUpdateStatus(

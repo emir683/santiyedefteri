@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'auth_servisi.dart';
+import 'auth_gate.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 
@@ -142,6 +143,8 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
   void _hesabiSilDialog() {
     bool loading = false;
     String hataMesaji = "";
+    bool sifreGerekiyor = false;
+    final parolaController = TextEditingController();
 
     showGeneralDialog(
       context: context,
@@ -158,129 +161,189 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                 child: Container(color: Colors.transparent),
               ),
               Center(
-                child: Container(
-                  margin: const EdgeInsets.symmetric(horizontal: 24),
-                  padding: const EdgeInsets.all(24),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
-                    borderRadius: BorderRadius.circular(24),
-                    border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
-                    boxShadow: [
-                      BoxShadow(
-                        color: Colors.red.withValues(alpha: 0.2),
-                        blurRadius: 20,
-                      ),
-                    ],
-                  ),
-                  child: Material(
-                    color: Colors.transparent,
-                    child: Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        const Icon(
-                          Icons.warning_amber_rounded,
-                          color: Colors.redAccent,
-                          size: 48,
+                child: SingleChildScrollView(
+                  child: Container(
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                      borderRadius: BorderRadius.circular(24),
+                      border: Border.all(color: Colors.red.withValues(alpha: 0.3)),
+                      boxShadow: [
+                        BoxShadow(
+                          color: Colors.red.withValues(alpha: 0.2),
+                          blurRadius: 20,
                         ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "Hesabımı ve Verilerimi Sil",
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 20,
-                            fontWeight: FontWeight.bold,
+                      ],
+                    ),
+                    child: Material(
+                      color: Colors.transparent,
+                      child: Column(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Icon(
+                            Icons.warning_amber_rounded,
+                            color: Colors.redAccent,
+                            size: 48,
                           ),
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 16),
-                        const Text(
-                          "Hesabınızı sildiğinizde profil bilgileriniz, giriş yetkileriniz ve kullanıcı hesabınız KALICI OLARAK silinecektir.\n\nBu işlem geri alınamaz. Onaylıyor musunuz?",
-                          style: TextStyle(
-                            color: Colors.white70,
-                            fontSize: 14,
-                            height: 1.4,
-                          ),
-                          textAlign: TextAlign.center,
-                        ),
-                        if (hataMesaji.isNotEmpty) ...[
-                          const SizedBox(height: 12),
-                          Text(
-                            hataMesaji,
-                            style: const TextStyle(
-                              color: Colors.redAccent,
-                              fontSize: 13,
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Hesabımı ve Verilerimi Sil",
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 20,
                               fontWeight: FontWeight.bold,
                             ),
                             textAlign: TextAlign.center,
                           ),
-                        ],
-                        const SizedBox(height: 24),
-                        Row(
-                          children: [
-                            Expanded(
-                              child: TextButton(
-                                onPressed: () => Navigator.pop(ctx),
-                                child: const Text(
-                                  "Vazgeç",
-                                  style: TextStyle(color: Colors.grey),
+                          const SizedBox(height: 16),
+                          const Text(
+                            "Hesabınızı sildiğinizde profil bilgileriniz, giriş yetkileriniz ve kullanıcı hesabınız KALICI OLARAK silinecektir.\n\nBu işlem geri alınamaz. Onaylıyor musunuz?",
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 14,
+                              height: 1.4,
+                            ),
+                            textAlign: TextAlign.center,
+                          ),
+                          if (sifreGerekiyor) ...[
+                            const SizedBox(height: 16),
+                            const Text(
+                              "Güvenlik nedeniyle silme işlemini onaylamak için lütfen mevcut şifrenizi girin:",
+                              style: TextStyle(
+                                color: Colors.orangeAccent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.w600,
+                              ),
+                              textAlign: TextAlign.center,
+                            ),
+                            const SizedBox(height: 10),
+                            TextField(
+                              controller: parolaController,
+                              obscureText: true,
+                              style: const TextStyle(color: Colors.white),
+                              decoration: InputDecoration(
+                                hintText: "Mevcut Şifreniz",
+                                hintStyle: const TextStyle(color: Colors.white54),
+                                prefixIcon: const Icon(
+                                  Icons.lock_outline,
+                                  color: Colors.white70,
+                                ),
+                                filled: true,
+                                fillColor: Colors.white.withValues(alpha: 0.08),
+                                border: OutlineInputBorder(
+                                  borderRadius: BorderRadius.circular(12),
+                                  borderSide: BorderSide.none,
                                 ),
                               ),
                             ),
-                            Expanded(
-                              child: loading
-                                  ? const Center(
-                                      child: CircularProgressIndicator(
-                                        color: Colors.redAccent,
-                                      ),
-                                    )
-                                  : ElevatedButton(
-                                      style: ElevatedButton.styleFrom(
-                                        backgroundColor: Colors.redAccent,
-                                        foregroundColor: Colors.white,
-                                        padding: const EdgeInsets.symmetric(
-                                          vertical: 12,
-                                        ),
-                                        shape: RoundedRectangleBorder(
-                                          borderRadius: BorderRadius.circular(12),
-                                        ),
-                                      ),
-                                      onPressed: () async {
-                                        setDialogState(() {
-                                          loading = true;
-                                          hataMesaji = "";
-                                        });
-                                        try {
-                                          await _authServisi.hesabiVeVerileriSil();
-                                          if (!ctx.mounted) return;
-                                          Navigator.pop(ctx);
-                                          if (!mounted || !context.mounted) return;
-                                          Navigator.of(
-                                            context,
-                                            rootNavigator: true,
-                                          ).popUntil((route) => route.isFirst);
-                                          ScaffoldMessenger.of(context).showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
-                                                "Hesabınız ve verileriniz başarıyla silindi.",
-                                              ),
-                                              backgroundColor: Colors.redAccent,
-                                            ),
-                                          );
-                                        } catch (e) {
-                                          setDialogState(() {
-                                            loading = false;
-                                            hataMesaji = e
-                                                .toString()
-                                                .replaceAll("Exception: ", "");
-                                          });
-                                        }
-                                      },
-                                      child: const Text("EVET, SİL"),
-                                    ),
+                          ],
+                          if (hataMesaji.isNotEmpty) ...[
+                            const SizedBox(height: 12),
+                            Text(
+                              hataMesaji,
+                              style: const TextStyle(
+                                color: Colors.redAccent,
+                                fontSize: 13,
+                                fontWeight: FontWeight.bold,
+                              ),
+                              textAlign: TextAlign.center,
                             ),
                           ],
-                        ),
-                      ],
+                          const SizedBox(height: 24),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: TextButton(
+                                  onPressed: () {
+                                    parolaController.dispose();
+                                    Navigator.pop(ctx);
+                                  },
+                                  child: const Text(
+                                    "Vazgeç",
+                                    style: TextStyle(color: Colors.grey),
+                                  ),
+                                ),
+                              ),
+                              Expanded(
+                                child: loading
+                                    ? const Center(
+                                        child: CircularProgressIndicator(
+                                          color: Colors.redAccent,
+                                        ),
+                                      )
+                                    : ElevatedButton(
+                                        style: ElevatedButton.styleFrom(
+                                          backgroundColor: Colors.redAccent,
+                                          foregroundColor: Colors.white,
+                                          padding: const EdgeInsets.symmetric(
+                                            vertical: 12,
+                                          ),
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius: BorderRadius.circular(12),
+                                          ),
+                                        ),
+                                        onPressed: () async {
+                                          setDialogState(() {
+                                            loading = true;
+                                            hataMesaji = "";
+                                          });
+                                          try {
+                                            final girilenSifre =
+                                                parolaController.text.trim();
+                                            await _authServisi.hesabiVeVerileriSil(
+                                              parola: girilenSifre.isNotEmpty
+                                                  ? girilenSifre
+                                                  : null,
+                                            );
+                                            parolaController.dispose();
+                                            if (!ctx.mounted) return;
+                                            Navigator.pop(ctx);
+                                            if (!mounted || !context.mounted) return;
+                                            Navigator.of(
+                                              context,
+                                              rootNavigator: true,
+                                            ).pushAndRemoveUntil(
+                                              MaterialPageRoute(
+                                                builder: (_) => const AuthGate(),
+                                              ),
+                                              (route) => false,
+                                            );
+                                            ScaffoldMessenger.of(context).showSnackBar(
+                                              const SnackBar(
+                                                content: Text(
+                                                  "Hesabınız ve verileriniz başarıyla silindi.",
+                                                ),
+                                                backgroundColor: Colors.redAccent,
+                                              ),
+                                            );
+                                          } catch (e) {
+                                            final err = e.toString();
+                                            setDialogState(() {
+                                              loading = false;
+                                              if (err.contains("requires-recent-login")) {
+                                                sifreGerekiyor = true;
+                                                hataMesaji =
+                                                    "Güvenlik nedeniyle lütfen şifrenizi girerek onaylayın.";
+                                              } else {
+                                                hataMesaji = err
+                                                    .replaceAll("Exception: ", "")
+                                                    .replaceAll("requires-recent-login", "");
+                                              }
+                                            });
+                                          }
+                                        },
+                                        child: Text(
+                                          sifreGerekiyor
+                                              ? "ŞİFREYİ DOĞRULA VE SİL"
+                                              : "EVET, SİL",
+                                        ),
+                                      ),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
                     ),
                   ),
                 ),

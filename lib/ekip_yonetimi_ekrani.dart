@@ -337,7 +337,11 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
   }
 
   // --- BAĞLANTI PAYLAŞMA ---
-  void _baglantiPaylas(String ekipAdi, String ekipSifresi, String ekipId) {
+  Future<void> _baglantiPaylas(
+    String ekipAdi,
+    String ekipSifresi,
+    String ekipId,
+  ) async {
     final String deepLink =
         Uri(
           scheme: 'https',
@@ -345,11 +349,29 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
           path: '/katil',
           queryParameters: {'ad': ekipAdi, 'id': ekipId},
         ).toString();
-    const String storeLink =
-        "https://play.google.com/store/apps/details?id=com.emircf.santiyepuantaj";
+    const String storeLinks =
+        "• iPhone (App Store / TestFlight): https://apps.apple.com/app/santiye-puantaj-defteri/id6741753947\n"
+        "• Android (Google Play): https://play.google.com/store/apps/details?id=com.emircf.santiyepuantaj";
     final String mesaj =
-        "🏗️ Şantiye Puantaj Defteri\n\n“$ekipAdi” ekibine katılmak için bağlantıya dokun:\n$deepLink\n\nUygulama yüklü değilse:\n$storeLink";
-    Share.share(mesaj);
+        "🏗️ Şantiye Puantaj Defteri\n\n“$ekipAdi” ekibine katılmak için bağlantıya dokunun:\n$deepLink\n\nUygulama henüz telefonunuzda yüklü değilse:\n$storeLinks";
+
+    Rect? sharePositionOrigin;
+    try {
+      final box = context.findRenderObject() as RenderBox?;
+      if (box != null && box.hasSize) {
+        sharePositionOrigin = box.localToGlobal(Offset.zero) & box.size;
+      }
+    } catch (_) {}
+
+    try {
+      await Share.share(
+        mesaj,
+        subject: "“$ekipAdi” Ekip Daveti",
+        sharePositionOrigin: sharePositionOrigin,
+      );
+    } catch (e) {
+      debugPrint("Paylaşım hatası: $e");
+    }
   }
 
   Future<bool> _onayDialoguGoster({

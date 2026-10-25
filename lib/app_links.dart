@@ -4,11 +4,11 @@ class AppLinks {
   );
 
   static final Uri privacyPolicy = Uri.parse(
-    'https://emrcore.com/santiye-privacy/',
+    'https://emir683.github.io/santiye-privacy/',
   );
 
   static final Uri termsOfUse = Uri.parse(
-    'https://emrcore.com/kullanim-sartlari/',
+    'https://emir683.github.io/santiye-privacy/',
   );
 
   static final Uri supportEmail = Uri(

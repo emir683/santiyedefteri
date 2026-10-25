@@ -78,5 +78,10 @@
 	<string>Şantiye raporlarına ve projelere fotoğraf veya belge eklemek için galeri erişimi gereklidir.</string>
 	<key>NSCameraUsageDescription</key>
 	<string>Şantiye raporlarına ve belgelere fotoğraf çekip eklemek için kamera erişimi gereklidir.</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+	</array>
 </dict>
 </plist>

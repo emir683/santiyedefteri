@@ -4,6 +4,7 @@ import 'package:provider/provider.dart';
 import 'deep_link_service.dart';
 import 'firestore_servisi.dart';
 import 'user_model.dart';
+import 'wrapper.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 
@@ -69,7 +70,16 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
     if (teamId != null) {
       await DeepLinkService.instance.clearInvite();
       if (!mounted) return;
-      Navigator.of(context).popUntil((route) => route.isFirst);
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text("“${widget.ekipAdi}” ekibine başarıyla katıldınız!"),
+          backgroundColor: const Color(0xFF14B8A6),
+        ),
+      );
+      Navigator.of(context).pushAndRemoveUntil(
+        MaterialPageRoute(builder: (_) => Wrapper(userId: user.uid)),
+        (route) => false,
+      );
       return;
     }
 
