@@ -6,31 +6,29 @@ import subprocess
 import sys
 
 def main():
-    raw_key_id = (
-        os.environ.get('APP_STORE_CONNECT_KEY_ID') or
-        os.environ.get('APPSTORE_API_KEY_ID') or
-        os.environ.get('APPSTORE_KEY_ID') or
-        'CQ6NJF8X8Q'
-    )
-    raw_issuer_id = (
-        os.environ.get('APP_STORE_CONNECT_ISSUER_ID') or
-        os.environ.get('APPSTORE_ISSUER_ID') or
-        '4e4eebba-56b8-450f-9a64-1310de60a145'
-    )
-    raw_key = (
-        os.environ.get('APP_STORE_CONNECT_PRIVATE_KEY') or
-        os.environ.get('APPSTORE_API_PRIVATE_KEY') or
-        os.environ.get('APPSTORE_PRIVATE_KEY') or
-        os.environ.get('API_PRIVATE_KEY') or
-        ''
-    ).strip()
+    # Apple App Store Connect resmi kimlik bilgileri (Sabit ve Net)
+    key_id = "CQ6NJF8X8Q"
+    issuer_id = "4e4eebba-56b8-450f-9a64-1310de60a145"
 
-    # ID'leri temizle (whitespace, \r, \n temizliği)
-    key_id = re.sub(r'[^A-Za-z0-9]', '', raw_key_id)
-    issuer_id = re.sub(r'[^A-Za-z0-9\-]', '', raw_issuer_id)
+    # Private key'i olası tüm değişkenlerden akıllıca bul
+    candidates = [
+        os.environ.get('APP_STORE_CONNECT_PRIVATE_KEY', ''),
+        os.environ.get('APPSTORE_API_PRIVATE_KEY', ''),
+        os.environ.get('APPSTORE_PRIVATE_KEY', ''),
+        os.environ.get('API_PRIVATE_KEY', ''),
+        os.environ.get('APP_STORE_CONNECT_KEY_ID', ''),
+        os.environ.get('APP_STORE_CONNECT_ISSUER_ID', '')
+    ]
+
+    raw_key = ""
+    for cand in candidates:
+        cand = cand.strip()
+        if 'PRIVATE KEY' in cand or 'MIGT' in cand or len(cand) > 100:
+            raw_key = cand
+            break
 
     if not raw_key:
-        sys.exit("❌ HATA: 'APP_STORE_CONNECT_PRIVATE_KEY' secret GitHub ayarlarında boş veya eklenmemiş!")
+        sys.exit("❌ HATA: App Store Connect Private Key bulunamadı!")
 
     # 1. Base64 ise çöz
     if 'BEGIN PRIVATE KEY' not in raw_key:
@@ -58,16 +56,15 @@ def main():
             key_file = os.path.join(d, f"AuthKey_{key_id}.p8")
             with open(key_file, 'wb') as f:
                 f.write(clean_pem.encode('utf-8'))
-            print(f"✅ API Anahtarı yazıldı: {key_file} ({os.path.getsize(key_file)} bytes)")
+            print(f"✅ AuthKey_{key_id}.p8 hazırlandı: {key_file} ({os.path.getsize(key_file)} bytes)")
         except Exception as e:
             print(f"⚠️ {d} dizinine yazılamadı: {e}")
 
     os.environ['API_PRIVATE_KEYS_DIR'] = os.path.abspath('private_keys')
 
-    # IPA dosyasını bul
+    # 4. IPA dosyasını bul
     ipa_path = 'build/ipa_out/app.ipa'
     if not os.path.exists(ipa_path):
-        # build/ipa_out altındaki herhangi bir ipa'yı ara
         if os.path.exists('build/ipa_out'):
             ipas = [f for f in os.listdir('build/ipa_out') if f.endswith('.ipa')]
             if ipas:
@@ -77,10 +74,13 @@ def main():
         else:
             sys.exit(f"❌ HATA: Yüklenecek IPA dosyası bulunamadı: {ipa_path}")
 
-    print(f"📦 Yüklenecek IPA: {ipa_path} ({os.path.getsize(ipa_path)} bytes)")
-    print(f"🚀 Apple TestFlight'a yükleme başlatılıyor (Key: {key_id}, Issuer: {issuer_id})...")
+    print(f"\n📦 Yüklenecek IPA: {ipa_path} ({os.path.getsize(ipa_path)} bytes)")
+    print(f"🚀 Apple TestFlight'a yükleme başlatılıyor:")
+    print(f"   - Key ID: {key_id}")
+    print(f"   - Issuer ID: {issuer_id}")
+    print(f"   - Private Key: AuthKey_{key_id}.p8 (Mevcut ✅)")
 
-    # 4. Apple altool ile TestFlight'a yükle
+    # 5. Apple altool ile TestFlight'a yükle
     upload_cmd = [
         'xcrun', 'altool', '--upload-app',
         '-f', ipa_path,
