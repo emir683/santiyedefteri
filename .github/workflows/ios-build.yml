@@ -22,6 +22,18 @@ jobs:
       - name: Git Güvenli Dizin Yapılandırması
         run: git config --global --add safe.directory "$GITHUB_WORKSPACE"
 
+      - name: En Güncel Xcode Sürümünü Seç (Apple Zorunlu SDK)
+        run: |
+          echo "=== Sistemde Kurulu Xcode Sürümleri ==="
+          ls -d /Applications/Xcode*.app || true
+          LATEST_XCODE=$(ls -d /Applications/Xcode*.app 2>/dev/null | sort -V | tail -n 1)
+          if [ -n "$LATEST_XCODE" ]; then
+            echo "Seçilen Xcode yolu: $LATEST_XCODE"
+            sudo xcode-select -s "$LATEST_XCODE"
+          fi
+          echo "=== Aktif Xcode Bilgisi ==="
+          xcodebuild -version
+
       - name: Apple Dağıtım Sertifikası ve Profilini Kur (Keychain)
         env:
           BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
