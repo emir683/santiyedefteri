@@ -3506,7 +3506,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                             borderRadius: BorderRadius.circular(6),
                           ),
                           child: Text(
-                            "${s.tamGun} Tam${s.yarimGun > 0 ? ' / ${s.yarimGun} Yarım' : ''}${s.mesaiGun > 0 ? ' / ${s.mesaiGun} Mesai (${s.toplamMesaiYevmiye.toStringAsFixed(1)} Yevmiye)' : ''}",
+                            "${s.toplamYevmiye % 1 == 0 ? s.toplamYevmiye.toInt() : s.toplamYevmiye.toStringAsFixed(1)} Yevmiye (${s.tamGun} Tam${s.yarimGun > 0 ? ' / ${s.yarimGun} Yarım' : ''}${s.mesaiGun > 0 ? ' / ${s.mesaiGun} Mesai' : ''})",
                             style: GoogleFonts.poppins(
                               fontSize: 10,
                               fontWeight: FontWeight.w500,
@@ -3594,7 +3594,11 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                       "• Alınan Avans: ${Formatlayici.yap(s.toplamAvans)}\n"
                       "--------------------------\n"
                       "• KALAN NET: ${Formatlayici.yap(s.odenecekTutar)}";
-                  Share.share(metin, subject: "${s.isci.ad} Ay Sonu Raporu");
+                  final box = context.findRenderObject() as RenderBox?;
+                  final origin = (box != null && box.hasSize)
+                      ? (box.localToGlobal(Offset.zero) & box.size)
+                      : const Rect.fromLTWH(0, 0, 100, 100);
+                  Share.share(metin, subject: "${s.isci.ad} Ay Sonu Raporu", sharePositionOrigin: origin);
                 },
               ),
             ],
