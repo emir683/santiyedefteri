@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import 'auth_servisi.dart';
 import 'web_install_helper.dart';
@@ -74,6 +75,38 @@ class _LoginEkraniState extends State<LoginEkrani> {
       if (!mounted) return;
       setState(() {
         _error = "Google ile giriş başarısız: $e";
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+
+    try {
+      await _authServisi.signInWithApple();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      if (e.code == 'canceled' || e.code == 'cancelled') {
+        setState(() => _loading = false);
+        return;
+      }
+      setState(() {
+        _error = "Apple ile giriş başarısız: ${e.message ?? e.code}";
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('canceled') || errStr.contains('cancelled') || errStr.contains('1001')) {
+        setState(() => _loading = false);
+        return;
+      }
+      setState(() {
+        _error = "Apple ile giriş başarısız: $e";
         _loading = false;
       });
     }
@@ -438,6 +471,36 @@ class _LoginEkraniState extends State<LoginEkrani> {
                               : const Color(0xFF10232C),
                         ),
                       ),
+                      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ...[
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          icon: Icon(
+                            Icons.apple,
+                            size: 22,
+                            color: isDark ? Colors.white : Colors.black,
+                          ),
+                          label: const Text(
+                            "Apple ile Devam Et",
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                          ),
+                          onPressed: _loading ? null : _signInWithApple,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            side: BorderSide(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.20)
+                                  : const Color(0xFF0F172A),
+                            ),
+                            backgroundColor: isDark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : Colors.black,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

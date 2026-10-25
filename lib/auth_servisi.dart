@@ -151,6 +151,36 @@ class AuthServisi {
     }
   }
 
+  /// Apple ile Giriş Yap (Yalnızca iOS cihazlarda kullanılır)
+  Future<UserModel?> signInWithApple() async {
+    try {
+      final appleProvider = AppleAuthProvider();
+      appleProvider.addScope('email');
+      appleProvider.addScope('name');
+
+      final UserCredential userCredential =
+          await _auth.signInWithProvider(appleProvider);
+      final User? user = userCredential.user;
+
+      if (user != null) {
+        final userDoc =
+            await _firestore.collection('users').doc(user.uid).get();
+        if (!userDoc.exists) {
+          return UserModel(
+            uid: user.uid,
+            isProfileComplete: false,
+            googleDisplayName: user.displayName,
+            email: user.email,
+          );
+        }
+      }
+
+      return _userFromFirebaseUser(user);
+    } catch (e) {
+      rethrow;
+    }
+  }
+
   Future<void> signOut() async {
     // 1. FCM token temizliğini arka planda çalıştır (UI'ı asla bekletmez)
     try {
