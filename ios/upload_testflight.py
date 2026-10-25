@@ -5,16 +5,29 @@ import subprocess
 import sys
 
 def main():
-    key_id = os.environ.get('APP_STORE_CONNECT_KEY_ID', '').strip()
-    issuer_id = os.environ.get('APP_STORE_CONNECT_ISSUER_ID', '').strip()
-    raw_key = os.environ.get('APP_STORE_CONNECT_PRIVATE_KEY', '').strip()
+    key_id = (
+        os.environ.get('APP_STORE_CONNECT_KEY_ID') or
+        os.environ.get('APPSTORE_API_KEY_ID') or
+        os.environ.get('APPSTORE_KEY_ID') or
+        'CQ6NJF8X8Q'
+    ).strip()
 
-    if not key_id:
-        sys.exit("❌ HATA: 'APP_STORE_CONNECT_KEY_ID' secret boş veya eksik!")
-    if not issuer_id:
-        sys.exit("❌ HATA: 'APP_STORE_CONNECT_ISSUER_ID' secret boş veya eksik!")
+    issuer_id = (
+        os.environ.get('APP_STORE_CONNECT_ISSUER_ID') or
+        os.environ.get('APPSTORE_ISSUER_ID') or
+        '4e4eebba-56b8-450f-9a64-1310de60a145'
+    ).strip()
+
+    raw_key = (
+        os.environ.get('APP_STORE_CONNECT_PRIVATE_KEY') or
+        os.environ.get('APPSTORE_API_PRIVATE_KEY') or
+        os.environ.get('APPSTORE_PRIVATE_KEY') or
+        os.environ.get('API_PRIVATE_KEY') or
+        ''
+    ).strip()
+
     if not raw_key:
-        sys.exit("❌ HATA: 'APP_STORE_CONNECT_PRIVATE_KEY' secret boş veya eksik!")
+        sys.exit("❌ HATA: 'APP_STORE_CONNECT_PRIVATE_KEY' (veya 'APPSTORE_API_PRIVATE_KEY') secret GitHub ayarlarında boş veya eklenmemiş!")
 
     # 1. Base64 ise çöz
     if 'BEGIN PRIVATE KEY' not in raw_key:

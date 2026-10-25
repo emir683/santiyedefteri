@@ -114,7 +114,7 @@ jobs:
 
       - name: TestFlight'a Otomatik Yükle (Apple xcrun altool)
         env:
-          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID }}
-          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
-          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY }}
+          APP_STORE_CONNECT_KEY_ID: ${{ secrets.APP_STORE_CONNECT_KEY_ID || secrets.APPSTORE_API_KEY_ID || 'CQ6NJF8X8Q' }}
+          APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID || secrets.APPSTORE_ISSUER_ID || '4e4eebba-56b8-450f-9a64-1310de60a145' }}
+          APP_STORE_CONNECT_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_PRIVATE_KEY || secrets.APPSTORE_API_PRIVATE_KEY || secrets.APPSTORE_PRIVATE_KEY }}
         run: python3 ios/upload_testflight.py
