@@ -25,9 +25,9 @@ class BildirimServisi {
       _androidNotificationIcon,
     );
     const iosInit = DarwinInitializationSettings(
-      requestAlertPermission: true,
-      requestBadgePermission: true,
-      requestSoundPermission: true,
+      requestAlertPermission: false,
+      requestBadgePermission: false,
+      requestSoundPermission: false,
     );
     const initSettings = InitializationSettings(
       android: androidInit,
@@ -341,6 +341,17 @@ class BildirimServisi {
 
   Future<void> gunlukHatirlatmaAyarlaSimple(TimeOfDay saat) async {
     await _zamanlanmisBildirimOlustur(saat);
+  }
+
+  Future<void> planlaPuantajHatirlatici({
+    required int saat,
+    required int dakika,
+  }) async {
+    await _zamanlanmisBildirimOlustur(TimeOfDay(hour: saat, minute: dakika));
+  }
+
+  Future<void> iptalEtPuantajHatirlatici() async {
+    await flutterLocalNotificationsPlugin.cancel(0);
   }
 
   tz.TZDateTime _sonrakiBildirimZamani(TimeOfDay saat) {

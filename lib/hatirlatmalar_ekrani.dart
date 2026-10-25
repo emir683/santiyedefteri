@@ -2,7 +2,10 @@ import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:permission_handler/permission_handler.dart';
+import 'package:google_fonts/google_fonts.dart';
 
+import 'fcm_servisi.dart';
 import 'bildirim_servisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
@@ -16,7 +19,8 @@ class HatirlatmalarEkrani extends StatefulWidget {
   State<HatirlatmalarEkrani> createState() => _HatirlatmalarEkraniState();
 }
 
-class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
+class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
+    with WidgetsBindingObserver {
   // Kategori bazlı tercihler
   bool _puantajHatirlaticiAktif = true;
   bool _cadBildirimleriAktif = true;
@@ -26,14 +30,98 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
 
   late TimeOfDay _geciciSeciliSaat;
   bool _isLoading = true;
+  bool _bildirimIzniVar = false;
 
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     _ayarlariYukle();
   }
 
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      _izinDurumunuKontrolEt();
+    }
+  }
+
+  Future<void> _izinDurumunuKontrolEt() async {
+    final status = await Permission.notification.status;
+    if (mounted) {
+      setState(() {
+        _bildirimIzniVar = status.isGranted;
+      });
+    }
+  }
+
+  Future<void> _bildirimIzniniAktiflestir() async {
+    final status = await Permission.notification.request();
+    if (status.isGranted) {
+      if (mounted) {
+        setState(() {
+          _bildirimIzniVar = true;
+        });
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bildirim izinleri başarıyla aktifleştirildi!'),
+            backgroundColor: _kBrandTeal,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      await FcmServisi().kullaniciBagla();
+    } else if (status.isPermanentlyDenied) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            title: const Text('Bildirim İzni Gerekli'),
+            content: const Text(
+              'Bildirim izinleri cihaz ayarlarından kapatılmış. Hatırlatıcıların çalabilmesi için lütfen ayarlardan bildirim iznini açın.',
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: const Text('Vazgeç'),
+              ),
+              ElevatedButton(
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: _kBrandTeal,
+                  foregroundColor: Colors.white,
+                ),
+                onPressed: () {
+                  Navigator.pop(ctx);
+                  openAppSettings();
+                },
+                child: const Text('Ayarları Aç'),
+              ),
+            ],
+          ),
+        );
+      }
+    } else {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            content: Text('Bildirim izni verilmedi. Hatırlatıcılar sessiz kalabilir.'),
+            backgroundColor: Colors.orange,
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+    }
+  }
+
   Future<void> _ayarlariYukle() async {
+    await _izinDurumunuKontrolEt();
+
     final prefs = await SharedPreferences.getInstance();
     if (!mounted) return;
     setState(() {
@@ -109,13 +197,17 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
     await prefs.setInt('hatirlatmaSaati', _geciciSeciliSaat.hour);
     await prefs.setInt('hatirlatmaDakikasi', _geciciSeciliSaat.minute);
 
+    // Puantaj hatırlatıcısını sistemde planla veya iptal et
     if (_puantajHatirlaticiAktif) {
-      await BildirimServisi().gunlukHatirlatmaAyarlaSimple(_geciciSeciliSaat);
+      await BildirimServisi().planlaPuantajHatirlatici(
+        saat: _geciciSeciliSaat.hour,
+        dakika: _geciciSeciliSaat.minute,
+      );
     } else {
-      await BildirimServisi().tumBildirimleriIptalEt();
+      await BildirimServisi().iptalEtPuantajHatirlatici();
     }
 
-    // Firestore'a kaydet (Cloud Function bildirim gönderirken bakar)
+    // Firestore'a da kaydet
     final user = FirebaseAuth.instance.currentUser;
     if (user != null) {
       try {
@@ -124,7 +216,6 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
           'cadBildirimleriAktif': _cadBildirimleriAktif,
           'odemeBildirimleriAktif': _odemeBildirimleriAktif,
           'ekipBildirimleriAktif': _ekipBildirimleriAktif,
-          'islemBildirimleriAktif': _ekipBildirimleriAktif,
           'havaDurumuBildirimleriAktif': _havaDurumuBildirimleriAktif,
           'hatirlatmaSaati': _geciciSeciliSaat.hour,
           'hatirlatmaDakikasi': _geciciSeciliSaat.minute,
@@ -201,6 +292,114 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                       32,
                     ),
                     children: [
+                      // Bildirim İzni Kartı / Uyarısı
+                      if (!_bildirimIzniVar) ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.all(16),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.15 : 0.10),
+                            borderRadius: BorderRadius.circular(20),
+                            border: Border.all(
+                              color: const Color(0xFFF59E0B).withValues(alpha: isDark ? 0.40 : 0.30),
+                              width: 1.5,
+                            ),
+                          ),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.all(10),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFF59E0B).withValues(alpha: 0.2),
+                                      shape: BoxShape.circle,
+                                    ),
+                                    child: const Icon(
+                                      Icons.notifications_off_rounded,
+                                      color: Color(0xFFF59E0B),
+                                      size: 26,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 12),
+                                  Expanded(
+                                    child: Column(
+                                      crossAxisAlignment: CrossAxisAlignment.start,
+                                      children: [
+                                        Text(
+                                          'Bildirim İzni Devre Dışı',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w700,
+                                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                                          ),
+                                        ),
+                                        const SizedBox(height: 2),
+                                        Text(
+                                          'Hatırlatıcıların ve puantaj alarmlarının çalışabilmesi için bildirim izni vermeniz gerekir.',
+                                          style: GoogleFonts.poppins(
+                                            fontSize: 12,
+                                            color: isDark ? Colors.white70 : const Color(0xFF475569),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 14),
+                              ElevatedButton.icon(
+                                style: ElevatedButton.styleFrom(
+                                  backgroundColor: const Color(0xFFF59E0B),
+                                  foregroundColor: Colors.white,
+                                  padding: const EdgeInsets.symmetric(vertical: 12),
+                                  shape: RoundedRectangleBorder(
+                                    borderRadius: BorderRadius.circular(12),
+                                  ),
+                                  elevation: 0,
+                                ),
+                                icon: const Icon(Icons.notifications_active_rounded, size: 20),
+                                label: Text(
+                                  'Bildirim İzinlerini Aktifleştir',
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
+                                onPressed: _bildirimIzniniAktiflestir,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ] else ...[
+                        Container(
+                          margin: const EdgeInsets.only(bottom: 16),
+                          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.10),
+                            borderRadius: BorderRadius.circular(14),
+                            border: Border.all(
+                              color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(Icons.check_circle_rounded, color: Color(0xFF10B981), size: 18),
+                              const SizedBox(width: 8),
+                              Text(
+                                'Cihaz bildirim izinleri aktif',
+                                style: GoogleFonts.poppins(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                  color: const Color(0xFF10B981),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+
                       // Bilgilendirme Bannerı
                       Container(
                         padding: const EdgeInsets.all(14),
@@ -237,230 +436,243 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani> {
                       ),
                       const SizedBox(height: 18),
 
-                      // 1. Akıllı Puantaj ve Rapor Hatırlatıcısı
-                      _buildSectionHeader('Puantaj ve Raporlar', isDark),
-                      const SizedBox(height: 8),
-                      GlassSectionCard(
-                        padding: EdgeInsets.zero,
-                        child: Column(
-                          children: [
-                            SwitchListTile(
-                              contentPadding: const EdgeInsets.symmetric(
-                                horizontal: 18,
-                                vertical: 8,
-                              ),
-                              title: const Text(
-                                'Akıllı "Eksik Puantaj" Uyarısı',
-                                style: TextStyle(fontWeight: FontWeight.bold),
-                              ),
-                              subtitle: Text(
-                                'O gün herhangi bir puantaj veya rapor girilmediyse akşam saatinde nazikçe hatırlatır.',
-                                style: TextStyle(
-                                  fontSize: 12.5,
-                                  color: isDark ? Colors.white60 : Colors.black54,
+                      // Ayarlar alanı (İzin yoksa devre dışı bırakılır)
+                      IgnorePointer(
+                        ignoring: !_bildirimIzniVar,
+                        child: AnimatedOpacity(
+                          duration: const Duration(milliseconds: 300),
+                          opacity: _bildirimIzniVar ? 1.0 : 0.40,
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.stretch,
+                            children: [
+                              // 1. Akıllı Puantaj ve Rapor Hatırlatıcısı
+                              _buildSectionHeader('Puantaj ve Raporlar', isDark),
+                              const SizedBox(height: 8),
+                              GlassSectionCard(
+                                padding: EdgeInsets.zero,
+                                child: Column(
+                                  children: [
+                                    SwitchListTile(
+                                      contentPadding: const EdgeInsets.symmetric(
+                                        horizontal: 18,
+                                        vertical: 8,
+                                      ),
+                                      title: const Text(
+                                        'Akıllı "Eksik Puantaj" Uyarısı',
+                                        style: TextStyle(fontWeight: FontWeight.bold),
+                                      ),
+                                      subtitle: Text(
+                                        'O gün herhangi bir puantaj veya rapor girilmediyse akşam saatinde nazikçe hatırlatır.',
+                                        style: TextStyle(
+                                          fontSize: 12.5,
+                                          color: isDark ? Colors.white60 : Colors.black54,
+                                        ),
+                                      ),
+                                      value: _puantajHatirlaticiAktif,
+                                      onChanged: (val) {
+                                        setState(() => _puantajHatirlaticiAktif = val);
+                                        _ayarlariKaydetVeUygula();
+                                      },
+                                      activeThumbColor: _kBrandTeal,
+                                      secondary: Icon(
+                                        _puantajHatirlaticiAktif
+                                            ? Icons.notification_important_rounded
+                                            : Icons.notifications_off_outlined,
+                                        color:
+                                            _puantajHatirlaticiAktif
+                                                ? _kBrandTeal
+                                                : Colors.grey,
+                                      ),
+                                    ),
+                                    if (_puantajHatirlaticiAktif) ...[
+                                      const Divider(height: 1),
+                                      ListTile(
+                                        contentPadding: const EdgeInsets.symmetric(
+                                          horizontal: 18,
+                                          vertical: 4,
+                                        ),
+                                        leading: const Icon(
+                                          Icons.access_time_filled,
+                                          color: _kBrandTeal,
+                                        ),
+                                        title: const Text(
+                                          'Hatırlatma Saati',
+                                          style: TextStyle(fontWeight: FontWeight.w600),
+                                        ),
+                                        trailing: GlassInsetSurface(
+                                          padding: const EdgeInsets.symmetric(
+                                            horizontal: 12,
+                                            vertical: 6,
+                                          ),
+                                          borderRadius: 10,
+                                          child: Text(
+                                            _geciciSeciliSaat.format(context),
+                                            style: const TextStyle(
+                                              fontWeight: FontWeight.bold,
+                                              fontSize: 14,
+                                              color: _kBrandTeal,
+                                            ),
+                                          ),
+                                        ),
+                                        onTap: _saatSec,
+                                      ),
+                                    ],
+                                  ],
                                 ),
                               ),
-                              value: _puantajHatirlaticiAktif,
-                              onChanged: (val) {
-                                setState(() => _puantajHatirlaticiAktif = val);
-                                _ayarlariKaydetVeUygula();
-                              },
-                              activeThumbColor: _kBrandTeal,
-                              secondary: Icon(
-                                _puantajHatirlaticiAktif
-                                    ? Icons.notification_important_rounded
-                                    : Icons.notifications_off_outlined,
-                                color:
-                                    _puantajHatirlaticiAktif
-                                        ? _kBrandTeal
-                                        : Colors.grey,
-                              ),
-                            ),
-                            if (_puantajHatirlaticiAktif) ...[
-                              const Divider(height: 1),
-                              ListTile(
-                                contentPadding: const EdgeInsets.symmetric(
-                                  horizontal: 18,
-                                  vertical: 4,
-                                ),
-                                leading: const Icon(
-                                  Icons.access_time_filled,
-                                  color: _kBrandTeal,
-                                ),
-                                title: const Text(
-                                  'Hatırlatma Saati',
-                                  style: TextStyle(fontWeight: FontWeight.w600),
-                                ),
-                                trailing: GlassInsetSurface(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 12,
-                                    vertical: 6,
+                              const SizedBox(height: 18),
+
+                              // 2. CAD / Proje Güncelleme Bildirimleri
+                              _buildSectionHeader('Projeler & Çizimler', isDark),
+                              const SizedBox(height: 8),
+                              GlassSectionCard(
+                                padding: EdgeInsets.zero,
+                                child: SwitchListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 8,
                                   ),
-                                  borderRadius: 10,
-                                  child: Text(
-                                    _geciciSeciliSaat.format(context),
-                                    style: const TextStyle(
-                                      fontSize: 15,
-                                      fontWeight: FontWeight.w800,
-                                      color: _kBrandTeal,
+                                  title: const Text(
+                                    'CAD & Proje Güncellemeleri',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    'Yeni bir dwg/dxf mimari çizim veya revize yüklendiğinde anında haber verir.',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: isDark ? Colors.white60 : Colors.black54,
                                     ),
                                   ),
+                                  value: _cadBildirimleriAktif,
+                                  onChanged: (val) {
+                                    setState(() => _cadBildirimleriAktif = val);
+                                    _ayarlariKaydetVeUygula();
+                                  },
+                                  activeThumbColor: _kBrandTeal,
+                                  secondary: Icon(
+                                    Icons.architecture_rounded,
+                                    color:
+                                        _cadBildirimleriAktif
+                                            ? const Color(0xFF0EA5E9)
+                                            : Colors.grey,
+                                  ),
                                 ),
-                                onTap: _saatSec,
+                              ),
+                              const SizedBox(height: 18),
+
+                              // 3. Finans ve Ödeme Hatırlatıcıları
+                              _buildSectionHeader('Finans & Ödemeler', isDark),
+                              const SizedBox(height: 8),
+                              GlassSectionCard(
+                                padding: EdgeInsets.zero,
+                                child: SwitchListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 8,
+                                  ),
+                                  title: const Text(
+                                    'Ödeme ve Hakediş Bildirimleri',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    'Bekleyen ödemeler, vadesi gelen çekler ve avans taleplerinde bildirim gönderir.',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: isDark ? Colors.white60 : Colors.black54,
+                                    ),
+                                  ),
+                                  value: _odemeBildirimleriAktif,
+                                  onChanged: (val) {
+                                    setState(() => _odemeBildirimleriAktif = val);
+                                    _ayarlariKaydetVeUygula();
+                                  },
+                                  activeThumbColor: _kBrandTeal,
+                                  secondary: Icon(
+                                    Icons.payments_rounded,
+                                    color:
+                                        _odemeBildirimleriAktif
+                                            ? const Color(0xFF10B981)
+                                            : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+
+                              // 4. Ekip ve İşlem Bildirimleri
+                              _buildSectionHeader('Ekip & Yetkilendirme', isDark),
+                              const SizedBox(height: 8),
+                              GlassSectionCard(
+                                padding: EdgeInsets.zero,
+                                child: SwitchListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 8,
+                                  ),
+                                  title: const Text(
+                                    'Ekip & Rol Bildirimleri',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    'Yeni üye katılımı, rol atamaları ve işçi kartı eşleşmelerinde anlık haberdar olun.',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: isDark ? Colors.white60 : Colors.black54,
+                                    ),
+                                  ),
+                                  value: _ekipBildirimleriAktif,
+                                  onChanged: (val) {
+                                    setState(() => _ekipBildirimleriAktif = val);
+                                    _ayarlariKaydetVeUygula();
+                                  },
+                                  activeThumbColor: _kBrandTeal,
+                                  secondary: Icon(
+                                    Icons.groups_rounded,
+                                    color:
+                                        _ekipBildirimleriAktif
+                                            ? const Color(0xFF6366F1)
+                                            : Colors.grey,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(height: 18),
+
+                              // 5. Hava Durumu & Saha Uyarıları
+                              _buildSectionHeader('Saha Koşulları', isDark),
+                              const SizedBox(height: 8),
+                              GlassSectionCard(
+                                padding: EdgeInsets.zero,
+                                child: SwitchListTile(
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    horizontal: 18,
+                                    vertical: 8,
+                                  ),
+                                  title: const Text(
+                                    'Hava Durumu & Beton Döküm Uyarısı',
+                                    style: TextStyle(fontWeight: FontWeight.bold),
+                                  ),
+                                  subtitle: Text(
+                                    'Şantiyenizde yağış, fırtına veya don riski olduğunda sabahları proaktif saha uyarısı alırsınız.',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      color: isDark ? Colors.white60 : Colors.black54,
+                                    ),
+                                  ),
+                                  value: _havaDurumuBildirimleriAktif,
+                                  onChanged: (val) {
+                                    setState(() => _havaDurumuBildirimleriAktif = val);
+                                    _ayarlariKaydetVeUygula();
+                                  },
+                                  activeThumbColor: _kBrandTeal,
+                                  secondary: Icon(
+                                    Icons.cloudy_snowing,
+                                    color:
+                                        _havaDurumuBildirimleriAktif
+                                            ? const Color(0xFF38BDF8)
+                                            : Colors.grey,
+                                  ),
+                                ),
                               ),
                             ],
-                          ],
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // 2. CAD Çizim Bildirimleri
-                      _buildSectionHeader('CAD ve Çizimler', isDark),
-                      const SizedBox(height: 8),
-                      GlassSectionCard(
-                        padding: EdgeInsets.zero,
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 8,
-                          ),
-                          title: const Text(
-                            'CAD Çizim Çözümleme Bildirimleri',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            'Büyük DWG/DXF dosyaları arka planda hazır olduğunda anında açma bildirimi gönderir.',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: isDark ? Colors.white60 : Colors.black54,
-                            ),
-                          ),
-                          value: _cadBildirimleriAktif,
-                          onChanged: (val) {
-                            setState(() => _cadBildirimleriAktif = val);
-                            _ayarlariKaydetVeUygula();
-                          },
-                          activeThumbColor: _kBrandTeal,
-                          secondary: Icon(
-                            Icons.architecture_rounded,
-                            color:
-                                _cadBildirimleriAktif
-                                    ? const Color(0xFF00F0FF)
-                                    : Colors.grey,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // 3. Ödeme ve Avans Bildirimleri
-                      _buildSectionHeader('Finans ve Ödemeler', isDark),
-                      const SizedBox(height: 8),
-                      GlassSectionCard(
-                        padding: EdgeInsets.zero,
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 8,
-                          ),
-                          title: const Text(
-                            'Ödeme ve Avans Bildirimleri',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            'İşçilere avans verildiğinde veya ödeme kaydedildiğinde bildirim alırsınız.',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: isDark ? Colors.white60 : Colors.black54,
-                            ),
-                          ),
-                          value: _odemeBildirimleriAktif,
-                          onChanged: (val) {
-                            setState(() => _odemeBildirimleriAktif = val);
-                            _ayarlariKaydetVeUygula();
-                          },
-                          activeThumbColor: _kBrandTeal,
-                          secondary: Icon(
-                            Icons.payments_rounded,
-                            color:
-                                _odemeBildirimleriAktif
-                                    ? _kBrandTeal
-                                    : Colors.grey,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // 4. Ekip ve Rol Değişiklikleri
-                      _buildSectionHeader('Ekip ve Yetkiler', isDark),
-                      const SizedBox(height: 8),
-                      GlassSectionCard(
-                        padding: EdgeInsets.zero,
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 8,
-                          ),
-                          title: const Text(
-                            'Ekip & Rol Bildirimleri',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            'Yeni üye katılımı, rol atamaları ve işçi kartı eşleşmelerinde anlık haberdar olun.',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: isDark ? Colors.white60 : Colors.black54,
-                            ),
-                          ),
-                          value: _ekipBildirimleriAktif,
-                          onChanged: (val) {
-                            setState(() => _ekipBildirimleriAktif = val);
-                            _ayarlariKaydetVeUygula();
-                          },
-                          activeThumbColor: _kBrandTeal,
-                          secondary: Icon(
-                            Icons.groups_rounded,
-                            color:
-                                _ekipBildirimleriAktif
-                                    ? const Color(0xFF6366F1)
-                                    : Colors.grey,
-                          ),
-                        ),
-                      ),
-                      const SizedBox(height: 18),
-
-                      // 5. Hava Durumu & Saha Uyarıları
-                      _buildSectionHeader('Saha Koşulları', isDark),
-                      const SizedBox(height: 8),
-                      GlassSectionCard(
-                        padding: EdgeInsets.zero,
-                        child: SwitchListTile(
-                          contentPadding: const EdgeInsets.symmetric(
-                            horizontal: 18,
-                            vertical: 8,
-                          ),
-                          title: const Text(
-                            'Hava Durumu & Beton Döküm Uyarısı',
-                            style: TextStyle(fontWeight: FontWeight.bold),
-                          ),
-                          subtitle: Text(
-                            'Şantiyenizde yağış, fırtına veya don riski olduğunda sabahları proaktif saha uyarısı alırsınız.',
-                            style: TextStyle(
-                              fontSize: 12.5,
-                              color: isDark ? Colors.white60 : Colors.black54,
-                            ),
-                          ),
-                          value: _havaDurumuBildirimleriAktif,
-                          onChanged: (val) {
-                            setState(() => _havaDurumuBildirimleriAktif = val);
-                            _ayarlariKaydetVeUygula();
-                          },
-                          activeThumbColor: _kBrandTeal,
-                          secondary: Icon(
-                            Icons.cloudy_snowing,
-                            color:
-                                _havaDurumuBildirimleriAktif
-                                    ? const Color(0xFF38BDF8)
-                                    : Colors.grey,
                           ),
                         ),
                       ),

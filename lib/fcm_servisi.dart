@@ -84,8 +84,7 @@ class FcmServisi {
     debugPrint('🔔 FCM izin durumu: ${settings.authorizationStatus}');
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized ||
-        settings.authorizationStatus == AuthorizationStatus.provisional ||
-        defaultTargetPlatform == TargetPlatform.iOS) {
+        settings.authorizationStatus == AuthorizationStatus.provisional) {
       await _tokenKaydet();
 
       _fcm.onTokenRefresh.listen((yeniToken) {
@@ -134,11 +133,7 @@ class FcmServisi {
   Future<void> _tokenKaydet() async {
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS) {
-        final currentSettings = await _fcm.getNotificationSettings();
-        if (currentSettings.authorizationStatus ==
-            AuthorizationStatus.notDetermined) {
-          await _fcm.requestPermission(alert: true, badge: true, sound: true);
-        }
+// İzin gerekiyorsa UI katmanında istenmelidir
         String? apnsToken = await _fcm.getAPNSToken();
         if (apnsToken == null) {
           await Future.delayed(const Duration(seconds: 1));
