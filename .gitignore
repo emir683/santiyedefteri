@@ -23,6 +23,7 @@ migrate_working_dir/
 *.cer
 *.certSigningRequest
 certificates/
+private_keys/
 firebase-debug.log*
 
 # IntelliJ related
