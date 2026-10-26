@@ -1076,10 +1076,10 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                         user!.uid,
                       );
                       if (mounted && context.mounted) {
-                        Navigator.pushReplacement(
+                        Navigator.of(
                           context,
-                          MaterialPageRoute(builder: (_) => const TeamGate()),
-                        );
+                          rootNavigator: true,
+                        ).popUntil((route) => route.isFirst);
                       }
                     },
                   ),

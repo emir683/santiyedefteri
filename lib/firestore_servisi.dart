@@ -15,10 +15,17 @@ class RaporCakismaGrubu {
 }
 
 class FirestoreServisi {
+  static final Map<String, String> _usernameCache = {};
   final FirebaseFirestore _db = FirebaseFirestore.instance;
-  final String kullaniciId;
+  final String _rawKullaniciId;
 
-  FirestoreServisi({required this.kullaniciId});
+  FirestoreServisi({required String kullaniciId})
+    : _rawKullaniciId = kullaniciId;
+
+  String get kullaniciId =>
+      _rawKullaniciId.isNotEmpty
+          ? _rawKullaniciId
+          : (FirebaseAuth.instance.currentUser?.uid ?? '');
 
   DocumentReference get _kullaniciRef =>
       _db.collection('users').doc(kullaniciId);
@@ -44,7 +51,7 @@ class FirestoreServisi {
         'isPersonal': false,
       });
 
-      await _kullaniciRef.update({'teamId': teamRef.id});
+      await _kullaniciRef.set({'teamId': teamRef.id}, SetOptions(merge: true));
       return teamRef.id;
     } catch (e) {
       rethrow;
@@ -69,10 +76,13 @@ class FirestoreServisi {
       }
 
       final teamDoc = query.docs.first;
-      await _kullaniciRef.update({'teamId': teamDoc.id});
+      // KRİTİK: Önce kullanıcıyı ekibin 'uyeler' dizisine ekle!
+      // Eğer önce kullanıcının teamId alanı güncellenirse, Wrapper anında AnaMenuEkrani'nı açar
+      // ve henüz 'uyeler' güncellenmediği için Firestore kuralları (isTeamMember) PERMISSION_DENIED verir.
       await teamDoc.reference.update({
         'uyeler': FieldValue.arrayUnion([kullaniciId]),
       });
+      await _kullaniciRef.set({'teamId': teamDoc.id}, SetOptions(merge: true));
       await logIslem(teamDoc.id, 'EKIBE_KATILIM', {
         'uyeUid': kullaniciId,
         'ekipAdi': ekipAdi,
@@ -107,10 +117,11 @@ class FirestoreServisi {
         throw Exception("Davet bağlantısı ekip bilgisiyle eşleşmiyor.");
       }
 
-      await _kullaniciRef.update({'teamId': teamDoc.id});
+      // KRİTİK: Önce kullanıcıyı ekibin 'uyeler' dizisine ekle, ardından kullanıcının teamId alanını güncelle!
       await teamDoc.reference.update({
         'uyeler': FieldValue.arrayUnion([kullaniciId]),
       });
+      await _kullaniciRef.set({'teamId': teamDoc.id}, SetOptions(merge: true));
       await logIslem(teamDoc.id, 'EKIBE_KATILIM', {
         'uyeUid': kullaniciId,
         'ekipAdi': ekipAdi,
@@ -136,7 +147,7 @@ class FirestoreServisi {
       if (existingQuery.docs.isNotEmpty) {
         // Zaten kişisel ekibi var, onu kullan
         final existingTeamId = existingQuery.docs.first.id;
-        await _kullaniciRef.update({'teamId': existingTeamId});
+        await _kullaniciRef.set({'teamId': existingTeamId}, SetOptions(merge: true));
         return existingTeamId;
       }
 
@@ -153,7 +164,7 @@ class FirestoreServisi {
         'isPersonal': true,
       });
 
-      await _kullaniciRef.update({'teamId': personalTeamId});
+      await _kullaniciRef.set({'teamId': personalTeamId}, SetOptions(merge: true));
       return personalTeamId;
     } catch (e) {
       rethrow;
@@ -217,11 +228,11 @@ class FirestoreServisi {
       return docSantiye == normalized;
     }).toList();
 
-    final List<Map<String, dynamic>> raporlar = matchedReports.map((d) {
+    final List<Map<String, dynamic>> raporlar = matchedReports.take(150).map((d) {
       return {'id': d.id, 'data': d.data()};
     }).toList();
 
-    final List<Map<String, dynamic>> odemeler = matchedPayments.map((d) {
+    final List<Map<String, dynamic>> odemeler = matchedPayments.take(150).map((d) {
       return {'id': d.id, 'data': d.data()};
     }).toList();
 
@@ -304,7 +315,7 @@ class FirestoreServisi {
           (isciId.isNotEmpty && advIsciId == isciId);
     }).toList();
 
-    final List<Map<String, dynamic>> avanslar = matchedAdvances.map((d) {
+    final List<Map<String, dynamic>> avanslar = matchedAdvances.take(150).map((d) {
       return {'id': d.id, 'data': d.data()};
     }).toList();
 
@@ -1039,18 +1050,22 @@ class FirestoreServisi {
     final user = FirebaseAuth.instance.currentUser;
     if (user == null) return;
 
-    String kullaniciUsername = user.email ?? 'Bilinmeyen';
+    String kullaniciUsername = _usernameCache[user.uid] ?? (user.email ?? 'Bilinmeyen');
 
-    try {
-      final userDoc = await _db.collection('users').doc(user.uid).get();
-      if (userDoc.exists) {
-        final data = userDoc.data();
-        if (data != null && data['username'] != null) {
-          kullaniciUsername = data['username'];
+    if (!_usernameCache.containsKey(user.uid)) {
+      try {
+        final userDoc = await _db.collection('users').doc(user.uid).get();
+        if (userDoc.exists) {
+          final data = userDoc.data();
+          final uname = (data?['username'] as String?)?.trim();
+          if (uname != null && uname.isNotEmpty) {
+            kullaniciUsername = uname;
+            _usernameCache[user.uid] = uname;
+          }
         }
+      } catch (e) {
+        // Kullanıcı adı çekilemezse mail adresi ile devam et, çökme yapma.
       }
-    } catch (e) {
-      // Kullanıcı adı çekilemezse mail adresi ile devam et, çökme yapma.
     }
 
     await _ekipRef(ekipId).collection('history').add({
@@ -1070,13 +1085,16 @@ class FirestoreServisi {
       final List<String> uyeUidList = List<String>.from(
         teamData['uyeler'] ?? [],
       );
+      final userDocs = await Future.wait(
+        uyeUidList.map((uid) => _db.collection('users').doc(uid).get()),
+      );
       final List<Map<String, dynamic>> uyeDetaylari = [];
-      for (String uid in uyeUidList) {
-        final userDoc = await _db.collection('users').doc(uid).get();
-        if (userDoc.exists) {
+      for (var i = 0; i < userDocs.length; i++) {
+        final userDoc = userDocs[i];
+        if (userDoc.exists && userDoc.data() != null) {
           final userData = userDoc.data()!;
           uyeDetaylari.add({
-            'uid': uid,
+            'uid': uyeUidList[i],
             'username': userData['username'] ?? 'İsimsiz',
             'email': userData['email'] ?? '...',
           });
@@ -1122,7 +1140,12 @@ class FirestoreServisi {
       _kullaniciRef.snapshots();
 
   Future<void> kullaniciAdiniGuncelle(String yeniKullaniciAdi) async {
-    await _kullaniciRef.update({'username': yeniKullaniciAdi});
+    final clean = yeniKullaniciAdi.trim();
+    await _kullaniciRef.update({
+      'username': clean,
+      'username_lowercase': clean.toLowerCase(),
+    });
+    _usernameCache[kullaniciId] = clean;
   }
 
   Future<void> completeGoogleUserProfile(
@@ -1903,8 +1926,8 @@ class FirestoreServisi {
 
     for (var collection in collections) {
       final snapshot = await _ekipRef(teamId).collection(collection).get();
-      for (var doc in snapshot.docs) {
-        await doc.reference.delete();
+      if (snapshot.docs.isNotEmpty) {
+        await _batchDeleteList(snapshot.docs.map((d) => d.reference).toList());
       }
     }
 

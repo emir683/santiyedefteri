@@ -1,6 +1,7 @@
 import 'dart:ui';
 import 'dart:math' as math;
 import 'dart:async';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:speech_to_text/speech_to_text.dart' as stt;
@@ -297,12 +298,12 @@ class _AkilliSesliMicWidgetState extends State<AkilliSesliMicWidget>
     _typingCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..repeat();
+    );
 
     _waveCtrl = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 900),
-    )..repeat(reverse: true);
+    );
 
     _checkCtrl = AnimationController(
       vsync: this,
@@ -360,6 +361,7 @@ class _AkilliSesliMicWidgetState extends State<AkilliSesliMicWidget>
   // HELPERS
   // ─────────────────────────────────────────────────────────────
   Future<void> _mute(bool on) async {
+    if (kIsWeb || defaultTargetPlatform != TargetPlatform.android) return;
     try {
       await _nativeCh.invokeMethod(
         on ? 'muteSystemStream' : 'unmuteSystemStream',
@@ -421,6 +423,7 @@ class _AkilliSesliMicWidgetState extends State<AkilliSesliMicWidget>
   void _openBubble() {
     if (!_bubbleVisible) {
       setState(() => _bubbleVisible = true);
+      _waveCtrl.repeat(reverse: true);
       _bubbleCtrl.forward();
     }
   }
@@ -428,6 +431,8 @@ class _AkilliSesliMicWidgetState extends State<AkilliSesliMicWidget>
   Future<void> _closeBubble() async {
     _silenceTimer?.cancel();
     _isTerminating = true;
+    _typingCtrl.stop();
+    _waveCtrl.stop();
     _speech.stop();
     _followUpCtrl.reverse();
     await _bubbleCtrl.reverse();

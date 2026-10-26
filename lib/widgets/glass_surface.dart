@@ -295,6 +295,23 @@ class GlassInsetSurface extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPerf = PerformanceProvider.of(context);
+
+    if (isPerf) {
+      return Container(
+        padding: padding,
+        decoration: BoxDecoration(
+          color: isDark ? const Color(0xFF171A1F) : const Color(0xFFE8F0F3),
+          borderRadius: BorderRadius.circular(borderRadius),
+          border: Border.all(
+            color: isDark
+                ? Colors.white.withValues(alpha: 0.06)
+                : const Color(0xFFBFD0D6),
+          ),
+        ),
+        child: child,
+      );
+    }
 
     return GlassContainer(
       padding: EdgeInsets.zero,
@@ -349,6 +366,24 @@ class GlassIconBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final isPerf = PerformanceProvider.of(context);
+
+    if (isPerf) {
+      return Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: isDark ? 0.18 : 0.12),
+          borderRadius: BorderRadius.circular(14),
+          border: Border.all(color: color.withValues(alpha: isDark ? 0.20 : 0.14)),
+        ),
+        child: Icon(
+          icon,
+          color: isDark ? Colors.white70 : color,
+          size: iconSize,
+        ),
+      );
+    }
 
     return GlassContainer(
       width: size,

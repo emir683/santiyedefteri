@@ -1072,11 +1072,18 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                         style: TextStyle(fontWeight: FontWeight.bold),
                       ),
                       onTap: () async {
+                        final size = MediaQuery.of(context).size;
+                        final bounds = Rect.fromCenter(
+                          center: Offset(size.width / 2, size.height / 2),
+                          width: 10,
+                          height: 10,
+                        );
                         Navigator.pop(c);
                         final bytes = await pdfOlusturucu();
                         await Printing.sharePdf(
                           bytes: bytes,
                           filename: 'rapor.pdf',
+                          bounds: bounds,
                         );
                       },
                     ),

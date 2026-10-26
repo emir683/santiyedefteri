@@ -8,6 +8,7 @@ import 'package:table_calendar/table_calendar.dart';
 import 'widgets/weather_dashboard_card.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'widgets/interactive_tour/interactive_tour_model.dart';
@@ -16,7 +17,6 @@ import 'main.dart';
 import 'user_model.dart';
 import 'auth_servisi.dart';
 import 'firestore_servisi.dart';
-import 'tema_ayarlari.dart';
 import 'santiye_ekrani.dart';
 import 'isci_ekrani.dart';
 import 'gunluk_rapor_ekrani.dart';
@@ -59,9 +59,6 @@ class AnaMenuEkrani extends StatefulWidget {
 class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   // GlobalKeys - her karti spotlight icin hedefler
   final _raporKey = GlobalKey();
-  final _santiyeKey = GlobalKey();
-  final _isciKey = GlobalKey();
-  final _odemeKey = GlobalKey();
   final _menuButtonKey = GlobalKey();
   final _privacyButtonKey = GlobalKey();
   final _hizliErisimBarKey = GlobalKey();
@@ -78,6 +75,8 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   List<Isci>? _panelIsciler;
   List<GunlukSantiyeRaporu>? _panelRaporlar;
   List<AlinanOdeme> _panelOdemeler = const [];
+  _AnaPanelVerisi? _lastPanelVerisi;
+  Timer? _panelRetryTimer;
   String? _panelStreamToken;
   String? _lastHomeWidgetSignature;
   bool _klavuzAciliyor = false;
@@ -195,6 +194,8 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   }
 
   void _disposePanelStream() {
+    _panelRetryTimer?.cancel();
+    _panelRetryTimer = null;
     _panelSantiyeSub?.cancel();
     _panelIsciSub?.cancel();
     _panelRaporSub?.cancel();
@@ -211,6 +212,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     _panelIsciler = null;
     _panelRaporlar = null;
     _panelOdemeler = const [];
+    _lastPanelVerisi = null;
   }
 
   Stream<_AnaPanelVerisi> _ensurePanelStream(
@@ -242,15 +244,27 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         return;
       }
 
-      controller.add(
-        _AnaPanelVerisi.olustur(
-          santiyeler: _panelSantiyeler!,
-          isciler: _panelIsciler!,
-          raporlar: _panelRaporlar!,
-          odemeler: _panelOdemeler,
-          finansalErisim: finansalErisim,
-        ),
+      final veri = _AnaPanelVerisi.olustur(
+        santiyeler: _panelSantiyeler!,
+        isciler: _panelIsciler!,
+        raporlar: _panelRaporlar!,
+        odemeler: _panelOdemeler,
+        finansalErisim: finansalErisim,
       );
+      _lastPanelVerisi = veri;
+      controller.add(veri);
+    }
+
+    void handleStreamError(Object error) {
+      debugPrint("⚠️ AnaPanel stream geçici hatası (yeniden denenecek): $error");
+      if (_cikisYapiliyor || !mounted) return;
+      _panelRetryTimer?.cancel();
+      _panelRetryTimer = Timer(const Duration(milliseconds: 650), () {
+        if (!mounted || _cikisYapiliyor) return;
+        setState(() {
+          _panelStreamToken = null;
+        });
+      });
     }
 
     _panelSantiyeSub = servisi.getSantiyelerStream(widget.teamId).listen((
@@ -258,25 +272,25 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     ) {
       _panelSantiyeler = data;
       emitIfReady();
-    }, onError: controller.addError);
+    }, onError: handleStreamError);
 
     _panelIsciSub = servisi.getIscilerStream(widget.teamId).listen((data) {
       _panelIsciler = data;
       emitIfReady();
-    }, onError: controller.addError);
+    }, onError: handleStreamError);
 
     _panelRaporSub = servisi
         .getRaporlarStream(widget.teamId, ayBaslangic, ayBitis)
         .listen((data) {
           _panelRaporlar = data;
           emitIfReady();
-        }, onError: controller.addError);
+        }, onError: handleStreamError);
 
     if (finansalErisim) {
       _panelOdemeSub = servisi.getOdemelerStream(widget.teamId).listen((data) {
         _panelOdemeler = data;
         emitIfReady();
-      }, onError: controller.addError);
+      }, onError: handleStreamError);
     } else {
       _panelOdemeler = const [];
     }
@@ -669,9 +683,10 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     required String ekipAdi,
     required bool finansalErisim,
   }) {
-    final user = Provider.of<UserModel?>(context, listen: false);
+    final providerUser = Provider.of<UserModel?>(context);
+    final uid = providerUser?.uid ?? FirebaseAuth.instance.currentUser?.uid;
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    if (user == null || _cikisYapiliyor) {
+    if (uid == null || uid.isEmpty || _cikisYapiliyor) {
       return Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -693,16 +708,17 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       );
     }
 
-    final servisi = FirestoreServisi(kullaniciId: user.uid);
+    final servisi = FirestoreServisi(kullaniciId: uid);
     final privacy = context.watch<PrivacyProvider>();
+    final stream = _ensurePanelStream(servisi, finansalErisim);
     return StreamBuilder<_AnaPanelVerisi>(
-      stream: _ensurePanelStream(servisi, finansalErisim),
+      stream: stream,
+      initialData: _lastPanelVerisi,
       builder: (context, snapshot) {
-        if (!snapshot.hasData) {
+        final panel = snapshot.data ?? _lastPanelVerisi;
+        if (panel == null) {
           return const Center(child: CircularProgressIndicator());
         }
-
-        final panel = snapshot.data!;
 
         WidgetsBinding.instance.addPostFrameCallback((_) {
           if (!mounted) return;
@@ -1825,775 +1841,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     );
   }
 
-  Widget _buildQuickAccessDockMinimal(
-    BuildContext context,
-    bool finansalErisim,
-  ) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(30),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-          child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
-            decoration: BoxDecoration(
-              color:
-                  isDark
-                      ? Colors.black.withValues(alpha: 0.36)
-                      : Colors.white.withValues(alpha: 0.76),
-              borderRadius: BorderRadius.circular(30),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.18)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.24 : 0.08),
-                  blurRadius: 20,
-                  offset: const Offset(0, 10),
-                ),
-              ],
-            ),
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildDockItemCompact(
-                          context,
-                          itemKey: _santiyeKey,
-                          icon: Icons.home_work_outlined,
-                          label: '\u015Eantiye',
-                          color: AppColors.tealDark,
-                          isSelected: _selectedIndex == 1,
-                          onTap: () => _hizliErisimAc(1, finansalErisim),
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildDockItemCompact(
-                          context,
-                          itemKey: _isciKey,
-                          icon: Icons.groups_outlined,
-                          label: '\u0130\u015F\u00E7i',
-                          color: AppColors.blueDark,
-                          isSelected: _selectedIndex == 2,
-                          onTap: () => _hizliErisimAc(2, finansalErisim),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 8),
-                  child: _buildCenterDockItem(
-                    context,
-                    isSelected: _selectedIndex == 0,
-                    onTap: () => _hizliErisimAc(0, finansalErisim),
-                  ),
-                ),
-                Expanded(
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: _buildDockItemCompact(
-                          context,
-                          icon:
-                              finansalErisim
-                                  ? Icons.assessment_rounded
-                                  : Icons.lock_outline_rounded,
-                          label: 'Ay Sonu',
-                          color:
-                              finansalErisim
-                                  ? AppColors.orangeDark
-                                  : Colors.grey.shade500,
-                          isSelected: _selectedIndex == 3,
-                          onTap: () => _hizliErisimAc(3, finansalErisim),
-                        ),
-                      ),
-                      Expanded(
-                        child: _buildDockItemCompact(
-                          context,
-                          itemKey: _odemeKey,
-                          icon:
-                              finansalErisim
-                                  ? Icons.receipt_long_outlined
-                                  : Icons.lock_outline_rounded,
-                          label: '\u00D6deme',
-                          color:
-                              finansalErisim
-                                  ? AppColors.purpleDark
-                                  : Colors.grey.shade500,
-                          isSelected: _selectedIndex == 4,
-                          onTap: () => _hizliErisimAc(4, finansalErisim),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildDockItemCompact(
-    BuildContext context, {
-    Key? itemKey,
-    required IconData icon,
-    required String label,
-    required Color color,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      key: itemKey,
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(18),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? color : color.withValues(alpha: 0.82),
-              size: 20,
-            ),
-            const SizedBox(height: 4),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 10,
-                fontWeight: FontWeight.w700,
-                color:
-                    isSelected
-                        ? color
-                        : (isDark ? Colors.white70 : Colors.black54),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildCenterDockItem(
-    BuildContext context, {
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    const color = Color(0xFF14B8A6);
-
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(26),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          AnimatedContainer(
-            duration: const Duration(milliseconds: 220),
-            height: 58,
-            width: 58,
-            decoration: BoxDecoration(
-              color:
-                  isSelected
-                      ? color
-                      : (isDark
-                          ? const Color(0xFF183238)
-                          : const Color(0xFFE8F7F8)),
-              shape: BoxShape.circle,
-              boxShadow: [
-                BoxShadow(
-                  color: color.withValues(alpha: isSelected ? 0.28 : 0.12),
-                  blurRadius: 18,
-                  offset: const Offset(0, 8),
-                ),
-              ],
-              border: Border.all(
-                color:
-                    isSelected
-                        ? color.withValues(alpha: 0.50)
-                        : Colors.white.withValues(alpha: 0.20),
-              ),
-            ),
-            child: Icon(
-              Icons.home_rounded,
-              color:
-                  isSelected
-                      ? Colors.white
-                      : (isDark ? const Color(0xFF8EE2E8) : color),
-              size: 26,
-            ),
-          ),
-          const SizedBox(height: 4),
-          Text(
-            'Panel',
-            style: TextStyle(
-              fontSize: 10,
-              fontWeight: FontWeight.w800,
-              color:
-                  isSelected
-                      ? color
-                      : (isDark ? Colors.white70 : Colors.black54),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildQuickReportCard() {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return AnimasyonluButon(
-      key: _raporKey,
-      onPressed:
-          () => Navigator.push(
-            context,
-            SayfaGecisi(sayfa: GunlukRaporEkrani(teamId: widget.teamId)),
-          ),
-      child: Container(
-        padding: const EdgeInsets.all(18),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(28),
-          gradient: const LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [Color(0xFF0AA7B4), Color(0xFF0E525D)],
-          ),
-          boxShadow: [
-            BoxShadow(
-              color: const Color(0xFF0E525D).withValues(alpha: 0.28),
-              blurRadius: 24,
-              offset: const Offset(0, 14),
-            ),
-          ],
-        ),
-        child: Row(
-          children: [
-            Container(
-              height: 62,
-              width: 62,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: isDark ? 0.16 : 0.18),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.white.withValues(alpha: 0.16)),
-              ),
-              child: const Icon(
-                Icons.edit_note_rounded,
-                color: Colors.white,
-                size: 30,
-              ),
-            ),
-            const SizedBox(width: 16),
-            const Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    'HÄ±zlÄ± Rapor GiriÅŸi',
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                  SizedBox(height: 4),
-                  Text(
-                    'GÃ¼nlÃ¼k puantaj, gider ve ekip takibini buradan aÃ§.',
-                    style: TextStyle(
-                      fontSize: 13,
-                      height: 1.4,
-                      color: Colors.white70,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            Container(
-              height: 54,
-              width: 54,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.10),
-                borderRadius: BorderRadius.circular(18),
-              ),
-              child: const Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: Colors.white,
-                size: 20,
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildTodayOverviewCard({
-    required DateTime bugun,
-    required int bugunCalisanSayisi,
-    required double bugunYevmiye,
-    required int bugunSantiyeSayisi,
-    required double bugunMasraf,
-    required double bugunOdemeToplami,
-    required bool privacyHidden,
-    required bool finansalErisim,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF15AABF), Color(0xFF2877C9)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF2877C9).withValues(alpha: 0.20),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            'BugÃ¼n',
-            style: TextStyle(
-              fontSize: 14,
-              color: Colors.white.withValues(alpha: 0.82),
-              fontWeight: FontWeight.w600,
-            ),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            _turkceTamTarih(bugun),
-            style: const TextStyle(
-              fontSize: 28,
-              fontWeight: FontWeight.w800,
-              color: Colors.white,
-            ),
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOverviewMiniCard(
-                  icon: Icons.groups_rounded,
-                  value: '$bugunCalisanSayisi KiÅŸi',
-                  label: 'Ã‡alÄ±ÅŸan',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildOverviewMiniCard(
-                  icon: Icons.calendar_month_rounded,
-                  value: bugunYevmiye.toStringAsFixed(
-                    bugunYevmiye.truncateToDouble() == bugunYevmiye ? 0 : 1,
-                  ),
-                  label: 'Toplam GÃ¼n',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildOverviewWideCard(
-            icon: finansalErisim ? Icons.payments_rounded : Icons.lock_outline,
-            title:
-                finansalErisim
-                    ? 'BugÃ¼n alÄ±nan Ã¶deme'
-                    : 'Finans bÃ¶lÃ¼mÃ¼ kilitli',
-            value:
-                finansalErisim
-                    ? (bugunOdemeToplami == 0
-                        ? 'Ã–deme yok'
-                        : _formatAmount(
-                          bugunOdemeToplami,
-                          privacyHidden: privacyHidden,
-                        ))
-                    : 'Yetki gerekiyor',
-            helper:
-                bugunMasraf == 0
-                    ? '$bugunSantiyeSayisi ÅŸantiye iÃ§in giriÅŸ var'
-                    : '$bugunSantiyeSayisi ÅŸantiye â€¢ Masraf: ${_formatAmount(bugunMasraf, privacyHidden: privacyHidden)}',
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildTodayWorkersCard({required List<String> bugunCalisanlari}) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF15181C) : Colors.white,
-        borderRadius: BorderRadius.circular(26),
-        border: Border.all(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : const Color(0xFFDAE6F2),
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
-            blurRadius: 18,
-            offset: const Offset(0, 10),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(10),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(16),
-                ),
-                child: const Icon(
-                  Icons.groups_2_rounded,
-                  color: Color(0xFF0F9B8E),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'BugÃ¼n Ã‡alÄ±ÅŸanlar',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: isDark ? Colors.white : const Color(0xFF102A43),
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 8,
-                ),
-                decoration: BoxDecoration(
-                  color: const Color(0xFFDCFCE7),
-                  borderRadius: BorderRadius.circular(20),
-                ),
-                child: Text(
-                  '${bugunCalisanlari.length} KiÅŸi',
-                  style: const TextStyle(
-                    color: Color(0xFF15803D),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          if (bugunCalisanlari.isEmpty)
-            Text(
-              'BugÃ¼n iÃ§in henÃ¼z Ã§alÄ±ÅŸan kaydÄ± gÃ¶rÃ¼nmÃ¼yor.',
-              style: TextStyle(
-                color: isDark ? Colors.white60 : Colors.black54,
-                height: 1.5,
-              ),
-            )
-          else
-            Wrap(
-              spacing: 10,
-              runSpacing: 10,
-              children:
-                  bugunCalisanlari
-                      .take(8)
-                      .map((ad) => _buildWorkerChip(ad))
-                      .toList(),
-            ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildMonthSummaryCard({
-    required DateTime tarih,
-    required double toplamYevmiye,
-    required int calisanSayisi,
-    required int santiyeSayisi,
-    required double odemeToplami,
-    required double toplamMasraf,
-    required bool privacyHidden,
-    required bool finansalErisim,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(30),
-        gradient: const LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Color(0xFF0AA7B4), Color(0xFF13B0A5)],
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: const Color(0xFF13B0A5).withValues(alpha: 0.22),
-            blurRadius: 22,
-            offset: const Offset(0, 12),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  '${_ayAdi(tarih.month)} ${tarih.year} Ã–zeti',
-                  style: const TextStyle(
-                    fontSize: 28,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ),
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 14,
-                  vertical: 10,
-                ),
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(18),
-                ),
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Icon(
-                      Icons.grid_view_rounded,
-                      color: Colors.white,
-                      size: 18,
-                    ),
-                    SizedBox(width: 8),
-                    Text(
-                      'Bu Ay',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOverviewMiniCard(
-                  icon: Icons.event_note_rounded,
-                  value: toplamYevmiye.toStringAsFixed(
-                    toplamYevmiye.truncateToDouble() == toplamYevmiye ? 0 : 1,
-                  ),
-                  label: 'Toplam GÃ¼n',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildOverviewMiniCard(
-                  icon: Icons.groups_rounded,
-                  value: '$calisanSayisi KiÅŸi',
-                  label: 'Personel',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Expanded(
-                child: _buildOverviewMiniCard(
-                  icon: Icons.apartment_rounded,
-                  value: '$santiyeSayisi Proje',
-                  label: 'Aktif Åantiye',
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildOverviewMiniCard(
-                  icon:
-                      finansalErisim
-                          ? Icons.wallet_rounded
-                          : Icons.lock_outline,
-                  value:
-                      finansalErisim
-                          ? _formatAmount(
-                            odemeToplami,
-                            privacyHidden: privacyHidden,
-                          )
-                          : 'Kilitli',
-                  label: finansalErisim ? 'AlÄ±nan Ã–deme' : 'Finans',
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          _buildOverviewWideCard(
-            icon: Icons.analytics_rounded,
-            title: 'Ay sonu raporunu aÃ§',
-            value: finansalErisim ? 'Analizi gÃ¶rÃ¼ntÃ¼le' : 'Yetki gerekiyor',
-            helper:
-                finansalErisim
-                    ? 'Toplam masraf: ${_formatAmount(toplamMasraf, privacyHidden: privacyHidden)}'
-                    : 'Bu alan finansal eriÅŸim ile aÃ§Ä±lÄ±r',
-            onTap: () => _hizliErisimAc(3, finansalErisim),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverviewMiniCard({
-    required IconData icon,
-    required String value,
-    required String label,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.14),
-        borderRadius: BorderRadius.circular(22),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-      ),
-      child: Row(
-        children: [
-          Icon(icon, color: Colors.white, size: 22),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  value,
-                  style: const TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  label,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: Colors.white.withValues(alpha: 0.82),
-                  ),
-                ),
-              ],
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildOverviewWideCard({
-    required IconData icon,
-    required String title,
-    required String value,
-    required String helper,
-    VoidCallback? onTap,
-  }) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(24),
-      child: Container(
-        padding: const EdgeInsets.all(16),
-        decoration: BoxDecoration(
-          color: Colors.white.withValues(alpha: 0.14),
-          borderRadius: BorderRadius.circular(24),
-          border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-        ),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.16),
-                borderRadius: BorderRadius.circular(16),
-              ),
-              child: Icon(icon, color: Colors.white),
-            ),
-            const SizedBox(width: 14),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: TextStyle(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.82),
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    value,
-                    style: const TextStyle(
-                      fontSize: 28,
-                      fontWeight: FontWeight.w800,
-                      color: Colors.white,
-                    ),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    helper,
-                    style: TextStyle(
-                      fontSize: 12,
-                      color: Colors.white.withValues(alpha: 0.70),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            if (onTap != null)
-              const Icon(
-                Icons.arrow_forward_ios_rounded,
-                color: Colors.white,
-                size: 18,
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildWorkerChip(String ad) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-      decoration: BoxDecoration(
-        color: const Color(0xFFE2FBEA),
-        borderRadius: BorderRadius.circular(22),
-      ),
-      child: Text(
-        'â€¢ $ad',
-        style: const TextStyle(
-          color: Color(0xFF166534),
-          fontWeight: FontWeight.w700,
-        ),
-      ),
-    );
-  }
-
   String _turkceTamTarih(DateTime tarih) {
     return '${tarih.day} ${_ayAdi(tarih.month)} ${_gunAdi(tarih.weekday)}';
   }
@@ -2660,14 +1907,15 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         }
 
         // RolProvider'Ä± baÅŸlat
-        final user = Provider.of<UserModel?>(context, listen: false);
-        if (user != null && !_cikisYapiliyor) {
+        final currentUid = FirebaseAuth.instance.currentUser?.uid ??
+            Provider.of<UserModel?>(context, listen: false)?.uid;
+        if (currentUid != null && currentUid.isNotEmpty && !_cikisYapiliyor) {
           WidgetsBinding.instance.addPostFrameCallback((_) {
             if (!mounted || _cikisYapiliyor) return;
             Provider.of<RolProvider>(
               context,
               listen: false,
-            ).baslat(widget.teamId, user.uid);
+            ).baslat(widget.teamId, currentUid);
           });
         }
 
@@ -3182,174 +2430,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     );
   }
 
-  Widget _buildQuickAccessDock(BuildContext context, bool finansalErisim) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isPerfMode = PerformanceProvider.of(context);
-
-    final dockContent = Container(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 10),
-      decoration: BoxDecoration(
-        color:
-            isPerfMode
-                ? (isDark ? const Color(0xFF141A22) : Colors.white)
-                : (isDark
-                    ? Colors.black.withValues(alpha: 0.40)
-                    : Colors.white.withValues(alpha: 0.70)),
-        borderRadius: BorderRadius.circular(28),
-        border: Border.all(
-          color:
-              isPerfMode
-                  ? (isDark
-                      ? Colors.white.withValues(alpha: 0.10)
-                      : const Color(0xFFD0DDE3))
-                  : Colors.white.withValues(alpha: 0.20),
-          width: 1.0,
-        ),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.08),
-            blurRadius: isPerfMode ? 10 : 24,
-            offset: Offset(0, isPerfMode ? 3 : 10),
-          ),
-        ],
-      ),
-      child: Row(
-        children: [
-          Expanded(
-            child: _buildDockItem(
-              context,
-              icon: Icons.home_rounded,
-              label: 'Panel',
-              color: const Color(0xFF14B8A6),
-              isSelected: _selectedIndex == 0,
-              onTap: () => _hizliErisimAc(0, finansalErisim),
-            ),
-          ),
-          Expanded(
-            child: _buildDockItem(
-              context,
-              itemKey: _santiyeKey,
-              icon: Icons.home_work_outlined,
-              label: '\u015Eantiye',
-              color: AppColors.tealDark,
-              isSelected: _selectedIndex == 1,
-              onTap: () => _hizliErisimAc(1, finansalErisim),
-            ),
-          ),
-          Expanded(
-            child: _buildDockItem(
-              context,
-              itemKey: _isciKey,
-              icon: Icons.groups_outlined,
-              label: '\u0130\u015F\u00E7i',
-              color: AppColors.blueDark,
-              isSelected: _selectedIndex == 2,
-              onTap: () => _hizliErisimAc(2, finansalErisim),
-            ),
-          ),
-          Expanded(
-            child: _buildDockItem(
-              context,
-              icon:
-                  finansalErisim
-                      ? Icons.assessment_rounded
-                      : Icons.lock_outline_rounded,
-              label: 'Ay Sonu',
-              color:
-                  finansalErisim ? AppColors.orangeDark : Colors.grey.shade500,
-              isSelected: _selectedIndex == 3,
-              onTap: () => _hizliErisimAc(3, finansalErisim),
-            ),
-          ),
-          Expanded(
-            child: _buildDockItem(
-              context,
-              itemKey: _odemeKey,
-              icon:
-                  finansalErisim
-                      ? Icons.receipt_long_outlined
-                      : Icons.lock_outline_rounded,
-              label: '\u00D6deme',
-              color:
-                  finansalErisim ? AppColors.purpleDark : Colors.grey.shade500,
-              isSelected: _selectedIndex == 4,
-              onTap: () => _hizliErisimAc(4, finansalErisim),
-            ),
-          ),
-        ],
-      ),
-    );
-
-    return SafeArea(
-      minimum: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(28),
-        child:
-            isPerfMode
-                ? dockContent
-                : BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 18, sigmaY: 18),
-                  child: dockContent,
-                ),
-      ),
-    );
-  }
-
-  Widget _buildDockItem(
-    BuildContext context, {
-    Key? itemKey,
-    required IconData icon,
-    required String label,
-    required Color color,
-    required bool isSelected,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return InkWell(
-      key: itemKey,
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 6),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Container(
-              padding: const EdgeInsets.all(10),
-              decoration: BoxDecoration(
-                color:
-                    isSelected
-                        ? color.withValues(alpha: isDark ? 0.28 : 0.20)
-                        : color.withValues(alpha: isDark ? 0.18 : 0.12),
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(
-                  color:
-                      isSelected
-                          ? color.withValues(alpha: 0.34)
-                          : Colors.transparent,
-                ),
-              ),
-              child: Icon(icon, color: color, size: 22),
-            ),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                color:
-                    isSelected
-                        ? color
-                        : (isDark ? Colors.white : Colors.black87),
-              ),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
   Widget _buildGlassDrawerItem(
     BuildContext context, {
     required IconData icon,
@@ -3389,124 +2469,6 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         onTap: onTap,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
         trailing: const Icon(Icons.chevron_right, size: 18, color: Colors.grey),
-      ),
-    );
-  }
-
-  Widget _buildDashboardCard({
-    Key? key,
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-    required Color color,
-    required VoidCallback onTap,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return AnimasyonluButon(
-      key: key,
-      onPressed: onTap,
-      child: Card(
-        elevation: 2,
-        margin: const EdgeInsets.only(bottom: 12),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        child: Padding(
-          padding: const EdgeInsets.all(20.0),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: color.withValues(alpha: 0.15),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(icon, color: color, size: 30),
-              ),
-              const SizedBox(width: 16),
-              Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Text(
-                    title,
-                    style: const TextStyle(
-                      fontSize: 18,
-                      fontWeight: FontWeight.bold,
-                    ),
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    subtitle,
-                    style: TextStyle(
-                      fontSize: 14,
-                      color: isDark ? Colors.grey[400] : Colors.grey[600],
-                    ),
-                  ),
-                ],
-              ),
-              const Spacer(),
-              Icon(
-                Icons.arrow_forward_ios,
-                size: 16,
-                color: Colors.grey.withValues(alpha: 0.5),
-              ),
-            ],
-          ),
-        ),
-      ),
-    );
-  }
-
-  Widget _buildLockedCard({
-    required BuildContext context,
-    required IconData icon,
-    required String title,
-    required String subtitle,
-  }) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    return Card(
-      elevation: 2,
-      margin: const EdgeInsets.only(bottom: 12),
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-      color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-      child: Padding(
-        padding: const EdgeInsets.all(20.0),
-        child: Row(
-          children: [
-            Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.grey.withValues(alpha: 0.15),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Icon(icon, color: Colors.grey, size: 30),
-            ),
-            const SizedBox(width: 16),
-            Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  title,
-                  style: TextStyle(
-                    fontSize: 18,
-                    fontWeight: FontWeight.bold,
-                    color: isDark ? Colors.grey[500] : Colors.grey[400],
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  subtitle,
-                  style: TextStyle(
-                    fontSize: 14,
-                    color: isDark ? Colors.grey[600] : Colors.grey[400],
-                  ),
-                ),
-              ],
-            ),
-            const Spacer(),
-            const Icon(Icons.lock_outline, size: 20, color: Colors.grey),
-          ],
-        ),
       ),
     );
   }

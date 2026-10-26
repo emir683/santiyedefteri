@@ -35,7 +35,16 @@ class CadArkaplanServisi {
   factory CadArkaplanServisi() => _instance;
   CadArkaplanServisi._internal();
 
-  static const String _kCadServerUrl = 'https://urge-beliefs-number-unless.trycloudflare.com';
+  static const String defaultCadServerUrl = 'https://urge-beliefs-number-unless.trycloudflare.com';
+  static String _cadServerUrl = defaultCadServerUrl;
+  static String get cadServerUrl => _cadServerUrl;
+
+  static void setCadServerUrl(String url) {
+    final trimmed = url.trim().replaceAll(RegExp(r'/+$'), '');
+    if (trimmed.isNotEmpty && trimmed.startsWith('http')) {
+      _cadServerUrl = trimmed;
+    }
+  }
 
   final Map<String, CadArkaplanGorevi> _gorevler = {};
   final ValueNotifier<List<CadArkaplanGorevi>> aktifGorevlerNotifier =
@@ -158,7 +167,7 @@ class CadArkaplanServisi {
     }
 
     try {
-      final metaUrl = '$_kCadServerUrl/files/${fileId}_cad_meta.json';
+      final metaUrl = '${CadArkaplanServisi.cadServerUrl}/files/${fileId}_cad_meta.json';
       final res = await http.head(Uri.parse(metaUrl)).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {

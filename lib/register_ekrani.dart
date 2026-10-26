@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/foundation.dart';
 
 import 'auth_servisi.dart';
 import 'fcm_servisi.dart';
@@ -67,11 +68,8 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
         _usernameController.text.trim(),
       );
 
-      // Kayıt başarılı: FCM token'a kaydet ve bildirim onboarding göster
+      // Kayıt başarılı: FCM token'ı kaydet (Bildirim onboarding AnaMenuEkrani'nda gösterilir)
       await FcmServisi().kullaniciBagla();
-      if (mounted) {
-        await _bildirimOnboardingGoster();
-      }
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       setState(() {
@@ -82,6 +80,62 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
       if (!mounted) return;
       setState(() {
         _error = e.toString().replaceFirst('Exception: ', '');
+        _loading = false;
+      });
+    }
+  }
+
+
+  Future<void> _signInWithGoogle() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+
+    try {
+      await _authServisi.signInWithGoogle();
+    } catch (e) {
+      if (!mounted) return;
+      setState(() {
+        _error = "Google ile giriş başarısız: $e";
+        _loading = false;
+      });
+    }
+  }
+
+  Future<void> _signInWithApple() async {
+    setState(() {
+      _loading = true;
+      _error = '';
+    });
+
+    try {
+      await _authServisi.signInWithApple();
+    } on FirebaseAuthException catch (e) {
+      if (!mounted) return;
+      final msgLower = (e.message ?? '').toLowerCase();
+      if (e.code == 'canceled' ||
+          e.code == 'cancelled' ||
+          msgLower.contains('cancel') ||
+          msgLower.contains('1001')) {
+        setState(() => _loading = false);
+        return;
+      }
+      setState(() {
+        _error = "Apple ile giriş: ${e.message ?? e.code}";
+        _loading = false;
+      });
+    } catch (e) {
+      if (!mounted) return;
+      final errStr = e.toString().toLowerCase();
+      if (errStr.contains('cancel') ||
+          errStr.contains('1001') ||
+          errStr.contains('com.apple.authenticationservices.authorizationerror')) {
+        setState(() => _loading = false);
+        return;
+      }
+      setState(() {
+        _error = "Apple ile giriş: $e";
         _loading = false;
       });
     }
@@ -452,6 +506,92 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                         ),
                       ),
                       const SizedBox(height: 14),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Divider(
+                              color: isDark
+                                  ? Colors.white12
+                                  : const Color(0xFFBFD0D6),
+                            ),
+                          ),
+                          Padding(
+                            padding: const EdgeInsets.symmetric(horizontal: 14),
+                            child: Text(
+                              "veya",
+                              style: theme.textTheme.labelMedium?.copyWith(
+                                color: isDark
+                                    ? Colors.white54
+                                    : const Color(0xFF607480),
+                              ),
+                            ),
+                          ),
+                          Expanded(
+                            child: Divider(
+                              color: isDark
+                                  ? Colors.white12
+                                  : const Color(0xFFBFD0D6),
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      OutlinedButton.icon(
+                        icon: Image.asset('assets/google_logo.png', height: 20),
+                        label: const Text(
+                          "Google ile Devam Et",
+                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                        ),
+                        onPressed: _loading ? null : _signInWithGoogle,
+                        style: OutlinedButton.styleFrom(
+                          padding: const EdgeInsets.symmetric(vertical: 13),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(16),
+                          ),
+                          side: BorderSide(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : const Color(0xFFBFD0D6),
+                          ),
+                          backgroundColor: isDark
+                              ? Colors.white.withValues(alpha: 0.04)
+                              : Colors.white.withValues(alpha: 0.85),
+                          foregroundColor: isDark
+                              ? Colors.white
+                              : const Color(0xFF10232C),
+                        ),
+                      ),
+                      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ...[
+                        const SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          icon: const Icon(
+                            Icons.apple,
+                            size: 22,
+                            color: Colors.white,
+                          ),
+                          label: const Text(
+                            "Apple ile Devam Et",
+                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                          ),
+                          onPressed: _loading ? null : _signInWithApple,
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            side: BorderSide(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.20)
+                                  : const Color(0xFF0F172A),
+                            ),
+                            backgroundColor: isDark
+                                ? Colors.white.withValues(alpha: 0.06)
+                                : Colors.black,
+                            foregroundColor: Colors.white,
+                          ),
+                        ),
+                      ],
+                      const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [

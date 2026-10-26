@@ -33,10 +33,12 @@ class TtsService {
         await _tts.setSpeechRate(0.48);
         await _tts.setSharedInstance(true);
         await _tts.setIosAudioCategory(
-          IosTextToSpeechAudioCategory.ambientSolo,
+          IosTextToSpeechAudioCategory.playAndRecord,
           [
+            IosTextToSpeechAudioCategoryOptions.defaultToSpeaker,
             IosTextToSpeechAudioCategoryOptions.allowBluetooth,
             IosTextToSpeechAudioCategoryOptions.allowBluetoothA2DP,
+            IosTextToSpeechAudioCategoryOptions.mixWithOthers,
           ],
         );
       } else {

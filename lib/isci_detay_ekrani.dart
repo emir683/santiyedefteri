@@ -1756,12 +1756,19 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                         ),
                       ),
                       onPressed: () async {
+                        final size = MediaQuery.of(context).size;
+                        final bounds = Rect.fromCenter(
+                          center: Offset(size.width / 2, size.height / 2),
+                          width: 10,
+                          height: 10,
+                        );
                         Navigator.pop(c);
                         try {
                           final bytes = await pdfOlusturucu();
                           await Printing.sharePdf(
                             bytes: bytes,
                             filename: pdfDosyaAdi,
+                            bounds: bounds,
                           );
                         } catch (e) {
                           if (context.mounted) {

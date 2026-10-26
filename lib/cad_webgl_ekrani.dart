@@ -150,13 +150,13 @@ class _CadWebglEkraniState extends State<CadWebglEkrani> {
     }
   }
 
-  static const String _kActiveServerHost = 'urge-beliefs-number-unless.trycloudflare.com';
-
   String _normalizeUrl(String rawUrl) {
-    if (rawUrl.contains('.trycloudflare.com') && !rawUrl.contains(_kActiveServerHost)) {
+    final activeBase = CadArkaplanServisi.cadServerUrl;
+    final activeHost = Uri.tryParse(activeBase)?.host ?? 'urge-beliefs-number-unless.trycloudflare.com';
+    if (rawUrl.contains('.trycloudflare.com') && !rawUrl.contains(activeHost)) {
       try {
         final uri = Uri.parse(rawUrl);
-        return 'https://$_kActiveServerHost${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
+        return 'https://$activeHost${uri.path}${uri.hasQuery ? '?${uri.query}' : ''}';
       } catch (_) {}
     }
     return rawUrl;

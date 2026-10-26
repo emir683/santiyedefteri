@@ -5,26 +5,10 @@
 *.swp
 .DS_Store
 .atom/
-.build/
 .buildlog/
 .history
 .svn/
-.swiftpm/
 migrate_working_dir/
-
-# Environment and Secrets (Madde 1 & 2)
-.env
-*.env
-*.env.*
-*.key
-*.p12
-*.p8
-*.mobileprovision
-*.cer
-*.certSigningRequest
-certificates/
-private_keys/
-firebase-debug.log*
 
 # IntelliJ related
 *.iml
@@ -32,17 +16,13 @@ firebase-debug.log*
 *.iws
 .idea/
 
-# The .vscode folder contains launch configuration and tasks you configure in
-# VS Code which you may wish to be included in version control, so this line
-# is commented out by default.
-#.vscode/
-
 # Flutter/Dart/Pub related
 **/doc/api/
 **/ios/Flutter/.last_build_id
 .dart_tool/
 .flutter-plugins
 .flutter-plugins-dependencies
+.packages
 .pub-cache/
 .pub/
 /build/
@@ -57,8 +37,34 @@ app.*.map.json
 /android/app/debug
 /android/app/profile
 /android/app/release
+/android/gradle_log.txt
 
-# Temporary scratch and local test scripts
-scratch/
-test_*.dart
+# iOS & macOS related
+**/ios/Pods/
+**/macos/Pods/
+**/ios/.symlinks/
+**/macos/.symlinks/
+*.ipa
+*.xcarchive
+private_keys/
+
+# Cloud Functions & Node related
+functions/node_modules/
+node_modules/
+uploads/
+public/
+
+# Temporary logs & design assets
+*_errors.txt
+build_log.txt
+pub_log.txt
+out.txt
+flutter_*.png
+santiye_cad_dosyalari.zip
+certificates/
+*.p8
+*.p12
+*.mobileprovision
+*.certSigningRequest
 emrcore-website/
+test_*.dart

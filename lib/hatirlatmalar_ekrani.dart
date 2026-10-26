@@ -245,7 +245,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
     await prefs.setInt('hatirlatmaSaati', _geciciSeciliSaat.hour);
     await prefs.setInt('hatirlatmaDakikasi', _geciciSeciliSaat.minute);
 
-    // Puantaj hatırlatıcısını sistemde planla veya iptal et
+    // 1. Puantaj & Rapor hatırlatıcısı
     if (_puantajHatirlaticiAktif) {
       await BildirimServisi().planlaPuantajHatirlatici(
         saat: _geciciSeciliSaat.hour,
@@ -253,6 +253,27 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
       );
     } else {
       await BildirimServisi().iptalEtPuantajHatirlatici();
+    }
+
+    // 2. Hava durumu ve saha koşulları hatırlatıcısı (Sabah 08:00)
+    if (_havaDurumuBildirimleriAktif) {
+      await BildirimServisi().planlaHavaDurumuHatirlatici(saat: 8, dakika: 0);
+    } else {
+      await BildirimServisi().iptalEtHavaDurumuHatirlatici();
+    }
+
+    // 3. Finans ve ödeme hatırlatıcısı (Sabah 10:00)
+    if (_odemeBildirimleriAktif) {
+      await BildirimServisi().planlaOdemeHatirlatici(saat: 10, dakika: 0);
+    } else {
+      await BildirimServisi().iptalEtOdemeHatirlatici();
+    }
+
+    // 4. CAD & Çizim güncellemeleri hatırlatıcısı (Öğleden sonra 14:00)
+    if (_cadBildirimleriAktif) {
+      await BildirimServisi().planlaCadHatirlatici(saat: 14, dakika: 0);
+    } else {
+      await BildirimServisi().iptalEtCadHatirlatici();
     }
 
     // Firestore'a da kaydet

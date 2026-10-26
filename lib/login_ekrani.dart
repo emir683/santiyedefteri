@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'auth_servisi.dart';
 import 'web_install_helper.dart';
@@ -88,6 +89,16 @@ class _LoginEkraniState extends State<LoginEkrani> {
 
     try {
       await _authServisi.signInWithApple();
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (!mounted) return;
+      if (e.code == AuthorizationErrorCode.canceled) {
+        setState(() => _loading = false);
+        return;
+      }
+      setState(() {
+        _error = "Apple ile giriş: ${e.message}";
+        _loading = false;
+      });
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       final msgLower = (e.message ?? '').toLowerCase();
@@ -100,9 +111,8 @@ class _LoginEkraniState extends State<LoginEkrani> {
       }
       String msg = e.message ?? e.code;
       if (e.code == 'account-exists-with-different-credential') {
-        msg = "Bu e-posta adresiyle ilişkili farklı bir hesap mevcut. Lütfen önceki giriş yönteminizi kullanın.";
-      } else if (e.code == 'unknown' || msgLower.contains('unknown')) {
-        msg = "Apple kimlik doğrulama tamamlanamadı. Apple Developer Console'da App ID için 'Sign in with Apple' özelliğinin ve Firebase Console'da Apple sağlayıcısının aktif olduğundan emin olun.";
+        msg =
+            "Bu e-posta adresiyle ilişkili farklı bir hesap mevcut. Lütfen önceki giriş yönteminizi kullanın.";
       }
       setState(() {
         _error = "Apple ile giriş: $msg";
@@ -113,16 +123,12 @@ class _LoginEkraniState extends State<LoginEkrani> {
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('cancel') ||
           errStr.contains('1001') ||
-          errStr.contains('com.apple.authenticationservices.authorizationerror')) {
+          errStr.contains('authorizationerrorcode.canceled')) {
         setState(() => _loading = false);
         return;
       }
-      String msg = e.toString();
-      if (errStr.contains('unknown')) {
-        msg = "Apple kimlik doğrulama tamamlanamadı. Apple Developer Console'da 'Sign in with Apple' özelliğinin ve Firebase Console'da Apple sağlayıcısının aktif olduğundan emin olun.";
-      }
       setState(() {
-        _error = "Apple ile giriş: $msg";
+        _error = "Apple ile giriş tamamlanamadı: $e";
         _loading = false;
       });
     }
@@ -490,10 +496,10 @@ class _LoginEkraniState extends State<LoginEkrani> {
                       if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ...[
                         const SizedBox(height: 10),
                         OutlinedButton.icon(
-                          icon: Icon(
+                          icon: const Icon(
                             Icons.apple,
                             size: 22,
-                            color: isDark ? Colors.white : Colors.black,
+                            color: Colors.white,
                           ),
                           label: const Text(
                             "Apple ile Devam Et",

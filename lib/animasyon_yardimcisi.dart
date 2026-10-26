@@ -5,39 +5,14 @@ import 'format_yardimcisi.dart';
 // 1. SAYFA GEÇİŞ ANİMASYONU
 // ============================================
 
-/// Sağdan kayma + fade efektli özel sayfa geçişi
-class SayfaGecisi<T> extends PageRouteBuilder<T> {
+import 'package:flutter/cupertino.dart';
+
+/// iOS yerel geri kaydırma (interactive swipe-back) hareketini destekleyen sayfa geçişi
+class SayfaGecisi<T> extends CupertinoPageRoute<T> {
   final Widget sayfa;
 
   SayfaGecisi({required this.sayfa})
-    : super(
-        pageBuilder: (context, animation, secondaryAnimation) => sayfa,
-        transitionDuration: const Duration(milliseconds: 350),
-        reverseTransitionDuration: const Duration(milliseconds: 300),
-        transitionsBuilder: (context, animation, secondaryAnimation, child) {
-          const begin = Offset(0.3, 0.0);
-          const end = Offset.zero;
-          final curvedAnimation = CurvedAnimation(
-            parent: animation,
-            curve: Curves.easeOutCubic,
-            reverseCurve: Curves.easeInCubic,
-          );
-
-          return SlideTransition(
-            position: Tween<Offset>(
-              begin: begin,
-              end: end,
-            ).animate(curvedAnimation),
-            child: FadeTransition(
-              opacity: Tween<double>(
-                begin: 0.0,
-                end: 1.0,
-              ).animate(curvedAnimation),
-              child: child,
-            ),
-          );
-        },
-      );
+    : super(builder: (context) => sayfa);
 }
 
 // ============================================

@@ -1,3 +1,7 @@
+import 'dart:convert';
+import 'dart:math';
+import 'package:crypto/crypto.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/foundation.dart';
 import 'package:google_sign_in/google_sign_in.dart';
@@ -30,14 +34,20 @@ class AuthServisi {
 
   String? get currentUserEmail => _auth.currentUser?.email;
 
-  // GÜNCELLENDİ: E-posta VEYA Kullanıcı Adı ile Giriş
+  /// Kullanıcının parola sağlayıcısı olup olmadığını döndürür (Sosyal giriş kontrolü)
+  bool get hasPasswordProvider {
+    final user = _auth.currentUser;
+    if (user == null) return false;
+    return user.providerData.any((p) => p.providerId == 'password');
+  }
+
+  // E-posta VEYA Kullanıcı Adı ile Giriş
   Future<UserModel?> signInWithEmailOrUsername(
     String emailOrUsername,
     String password,
   ) async {
     try {
       String email = emailOrUsername.trim();
-      // Girdi bir e-posta değilse, kullanıcı adı olduğunu varsayarak Firestore'dan e-postayı bul
       if (!email.contains('@')) {
         final userQuery =
             await _firestore
@@ -62,14 +72,13 @@ class AuthServisi {
     }
   }
 
-  // GÜNCELLENDİ: Kayıt olurken ek bilgileri de kaydeder
+  // Kayıt olurken ek bilgileri de kaydeder
   Future<UserModel?> createUserWithEmailAndPassword(
     String email,
     String password,
     String adSoyad,
     String username,
   ) async {
-    // Kullanıcı adının benzersiz olup olmadığını kontrol et
     final usernameQuery =
         await _firestore
             .collection('users')
@@ -89,11 +98,9 @@ class AuthServisi {
       User? user = result.user;
 
       if (user != null) {
-        // Kullanıcıyı 'users' koleksiyonuna ek bilgilerle kaydet
         await _firestore.collection('users').doc(user.uid).set({
           'username': username,
-          'username_lowercase':
-              username.toLowerCase(), // Arama için küçük harfli versiyon
+          'username_lowercase': username.toLowerCase(),
           'adSoyad': adSoyad,
           'email': email,
         });
@@ -104,7 +111,7 @@ class AuthServisi {
     }
   }
 
-  // GÜNCELLENDİ: Google ile giriş yapıldığında profilin tam olup olmadığını kontrol eder
+  // Google ile giriş yapıldığında profilin tam olup olmadığını kontrol eder ve ilk bilgileri kalıcı saklar
   Future<UserModel?> signInWithGoogle() async {
     try {
       late final UserCredential userCredential;
@@ -130,13 +137,16 @@ class AuthServisi {
       final User? user = userCredential.user;
 
       if (user != null) {
-        // Bu kullanıcı 'users' koleksiyonunda var mı diye kontrol et.
         final userDoc =
             await _firestore.collection('users').doc(user.uid).get();
         if (!userDoc.exists) {
-          // Eğer yoksa (yani Google ile ilk girişi ise), geçici bir UserModel döndür.
-          // Bu, Wrapper'ın onu Profil Tamamlama ekranına yönlendirmesini sağlayacak.
-          // Gerçek 'users' dokümanı, Profil Tamamlama ekranında oluşturulacak.
+          final String displayName = (user.displayName ?? '').trim();
+          await _firestore.collection('users').doc(user.uid).set({
+            if (displayName.isNotEmpty) 'adSoyad': displayName,
+            if (user.email != null) 'email': user.email,
+            'authProvider': 'google.com',
+          }, SetOptions(merge: true));
+
           return UserModel(
             uid: user.uid,
             isProfileComplete: false,
@@ -152,26 +162,96 @@ class AuthServisi {
     }
   }
 
-  /// Apple ile Giriş Yap (Yalnızca iOS cihazlarda kullanılır)
+  /// Apple ile Giriş Yap (App Store Guideline 4.0 ve 4.8 tam uyumlu)
+  /// Apple yalnızca İLK girişte ad-soyad bilgisini paylaşır. Bu bilgi anında Firestore'a
+  /// kaydedilir ve sonraki girişlerde kaybolması önlenir.
   Future<UserModel?> signInWithApple() async {
     try {
-      final appleProvider = AppleAuthProvider();
-      appleProvider.addScope('email');
-      appleProvider.addScope('name');
+      final rawNonce = _generateNonce();
+      final nonce = _sha256ofString(rawNonce);
 
-      final UserCredential userCredential = await _auth.signInWithProvider(
-        appleProvider,
+      final appleCredential = await SignInWithApple.getAppleIDCredential(
+        scopes: [
+          AppleIDAuthorizationScopes.email,
+          AppleIDAuthorizationScopes.fullName,
+        ],
+        nonce: nonce,
       );
+
+      final OAuthCredential credential = OAuthProvider('apple.com').credential(
+        idToken: appleCredential.identityToken,
+        rawNonce: rawNonce,
+      );
+
+      final UserCredential userCredential =
+          await _auth.signInWithCredential(credential);
       final User? user = userCredential.user;
 
       if (user != null) {
+        // Apple'dan gelen isim bilgisini yakala (user.displayName veya additionalUserInfo veya credential)
+        String resolvedName = (user.displayName ?? '').trim();
+        if (resolvedName.isEmpty && appleCredential.givenName != null) {
+          resolvedName =
+              '${appleCredential.givenName ?? ''} ${appleCredential.familyName ?? ''}'
+                  .trim();
+        }
+        if (resolvedName.isEmpty) {
+          final profile = userCredential.additionalUserInfo?.profile;
+          if (profile != null) {
+            final given =
+                (profile['given_name'] ??
+                        profile['firstName'] ??
+                        (profile['name'] is Map
+                            ? profile['name']['firstName']
+                            : null) ??
+                        '')
+                    .toString()
+                    .trim();
+            final family =
+                (profile['family_name'] ??
+                        profile['lastName'] ??
+                        (profile['name'] is Map
+                            ? profile['name']['lastName']
+                            : null) ??
+                        '')
+                    .toString()
+                    .trim();
+            resolvedName = '$given $family'.trim();
+          }
+        }
+
+        if (resolvedName.isNotEmpty &&
+            (user.displayName == null || user.displayName!.trim().isEmpty)) {
+          try {
+            await user.updateDisplayName(resolvedName);
+          } catch (_) {}
+        }
+
         final userDoc =
             await _firestore.collection('users').doc(user.uid).get();
-        if (!userDoc.exists) {
+        final existingData = userDoc.data();
+        final existingAdSoyad =
+            (existingData?['adSoyad'] as String?)?.trim() ?? '';
+        final existingUsername =
+            (existingData?['username'] as String?)?.trim() ?? '';
+
+        // Apple ilk girişte gelen adSoyad ve e-posta bilgisini hemen Firestore'a kaydet
+        final String finalAdSoyad =
+            existingAdSoyad.isNotEmpty
+                ? existingAdSoyad
+                : (resolvedName.isNotEmpty ? resolvedName : 'Apple Kullanıcısı');
+
+        await _firestore.collection('users').doc(user.uid).set({
+          'adSoyad': finalAdSoyad,
+          if (user.email != null && user.email!.isNotEmpty) 'email': user.email,
+          'authProvider': 'apple.com',
+        }, SetOptions(merge: true));
+
+        if (!userDoc.exists || existingUsername.isEmpty) {
           return UserModel(
             uid: user.uid,
             isProfileComplete: false,
-            googleDisplayName: user.displayName,
+            googleDisplayName: finalAdSoyad,
             email: user.email,
           );
         }
@@ -181,6 +261,22 @@ class AuthServisi {
     } catch (e) {
       rethrow;
     }
+  }
+
+  String _generateNonce([int length = 32]) {
+    const charset =
+        '0123456789ABCDEFGHIJKLMNOPQRSTUVXYZabcdefghijklmnopqrstuvwxyz-._';
+    final random = Random.secure();
+    return List.generate(
+      length,
+      (_) => charset[random.nextInt(charset.length)],
+    ).join();
+  }
+
+  String _sha256ofString(String input) {
+    final bytes = utf8.encode(input);
+    final digest = sha256.convert(bytes);
+    return digest.toString();
   }
 
   Future<void> signOut() async {
@@ -260,7 +356,6 @@ class AuthServisi {
     final user = _auth.currentUser;
     if (user == null) throw Exception("Kullanıcı oturumu bulunamadı.");
 
-    // Google ile giriş yapanlar parola değiştiremez (Hata vermemesi için kontrol)
     if (user.providerData.any(
       (userInfo) => userInfo.providerId == 'google.com',
     )) {
@@ -269,15 +364,20 @@ class AuthServisi {
       );
     }
 
+    if (user.providerData.any(
+      (userInfo) => userInfo.providerId == 'apple.com',
+    )) {
+      throw Exception(
+        "Apple ile giriş yaptığınız için parolanızı Apple ID ayarlarınızdan yönetmelisiniz.",
+      );
+    }
+
     try {
-      // 1. Önce kullanıcının mevcut parolasını doğruluyoruz (Re-Auth)
       final cred = EmailAuthProvider.credential(
         email: user.email!,
         password: mevcutParola,
       );
       await user.reauthenticateWithCredential(cred);
-
-      // 2. Doğrulama başarılıysa yeni parolayı set ediyoruz
       await user.updatePassword(yeniParola);
     } on FirebaseAuthException catch (e) {
       if (e.code == 'wrong-password') {
@@ -292,14 +392,22 @@ class AuthServisi {
     }
   }
 
-  /// Kullanıcının hesabını ve Firestore kullanıcı kaydını kalıcı olarak siler (Apple App Store 5.1.1(v) uyumlu)
+  /// Kullanıcının hesabını, ekip üyeliğini ve Firestore kullanıcı kaydını kalıcı olarak siler.
+  /// Apple App Store Guideline 5.1.1(v) gereği Apple ile giriş yapan kullanıcılar için
+  /// yeniden kimlik doğrulama ve Apple token iptali (revokeTokenWithAuthorizationCode) gerçekleştirir.
   Future<void> hesabiVeVerileriSil({String? parola}) async {
     final user = _auth.currentUser;
     if (user == null) throw Exception("Kullanıcı oturumu bulunamadı.");
 
     final uid = user.uid;
+    final isAppleUser = user.providerData.any(
+      (p) => p.providerId == 'apple.com',
+    );
+    final isGoogleUser = user.providerData.any(
+      (p) => p.providerId == 'google.com',
+    );
 
-    // 1. Gerekirse şifre ile Re-Auth yap
+    // 1. Sağlayıcıya göre Re-Auth ve Apple Token İptali
     if (parola != null && parola.isNotEmpty && user.email != null) {
       try {
         final cred = EmailAuthProvider.credential(
@@ -310,37 +418,76 @@ class AuthServisi {
       } catch (e) {
         throw Exception("Mevcut şifrenizi yanlış girdiniz.");
       }
-    } else {
-      final isGoogleUser = user.providerData.any(
-        (p) => p.providerId == 'google.com',
-      );
-      if (isGoogleUser) {
-        try {
-          final googleUser = await _googleSignIn.signIn();
-          if (googleUser != null) {
-            final googleAuth = await googleUser.authentication;
-            final cred = GoogleAuthProvider.credential(
-              accessToken: googleAuth.accessToken,
-              idToken: googleAuth.idToken,
-            );
-            await user.reauthenticateWithCredential(cred);
+    } else if (isAppleUser) {
+      try {
+        final appleProvider = AppleAuthProvider();
+        appleProvider.addScope('email');
+        appleProvider.addScope('name');
+        final reauthResult = await user.reauthenticateWithProvider(
+          appleProvider,
+        );
+        final oauthCred = reauthResult.credential;
+        if (oauthCred is OAuthCredential) {
+          final authCode = oauthCred.accessToken ?? oauthCred.serverAuthCode;
+          if (authCode != null && authCode.isNotEmpty) {
+            try {
+              await _auth.revokeTokenWithAuthorizationCode(authCode);
+            } catch (revokeErr) {
+              debugPrint("Apple token iptal uyarısı: $revokeErr");
+            }
           }
-        } catch (_) {}
+        }
+      } on FirebaseAuthException catch (e) {
+        final msgLower = (e.message ?? '').toLowerCase();
+        if (e.code == 'canceled' ||
+            e.code == 'cancelled' ||
+            msgLower.contains('cancel') ||
+            msgLower.contains('1001')) {
+          throw Exception("Apple kimlik doğrulaması iptal edildi.");
+        }
+        debugPrint("Apple reauth uyarısı: $e");
+      } catch (e) {
+        final errStr = e.toString().toLowerCase();
+        if (errStr.contains('cancel') || errStr.contains('1001')) {
+          throw Exception("Apple kimlik doğrulaması iptal edildi.");
+        }
       }
+    } else if (isGoogleUser && !kIsWeb) {
+      try {
+        final googleUser = await _googleSignIn.signIn();
+        if (googleUser != null) {
+          final googleAuth = await googleUser.authentication;
+          final cred = GoogleAuthProvider.credential(
+            accessToken: googleAuth.accessToken,
+            idToken: googleAuth.idToken,
+          );
+          await user.reauthenticateWithCredential(cred);
+        }
+      } catch (_) {}
     }
 
     // 2. Kullanıcı verisini yedekle (Auth silme başarısız olursa geri yüklemek için)
     Map<String, dynamic>? backupData;
+    String? activeTeamId;
     try {
       final userDoc = await _firestore.collection('users').doc(uid).get();
       if (userDoc.exists) {
         backupData = userDoc.data();
+        activeTeamId = backupData?['teamId'] as String?;
       }
     } catch (_) {}
 
-    // 3. FCM Token ve Firestore kullanıcı profil kaydını temizle
+    // 3. Ekipten, FCM Token'dan ve Firestore kullanıcı profil kaydından temizle
     try {
       await FcmServisi().kullaniciAyril();
+      if (activeTeamId != null && activeTeamId.isNotEmpty) {
+        try {
+          await _firestore.collection('teams').doc(activeTeamId).update({
+            'uyeler': FieldValue.arrayRemove([uid]),
+            'yoneticiler': FieldValue.arrayRemove([uid]),
+          });
+        } catch (_) {}
+      }
       await _firestore.collection('users').doc(uid).delete();
     } catch (e) {
       debugPrint("Firestore kullanıcı verisi silme uyarısı: $e");
@@ -350,7 +497,6 @@ class AuthServisi {
     try {
       await user.delete();
     } on FirebaseAuthException catch (e) {
-      // Auth silme başarısız olduysa Firestore dokümanını hemen geri yükle!
       if (backupData != null) {
         try {
           await _firestore.collection('users').doc(uid).set(backupData);

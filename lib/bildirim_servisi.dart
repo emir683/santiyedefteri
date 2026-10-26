@@ -159,6 +159,9 @@ class BildirimServisi {
     required int progressPercent,
     String? durumAciklamasi,
   }) async {
+    // iOS bildirim merkezinde Android tarzı sessiz progress-bar kanalı olmadığı için
+    // her 3 saniyede bir bildirim düşmesini engelle (iOS'ta yalnızca tamamlandığında bildirim gösterilir).
+    if (defaultTargetPlatform == TargetPlatform.iOS) return;
     final int notifId = _notifIdFromFileId(fileId);
     final int clampedProgress = progressPercent.clamp(0, 100);
 
@@ -323,7 +326,16 @@ class BildirimServisi {
     }
   }
 
-  Future<void> _zamanlanmisBildirimOlustur(TimeOfDay saat) async {
+  Future<void> _zamanlanmisGenericBildirim({
+    required int id,
+    required String title,
+    required String body,
+    required TimeOfDay saat,
+    required String channelId,
+    required String channelName,
+    String? payload,
+  }) async {
+    AndroidScheduleMode scheduleMode = AndroidScheduleMode.exactAllowWhileIdle;
     if (defaultTargetPlatform == TargetPlatform.android) {
       final androidPlugin =
           flutterLocalNotificationsPlugin
@@ -334,55 +346,109 @@ class BildirimServisi {
           await androidPlugin?.canScheduleExactNotifications() ?? false;
 
       if (!canSchedule) {
-        debugPrint("[BILDIRIM] Android exact alarm izni yok.");
-        return;
+        scheduleMode = AndroidScheduleMode.inexactAllowWhileIdle;
       }
     }
 
-    await flutterLocalNotificationsPlugin.cancel(0);
+    await flutterLocalNotificationsPlugin.cancel(id);
     final tzTime = _sonrakiBildirimZamani(saat);
 
     await flutterLocalNotificationsPlugin.zonedSchedule(
-      0,
-      'Şantiye Puantaj Defteri',
-      'Bugünkü günlük raporu ve puantajları girdiniz mi?',
+      id,
+      title,
+      body,
       tzTime,
-      const NotificationDetails(
+      NotificationDetails(
         android: AndroidNotificationDetails(
-          'gunluk_rapor_kanali',
-          'Günlük Rapor Hatırlatıcı',
+          channelId,
+          channelName,
           icon: _androidNotificationIcon,
-          color: Color(0xFF14B8A6),
+          color: const Color(0xFF14B8A6),
           importance: Importance.max,
           priority: Priority.high,
+          playSound: true,
+          enableVibration: true,
         ),
-        iOS: DarwinNotificationDetails(
+        iOS: const DarwinNotificationDetails(
           presentAlert: true,
           presentBadge: true,
           presentSound: true,
           sound: 'default',
         ),
       ),
-      androidScheduleMode: AndroidScheduleMode.exactAllowWhileIdle,
+      androidScheduleMode: scheduleMode,
       matchDateTimeComponents: DateTimeComponents.time,
       uiLocalNotificationDateInterpretation:
           UILocalNotificationDateInterpretation.absoluteTime,
+      payload: payload,
     );
   }
 
   Future<void> gunlukHatirlatmaAyarlaSimple(TimeOfDay saat) async {
-    await _zamanlanmisBildirimOlustur(saat);
+    await planlaPuantajHatirlatici(saat: saat.hour, dakika: saat.minute);
   }
 
   Future<void> planlaPuantajHatirlatici({
     required int saat,
     required int dakika,
   }) async {
-    await _zamanlanmisBildirimOlustur(TimeOfDay(hour: saat, minute: dakika));
+    await _zamanlanmisGenericBildirim(
+      id: 0,
+      title: 'Şantiye Puantaj Defteri',
+      body: 'Bugünkü günlük raporu ve puantajları girdiniz mi?',
+      saat: TimeOfDay(hour: saat, minute: dakika),
+      channelId: 'gunluk_rapor_kanali',
+      channelName: 'Günlük Rapor Hatırlatıcı',
+    );
   }
 
   Future<void> iptalEtPuantajHatirlatici() async {
     await flutterLocalNotificationsPlugin.cancel(0);
+  }
+
+  Future<void> planlaHavaDurumuHatirlatici({int saat = 8, int dakika = 0}) async {
+    await _zamanlanmisGenericBildirim(
+      id: 9001,
+      title: '🌤️ Saha Koşulları & Hava Durumu',
+      body: 'Güne başlamadan önce şantiye hava durumunu ve saha koşullarını kontrol etmeyi unutmayın.',
+      saat: TimeOfDay(hour: saat, minute: dakika),
+      channelId: 'hava_durumu_kanali',
+      channelName: 'Saha Koşulları & Hava Durumu Hatırlatıcı',
+    );
+  }
+
+  Future<void> iptalEtHavaDurumuHatirlatici() async {
+    await flutterLocalNotificationsPlugin.cancel(9001);
+  }
+
+  Future<void> planlaOdemeHatirlatici({int saat = 10, int dakika = 0}) async {
+    await _zamanlanmisGenericBildirim(
+      id: 9002,
+      title: '💰 Finans & Hakediş Hatırlatıcısı',
+      body: 'Vadesi yaklaşan ödemeleri, işçi hakedişlerini ve bekleyen avansları gözden geçirin.',
+      saat: TimeOfDay(hour: saat, minute: dakika),
+      channelId: 'odeme_kanali',
+      channelName: 'Ödeme ve Hakediş Hatırlatıcı',
+    );
+  }
+
+  Future<void> iptalEtOdemeHatirlatici() async {
+    await flutterLocalNotificationsPlugin.cancel(9002);
+  }
+
+  Future<void> planlaCadHatirlatici({int saat = 14, int dakika = 0}) async {
+    await _zamanlanmisGenericBildirim(
+      id: 9003,
+      title: '📐 Proje & Çizim Güncellemeleri',
+      body: 'Şantiyenizdeki güncel dwg çizimlerini ve yeni mimari revizyonları kontrol edin.',
+      saat: TimeOfDay(hour: saat, minute: dakika),
+      channelId: 'cad_kanali',
+      channelName: 'Projeler ve CAD Çizimleri',
+    );
+  }
+
+  Future<void> iptalEtCadHatirlatici() async {
+    await flutterLocalNotificationsPlugin.cancel(9003);
   }
 
   tz.TZDateTime _sonrakiBildirimZamani(TimeOfDay saat) {

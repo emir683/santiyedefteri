@@ -12,7 +12,7 @@ const { onDocumentCreated } = require('firebase-functions/v2/firestore');
 const { onSchedule } = require('firebase-functions/v2/scheduler');
 const { onRequest } = require('firebase-functions/v2/https');
 const { initializeApp } = require('firebase-admin/app');
-const { getFirestore, Timestamp } = require('firebase-admin/firestore');
+const { getFirestore, Timestamp, FieldValue } = require('firebase-admin/firestore');
 const { getMessaging } = require('firebase-admin/messaging');
 
 initializeApp();
@@ -28,8 +28,17 @@ exports.notifyCadReady = onRequest(
   },
   async (req, res) => {
     try {
+      const configuredSecret = process.env.CAD_WEBHOOK_SECRET;
+      if (configuredSecret) {
+        const providedSecret =
+          req.headers['x-cad-secret'] || (req.body && req.body.secret);
+        if (providedSecret !== configuredSecret) {
+          return res.status(403).json({ error: 'Yetkisiz istek' });
+        }
+      }
+
       const { fcmToken, projectName, webglUrl, fileId } = req.body || {};
-      if (!fcmToken) {
+      if (!fcmToken || typeof fcmToken !== 'string') {
         return res.status(400).json({ error: 'fcmToken parametresi gerekli' });
       }
 
@@ -149,14 +158,19 @@ exports.onHistoryWrite = onDocumentCreated(
       }
     }
 
-    if (hedefUidler.size === 0) return;
+    const hedefArray = Array.from(hedefUidler).filter(Boolean);
+    if (hedefArray.length === 0) return;
 
-    // FCM token'larını kategori tercihlerine göre topla
+    // Kullanıcı dokümanlarını paralel çek (N+1 sıralı bekleme yerine Promise.all)
+    const userDocs = await Promise.all(
+      hedefArray.map((uid) => db.collection('users').doc(uid).get())
+    );
+
     const tokens = [];
-    const hedefArray = Array.from(hedefUidler);
+    const tokenOwnerUids = [];
 
-    for (const uid of hedefArray) {
-      const userDoc = await db.collection('users').doc(uid).get();
+    for (let i = 0; i < userDocs.length; i++) {
+      const userDoc = userDocs[i];
       if (!userDoc.exists) continue;
       const userData = userDoc.data();
       const token = userData.fcmToken;
@@ -175,10 +189,13 @@ exports.onHistoryWrite = onDocumentCreated(
         islemTipi === 'UYE_CIKARMA'
       ) {
         categoryAllowed = userData.ekipBildirimleriAktif !== false;
+      } else if (islemTipi.startsWith('CAD') || islemTipi.startsWith('PROJE')) {
+        categoryAllowed = userData.cadBildirimleriAktif !== false;
       }
 
       if (token && islemBildirimleriAktif && categoryAllowed) {
         tokens.push(token);
+        tokenOwnerUids.push(hedefArray[i]);
       }
     }
 
@@ -225,23 +242,25 @@ exports.onHistoryWrite = onDocumentCreated(
         `✅ FCM gönderildi: ${response.successCount} başarılı, ${response.failureCount} başarısız`
       );
 
-      // Başarısız token'ları temizle
-      response.responses.forEach(async (resp, idx) => {
-        if (!resp.success) {
-          const errorCode = resp.error?.code;
-          if (
-            errorCode === 'messaging/invalid-registration-token' ||
-            errorCode === 'messaging/registration-token-not-registered'
-          ) {
-            const invalidUid = hedefArray[idx];
-            if (invalidUid) {
-              await db.collection('users').doc(invalidUid).update({
-                fcmToken: null,
-              });
+      // Başarısız token'ları paralel olarak temizle (Promise.all ile güvenli tamamlanma)
+      await Promise.all(
+        response.responses.map(async (resp, idx) => {
+          if (!resp.success) {
+            const errorCode = resp.error?.code;
+            if (
+              errorCode === 'messaging/invalid-registration-token' ||
+              errorCode === 'messaging/registration-token-not-registered'
+            ) {
+              const invalidUid = tokenOwnerUids[idx];
+              if (invalidUid) {
+                await db.collection('users').doc(invalidUid).update({
+                  fcmToken: FieldValue.delete(),
+                });
+              }
             }
           }
-        }
-      });
+        })
+      );
     } catch (err) {
       console.error('FCM gönderme hatası:', err);
     }
@@ -281,40 +300,55 @@ exports.onDailyPuantajReminder = onSchedule(
         // Kurucu ve yöneticileri bul
         const kurucuUid = teamData.kurucu;
         const yoneticiler = Array.isArray(teamData.yoneticiler) ? teamData.yoneticiler : [];
-        const targetUids = new Set([kurucuUid, ...yoneticiler]);
+        const targetUids = Array.from(new Set([kurucuUid, ...yoneticiler])).filter(Boolean);
+        if (targetUids.length === 0) continue;
 
-        for (const uid of targetUids) {
-          if (!uid) continue;
-          const userDoc = await db.collection('users').doc(uid).get();
+        const userDocs = await Promise.all(
+          targetUids.map((uid) => db.collection('users').doc(uid).get())
+        );
+
+        const tokens = [];
+        for (const userDoc of userDocs) {
           if (!userDoc.exists) continue;
           const uData = userDoc.data();
           const token = uData.fcmToken;
           const puantajAktif =
             uData.puantajHatirlaticiAktif !== false &&
             uData.islemBildirimleriAktif !== false;
-
           if (token && puantajAktif) {
-            await fcm.send({
-              token,
-              notification: {
-                title: '⚠️ Eksik Puantaj & Rapor Hatırlatması',
-                body: `${teamData.ad || 'Şantiye'} için bugünkü puantaj veya rapor henüz girilmedi.`,
-              },
-              data: {
-                teamId: teamDoc.id,
-                action: 'daily_report',
-              },
-              android: {
-                notification: {
-                  channelId: 'santiye_bildirim_kanali',
-                  icon: 'notification_icon',
-                  color: '#14B8A6',
-                  priority: 'high',
-                },
-              },
-            });
+            tokens.push(token);
           }
         }
+
+        if (tokens.length === 0) continue;
+
+        await fcm.sendEachForMulticast({
+          tokens,
+          notification: {
+            title: '⚠️ Eksik Puantaj & Rapor Hatırlatması',
+            body: `${teamData.ad || 'Şantiye'} için bugünkü puantaj veya rapor henüz girilmedi.`,
+          },
+          data: {
+            teamId: teamDoc.id,
+            action: 'daily_report',
+          },
+          android: {
+            notification: {
+              channelId: 'santiye_bildirim_kanali',
+              icon: 'notification_icon',
+              color: '#14B8A6',
+              priority: 'high',
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                badge: 1,
+                sound: 'default',
+              },
+            },
+          },
+        });
       } catch (err) {
         console.error(`onDailyPuantajReminder error (${teamDoc.id}):`, err);
       }
@@ -326,7 +360,7 @@ exports.onDailyPuantajReminder = onSchedule(
 
 exports.onWeeklySummary = onSchedule(
   {
-    schedule: '0 9 * * 1', // Her Pazartesi 09:00 TR (Sabah 5 değil, iş başı saati)
+    schedule: '0 9 * * 1', // Her Pazartesi 09:00 TR
     timeZone: 'Europe/Istanbul',
     region: 'europe-west1',
   },
@@ -458,6 +492,12 @@ function buildNotificationMessage(islemTipi, detaylar, username) {
       return {
         title: '👷 Ekibe Yeni Katılım',
         body: `${username}, ${detaylar.ekipAdi ? detaylar.ekipAdi + ' ' : ''}ekibinize katıldı.`,
+      };
+    case 'CAD_YUKLEME':
+    case 'PROJE_EKLEME':
+      return {
+        title: '📐 Yeni CAD / Proje Çizimi',
+        body: `${username}, ${detaylar.projeAdi || 'projeye'} yeni bir mimari çizim yükledi.`,
       };
     default:
       return {

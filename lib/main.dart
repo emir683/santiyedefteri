@@ -11,6 +11,7 @@ import 'firebase_options.dart';
 import 'auth_servisi.dart';
 import 'deep_link_service.dart';
 import 'cad_intent_service.dart';
+import 'cad_arkaplan_servisi.dart';
 import 'user_model.dart';
 import 'tema_ayarlari.dart';
 import 'bildirim_servisi.dart';
@@ -49,7 +50,7 @@ void main() async {
   debugPrint("--- UYGULAMA BAŞLATILIYOR ---");
 
   final prefs = await SharedPreferences.getInstance();
-  final perfProvider = PerformanceProvider.createSync(prefs);
+  final perfProvider = await PerformanceProvider.initialize(prefs);
 
   // Firebase başlatma (Tüm platformlar için DefaultFirebaseOptions kullanılır)
   try {
@@ -136,8 +137,15 @@ Future<void> _loadGeminiApiKey() async {
         minimumFetchInterval: const Duration(hours: 1),
       ),
     );
-    await rc.setDefaults({'gemini_api_key': ''});
+    await rc.setDefaults({
+      'gemini_api_key': '',
+      'cad_server_url': CadArkaplanServisi.defaultCadServerUrl,
+    });
     await rc.fetchAndActivate();
+    final cadUrl = rc.getString('cad_server_url').trim();
+    if (cadUrl.isNotEmpty) {
+      CadArkaplanServisi.setCadServerUrl(cadUrl);
+    }
     final key = rc.getString('gemini_api_key');
     if (key.isNotEmpty) {
       AIService.setApiKey(key);
@@ -186,6 +194,7 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider(create: (_) => PrivacyProvider()),
         ChangeNotifierProvider(create: (_) => RolProvider()),
         StreamProvider<UserModel?>.value(
+          lazy: false,
           value: authServisi.userStream,
           initialData: authServisi.currentUser,
         ),
@@ -202,6 +211,13 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
               scaffoldBackgroundColor: AppColors.lightBackground,
               textTheme: GoogleFonts.poppinsTextTheme(textTheme),
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: {
+                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                },
+              ),
               colorSchemeSeed: Colors.green,
               appBarTheme: AppBarTheme(
                 surfaceTintColor: Colors.transparent,
@@ -228,6 +244,13 @@ class MyApp extends StatelessWidget {
               scaffoldBackgroundColor: Colors.black,
               textTheme: GoogleFonts.poppinsTextTheme(
                 Theme.of(context).primaryTextTheme,
+              ),
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: {
+                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                },
               ),
               colorSchemeSeed: Colors.green,
               appBarTheme: AppBarTheme(

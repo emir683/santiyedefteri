@@ -76,8 +76,7 @@ class DwgGoruntuleyiciEkrani extends StatefulWidget {
 
 class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   // Oracle Cloud üzerinde çalışan özel CAD Vektör sunucumuz
-  static const String _kCadServerUrl =
-      'https://urge-beliefs-number-unless.trycloudflare.com';
+  static String get _kCadServerUrl => CadArkaplanServisi.cadServerUrl;
 
   bool _isLoading = false;
   int _loadingStep = 1;
@@ -144,7 +143,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   StreamSubscription<CadFilePayload>? _cadStreamSub;
 
   // Hazır örnek CAD çizimleri (V2 Yüksek Performans Motoru)
-  static const List<Map<String, String>> _hazirOrnekler = [
+  List<Map<String, String>> get _hazirOrnekler => [
     {
       'id': 'bc00f9c7-d593-49d7-9f4e-ceefb57f27b8',
       'ad': 'Kapalı Spor Salonu Statik Projesi',

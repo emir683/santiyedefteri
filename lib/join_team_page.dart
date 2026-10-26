@@ -1,10 +1,10 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'deep_link_service.dart';
 import 'firestore_servisi.dart';
 import 'user_model.dart';
-import 'wrapper.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 
@@ -29,11 +29,12 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
   String _error = '';
 
   Future<void> _ekibeKatil() async {
-    final user = Provider.of<UserModel?>(context, listen: false);
-    if (user == null) {
+    final uid = Provider.of<UserModel?>(context, listen: false)?.uid ??
+        FirebaseAuth.instance.currentUser?.uid;
+    if (uid == null || uid.isEmpty) {
       setState(() {
         _error =
-            "Davet bilgisi al\u0131nd\u0131. Devam etmek i\u00e7in \u00f6nce giri\u015f yapmal\u0131s\u0131n.";
+            "Davet bilgisi alındı. Devam etmek için önce giriş yapmalısın.";
       });
       return;
     }
@@ -43,7 +44,7 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
       _error = '';
     });
 
-    final firestoreServisi = FirestoreServisi(kullaniciId: user.uid);
+    final firestoreServisi = FirestoreServisi(kullaniciId: uid);
     String? teamId;
     String? errorMessage;
 
@@ -59,7 +60,7 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
           widget.sifre!,
         );
       } else {
-        throw Exception("Davet ba\u011flant\u0131s\u0131 eksik veya ge\u00e7ersiz.");
+        throw Exception("Davet bağlantısı eksik veya geçersiz.");
       }
     } catch (e) {
       errorMessage = e.toString().replaceFirst('Exception: ', '');
@@ -76,15 +77,14 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
           backgroundColor: const Color(0xFF14B8A6),
         ),
       );
-      Navigator.of(context).pushAndRemoveUntil(
-        MaterialPageRoute(builder: (_) => Wrapper(userId: user.uid)),
-        (route) => false,
+      Navigator.of(context, rootNavigator: true).popUntil(
+        (route) => route.isFirst,
       );
       return;
     }
 
     setState(() {
-      _error = errorMessage ?? "Ekibe kat\u0131l\u0131rken bir hata olu\u015ftu.";
+      _error = errorMessage ?? "Ekibe katılırken bir hata oluştu.";
       _loading = false;
     });
   }
@@ -175,7 +175,7 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
                         ),
                         const SizedBox(height: 18),
                         Text(
-                          "\u015eantiye Puantaj Defteri i\u00e7indeki bu ekibe tek dokunu\u015fla kat\u0131labilirsin.",
+                          "Şantiye Puantaj Defteri içindeki bu ekibe tek dokunuşla katılabilirsin.",
                           style: theme.textTheme.bodyLarge?.copyWith(
                             height: 1.45,
                             color: isDark
@@ -191,7 +191,7 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               Text(
-                                "Ekip Ad\u0131",
+                                "Ekip Adı",
                                 style: theme.textTheme.labelMedium?.copyWith(
                                   color: isDark
                                       ? Colors.white60
@@ -208,8 +208,8 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
                               const SizedBox(height: 14),
                               Text(
                                 widget.ekipId != null && widget.ekipId!.isNotEmpty
-                                    ? "G\u00fcvenli ekip davet ba\u011flant\u0131s\u0131 haz\u0131r."
-                                    : "Parola tabanl\u0131 davet kullan\u0131lacak.",
+                                    ? "Güvenli ekip davet bağlantısı hazır."
+                                    : "Parola tabanlı davet kullanılacak.",
                                 style: theme.textTheme.bodyMedium?.copyWith(
                                   color: isDark
                                       ? Colors.white70
@@ -224,12 +224,12 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
                           Container(
                             padding: const EdgeInsets.all(14),
                             decoration: BoxDecoration(
-                              color: const Color(0xFFEF4444).withValues(alpha: 
+                              color: const Color(0xFFEF4444).withValues(alpha:
                                 isDark ? 0.16 : 0.10,
                               ),
                               borderRadius: BorderRadius.circular(18),
                               border: Border.all(
-                                color: const Color(0xFFEF4444).withValues(alpha: 
+                                color: const Color(0xFFEF4444).withValues(alpha:
                                   isDark ? 0.28 : 0.18,
                                 ),
                               ),
@@ -256,17 +256,23 @@ class _JoinTeamPageState extends State<JoinTeamPage> {
                             ),
                           ),
                           child: Text(
-                            _loading ? "Kat\u0131l\u0131yor..." : "Ekibe Kat\u0131l",
+                            _loading ? "Katılıyor..." : "Ekibe Katıl",
                             style: const TextStyle(
                               fontSize: 16,
                               fontWeight: FontWeight.w700,
                             ),
                           ),
                         ),
-                        const SizedBox(height: 12),
-                        TextButton(
+                        const SizedBox(height: 10),
+                        OutlinedButton(
                           onPressed: _loading ? null : _vazgec,
-                          child: const Text("\u015eimdilik Vazge\u00e7"),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(20),
+                            ),
+                          ),
+                          child: const Text("Şimdi Değil"),
                         ),
                       ],
                     ),

@@ -1,9 +1,9 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 
 import 'firestore_servisi.dart';
 import 'user_model.dart';
-import 'wrapper.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 
@@ -33,10 +33,10 @@ class _TeamGateState extends State<TeamGate> {
   }
 
   Future<void> _submitTeamAction() async {
-    final user = Provider.of<UserModel>(context, listen: false);
+    final uid = Provider.of<UserModel?>(context, listen: false)?.uid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
 
     if (_ekipAdiController.text.isEmpty || _sifreController.text.isEmpty) {
-      setState(() => _error = "Lutfen tum alanlari doldurun.");
+      setState(() => _error = "Lütfen tüm alanları doldurun.");
       return;
     }
 
@@ -45,7 +45,7 @@ class _TeamGateState extends State<TeamGate> {
       _error = '';
     });
 
-    final firestoreServisi = FirestoreServisi(kullaniciId: user.uid);
+    final firestoreServisi = FirestoreServisi(kullaniciId: uid);
     String? teamId;
     String? errorMessage;
 
@@ -79,9 +79,10 @@ class _TeamGateState extends State<TeamGate> {
             backgroundColor: const Color(0xFF14B8A6),
           ),
         );
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => Wrapper(userId: user.uid)),
-          (route) => false,
+        // Kök AuthGate -> Wrapper zaten users/{uid} dokümanını canlı dinlediği için
+        // sadece varsa üstteki route'ları kapatıp kök ekrana dönüyoruz.
+        Navigator.of(context, rootNavigator: true).popUntil(
+          (route) => route.isFirst,
         );
       }
       return;
@@ -94,14 +95,14 @@ class _TeamGateState extends State<TeamGate> {
   }
 
   Future<void> _kisiselDevamEt() async {
-    final user = Provider.of<UserModel>(context, listen: false);
+    final uid = Provider.of<UserModel?>(context, listen: false)?.uid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
 
     setState(() {
       _loading = true;
       _error = '';
     });
 
-    final firestoreServisi = FirestoreServisi(kullaniciId: user.uid);
+    final firestoreServisi = FirestoreServisi(kullaniciId: uid);
     String? teamId;
     String? errorMessage;
 
@@ -121,16 +122,15 @@ class _TeamGateState extends State<TeamGate> {
             backgroundColor: Color(0xFF14B8A6),
           ),
         );
-        Navigator.of(context).pushAndRemoveUntil(
-          MaterialPageRoute(builder: (_) => Wrapper(userId: user.uid)),
-          (route) => false,
+        Navigator.of(context, rootNavigator: true).popUntil(
+          (route) => route.isFirst,
         );
       }
       return;
     }
 
     setState(() {
-      _error = errorMessage ?? "Bir hata olustu.";
+      _error = errorMessage ?? "Bir hata oluştu.";
       _loading = false;
     });
   }
@@ -138,7 +138,7 @@ class _TeamGateState extends State<TeamGate> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final accent = const Color(0xFF0F7C86);
+    const accent = Color(0xFF0F7C86);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -156,90 +156,90 @@ class _TeamGateState extends State<TeamGate> {
               20,
               32,
             ),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Text(
-                  "Bu uygulama sadece puantaj yazmak icin degil. Hesap karismasin, ekip ayni kaydi tek yerden tutsun diye var.",
-                  textAlign: TextAlign.center,
-                  style: TextStyle(
-                    fontSize: 15,
-                    height: 1.45,
-                    color: isDark ? Colors.white70 : const Color(0xFF5B6B77),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 640),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  Text(
+                    "Bu uygulama sadece puantaj yazmak için değil. Hesap karışmasın, ekip aynı kaydı tek yerden tutsun diye var.",
+                    textAlign: TextAlign.center,
+                    style: TextStyle(
+                      fontSize: 15,
+                      height: 1.45,
+                      color: isDark ? Colors.white70 : const Color(0xFF5B6B77),
+                    ),
                   ),
-                ),
-                const SizedBox(height: 20),
-                _secimKarti(
-                  context: context,
-                  secili: _kullanimTipi == _KullanimTipi.ekipli,
-                  icon: Icons.groups_rounded,
-                  title: "Ekiple calisiyorum",
-                  subtitle:
-                      "Yaninda isci varsa, puantaji bazen birden fazla kisi tutuyorsa veya ay sonu hesaplar karisiyorsa bu kisim sana gore.",
-                  bullets: const [
-                    "Ayni ekibin kaydini birlikte yonetin",
-                    "Santiyeye gore puantaj ve masraf tutun",
-                    "Ay sonu hesabini tek yerden cikarin",
+                  const SizedBox(height: 20),
+                  _secimKarti(
+                    context: context,
+                    secili: _kullanimTipi == _KullanimTipi.ekipli,
+                    icon: Icons.groups_rounded,
+                    title: "Ekiple çalışıyorum",
+                    subtitle:
+                        "Yanında işçi varsa, puantajı bazen birden fazla kişi tutuyorsa veya ay sonu hesaplar karışıyorsa bu kısım sana göre.",
+                    bullets: const [
+                      "Aynı ekibin kaydını birlikte yönetin",
+                      "Şantiyeye göre puantaj ve masraf tutun",
+                      "Ay sonu hesabını tek yerden çıkarın",
+                    ],
+                    onTap: () {
+                      setState(() {
+                        _kullanimTipi = _KullanimTipi.ekipli;
+                        _error = '';
+                      });
+                    },
+                  ),
+                  const SizedBox(height: 14),
+                  _secimKarti(
+                    context: context,
+                    secili: _kullanimTipi == _KullanimTipi.kisisel,
+                    icon: Icons.person_rounded,
+                    title: "Kendi hesabımı tutacağım",
+                    subtitle:
+                        "Yevmiye usulü çalışıyorsan ve sadece kendi gününü, ödemeni ve alacağını takip etmek istiyorsan bu kısım sana göre.",
+                    bullets: const [
+                      "Kendi günlerini düzenli kaydet",
+                      "Aldığın ödemeyi takip et",
+                      "Ay sonunda hesabın net çıksın",
+                    ],
+                    onTap: () {
+                      setState(() {
+                        _kullanimTipi = _KullanimTipi.kisisel;
+                        _error = '';
+                      });
+                    },
+                  ),
+                  if (_kullanimTipi != null) ...[
+                    const SizedBox(height: 24),
+                    if (_kullanimTipi == _KullanimTipi.ekipli)
+                      _buildEkipliAkis(context, isDark, accent)
+                    else
+                      _buildKisiselAkis(context, isDark, accent),
                   ],
-                  onTap: () {
-                    setState(() {
-                      _kullanimTipi = _KullanimTipi.ekipli;
-                      _error = '';
-                    });
-                  },
-                ),
-                const SizedBox(height: 14),
-                _secimKarti(
-                  context: context,
-                  secili: _kullanimTipi == _KullanimTipi.kisisel,
-                  icon: Icons.person_rounded,
-                  title: "Kendi hesabimi tutacagim",
-                  subtitle:
-                      "Yevmiye usulu calisiyorsan ve sadece kendi gununu, odemeni ve alacagini takip etmek istiyorsan bu kisim sana gore.",
-                  bullets: const [
-                    "Kendi gunlerini duzenli kaydet",
-                    "Aldigin odemeyi takip et",
-                    "Ay sonunda hesabin net ciksin",
-                  ],
-                  onTap: () {
-                    setState(() {
-                      _kullanimTipi = _KullanimTipi.kisisel;
-                      _error = '';
-                    });
-                  },
-                ),
-                if (_kullanimTipi != null) ...[
-                  const SizedBox(height: 24),
-                  if (_kullanimTipi == _KullanimTipi.ekipli)
-                    _buildEkipliAkis(context, isDark, accent)
-                  else
-                    _buildKisiselAkis(context, isDark, accent),
-                ],
-                if (_error.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      color: Colors.red.withValues(alpha: isDark ? 0.16 : 0.10),
-                      borderRadius: BorderRadius.circular(14),
-                      border: Border.all(
-                        color: Colors.red.withValues(alpha: isDark ? 0.40 : 0.22),
+                  if (_error.isNotEmpty) ...[
+                    const SizedBox(height: 16),
+                    Container(
+                      padding: const EdgeInsets.all(14),
+                      decoration: BoxDecoration(
+                        color: Colors.red.withValues(alpha: isDark ? 0.16 : 0.10),
+                        borderRadius: BorderRadius.circular(14),
+                        border: Border.all(
+                          color: Colors.red.withValues(alpha: isDark ? 0.40 : 0.22),
+                        ),
+                      ),
+                      child: Text(
+                        _error,
+                        textAlign: TextAlign.center,
+                        style: const TextStyle(color: Colors.red),
                       ),
                     ),
-                    child: Text(
-                      _error,
-                      textAlign: TextAlign.center,
-                      style: const TextStyle(color: Colors.red),
-                    ),
-                  ),
+                  ],
                 ],
-              ],
+              ),
             ),
           ),
         ),
-      ),
       ),
     );
   }
@@ -260,14 +260,14 @@ class _TeamGateState extends State<TeamGate> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           Text(
-            _isJoining ? "Hazir bir ekibe gir" : "Yeni ekip kur",
+            _isJoining ? "Hazır bir ekibe gir" : "Yeni ekip kur",
             style: const TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
             _isJoining
-                ? "Baska biri bu ekibi kurduysa ekip adini ve sifresini gir. Ayni kayit uzerinden devam edin."
-                : "Eger puantaji siz yonetecekseniz once ekibi kurun. Sonra ekibinizdeki diger kisileri baglayin.",
+                ? "Başka biri bu ekibi kurduysa ekip adını ve şifresini gir. Aynı kayıt üzerinden devam edin."
+                : "Eğer puantajı siz yönetecekseniz önce ekibi kurun. Sonra ekibinizdeki diğer kişileri bağlayın.",
             style: TextStyle(
               fontSize: 14,
               height: 1.4,
@@ -280,7 +280,7 @@ class _TeamGateState extends State<TeamGate> {
               Expanded(
                 child: _miniSecimButonu(
                   secili: _isJoining,
-                  label: "Ekibe katil",
+                  label: "Ekibe katıl",
                   onTap: () {
                     setState(() {
                       _isJoining = true;
@@ -308,7 +308,7 @@ class _TeamGateState extends State<TeamGate> {
           TextField(
             controller: _ekipAdiController,
             decoration: InputDecoration(
-              labelText: "Ekip adi",
+              labelText: "Ekip adı",
               prefixIcon: const Icon(Icons.groups_outlined),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -320,7 +320,7 @@ class _TeamGateState extends State<TeamGate> {
             controller: _sifreController,
             obscureText: true,
             decoration: InputDecoration(
-              labelText: "Ekip sifresi",
+              labelText: "Ekip şifresi",
               prefixIcon: const Icon(Icons.lock_outline),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
@@ -344,7 +344,7 @@ class _TeamGateState extends State<TeamGate> {
                     ),
                   ),
                   label: Text(
-                    _isJoining ? "Ekiple ayni hesaba gec" : "Ekibi kur ve basla",
+                    _isJoining ? "Ekiple aynı hesaba geç" : "Ekibi kur ve başla",
                   ),
                 ),
         ],
@@ -368,12 +368,12 @@ class _TeamGateState extends State<TeamGate> {
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           const Text(
-            "Kisisel kullanim",
+            "Kişisel kullanım",
             style: TextStyle(fontSize: 20, fontWeight: FontWeight.w700),
           ),
           const SizedBox(height: 6),
           Text(
-            "Bu secenekte uygulama sana ozel calisir. Kendi gununu, odemeni ve hesabini takip edersin. Sonradan istersen ekipli kullanim tarafina da gecebilirsin.",
+            "Bu seçenekte uygulama sana özel çalışır. Kendi gününü, ödemeni ve hesabını takip edersin. Sonradan istersen ekipli kullanım tarafına da geçebilirsin.",
             style: TextStyle(
               fontSize: 14,
               height: 1.4,
@@ -384,20 +384,20 @@ class _TeamGateState extends State<TeamGate> {
           _ozellikKutusu(
             isDark,
             "Kime uygun?",
-            "Yevmiye usulu calisan, kendi hesabini duzenli tutmak isteyen ustaya uygun.",
+            "Yevmiye usulü çalışan, kendi hesabını düzenli tutmak isteyen ustaya uygun.",
           ),
           const SizedBox(height: 10),
           _ozellikKutusu(
             isDark,
-            "Ne kazanirsin?",
-            "Defter karistirmadan nerede kac gun calistigini ve ne alacagin oldugunu gorursun.",
+            "Ne kazanırsın?",
+            "Defter karıştırmadan nerede kaç gün çalıştığını ve ne alacağın olduğunu görürsün.",
           ),
           const SizedBox(height: 18),
           _loading
               ? const Center(child: CircularProgressIndicator())
               : OutlinedButton.icon(
                   icon: const Icon(Icons.person_outline_rounded),
-                  label: const Text("Kendi hesabimla basla"),
+                  label: const Text("Kendi hesabımla başla"),
                   onPressed: _kisiselDevamEt,
                   style: OutlinedButton.styleFrom(
                     foregroundColor: accent,

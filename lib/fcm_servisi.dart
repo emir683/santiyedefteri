@@ -133,11 +133,16 @@ class FcmServisi {
   Future<void> _tokenKaydet() async {
     try {
       if (defaultTargetPlatform == TargetPlatform.iOS) {
-// İzin gerekiyorsa UI katmanında istenmelidir
         String? apnsToken = await _fcm.getAPNSToken();
-        if (apnsToken == null) {
+        int attempts = 0;
+        while (apnsToken == null && attempts < 4) {
           await Future.delayed(const Duration(seconds: 1));
           apnsToken = await _fcm.getAPNSToken();
+          attempts++;
+        }
+        if (apnsToken == null) {
+          debugPrint('⚠️ APNs token henüz atanmadı, FCM token kaydı ertelendi.');
+          return;
         }
       }
 

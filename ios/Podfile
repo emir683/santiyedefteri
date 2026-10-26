@@ -50,6 +50,16 @@ post_install do |installer|
       config.build_settings['EXPANDED_CODE_SIGN_IDENTITY'] = ''
       config.build_settings.delete 'PROVISIONING_PROFILE_SPECIFIER'
       config.build_settings.delete 'PROVISIONING_PROFILE'
+
+      # permission_handler iOS izin makroları (Mikrofon, Ses Tanıma, Bildirim, Kamera, Fotoğraflar)
+      config.build_settings['GCC_PREPROCESSOR_DEFINITIONS'] ||= [
+        '$(inherited)',
+        'PERMISSION_MICROPHONE=1',
+        'PERMISSION_SPEECH_RECOGNIZER=1',
+        'PERMISSION_NOTIFICATIONS=1',
+        'PERMISSION_CAMERA=1',
+        'PERMISSION_PHOTOS=1',
+      ]
     end
   end
 end
