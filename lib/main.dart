@@ -211,13 +211,6 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
               scaffoldBackgroundColor: AppColors.lightBackground,
               textTheme: GoogleFonts.poppinsTextTheme(textTheme),
-              pageTransitionsTheme: const PageTransitionsTheme(
-                builders: {
-                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                  TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-                  TargetPlatform.android: ZoomPageTransitionsBuilder(),
-                },
-              ),
               colorSchemeSeed: Colors.green,
               appBarTheme: AppBarTheme(
                 surfaceTintColor: Colors.transparent,
@@ -244,13 +237,6 @@ class MyApp extends StatelessWidget {
               scaffoldBackgroundColor: Colors.black,
               textTheme: GoogleFonts.poppinsTextTheme(
                 Theme.of(context).primaryTextTheme,
-              ),
-              pageTransitionsTheme: const PageTransitionsTheme(
-                builders: {
-                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
-                  TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
-                  TargetPlatform.android: ZoomPageTransitionsBuilder(),
-                },
               ),
               colorSchemeSeed: Colors.green,
               appBarTheme: AppBarTheme(
