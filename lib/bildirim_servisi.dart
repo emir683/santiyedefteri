@@ -208,6 +208,7 @@ class BildirimServisi {
     required String webglUrl,
     String? fileId,
   }) async {
+    final int notifId = _notifIdFromFileId(fileId ?? '');
     const androidDetails = AndroidNotificationDetails(
       'cad_islem_kanali',
       'CAD Çizim Bildirimleri',
@@ -228,7 +229,7 @@ class BildirimServisi {
       ),
     );
     await flutterLocalNotificationsPlugin.show(
-      DateTime.now().millisecondsSinceEpoch % 100000,
+      notifId,
       'CAD Çizimi Hazır! 🏗️',
       '$projeAdi başarıyla çözümlendi. Görüntülemek için dokunun.',
       details,

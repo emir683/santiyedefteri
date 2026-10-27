@@ -13,6 +13,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications_plus/flutter_local_notifications_plus.dart';
 import 'main.dart' show navigatorKey;
 import 'cad_webgl_ekrani.dart' show CadWebglEkrani;
+import 'cad_arkaplan_servisi.dart';
 import 'haftalik_ozet_ekrani.dart' show HaftalikOzetEkrani;
 import 'gunluk_rapor_ekrani.dart' show GunlukRaporEkrani;
 import 'isci_ekrani.dart' show IsciEkrani;
@@ -180,6 +181,14 @@ class FcmServisi {
     final teamId = message.data['teamId']?.toString() ?? '';
 
     if (action == 'cad_project') {
+      final fileId = message.data['fileId']?.toString() ?? message.data['file_id']?.toString() ?? '';
+      if (fileId.isNotEmpty && CadArkaplanServisi().bildirimGosterildiMi(fileId)) {
+        debugPrint('🔔 [FCM] $fileId için zaten bildirim gösterilmişti, mükerrer bildirim engellendi.');
+        return;
+      }
+      if (fileId.isNotEmpty) {
+        CadArkaplanServisi().bildirimGosterildiIsaretle(fileId);
+      }
       final webglUrl = message.data['webgl_url']?.toString() ?? '';
       final projectName =
           message.data['project_name']?.toString() ?? 'CAD Çizimi';

@@ -334,6 +334,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
 
   /// Cihazdan dosya seçip doğrudan açma
   Future<void> _pickFileAndOpen() async {
+    if (_isLoading) return; // Çift tıklama koruması (Debounce)
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
@@ -370,9 +371,51 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
 
   /// CAD dosyasını doğrudan WebGL ile açar (Daha önce açılmışsa anında açar, yoksa dönüştürür)
   Future<void> _openCadFileDirectly(File file, String fileName) async {
+    if (_isLoading) return; // Çift tıklama ve üst üste yükleme kilidi
+
     final fileSize = file.existsSync() ? file.lengthSync() : 0;
 
-    // 1. Önbellekte bu dosya zaten var mı kontrol et (Beklemeden anında açılış)
+    // C. DOSYA BOYUTU ÖN ELEMESİ (40 MB ÜST SINIRI)
+    const int maxAllowedSizeBytes = 40 * 1024 * 1024; // 40 MB
+    if (fileSize > maxAllowedSizeBytes) {
+      if (mounted) {
+        showDialog(
+          context: context,
+          builder: (ctx) => AlertDialog(
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+            title: Row(
+              children: [
+                const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 28),
+                const SizedBox(width: 8),
+                Text(
+                  'Çizim Boyutu Çok Büyük',
+                  style: GoogleFonts.poppins(fontWeight: FontWeight.w700, fontSize: 16),
+                ),
+              ],
+            ),
+            content: Text(
+              'Seçtiğiniz dosya (${_formatFileSize(fileSize)}) izin verilen maksimum 40 MB sınırını aşıyor.\n\n'
+              'Şantiye sunucusunun aşırı yüklenmesini önlemek ve çizimin telefonunuzda akıcı çalışması için lütfen gereksiz katmanları (PURGE/Audit) temizleyerek dosyayı sadeleştirip tekrar deneyin.',
+              style: GoogleFonts.poppins(fontSize: 13, height: 1.5),
+            ),
+            actions: [
+              TextButton(
+                onPressed: () => Navigator.pop(ctx),
+                child: Text('Anladım', style: GoogleFonts.poppins(fontWeight: FontWeight.bold)),
+              ),
+            ],
+          ),
+        );
+      }
+      return;
+    }
+
+    // B. CİHAZ İÇİ YEREL ÖNBELLEK (LOCAL CACHE KONTROLÜ)
+    // Eğer önbellek listesi henüz SharedPreferences'tan gelmediyse hemen yükle
+    if (_savedProjects.isEmpty) {
+      await _loadSavedProjects();
+    }
+
     SavedCadProject? existing;
     for (final p in _savedProjects) {
       final samePath = p.originalFilePath != null && p.originalFilePath == file.path;
@@ -385,6 +428,27 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
 
     if (existing != null) {
       debugPrint('[CAD Cache Hit] Proje önceden açılmış, doğrudan WebGL motoru başlatılıyor: ${existing.fileName}');
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.bolt, color: Colors.amber, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    '${existing.fileName} cihaz önbelleğinden anında açıldı (Sunucuya tekrar yüklenmedi).',
+                    style: GoogleFonts.poppins(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFF102A43),
+            duration: const Duration(seconds: 2),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
       await _openSavedProject(existing);
       return;
     }

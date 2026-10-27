@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'main.dart' show navigatorKey;
@@ -51,6 +52,14 @@ class CadArkaplanServisi {
       ValueNotifier<List<CadArkaplanGorevi>>([]);
 
   final Map<String, Timer> _pollingTimers = {};
+  final Set<String> _bildirilenFileIds = {};
+
+  bool bildirimGosterildiMi(String fileId) =>
+      fileId.isNotEmpty && _bildirilenFileIds.contains(fileId);
+
+  void bildirimGosterildiIsaretle(String fileId) {
+    if (fileId.isNotEmpty) _bildirilenFileIds.add(fileId);
+  }
 
   /// Yeni bir CAD projesini arka planda takip etmeye başla
   void projeyiArkaPlanaAl({
@@ -167,28 +176,39 @@ class CadArkaplanServisi {
     }
 
     try {
-      final metaUrl = '${CadArkaplanServisi.cadServerUrl}/files/${fileId}_cad_meta.json';
-      final res = await http.head(Uri.parse(metaUrl)).timeout(const Duration(seconds: 4));
+      final statusUrl = '${CadArkaplanServisi.cadServerUrl}/api/cad-status/$fileId';
+      final res = await http.get(Uri.parse(statusUrl)).timeout(const Duration(seconds: 4));
 
       if (res.statusCode == 200) {
-        // Çözümleme başarıyla bitti!
-        _pollingTimers[fileId]?.cancel();
-        gorev.tamamlandi = true;
-        gorev.tahminYuzde = 100;
-        _bildirGuncelleme();
+        final data = jsonDecode(res.body) as Map<String, dynamic>;
+        final bool isReady = (data['ready'] as bool?) ?? false;
+        final bool isConverting = (data['converting'] as bool?) ?? false;
 
-        // 1. Önce devam eden progress bar bildirimini temizle
-        await BildirimServisi().cadIlerlemeBildiriminiKapat(fileId);
+        // Çizim SADECE ve SADECE sunucuda %100 hazırlandıysa ve diskte binary dosyalar tamamsa bitti de!
+        if (isReady && !isConverting) {
+          _pollingTimers[fileId]?.cancel();
+          gorev.tamamlandi = true;
+          gorev.tahminYuzde = 100;
+          _bildirGuncelleme();
 
-        // 2. Tamamlandı Sistem Push Bildirimi Gönder (Sesli & Titreşimli)
-        await BildirimServisi().cadCizimiHazirBildirimiGonder(
-          projeAdi: gorev.projeAdi,
-          webglUrl: gorev.webglUrl,
-          fileId: fileId,
-        );
+          // Daha önce bu dosya için bildirim gösterildiyse tekrar gösterme (Çift bildirim koruması)
+          if (!bildirimGosterildiMi(fileId)) {
+            bildirimGosterildiIsaretle(fileId);
 
-        // 3. Uygulama içi Üst Bildirim / Banner Göster
-        _gosterTamamlandiBanner(gorev);
+            // 1. Önce devam eden progress bar bildirimini temizle
+            await BildirimServisi().cadIlerlemeBildiriminiKapat(fileId);
+
+            // 2. Tamamlandı Sistem Push Bildirimi Gönder (Sesli & Titreşimli)
+            await BildirimServisi().cadCizimiHazirBildirimiGonder(
+              projeAdi: gorev.projeAdi,
+              webglUrl: gorev.webglUrl,
+              fileId: fileId,
+            );
+
+            // 3. Uygulama içi Üst Bildirim / Banner Göster
+            _gosterTamamlandiBanner(gorev);
+          }
+        }
       }
     } catch (_) {
       // Ağ geçişi veya geçici gecikmelerde yoklamaya devam et

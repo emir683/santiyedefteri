@@ -66,7 +66,7 @@ const storage = multer.diskStorage({
 
 const upload = multer({
   storage,
-  limits: { fileSize: 250 * 1024 * 1024 }
+  limits: { fileSize: 40 * 1024 * 1024 } // 40 MB üst sınırı (Sunucu koruması)
 });
 
 // ----------------- V1 İŞ KUYRUĞU (MEVCUT DOKUNULMAZ MOTOR) -----------------
@@ -99,6 +99,7 @@ function getOrCreateCadData(fileId, svgPath, jsonTarget) {
 
 // ----------------- V2 İŞ KUYRUĞU (YENİ DXF-ÖNCELİKLİ HAT) -----------------
 const activeCadJobsV2 = new Map();
+let v2ConversionQueue = Promise.resolve(); // Ağır dönüşümleri sıraya sokan tekil kuyruk (CPU %100 tıkanma önleyici)
 
 async function triggerFcmPushNotification({ fcmToken, projectName, webglUrl, fileId }) {
   if (!fcmToken) return;
@@ -132,6 +133,9 @@ function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfP
   }
 
   const job = (async () => {
+    // Önceki ağır dönüşümün bitmesini bekle (Tek çekirdeği boğmama koruması)
+    await v2ConversionQueue;
+
     console.log(`[CAD ENGINE V2 START] ${fileId} dönüşümü başlatıldı...`);
     const isDwg = inputPath.toLowerCase().endsWith('.dwg');
     if (isDwg) {
@@ -183,6 +187,7 @@ function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfP
     }
   })();
 
+  v2ConversionQueue = job.catch(() => {});
   activeCadJobsV2.set(fileId, job);
   job.finally(() => {
     activeCadJobsV2.delete(fileId);
@@ -618,6 +623,24 @@ app.post('/api/convert-v2', upload.single('file'), async (req, res) => {
   }
 });
 
+app.get('/api/system-status', (req, res) => {
+  const os = require('os');
+  const { execSync } = require('child_process');
+  let swapInfo = '';
+  try {
+    swapInfo = execSync('free -h').toString();
+  } catch (_) {}
+  res.json({
+    status: 'online',
+    totalMemMb: (os.totalmem() / 1024 / 1024).toFixed(0),
+    freeMemMb: (os.freemem() / 1024 / 1024).toFixed(0),
+    activeV1Jobs: activeCadJobs.size,
+    activeV2Jobs: activeCadJobsV2.size,
+    memoryTable: swapInfo
+  });
+});
+
 app.listen(PORT, '0.0.0.0', () => {
   console.log(`CAD Vector Server running on port ${PORT} (Dual Engine: V1 + V2)`);
 });
+
