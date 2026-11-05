@@ -209,6 +209,12 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         ilce: 'Başakşehir',
         sirketAdi: 'Kuzey Yapı & Taahhüt A.Ş.',
         kapasiteVeyaUcret: '420 ₺/m²',
+        webSitesi: 'https://kuzeyyapi.com.tr',
+        fotograflar: const [
+          'https://images.unsplash.com/photo-1541888946425-d0fbb18615f8?w=800',
+          'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800',
+          'https://images.unsplash.com/photo-1581094794329-c8112a89af12?w=800',
+        ],
         aciklama:
             '4.500 m² alçı ve kara sıva işi için donanımlı ekip aranıyor. Şantiyede koğuş, 3 öğün sıcak yemek ve haftalık düzenli hakediş mevcuttur.',
         telefon: '0532 000 00 00',
@@ -245,6 +251,11 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         ilce: 'Çankaya',
         sirketAdi: 'Anadolu Konut İnşaat',
         kapasiteVeyaUcret: '1.850 ₺/Gün',
+        webSitesi: 'https://anadolukonut.com',
+        fotograflar: const [
+          'https://images.unsplash.com/photo-1503387762-592deb58ef4e?w=800',
+          'https://images.unsplash.com/photo-1590381105924-c72589b9ef3f?w=800',
+        ],
         aciklama:
             'Şantiye bünyesinde malzeme sevkiyatı ve kat temizliklerinde çalışacak düz işçiler aranıyor. SGK girişi, öğle yemeği ve şantiye servisi mevcuttur.',
         telefon: '0533 111 22 33',
@@ -281,6 +292,12 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         ilce: 'Bornova',
         sirketAdi: 'Ege Taahhüt Mühendislik',
         kapasiteVeyaUcret: '390 ₺/m²',
+        webSitesi: 'https://egetaahhut.com.tr',
+        fotograflar: const [
+          'https://images.unsplash.com/photo-1513694203232-719a280e022f?w=800',
+          'https://images.unsplash.com/photo-1486406146926-c627a92ad1ab?w=800',
+          'https://images.unsplash.com/photo-1541971875076-8f970d573be6?w=800',
+        ],
         aciklama:
             'Perde ve döşeme kalıbı çakacak, projesine uygun çalışacak 8-12 kişilik sadece kalıpçı ekibi aranıyor. Malzeme ve vinç şantiyeden.',
         telefon: '0535 444 55 66',
@@ -313,6 +330,11 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         ilce: 'Gebze',
         sirketAdi: 'Başkent Endüstriyel Yapı',
         kapasiteVeyaUcret: '650.000 ₺ Toplam',
+        webSitesi: 'https://baskentyapi.com',
+        fotograflar: const [
+          'https://images.unsplash.com/photo-1578575437130-527eed3abbec?w=800',
+          'https://images.unsplash.com/photo-1589939705384-5185137a7f0f?w=800',
+        ],
         aciklama:
             '240 ton donatı demiri büküm ve bağlama işi için sadece demir ustalarından oluşan ekip arıyoruz.',
         telefon: '0536 777 88 99',
@@ -345,6 +367,12 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         ilce: 'Nilüfer',
         sirketAdi: '',
         kapasiteVeyaUcret: '440 ₺/m²',
+        webSitesi: 'https://mehmetustaekibi.com',
+        fotograflar: const [
+          'https://images.unsplash.com/photo-1508873696983-2df5293cb32f?w=800',
+          'https://images.unsplash.com/photo-1541888946425-d0fbb18615f8?w=800',
+          'https://images.unsplash.com/photo-1517581177682-a085bb7ffb15?w=800',
+        ],
         aciklama:
             'Kendi el aletlerimiz, vibratör ve lazer hizalamamızla anahtar teslim kaba yapı kalıp ve demir işi alıyoruz.',
         telefon: '0544 222 33 44',
@@ -369,6 +397,12 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         yemekVarMi: false,
         sirketAdi: 'Kuzey İskele & Kalıp A.Ş.',
         kapasiteVeyaUcret: '20.000 m² Flanşlı İskele',
+        webSitesi: 'https://kuzeyiskele.com',
+        fotograflar: const [
+          'https://images.unsplash.com/photo-1525909002-1b05e0c869d8?w=800',
+          'https://images.unsplash.com/photo-1565008447742-97f6f38c985c?w=800',
+          'https://images.unsplash.com/photo-1541971875076-8f970d573be6?w=800',
+        ],
         baslik: 'Kiralık Güvenlikli Dış Cephe İskelesi & Kurulum Ekibi',
         brans: 'İskele Kurulum & Söküm',
         seviye: 'Kurumsal Şirket',
@@ -381,6 +415,72 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         acilMi: false,
         goruntulenmeSayisi: 420,
         favoriSayisi: 61,
+      ),
+    ];
+  }
+
+  List<KullaniciIsGecmisi> _ornekKullaniciIsGecmisi(String uid) {
+    return [
+      KullaniciIsGecmisi(
+        id: 'mock_work_1',
+        kullaniciUid: uid,
+        projeAdi: 'Avrupa Konutları Başakşehir Etabı',
+        isVerenVeyaSirket: 'Kuzey Yatırım & İnşaat',
+        rolVeyaKapsam: 'Kaba Yapı & Kalıp-Demir Taşeronluğu',
+        sehir: 'İstanbul',
+        tamamlanmaYili: '2024',
+        metrajVeyaBuyukluk: '38.000 m²',
+        aciklama:
+            'Proje süresinden 20 gün önce sıfır iş kazası ile teslim edilmiştir.',
+        tarih: DateTime.now().subtract(const Duration(days: 120)),
+      ),
+      KullaniciIsGecmisi(
+        id: 'mock_work_2',
+        kullaniciUid: uid,
+        projeAdi: 'Çankaya İş Merkezi & Rezidans',
+        isVerenVeyaSirket: 'Anadolu Proje Geliştirme',
+        rolVeyaKapsam: 'Tüm Şantiye İnce & Kaba İşçilikleri',
+        sehir: 'Ankara',
+        tamamlanmaYili: '2023',
+        metrajVeyaBuyukluk: '16.500 m²',
+        aciklama:
+            'Radye temel, perde beton ve kat döşemeleri projeye tam uygun teslim edildi.',
+        tarih: DateTime.now().subtract(const Duration(days: 300)),
+      ),
+    ];
+  }
+
+  List<KullaniciReferansi> _ornekKullaniciReferanslari(String uid) {
+    return [
+      KullaniciReferansi(
+        id: 'mock_ref_1',
+        hedefUid: uid,
+        hedefAd: 'Yüklenici Firma / Ekip',
+        referansVerenUid: 'ref_user_1',
+        referansVerenAd: 'İnş. Müh. Serdar Aksoy',
+        referansVerenSirket: 'Aksoy Proje & Mühendislik',
+        referansVerenUnvan: 'Proje Müdürü',
+        referansVerenTelefon: '0533 555 12 34',
+        projeAdi: 'Başakşehir 120 Dairelik Toplu Konut',
+        yorum:
+            'İş disiplinleri ve hızları fevkalade. Proje metrajlarına ve ISG kurallarına harfiyen riayet ettiler. Yeni projelerimizde de kesinlikle ilk tercihimiz.',
+        puan: 5.0,
+        tarih: DateTime.now().subtract(const Duration(days: 45)),
+      ),
+      KullaniciReferansi(
+        id: 'mock_ref_2',
+        hedefUid: uid,
+        hedefAd: 'Yüklenici Firma / Ekip',
+        referansVerenUid: 'ref_user_2',
+        referansVerenAd: 'Hakan Yılmaz',
+        referansVerenSirket: 'Yılmazlar Taahhüt Ltd.',
+        referansVerenUnvan: 'Şantiye Şefi',
+        referansVerenTelefon: '0532 999 88 77',
+        projeAdi: 'Nilüfer Plaza & Ticaret Merkezi',
+        yorum:
+            'Metraj teslimlerinde hiçbir fire veya gecikme yaşamadık. Ekip uyumu ve iş kalitesi çok başarılı.',
+        puan: 4.9,
+        tarih: DateTime.now().subtract(const Duration(days: 90)),
       ),
     ];
   }
@@ -5405,7 +5505,13 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
             child: Center(child: CircularProgressIndicator()),
           );
         }
-        final list = snapshot.data ?? const [];
+        final raw = snapshot.data ?? const [];
+        final list =
+            raw.isNotEmpty
+                ? raw
+                : (uid.startsWith('seed_')
+                    ? _ornekKullaniciIsGecmisi(uid)
+                    : const <KullaniciIsGecmisi>[]);
         if (list.isEmpty) {
           return PanelGlassWidgets.buildInset(
             context: ctx,
@@ -5563,7 +5669,13 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
             child: Center(child: CircularProgressIndicator()),
           );
         }
-        final list = snapshot.data ?? const [];
+        final raw = snapshot.data ?? const [];
+        final list =
+            raw.isNotEmpty
+                ? raw
+                : (hedefUid.startsWith('seed_')
+                    ? _ornekKullaniciReferanslari(hedefUid)
+                    : const <KullaniciReferansi>[]);
         if (list.isEmpty) {
           return PanelGlassWidgets.buildInset(
             context: ctx,
