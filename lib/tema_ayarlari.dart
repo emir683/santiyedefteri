@@ -168,19 +168,19 @@ class AppThemePalette {
     description:
         'Renk fazlalıklarından arındırılmış; göz yormayan mat gri, platin ve kömür siyahı.',
     icon: Icons.contrast_rounded,
-    primary: Color(0xFF64748B),
-    secondary: Color(0xFF475569),
-    accent: Color(0xFF94A3B8),
+    primary: Color(0xFF475569),
+    secondary: Color(0xFF334155),
+    accent: Color(0xFF64748B),
     gradient: [Color(0xFF475569), Color(0xFF334155)],
-    seedColor: Color(0xFF64748B),
+    seedColor: Color(0xFF475569),
     lightScaffoldBg: Color(0xFFF8FAFC),
     darkScaffoldBg: Color(0xFF000000),
     lightCardBg: Colors.white,
     darkCardBg: Color(0xFF121212),
-    chipBgColor: Color(0x2664748B),
-    glowColor: Color(0xFF94A3B8),
+    chipBgColor: Color(0x26475569),
+    glowColor: Color(0xFF64748B),
     lightContrastIcon: Color(0xFF1E293B),
-    darkContrastIcon: Color(0xFFE2E8F0),
+    darkContrastIcon: Color(0xFF475569),
   );
 
   static const List<AppThemePalette> all = [

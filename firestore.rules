@@ -55,6 +55,12 @@ service cloud.firestore {
       match /ai_usage/{usageId} {
         allow read, write: if isOwner(userId);
       }
+
+      // Kullanıcı bildirimleri: Sahibi okuyup silebilir, oturum açmış kullanıcılar pazar mesaj bildirimi bırakabilir
+      match /bildirimler/{bildirimId} {
+        allow read, update, delete: if isOwner(userId);
+        allow create: if isAuthenticated();
+      }
     }
 
     // 2. UYGULAMA YAPILANDIRMASI (APP CONFIG)
@@ -111,6 +117,11 @@ service cloud.firestore {
       allow read: if true;
       allow create: if isAuthenticated() && request.resource.data.referansVerenUid == request.auth.uid;
       allow update, delete: if isAuthenticated() && resource.data.referansVerenUid == request.auth.uid;
+    }
+
+    // 7. ŞANTİYE PAZARI ANLAŞMA VE MESAJLAŞMALARI
+    match /pazar_anlasmalari/{anlasmaId} {
+      allow read, write: if isAuthenticated();
     }
   }
 }

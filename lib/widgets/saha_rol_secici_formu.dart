@@ -12,6 +12,7 @@ class SahaRolSeciciFormu extends StatelessWidget {
   final TextEditingController sirketAdiController;
   final TextEditingController? telefonController;
   final TextEditingController? hakkindaController;
+  final TextEditingController? webSitesiController;
   final TextEditingController? yevmiyeBeklentisiController;
   final bool isAriyorum;
   final bool ustaAriyorum;
@@ -36,6 +37,7 @@ class SahaRolSeciciFormu extends StatelessWidget {
     required this.sirketAdiController,
     this.telefonController,
     this.hakkindaController,
+    this.webSitesiController,
     this.yevmiyeBeklentisiController,
     this.isAriyorum = false,
     this.ustaAriyorum = false,
@@ -282,6 +284,16 @@ class SahaRolSeciciFormu extends StatelessWidget {
                       : 'Deneyim & Referans Notunuz (Örn: 12 yıllık kalıp ustasıyım)',
               icon: Icons.notes_rounded,
               maxLines: 2,
+            ),
+          ],
+          if (webSitesiController != null) ...[
+            const SizedBox(height: 10),
+            _buildTextInputTile(
+              context: context,
+              controller: webSitesiController!,
+              label: 'Web Sitesi (Opsiyonel)',
+              icon: Icons.language_rounded,
+              keyboardType: TextInputType.url,
             ),
           ],
           const SizedBox(height: 12),

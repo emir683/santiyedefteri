@@ -198,6 +198,8 @@ class KullaniciSahaProfili {
   final String sehir;
   final String telefon;
   final String hakkinda;
+  final String webSitesi;
+  final List<String> fotograflar;
   final double gunlukYevmiyeBeklentisi;
   final bool isAriyorum; // Usta/Taşeron için "İş Arıyorum / Ekibim Boşta"
   final bool ustaAriyorum; // Müteahhit/Şef için "Usta / Taşeron Arıyorum"
@@ -212,6 +214,8 @@ class KullaniciSahaProfili {
     this.sehir = 'İstanbul',
     this.telefon = '',
     this.hakkinda = '',
+    this.webSitesi = '',
+    this.fotograflar = const [],
     this.gunlukYevmiyeBeklentisi = 0,
     this.isAriyorum = false,
     this.ustaAriyorum = false,
@@ -249,6 +253,10 @@ class KullaniciSahaProfili {
       sehir: pickStr('sehir', 'İstanbul'),
       telefon: pickStr('telefon'),
       hakkinda: pickStr('hakkinda'),
+      webSitesi: pickStr('webSitesi'),
+      fotograflar: List<String>.from(
+        (nested['fotograflar'] ?? data['fotograflar']) as List? ?? const [],
+      ),
       gunlukYevmiyeBeklentisi:
           ((nested['gunlukYevmiyeBeklentisi'] ?? data['gunlukYevmiyeBeklentisi'] ?? 0)
                   as num)
@@ -270,6 +278,8 @@ class KullaniciSahaProfili {
       'sehir': sehir,
       'telefon': telefon,
       'hakkinda': hakkinda,
+      'webSitesi': webSitesi,
+      'fotograflar': fotograflar,
       'gunlukYevmiyeBeklentisi': gunlukYevmiyeBeklentisi,
       'isAriyorum': isAriyorum,
       'ustaAriyorum': ustaAriyorum,
@@ -437,6 +447,8 @@ class SantiyePazarIlani {
   final String deneyimYili;
   final bool belgeGerekliMi;
   final String baslamaTarihiTipi; // 'hemen' | 'bir_hafta' | 'belirli_tarih'
+  final String webSitesi; // İlan sahibinin veya şirketin web sitesi
+  final List<String> fotograflar; // İlanın veya referans işlerin fotoğrafları
 
   // İstatistik & Favori Alanları
   final int goruntulenmeSayisi;
@@ -479,6 +491,8 @@ class SantiyePazarIlani {
     this.deneyimYili = '',
     this.belgeGerekliMi = false,
     this.baslamaTarihiTipi = 'hemen',
+    this.webSitesi = '',
+    this.fotograflar = const [],
     this.goruntulenmeSayisi = 0,
     this.favoriSayisi = 0,
     this.favorileyenUidler = const [],
@@ -601,6 +615,8 @@ class SantiyePazarIlani {
       'deneyimYili': deneyimYili,
       'belgeGerekliMi': belgeGerekliMi,
       'baslamaTarihiTipi': baslamaTarihiTipi,
+      'webSitesi': webSitesi,
+      'fotograflar': fotograflar,
       'goruntulenmeSayisi': goruntulenmeSayisi,
       'favoriSayisi': favoriSayisi,
       'favorileyenUidler': favorileyenUidler,
@@ -652,6 +668,10 @@ class SantiyePazarIlani {
       deneyimYili: (map['deneyimYili'] ?? '').toString(),
       belgeGerekliMi: map['belgeGerekliMi'] == true,
       baslamaTarihiTipi: (map['baslamaTarihiTipi'] ?? 'hemen').toString(),
+      webSitesi: (map['webSitesi'] ?? '').toString(),
+      fotograflar: List<String>.from(
+        map['fotograflar'] as List? ?? const [],
+      ),
       goruntulenmeSayisi: ((map['goruntulenmeSayisi'] ?? 0) as num).toInt(),
       favoriSayisi: ((map['favoriSayisi'] ?? 0) as num).toInt(),
       favorileyenUidler: List<String>.from(map['favorileyenUidler'] as List? ?? const []),

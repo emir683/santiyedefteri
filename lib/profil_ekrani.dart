@@ -55,6 +55,8 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
   final _telefonController = TextEditingController();
   final _hakkindaController = TextEditingController();
   final _yevmiyeBeklentisiController = TextEditingController();
+  final _webSitesiController = TextEditingController();
+  List<String> _fotograflar = [];
 
   String _seciliRol = '';
   String _seciliBrans = '';
@@ -79,6 +81,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
     _telefonController.dispose();
     _hakkindaController.dispose();
     _yevmiyeBeklentisiController.dispose();
+    _webSitesiController.dispose();
     super.dispose();
   }
 
@@ -726,6 +729,74 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
             deger: sahaProfili.hakkinda,
             ikon: Icons.notes_rounded,
           ),
+        if (sahaProfili.webSitesi.trim().isNotEmpty)
+          _buildKayitliBilgiSatiri(
+            context: context,
+            baslik: 'Web Sitesi',
+            deger: sahaProfili.webSitesi,
+            ikon: Icons.language_rounded,
+          ),
+        if (sahaProfili.fotograflar.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          PanelGlassWidgets.buildInset(
+            context: context,
+            padding: const EdgeInsets.all(10),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  children: [
+                    Icon(
+                      Icons.photo_library_outlined,
+                      size: 16,
+                      color: _themeContrastIcon,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Kayıtlı Portföy & Proje Fotoğrafları (${sahaProfili.fotograflar.length})',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: _themeContrastIcon,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                SizedBox(
+                  height: 65,
+                  child: ListView.separated(
+                    scrollDirection: Axis.horizontal,
+                    itemCount: sahaProfili.fotograflar.length,
+                    separatorBuilder: (_, __) => const SizedBox(width: 8),
+                    itemBuilder: (ctx, i) {
+                      return ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: Image.network(
+                          sahaProfili.fotograflar[i],
+                          width: 65,
+                          height: 65,
+                          fit: BoxFit.cover,
+                          errorBuilder:
+                              (_, __, ___) => Container(
+                                width: 65,
+                                height: 65,
+                                color: Colors.black12,
+                                child: const Icon(
+                                  Icons.broken_image_rounded,
+                                  size: 18,
+                                  color: Colors.grey,
+                                ),
+                              ),
+                        ),
+                      );
+                    },
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
         _buildKayitliBilgiSatiri(
           context: context,
           baslik: 'Pazar & Çalışma Durumu',
@@ -830,6 +901,8 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
               _sirketAdiController.text = sahaProfili.sirketAdi;
               _telefonController.text = sahaProfili.telefon;
               _hakkindaController.text = sahaProfili.hakkinda;
+              _webSitesiController.text = sahaProfili.webSitesi;
+              _fotograflar = List<String>.from(sahaProfili.fotograflar);
               _yevmiyeBeklentisiController.text =
                   sahaProfili.gunlukYevmiyeBeklentisi > 0
                       ? sahaProfili.gunlukYevmiyeBeklentisi.toStringAsFixed(0)
@@ -1166,6 +1239,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                         sirketAdiController: _sirketAdiController,
                         telefonController: _telefonController,
                         hakkindaController: _hakkindaController,
+                        webSitesiController: _webSitesiController,
                         yevmiyeBeklentisiController: _yevmiyeBeklentisiController,
                         isAriyorum: _isAriyorum,
                         ustaAriyorum: _ustaAriyorum,
@@ -1240,6 +1314,8 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                                       sehir: _seciliSehir,
                                       telefon: _telefonController.text.trim(),
                                       hakkinda: _hakkindaController.text.trim(),
+                                      webSitesi: _webSitesiController.text.trim(),
+                                      fotograflar: _fotograflar,
                                       gunlukYevmiyeBeklentisi:
                                           double.tryParse(
                                             _yevmiyeBeklentisiController.text

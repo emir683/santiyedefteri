@@ -118,6 +118,64 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     }
   }
 
+  Future<void> _webSitesiAc(String url) async {
+    if (url.trim().isEmpty) return;
+    var clean = url.trim();
+    if (!clean.startsWith('http://') && !clean.startsWith('https://')) {
+      clean = 'https://$clean';
+    }
+    final uri = Uri.tryParse(clean);
+    if (uri != null && await canLaunchUrl(uri)) {
+      await launchUrl(uri, mode: LaunchMode.externalApplication);
+    }
+  }
+
+  void _fotografBuyutDialog(BuildContext context, String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        insetPadding: const EdgeInsets.all(16),
+        child: Stack(
+          alignment: Alignment.center,
+          children: [
+            InteractiveViewer(
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(16),
+                child: Image.network(
+                  imageUrl,
+                  fit: BoxFit.contain,
+                  errorBuilder: (_, __, ___) => Container(
+                    padding: const EdgeInsets.all(24),
+                    decoration: BoxDecoration(
+                      color: const Color(0xFF0F172A),
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    child: const Text(
+                      'Fotoğraf yüklenemedi',
+                      style: TextStyle(color: Colors.white),
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            Positioned(
+              top: 0,
+              right: 0,
+              child: CircleAvatar(
+                backgroundColor: Colors.black54,
+                child: IconButton(
+                  icon: const Icon(Icons.close_rounded, color: Colors.white),
+                  onPressed: () => Navigator.pop(ctx),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
   List<SantiyePazarIlani> _ornekBaslangicIlanlari() {
     final now = DateTime.now();
     return [
@@ -958,286 +1016,255 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                       ),
                       const SizedBox(height: 10),
 
-                      // İlan Sahibi Bilgisi, Geçmiş İşleri & Referanslar
-                      PanelGlassWidgets.buildInset(
-                        context: ctx,
-                        padding: const EdgeInsets.all(12),
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: [
-                            Row(
-                              children: [
-                                PanelGlassWidgets.buildIconBadge(
-                                  context: ctx,
-                                  icon: KullaniciRolu.rolIkonu(
-                                    ilan.kullaniciTipi,
-                                  ),
-                                  accentColor: _themeContrastIcon,
-                                ),
-                                const SizedBox(width: 10),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                      // İLAN FOTOĞRAFLARI (Varsa Yatay Galeri)
+                      if (ilan.fotograflar.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        SizedBox(
+                          height: 130,
+                          child: ListView.separated(
+                            scrollDirection: Axis.horizontal,
+                            itemCount: ilan.fotograflar.length,
+                            separatorBuilder: (_, __) => const SizedBox(width: 8),
+                            itemBuilder: (ctx, i) {
+                              final url = ilan.fotograflar[i];
+                              return InkWell(
+                                borderRadius: BorderRadius.circular(12),
+                                onTap: () => _fotografBuyutDialog(context, url),
+                                child: ClipRRect(
+                                  borderRadius: BorderRadius.circular(12),
+                                  child: Stack(
                                     children: [
-                                      Text(
-                                        ilan.olusturanAd,
-                                        style: TextStyle(
-                                          fontSize: 14.5,
-                                          fontWeight: FontWeight.w800,
-                                          color:
-                                              isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFF102A43),
+                                      Image.network(
+                                        url,
+                                        width: 170,
+                                        height: 130,
+                                        fit: BoxFit.cover,
+                                        errorBuilder: (_, __, ___) => Container(
+                                          width: 170,
+                                          height: 130,
+                                          color: Colors.black12,
+                                          child: const Icon(
+                                            Icons.broken_image_rounded,
+                                            color: Colors.grey,
+                                          ),
                                         ),
                                       ),
-                                      Text(
-                                        '${ilan.brans} • ${ilan.seviye}',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          color:
-                                              isDark
-                                                  ? Colors.white60
-                                                  : Colors.black54,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                if (benimIlanim)
-                                  Container(
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 8,
-                                      vertical: 4,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      color: const Color(
-                                        0xFF0F7C86,
-                                      ).withValues(alpha: 0.15),
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
-                                    child: Text(
-                                      'Benim İlanım',
-                                      style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: _themeContrastIcon,
-                                      ),
-                                    ),
-                                  ),
-                              ],
-                            ),
-                            const SizedBox(height: 10),
-
-                            // Canlı Puan & Referans Sayısı Şeridi
-                            StreamBuilder<List<KullaniciReferansi>>(
-                              stream: servisi.getKullaniciReferanslariStream(
-                                ilan.olusturanUid,
-                              ),
-                              builder: (context, refSnap) {
-                                final refs = refSnap.data ?? const [];
-                                final double ortPuan =
-                                    refs.isNotEmpty
-                                        ? refs.fold(0.0, (s, r) => s + r.puan) /
-                                            refs.length
-                                        : 5.0;
-                                return Container(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 10,
-                                    vertical: 7,
-                                  ),
-                                  decoration: BoxDecoration(
-                                    color:
-                                        isDark
-                                            ? Colors.white.withValues(
-                                              alpha: 0.05,
-                                            )
-                                            : Colors.black.withValues(
-                                              alpha: 0.03,
-                                            ),
-                                    borderRadius: BorderRadius.circular(10),
-                                    border: Border.all(
-                                      color: (isDark
-                                              ? Colors.white
-                                              : Colors.black)
-                                          .withValues(alpha: 0.07),
-                                    ),
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      const Icon(
-                                        Icons.star_rounded,
-                                        size: 17,
-                                        color: Color(0xFFF59E0B),
-                                      ),
-                                      const SizedBox(width: 4),
-                                      Text(
-                                        refs.isNotEmpty
-                                            ? ortPuan.toStringAsFixed(1)
-                                            : '5.0',
-                                        style: TextStyle(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w800,
-                                          color:
-                                              isDark
-                                                  ? Colors.white
-                                                  : const Color(0xFF102A43),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 6),
-                                      Text(
-                                        '(${refs.length} Referans & Yorum)',
-                                        style: TextStyle(
-                                          fontSize: 11,
-                                          fontWeight: FontWeight.w600,
-                                          color:
-                                              isDark
-                                                  ? Colors.white60
-                                                  : Colors.black54,
-                                        ),
-                                      ),
-                                      const Spacer(),
-                                      InkWell(
-                                        borderRadius: BorderRadius.circular(8),
-                                        onTap: () {
-                                          _yayinlayanProfiliVeReferanslariModalAc(
-                                            context: context,
-                                            servisi: servisi,
-                                            hedefUid: ilan.olusturanUid,
-                                            hedefAd: ilan.olusturanAd,
-                                            hedefBrans: ilan.brans,
-                                            hedefSeviye: ilan.seviye,
-                                            hedefSirket: ilan.sirketAdi,
-                                            hedefSehir: ilan.sehir,
-                                            hedefTelefon: ilan.telefon,
-                                            benimUid: benimUid,
-                                            benimAd: benimAd,
-                                          );
-                                        },
-                                        child: Padding(
+                                      Positioned(
+                                        bottom: 6,
+                                        right: 6,
+                                        child: Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 4,
+                                            horizontal: 6,
                                             vertical: 2,
                                           ),
-                                          child: Row(
-                                            mainAxisSize: MainAxisSize.min,
-                                            children: [
-                                              Text(
-                                                'Profili İncele',
-                                                style: TextStyle(
-                                                  fontSize: 11,
-                                                  fontWeight: FontWeight.w800,
-                                                  color: _themeContrastIcon,
-                                                ),
-                                              ),
-                                              const SizedBox(width: 2),
-                                              Icon(
-                                                Icons.chevron_right_rounded,
-                                                size: 14,
-                                                color: _themeContrastIcon,
-                                              ),
-                                            ],
+                                          decoration: BoxDecoration(
+                                            color: Colors.black54,
+                                            borderRadius: BorderRadius.circular(6),
+                                          ),
+                                          child: Text(
+                                            '${i + 1}/${ilan.fotograflar.length}',
+                                            style: const TextStyle(
+                                              color: Colors.white,
+                                              fontSize: 10,
+                                              fontWeight: FontWeight.bold,
+                                            ),
                                           ),
                                         ),
                                       ),
                                     ],
                                   ),
-                                );
-                              },
-                            ),
-                            const SizedBox(height: 8),
+                                ),
+                              );
+                            },
+                          ),
+                        ),
+                      ],
 
-                            // Profil & Referans Butonları
-                            Row(
+                      // WEB SİTESİ BUTONU (Varsa)
+                      if (ilan.webSitesi.isNotEmpty) ...[
+                        const SizedBox(height: 10),
+                        InkWell(
+                          borderRadius: BorderRadius.circular(10),
+                          onTap: () => _webSitesiAc(ilan.webSitesi),
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 12,
+                              vertical: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: _themePrimary.withValues(alpha: 0.12),
+                              borderRadius: BorderRadius.circular(10),
+                              border: Border.all(
+                                color: _themePrimary.withValues(alpha: 0.3),
+                              ),
+                            ),
+                            child: Row(
                               children: [
+                                Icon(
+                                  Icons.language_rounded,
+                                  size: 16,
+                                  color: _themeContrastIcon,
+                                ),
+                                const SizedBox(width: 8),
                                 Expanded(
-                                  child: OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: _themeContrastIcon,
-                                      side: BorderSide(
-                                        color: _themeContrastIcon.withValues(
-                                          alpha: 0.35,
-                                        ),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
+                                  child: Text(
+                                    'Web Sitesi: ${ilan.webSitesi}',
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w700,
+                                      color: _themeContrastIcon,
                                     ),
-                                    icon: const Icon(
-                                      Icons.work_history_rounded,
-                                      size: 16,
-                                    ),
-                                    label: const Text(
-                                      'Geçmiş İşleri & Yorumlar',
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    onPressed: () {
-                                      _yayinlayanProfiliVeReferanslariModalAc(
-                                        context: context,
-                                        servisi: servisi,
-                                        hedefUid: ilan.olusturanUid,
-                                        hedefAd: ilan.olusturanAd,
-                                        hedefBrans: ilan.brans,
-                                        hedefSeviye: ilan.seviye,
-                                        hedefSirket: ilan.sirketAdi,
-                                        hedefSehir: ilan.sehir,
-                                        hedefTelefon: ilan.telefon,
-                                        benimUid: benimUid,
-                                        benimAd: benimAd,
-                                      );
-                                    },
                                   ),
                                 ),
-                                if (!benimIlanim) ...[
-                                  const SizedBox(width: 8),
-                                  OutlinedButton.icon(
-                                    style: OutlinedButton.styleFrom(
-                                      foregroundColor: const Color(0xFFD97706),
-                                      side: BorderSide(
-                                        color: const Color(
-                                          0xFFD97706,
-                                        ).withValues(alpha: 0.35),
-                                      ),
-                                      padding: const EdgeInsets.symmetric(
-                                        vertical: 8,
-                                        horizontal: 10,
-                                      ),
-                                      shape: RoundedRectangleBorder(
-                                        borderRadius: BorderRadius.circular(10),
-                                      ),
-                                    ),
-                                    icon: const Icon(
-                                      Icons.rate_review_outlined,
-                                      size: 15,
-                                    ),
-                                    label: const Text(
-                                      'Yorum Yap',
-                                      style: TextStyle(
-                                        fontSize: 11.5,
-                                        fontWeight: FontWeight.w700,
-                                      ),
-                                    ),
-                                    onPressed: () {
-                                      _referansEkleModalAc(
-                                        context: context,
-                                        servisi: servisi,
-                                        hedefUid: ilan.olusturanUid,
-                                        hedefAd: ilan.olusturanAd,
-                                        benimUid: benimUid,
-                                        benimAd: benimAd,
-                                      );
-                                    },
-                                  ),
-                                ],
+                                Icon(
+                                  Icons.open_in_new_rounded,
+                                  size: 14,
+                                  color: _themeContrastIcon,
+                                ),
                               ],
                             ),
-                          ],
+                          ),
+                        ),
+                      ],
+
+                      const SizedBox(height: 10),
+
+                      // İLAN SAHİBİ / FİRMA - DETAYLARI GÖRMEK İÇİN TIKLAYIN KARTI
+                      InkWell(
+                        borderRadius: BorderRadius.circular(14),
+                        onTap: () {
+                          _yayinlayanProfiliVeReferanslariModalAc(
+                            context: context,
+                            servisi: servisi,
+                            hedefUid: ilan.olusturanUid,
+                            hedefAd: ilan.olusturanAd,
+                            hedefBrans: ilan.brans,
+                            hedefSeviye: ilan.seviye,
+                            hedefSirket: ilan.sirketAdi,
+                            hedefSehir: ilan.sehir,
+                            hedefTelefon: ilan.telefon,
+                            benimUid: benimUid,
+                            benimAd: benimAd,
+                            hedefHakkinda: ilan.aciklama,
+                            hedefWebSitesi: ilan.webSitesi,
+                            hedefFotograflar: ilan.fotograflar,
+                          );
+                        },
+                        child: PanelGlassWidgets.buildCard(
+                          context: ctx,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 14,
+                            vertical: 12,
+                          ),
+                          child: Row(
+                            children: [
+                              PanelGlassWidgets.buildIconBadge(
+                                context: ctx,
+                                icon: KullaniciRolu.rolIkonu(
+                                  ilan.kullaniciTipi,
+                                ),
+                                accentColor: _themeContrastIcon,
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment:
+                                      CrossAxisAlignment.start,
+                                  children: [
+                                    Row(
+                                      children: [
+                                        Flexible(
+                                          child: Text(
+                                            ilan.sirketAdi.isNotEmpty
+                                                ? ilan.sirketAdi
+                                                : ilan.olusturanAd,
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 14.5,
+                                              fontWeight: FontWeight.w800,
+                                              color:
+                                                  isDark
+                                                      ? Colors.white
+                                                      : const Color(0xFF102A43),
+                                            ),
+                                          ),
+                                        ),
+                                        if (benimIlanim) ...[
+                                          const SizedBox(width: 6),
+                                          Container(
+                                            padding: const EdgeInsets.symmetric(
+                                              horizontal: 6,
+                                              vertical: 2,
+                                            ),
+                                            decoration: BoxDecoration(
+                                              color: const Color(
+                                                0xFF0F7C86,
+                                              ).withValues(alpha: 0.15),
+                                              borderRadius:
+                                                  BorderRadius.circular(6),
+                                            ),
+                                            child: Text(
+                                              'Benim İlanım',
+                                              style: TextStyle(
+                                                fontSize: 10,
+                                                fontWeight: FontWeight.w800,
+                                                color: _themeContrastIcon,
+                                              ),
+                                            ),
+                                          ),
+                                        ],
+                                      ],
+                                    ),
+                                    const SizedBox(height: 2),
+                                    Text(
+                                      '${ilan.olusturanAd} • ${ilan.brans} (${ilan.seviye})',
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        color:
+                                            isDark
+                                                ? Colors.white60
+                                                : Colors.black54,
+                                      ),
+                                    ),
+                                    const SizedBox(height: 4),
+                                    Row(
+                                      children: [
+                                        Icon(
+                                          Icons.touch_app_rounded,
+                                          size: 13,
+                                          color: _themeContrastIcon,
+                                        ),
+                                        const SizedBox(width: 4),
+                                        Flexible(
+                                          child: Text(
+                                            'Detayları görmek için tıklayın (Tanıtım, Referanslar, Yorumlar)',
+                                            maxLines: 1,
+                                            overflow: TextOverflow.ellipsis,
+                                            style: TextStyle(
+                                              fontSize: 11,
+                                              fontWeight: FontWeight.w700,
+                                              color: _themeContrastIcon,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              const SizedBox(width: 6),
+                              Icon(
+                                Icons.chevron_right_rounded,
+                                color: _themeContrastIcon,
+                                size: 22,
+                              ),
+                            ],
+                          ),
                         ),
                       ),
                       const SizedBox(height: 12),
@@ -1703,6 +1730,28 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   final gonderen =
                                       msg['gonderenAd']?.toString() ?? '';
 
+                                  final bubbleBg =
+                                      benMi
+                                          ? _themePrimary
+                                          : (isDark
+                                              ? Colors.white.withValues(
+                                                alpha: 0.12,
+                                              )
+                                              : Colors.black.withValues(
+                                                alpha: 0.07,
+                                              ));
+                                  final bubbleTextColor =
+                                      benMi
+                                          ? (ThemeData.estimateBrightnessForColor(
+                                                    _themePrimary,
+                                                  ) ==
+                                                  Brightness.light
+                                              ? const Color(0xFF0F172A)
+                                              : Colors.white)
+                                          : (isDark
+                                              ? Colors.white
+                                              : const Color(0xFF0F172A));
+
                                   return Align(
                                     alignment:
                                         benMi
@@ -1722,16 +1771,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                             0.75,
                                       ),
                                       decoration: BoxDecoration(
-                                        color:
-                                            benMi
-                                                ? _themeContrastIcon
-                                                : (isDark
-                                                    ? Colors.white.withValues(
-                                                      alpha: 0.1,
-                                                    )
-                                                    : Colors.black.withValues(
-                                                      alpha: 0.06,
-                                                    )),
+                                        color: bubbleBg,
                                         borderRadius: BorderRadius.circular(14),
                                       ),
                                       child: Column(
@@ -1753,12 +1793,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                             metin,
                                             style: TextStyle(
                                               fontSize: 13,
-                                              color:
-                                                  benMi
-                                                      ? Colors.white
-                                                      : (isDark
-                                                          ? Colors.white
-                                                          : Colors.black87),
+                                              color: bubbleTextColor,
                                             ),
                                           ),
                                         ],
@@ -1879,13 +1914,17 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 size: 16,
                                 color: _themeContrastIcon,
                               ),
-                              SizedBox(width: 6),
-                              Text(
-                                'Anlaşmayı Onayla & Şantiyeye / İşçilere Ekle',
-                                style: TextStyle(
-                                  fontSize: 11.5,
-                                  fontWeight: FontWeight.w800,
-                                  color: _themeContrastIcon,
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  'Anlaşmayı Onayla & Şantiyeye / İşçilere Ekle',
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 11.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: _themeContrastIcon,
+                                  ),
                                 ),
                               ),
                             ],
@@ -2533,6 +2572,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     final ekipKisiCtrl = TextEditingController(text: '6');
     final sirketAdiCtrl = TextEditingController(text: profil.sirketAdi);
     final makineKapasiteCtrl = TextEditingController();
+    final webSitesiCtrl = TextEditingController(text: profil.webSitesi);
+    final List<String> fotograflar = List<String>.from(profil.fotograflar);
+    final fotoUrlCtrl = TextEditingController();
 
     int seciliMod =
         profil.kullaniciTipi == KullaniciRolu.muteahhit
@@ -3399,6 +3441,219 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                           ),
                         ),
                       ),
+                      const SizedBox(height: 10),
+
+                      // Web Sitesi (İsteğe Bağlı)
+                      PanelGlassWidgets.buildInset(
+                        context: context,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 2,
+                        ),
+                        child: TextField(
+                          controller: webSitesiCtrl,
+                          keyboardType: TextInputType.url,
+                          decoration: InputDecoration(
+                            labelText: 'Web Sitesi (Opsiyonel)',
+                            hintText: 'Örn: https://kuzeyyapi.com',
+                            prefixIcon: Icon(
+                              Icons.language_rounded,
+                              size: 18,
+                              color: _themeContrastIcon,
+                            ),
+                            border: InputBorder.none,
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 10),
+
+                      // Fotoğraflar / Proje Görselleri
+                      PanelGlassWidgets.buildInset(
+                        context: context,
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.add_photo_alternate_rounded,
+                                  size: 18,
+                                  color: _themeContrastIcon,
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'İlan & Referans Fotoğrafları',
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          isDark
+                                              ? Colors.white
+                                              : const Color(0xFF102A43),
+                                    ),
+                                  ),
+                                ),
+                                if (fotograflar.isEmpty)
+                                  TextButton.icon(
+                                    style: TextButton.styleFrom(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                    ),
+                                    icon: const Icon(
+                                      Icons.auto_awesome_rounded,
+                                      size: 14,
+                                    ),
+                                    label: const Text(
+                                      'Örnek Ekle',
+                                      style: TextStyle(fontSize: 11),
+                                    ),
+                                    onPressed: () {
+                                      setModalState(() {
+                                        fotograflar.addAll([
+                                          'https://images.unsplash.com/photo-1541888946425-d0fbb18615f8?w=800',
+                                          'https://images.unsplash.com/photo-1504307651254-35680f356dfd?w=800',
+                                        ]);
+                                      });
+                                    },
+                                  ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                Expanded(
+                                  child: TextField(
+                                    controller: fotoUrlCtrl,
+                                    decoration: InputDecoration(
+                                      hintText: 'Fotoğraf Linki (URL)',
+                                      hintStyle: TextStyle(
+                                        fontSize: 12,
+                                        color:
+                                            isDark
+                                                ? Colors.white38
+                                                : Colors.black38,
+                                      ),
+                                      isDense: true,
+                                      contentPadding:
+                                          const EdgeInsets.symmetric(
+                                            horizontal: 10,
+                                            vertical: 8,
+                                          ),
+                                      border: OutlineInputBorder(
+                                        borderRadius: BorderRadius.circular(8),
+                                        borderSide: BorderSide(
+                                          color: (isDark
+                                                  ? Colors.white
+                                                  : Colors.black)
+                                              .withValues(alpha: 0.15),
+                                        ),
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                                const SizedBox(width: 8),
+                                ElevatedButton.icon(
+                                  style: ElevatedButton.styleFrom(
+                                    backgroundColor: _themePrimary,
+                                    foregroundColor: Colors.white,
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 12,
+                                      vertical: 10,
+                                    ),
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                  ),
+                                  icon: const Icon(
+                                    Icons.add_rounded,
+                                    size: 16,
+                                  ),
+                                  label: const Text(
+                                    'Ekle',
+                                    style: TextStyle(fontSize: 12),
+                                  ),
+                                  onPressed: () {
+                                    final url = fotoUrlCtrl.text.trim();
+                                    if (url.isNotEmpty) {
+                                      setModalState(() {
+                                        fotograflar.add(url);
+                                        fotoUrlCtrl.clear();
+                                      });
+                                    }
+                                  },
+                                ),
+                              ],
+                            ),
+                            if (fotograflar.isNotEmpty) ...[
+                              const SizedBox(height: 10),
+                              SizedBox(
+                                height: 75,
+                                child: ListView.separated(
+                                  scrollDirection: Axis.horizontal,
+                                  itemCount: fotograflar.length,
+                                  separatorBuilder:
+                                      (_, __) => const SizedBox(width: 8),
+                                  itemBuilder: (ctx, i) {
+                                    return Stack(
+                                      children: [
+                                        ClipRRect(
+                                          borderRadius:
+                                              BorderRadius.circular(8),
+                                          child: Image.network(
+                                            fotograflar[i],
+                                            width: 75,
+                                            height: 75,
+                                            fit: BoxFit.cover,
+                                            errorBuilder:
+                                                (_, __, ___) => Container(
+                                                  width: 75,
+                                                  height: 75,
+                                                  color: Colors.black12,
+                                                  child: const Icon(
+                                                    Icons
+                                                        .broken_image_rounded,
+                                                    size: 20,
+                                                    color: Colors.grey,
+                                                  ),
+                                                ),
+                                          ),
+                                        ),
+                                        Positioned(
+                                          top: 2,
+                                          right: 2,
+                                          child: GestureDetector(
+                                            onTap: () {
+                                              setModalState(() {
+                                                fotograflar.removeAt(i);
+                                              });
+                                            },
+                                            child: Container(
+                                              padding: const EdgeInsets.all(2),
+                                              decoration: const BoxDecoration(
+                                                color: Colors.black54,
+                                                shape: BoxShape.circle,
+                                              ),
+                                              child: const Icon(
+                                                Icons.close_rounded,
+                                                size: 14,
+                                                color: Colors.white,
+                                              ),
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    );
+                                  },
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
                       ElevatedButton(
@@ -3499,6 +3754,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                             ? '$seciliSehir projesinde $katBaslik alanında detaylı bilgi için iletişime geçebilirsiniz.'
                                             : aciklamaCtrl.text.trim(),
                                     telefon: telefonCtrl.text.trim(),
+                                    webSitesi: webSitesiCtrl.text.trim(),
+                                    fotograflar: fotograflar,
                                     tarih: DateTime.now(),
                                     acilMi: acilMi,
                                     goruntulenmeSayisi: 1,
@@ -4582,6 +4839,12 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     required VoidCallback onTap,
     required bool isDark,
   }) {
+    final activeBg = _themePrimary;
+    final activeText =
+        ThemeData.estimateBrightnessForColor(activeBg) == Brightness.light
+            ? const Color(0xFF0F172A)
+            : Colors.white;
+
     return InkWell(
       borderRadius: BorderRadius.circular(10),
       onTap: () {
@@ -4593,7 +4856,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         decoration: BoxDecoration(
           color:
               selected
-                  ? _themeContrastIcon
+                  ? activeBg
                   : (isDark
                       ? Colors.white.withValues(alpha: 0.05)
                       : Colors.black.withValues(alpha: 0.03)),
@@ -4608,7 +4871,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
               size: 14,
               color:
                   selected
-                      ? Colors.white
+                      ? activeText
                       : (isDark ? Colors.white60 : Colors.black54),
             ),
             const SizedBox(width: 5),
@@ -4619,7 +4882,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                 fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
                 color:
                     selected
-                        ? Colors.white
+                        ? activeText
                         : (isDark ? Colors.white70 : Colors.black87),
               ),
             ),
@@ -4711,6 +4974,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     required String hedefTelefon,
     required String benimUid,
     required String benimAd,
+    String? hedefHakkinda,
+    String? hedefWebSitesi,
+    List<String>? hedefFotograflar,
   }) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     int profilModalSekme =
@@ -4723,6 +4989,13 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
       builder: (ctx) {
         return StatefulBuilder(
           builder: (context, setModalState) {
+            final activeBg = _themePrimary;
+            final activeFg =
+                ThemeData.estimateBrightnessForColor(activeBg) ==
+                        Brightness.light
+                    ? const Color(0xFF0F172A)
+                    : Colors.white;
+
             return Container(
               constraints: BoxConstraints(
                 maxHeight: MediaQuery.sizeOf(ctx).height * 0.90,
@@ -4786,7 +5059,186 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                         ),
                       ],
                     ),
-                    const SizedBox(height: 14),
+
+                    // Web Sitesi Butonu (Varsa)
+                    if (hedefWebSitesi != null &&
+                        hedefWebSitesi.trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      InkWell(
+                        onTap: () => _webSitesiAc(hedefWebSitesi),
+                        borderRadius: BorderRadius.circular(10),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 10,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: _themePrimary.withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: _themePrimary.withValues(alpha: 0.3),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Icon(
+                                Icons.language_rounded,
+                                size: 15,
+                                color: _themeContrastIcon,
+                              ),
+                              const SizedBox(width: 6),
+                              Flexible(
+                                child: Text(
+                                  hedefWebSitesi,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: _themeContrastIcon,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.open_in_new_rounded,
+                                size: 13,
+                                color: _themeContrastIcon,
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ],
+
+                    // Tanıtım & Hakkında (Varsa)
+                    if (hedefHakkinda != null &&
+                        hedefHakkinda.trim().isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Container(
+                        padding: const EdgeInsets.all(10),
+                        decoration: BoxDecoration(
+                          color:
+                              isDark
+                                  ? Colors.white.withValues(alpha: 0.05)
+                                  : Colors.black.withValues(alpha: 0.03),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: (isDark
+                                    ? Colors.white
+                                    : Colors.black)
+                                .withValues(alpha: 0.06),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.info_outline_rounded,
+                                  size: 13,
+                                  color: _themeContrastIcon,
+                                ),
+                                const SizedBox(width: 4),
+                                Text(
+                                  'Tanıtım & Açıklama',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w800,
+                                    color: _themeContrastIcon,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              hedefHakkinda,
+                              style: TextStyle(
+                                fontSize: 12,
+                                height: 1.35,
+                                color:
+                                    isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF334E68),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ],
+
+                    // Çalışma & Referans Fotoğrafları Galerisi (Varsa)
+                    if (hedefFotograflar != null &&
+                        hedefFotograflar.isNotEmpty) ...[
+                      const SizedBox(height: 8),
+                      Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              Icon(
+                                Icons.photo_library_outlined,
+                                size: 13,
+                                color: _themeContrastIcon,
+                              ),
+                              const SizedBox(width: 4),
+                              Text(
+                                'Çalışma & Proje Fotoğrafları (${hedefFotograflar.length})',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  fontWeight: FontWeight.w800,
+                                  color: _themeContrastIcon,
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          SizedBox(
+                            height: 80,
+                            child: ListView.separated(
+                              scrollDirection: Axis.horizontal,
+                              itemCount: hedefFotograflar.length,
+                              separatorBuilder:
+                                  (_, __) => const SizedBox(width: 8),
+                              itemBuilder: (ctx, idx) {
+                                final imgUrl = hedefFotograflar[idx];
+                                return InkWell(
+                                  borderRadius: BorderRadius.circular(10),
+                                  onTap:
+                                      () => _fotografBuyutDialog(
+                                        context,
+                                        imgUrl,
+                                      ),
+                                  child: ClipRRect(
+                                    borderRadius: BorderRadius.circular(10),
+                                    child: Image.network(
+                                      imgUrl,
+                                      width: 110,
+                                      height: 80,
+                                      fit: BoxFit.cover,
+                                      errorBuilder:
+                                          (_, __, ___) => Container(
+                                            width: 110,
+                                            height: 80,
+                                            color: Colors.black12,
+                                            child: const Icon(
+                                              Icons.broken_image_rounded,
+                                              color: Colors.grey,
+                                            ),
+                                          ),
+                                    ),
+                                  ),
+                                );
+                              },
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
+
+                    const SizedBox(height: 12),
 
                     // Sekme Seçici: [Geçmiş İşler & Portföy] • [Referanslar & Yorumlar]
                     Container(
@@ -4813,7 +5265,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 decoration: BoxDecoration(
                                   color:
                                       profilModalSekme == 0
-                                          ? _themeContrastIcon
+                                          ? activeBg
                                           : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -4825,7 +5277,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                       fontWeight: FontWeight.w800,
                                       color:
                                           profilModalSekme == 0
-                                              ? Colors.white
+                                              ? activeFg
                                               : (isDark
                                                   ? Colors.white70
                                                   : Colors.black87),
@@ -4849,7 +5301,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 decoration: BoxDecoration(
                                   color:
                                       profilModalSekme == 1
-                                          ? _themeContrastIcon
+                                          ? activeBg
                                           : Colors.transparent,
                                   borderRadius: BorderRadius.circular(10),
                                 ),
@@ -4861,7 +5313,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                       fontWeight: FontWeight.w800,
                                       color:
                                           profilModalSekme == 1
-                                              ? Colors.white
+                                              ? activeFg
                                               : (isDark
                                                   ? Colors.white70
                                                   : Colors.black87),
@@ -6621,67 +7073,134 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Üst Satır: Başlık, Acil Rozeti ve Favori Butonu
+            // Üst Kısım: Fotoğraf (varsa), Başlık, Acil Rozeti ve Favori Butonu
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Expanded(
-                  child: Text(
-                    ilan.baslik,
-                    maxLines: 2,
-                    overflow: TextOverflow.ellipsis,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF102A43),
-                    ),
-                  ),
-                ),
-                if (ilan.acilMi) ...[
-                  const SizedBox(width: 6),
-                  Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 6,
-                      vertical: 2,
-                    ),
-                    decoration: BoxDecoration(
-                      color: Colors.redAccent.withValues(alpha: 0.15),
-                      borderRadius: BorderRadius.circular(6),
-                      border: Border.all(
-                        color: Colors.redAccent.withValues(alpha: 0.3),
+                if (ilan.fotograflar.isNotEmpty) ...[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(10),
+                    child: Container(
+                      width: 52,
+                      height: 52,
+                      color: Colors.black12,
+                      child: Stack(
+                        fit: StackFit.expand,
+                        children: [
+                          Image.network(
+                            ilan.fotograflar.first,
+                            fit: BoxFit.cover,
+                            errorBuilder:
+                                (_, __, ___) => const Icon(
+                                  Icons.image_outlined,
+                                  size: 22,
+                                  color: Colors.grey,
+                                ),
+                          ),
+                          if (ilan.fotograflar.length > 1)
+                            Positioned(
+                              bottom: 2,
+                              right: 2,
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 4,
+                                  vertical: 1,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: Colors.black87,
+                                  borderRadius: BorderRadius.circular(4),
+                                ),
+                                child: Text(
+                                  '+${ilan.fotograflar.length}',
+                                  style: const TextStyle(
+                                    fontSize: 8.5,
+                                    fontWeight: FontWeight.w800,
+                                    color: Colors.white,
+                                  ),
+                                ),
+                              ),
+                            ),
+                        ],
                       ),
                     ),
-                    child: Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.bolt_rounded,
-                          size: 12,
-                          color: Colors.redAccent,
-                        ),
-                        SizedBox(width: 2),
-                        Text(
-                          'ACİL',
-                          style: TextStyle(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w800,
-                            color: Colors.redAccent,
-                          ),
-                        ),
-                      ],
-                    ),
                   ),
+                  const SizedBox(width: 10),
                 ],
-                const SizedBox(width: 6),
-                // Favori İkonu
-                GestureDetector(
-                  onTap: () => onFavoriToggle(!favorideMi),
-                  child: Icon(
-                    favorideMi
-                        ? Icons.favorite_rounded
-                        : Icons.favorite_border_rounded,
-                    size: 20,
-                    color: favorideMi ? Colors.redAccent : Colors.grey,
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Expanded(
+                            child: Text(
+                              ilan.baslik,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 14.5,
+                                fontWeight: FontWeight.w800,
+                                color:
+                                    isDark
+                                        ? Colors.white
+                                        : const Color(0xFF102A43),
+                              ),
+                            ),
+                          ),
+                          if (ilan.acilMi) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.redAccent.withValues(
+                                    alpha: 0.3,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.bolt_rounded,
+                                    size: 12,
+                                    color: Colors.redAccent,
+                                  ),
+                                  SizedBox(width: 2),
+                                  Text(
+                                    'ACİL',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.redAccent,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                          const SizedBox(width: 6),
+                          // Favori İkonu
+                          GestureDetector(
+                            onTap: () => onFavoriToggle(!favorideMi),
+                            child: Icon(
+                              favorideMi
+                                  ? Icons.favorite_rounded
+                                  : Icons.favorite_border_rounded,
+                              size: 20,
+                              color:
+                                  favorideMi ? Colors.redAccent : Colors.grey,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                 ),
               ],
@@ -6708,6 +7227,12 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                             '${ilan.sehir}${ilan.ilce.isNotEmpty ? " / ${ilan.ilce}" : ""}',
                         color: const Color(0xFF0E7490),
                       ),
+                      if (ilan.webSitesi.isNotEmpty)
+                        _buildMiniBadge(
+                          icon: Icons.language_rounded,
+                          text: 'Web',
+                          color: _themeContrastIcon,
+                        ),
                       if (ilan.tahminiMetrajVeyaGun.isNotEmpty)
                         _buildMiniBadge(
                           icon: Icons.straighten_rounded,
