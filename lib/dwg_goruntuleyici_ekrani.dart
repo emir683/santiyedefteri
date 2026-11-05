@@ -338,12 +338,40 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     try {
       final result = await FilePicker.pickFiles(
         type: FileType.custom,
-        allowedExtensions: ['dwg', 'dxf'],
+        allowedExtensions: ['dwg', 'bin'],
       );
 
       if (result != null && result.files.single.path != null) {
         final file = File(result.files.single.path!);
         final fileName = result.files.single.name;
+        final ext = result.files.single.extension?.toLowerCase() ??
+            fileName.split('.').last.toLowerCase();
+
+        // Sadece .dwg ve .bin uzantılı dosyaları kabul et
+        if (ext != 'dwg' && ext != 'bin') {
+          if (mounted) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(
+                content: Row(
+                  children: [
+                    const Icon(Icons.warning_amber_rounded, color: Colors.amber, size: 20),
+                    const SizedBox(width: 8),
+                    Expanded(
+                      child: Text(
+                        'Yalnızca .dwg veya .bin uzantılı CAD çizim dosyalarını seçebilirsiniz.',
+                        style: GoogleFonts.poppins(fontSize: 12),
+                      ),
+                    ),
+                  ],
+                ),
+                backgroundColor: const Color(0xFF102A43),
+                behavior: SnackBarBehavior.floating,
+              ),
+            );
+          }
+          return;
+        }
+
         await _openCadFileDirectly(file, fileName);
       }
     } catch (e) {
@@ -372,6 +400,33 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   /// CAD dosyasını doğrudan WebGL ile açar (Daha önce açılmışsa anında açar, yoksa dönüştürür)
   Future<void> _openCadFileDirectly(File file, String fileName) async {
     if (_isLoading) return; // Çift tıklama ve üst üste yükleme kilidi
+
+    // Sadece .dwg veya .bin uzantılı dosyaları kabul et
+    final lowerName = fileName.toLowerCase();
+    final isValidExt = lowerName.endsWith('.dwg') || lowerName.endsWith('.bin');
+    if (!isValidExt) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error_outline_rounded, color: Colors.white, size: 20),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Geçersiz dosya formatı. Yalnızca .dwg veya .bin dosyaları yüklenebilir.',
+                    style: GoogleFonts.poppins(fontSize: 12),
+                  ),
+                ),
+              ],
+            ),
+            backgroundColor: const Color(0xFFEF4444),
+            behavior: SnackBarBehavior.floating,
+          ),
+        );
+      }
+      return;
+    }
 
     final fileSize = file.existsSync() ? file.lengthSync() : 0;
 
@@ -911,7 +966,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
               ),
               const SizedBox(height: 4),
               Text(
-                'Cihazınızdan .dwg veya .dxf dosyası seçin',
+                'Cihazınızdan .dwg veya .bin dosyası seçin',
                 textAlign: TextAlign.center,
                 style: TextStyle(
                   color: textSecondary,
@@ -946,7 +1001,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                     ),
                     const SizedBox(width: 6),
                     Text(
-                      'DWG & DXF Format Desteği',
+                      'DWG & BIN Format Desteği',
                       style: TextStyle(
                         color: isDark ? const Color(0xFF5EEAD4) : _kBrandTeal,
                         fontSize: 11.5,

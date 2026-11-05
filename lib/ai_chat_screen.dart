@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -45,6 +46,12 @@ class _AIChatScreenState extends State<AIChatScreen>
   int _remainingAiQuota = AiRateLimiter.dailyLimit;
   final GlobalKey<MysticalWavesState> _bottomWavesKey = GlobalKey();
 
+  // Canlı Firestore ekip ve şantiye listeleri (sohbet sırasında eklenenler anında yansır)
+  late List<Isci> _liveIsciler;
+  late List<Santiye> _liveSantiyeler;
+  StreamSubscription<List<Isci>>? _iscilerSub;
+  StreamSubscription<List<Santiye>>? _santiyelerSub;
+
   // Ses Motoru
   late stt.SpeechToText _speech;
   bool _isListening = false;
@@ -61,6 +68,8 @@ class _AIChatScreenState extends State<AIChatScreen>
   void initState() {
     super.initState();
     WidgetsBinding.instance.addObserver(this);
+    _liveIsciler = List<Isci>.from(widget.isciler);
+    _liveSantiyeler = List<Santiye>.from(widget.santiyeler);
 
     _waveAnimController = AnimationController(
       vsync: this,
@@ -81,11 +90,30 @@ class _AIChatScreenState extends State<AIChatScreen>
       if (mounted) setState(() {});
     });
 
-    if (widget.initialPrompt != null && widget.initialPrompt!.trim().isNotEmpty) {
-      WidgetsBinding.instance.addPostFrameCallback((_) {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      _subscribeLiveTeamData();
+      if (widget.initialPrompt != null && widget.initialPrompt!.trim().isNotEmpty) {
         _handleSendText(widget.initialPrompt!, isVoice: false);
-      });
-    }
+      }
+    });
+  }
+
+  void _subscribeLiveTeamData() {
+    if (!mounted || widget.teamId.isEmpty) return;
+    final userModel = Provider.of<UserModel?>(context, listen: false);
+    final kullaniciId = userModel?.uid ?? '';
+    final servisi = FirestoreServisi(kullaniciId: kullaniciId);
+
+    _iscilerSub = servisi.getIscilerStream(widget.teamId).listen((list) {
+      if (mounted) {
+        setState(() => _liveIsciler = list);
+      }
+    });
+    _santiyelerSub = servisi.getSantiyelerStream(widget.teamId).listen((list) {
+      if (mounted) {
+        setState(() => _liveSantiyeler = list);
+      }
+    });
   }
 
   @override
@@ -101,6 +129,8 @@ class _AIChatScreenState extends State<AIChatScreen>
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
+    _iscilerSub?.cancel();
+    _santiyelerSub?.cancel();
     _stopListening();
     _ttsService.stop();
     _waveAnimController.dispose();
@@ -268,20 +298,25 @@ class _AIChatScreenState extends State<AIChatScreen>
     _scrollToBottom();
 
     try {
-      final workerNames = widget.isciler.map((i) => i.ad).toList();
-      final siteNames = widget.santiyeler.map((s) => s.ad).toList();
+      final workerNames = _liveIsciler.map((i) => i.ad).toList();
+      final siteNames = _liveSantiyeler.map((s) => s.ad).toList();
       final userModel = Provider.of<UserModel?>(context, listen: false);
       final kullaniciId = userModel?.uid ?? '';
       final servisi = FirestoreServisi(kullaniciId: kullaniciId);
+      final historySnapshot =
+          _messages.length > 1
+              ? _messages.sublist(0, _messages.length - 1)
+              : const <AIChatMessage>[];
 
       final aiMsg = await AIService.processChatMessage(
         trimmed,
         workerNames: workerNames,
         siteNames: siteNames,
-        isciler: widget.isciler,
-        santiyeler: widget.santiyeler,
+        isciler: _liveIsciler,
+        santiyeler: _liveSantiyeler,
         teamId: widget.teamId,
         servisi: servisi,
+        history: historySnapshot,
       );
 
       // Klavyenin kapanma animasyonunun rahatça tamamlanması ve doğal düşünme hissi için hafif gecikme
@@ -362,7 +397,7 @@ class _AIChatScreenState extends State<AIChatScreen>
 
         Isci? targetWorker;
         if (workerId.isNotEmpty) {
-          for (final isci in widget.isciler) {
+          for (final isci in _liveIsciler) {
             if (isci.id == workerId) {
               targetWorker = isci;
               break;
@@ -370,7 +405,7 @@ class _AIChatScreenState extends State<AIChatScreen>
           }
         }
         if (targetWorker == null && workerName.isNotEmpty) {
-          for (final isci in widget.isciler) {
+          for (final isci in _liveIsciler) {
             if (isci.ad.toLowerCase() == workerName.toLowerCase()) {
               targetWorker = isci;
               break;
@@ -392,13 +427,61 @@ class _AIChatScreenState extends State<AIChatScreen>
         );
         break;
 
+      case AIActionType.addReceivedPayment:
+        final santiyeId = card.data['santiye_id']?.toString();
+        final santiyeAdi =
+            (card.data['santiyeAdi'] ?? card.data['site'] ?? '').toString().trim();
+        final odemeYapan =
+            (card.data['odemeYapan'] ?? 'İşveren / Hakediş Tahsilatı')
+                .toString()
+                .trim();
+        final amount = (card.data['miktar'] ?? card.data['amount'] is num)
+            ? ((card.data['miktar'] ?? card.data['amount']) as num).toDouble()
+            : (double.tryParse('${card.data['miktar'] ?? card.data['amount']}') ?? 0.0);
+
+        if (amount <= 0) {
+          throw Exception('Geçerli bir ödeme tutarı belirtilmelidir.');
+        }
+
+        Santiye? santiye;
+        if (santiyeId != null && santiyeId.isNotEmpty) {
+          for (final s in _liveSantiyeler) {
+            if (s.id == santiyeId) {
+              santiye = s;
+              break;
+            }
+          }
+        }
+        if (santiye == null && santiyeAdi.isNotEmpty) {
+          for (final s in _liveSantiyeler) {
+            if (s.ad.toLowerCase() == santiyeAdi.toLowerCase()) {
+              santiye = s;
+              break;
+            }
+          }
+        }
+        santiye ??= (_liveSantiyeler.isNotEmpty ? _liveSantiyeler.first : null);
+        final resolvedSiteName =
+            santiye?.ad ?? (santiyeAdi.isNotEmpty ? santiyeAdi : 'Merkez Şantiye');
+
+        await servisi.odemeEkle(
+          widget.teamId,
+          AlinanOdeme(
+            miktar: amount,
+            santiyeAdi: resolvedSiteName,
+            alanKisi: odemeYapan.isNotEmpty ? odemeYapan : 'İşveren',
+            tarih: DateTime.now(),
+          ),
+        );
+        break;
+
       case AIActionType.submitDailyLog:
         final santiyeId = card.data['santiye_id']?.toString();
         final santiyeAdi = card.data['santiyeAdi'] ?? card.data['site']?.toString();
 
         Santiye? santiye;
         if (santiyeId != null && santiyeId.isNotEmpty) {
-          for (final s in widget.santiyeler) {
+          for (final s in _liveSantiyeler) {
             if (s.id == santiyeId) {
               santiye = s;
               break;
@@ -406,14 +489,14 @@ class _AIChatScreenState extends State<AIChatScreen>
           }
         }
         if (santiye == null && santiyeAdi != null && santiyeAdi.isNotEmpty) {
-          for (final s in widget.santiyeler) {
+          for (final s in _liveSantiyeler) {
             if (s.ad.toLowerCase() == santiyeAdi.toLowerCase()) {
               santiye = s;
               break;
             }
           }
         }
-        santiye ??= (widget.santiyeler.isNotEmpty ? widget.santiyeler.first : null);
+        santiye ??= (_liveSantiyeler.isNotEmpty ? _liveSantiyeler.first : null);
 
         if (santiye == null) {
           throw Exception('İşlemin atanacağı bir şantiye bulunamadı. Lütfen önce bir şantiye oluşturun.');
@@ -424,7 +507,7 @@ class _AIChatScreenState extends State<AIChatScreen>
             : <String, String>{};
 
         final calisanlarList = <GunlukCalisma>[];
-        for (final isci in widget.isciler) {
+        for (final isci in _liveIsciler) {
           final key = isci.id ?? isci.ad;
           final durum = isciDurumlari[key] ?? isciDurumlari[isci.ad];
           if (durum != null && durum != 'Gelmedi' && durum != 'Yok') {
@@ -447,7 +530,14 @@ class _AIChatScreenState extends State<AIChatScreen>
         final aciklama = (card.data['aciklama'] ?? 'ŞPD AI ile oluşturuldu.').toString();
 
         final bugun = DateTime.now();
-        final gunTarih = DateTime(bugun.year, bugun.month, bugun.day);
+        final parsedTarih =
+            card.data['tarih'] != null
+                ? DateTime.tryParse(card.data['tarih'].toString())
+                : null;
+        final gunTarih =
+            parsedTarih != null
+                ? DateTime(parsedTarih.year, parsedTarih.month, parsedTarih.day)
+                : DateTime(bugun.year, bugun.month, bugun.day);
 
         final yeniRapor = GunlukSantiyeRaporu(
           santiyeAdi: santiye.ad,
@@ -530,29 +620,33 @@ class _AIChatScreenState extends State<AIChatScreen>
     if (card.type == AIActionType.addPayment) {
       final wId = card.data['worker_id']?.toString();
       final wName = card.data['worker']?.toString().toLowerCase();
-      if (wId != null && widget.isciler.any((i) => i.id == wId)) {
+      if (wId != null && _liveIsciler.any((i) => i.id == wId)) {
         selectedWorkerId = wId;
-      } else if (wName != null && widget.isciler.any((i) => i.ad.toLowerCase() == wName)) {
-        selectedWorkerId = widget.isciler.firstWhere((i) => i.ad.toLowerCase() == wName).id;
-      } else if (widget.isciler.isNotEmpty) {
-        selectedWorkerId = widget.isciler.first.id ?? widget.isciler.first.ad;
+      } else if (wName != null && _liveIsciler.any((i) => i.ad.toLowerCase() == wName)) {
+        selectedWorkerId = _liveIsciler.firstWhere((i) => i.ad.toLowerCase() == wName).id;
+      } else if (_liveIsciler.isNotEmpty) {
+        selectedWorkerId = _liveIsciler.first.id ?? _liveIsciler.first.ad;
       }
     }
     final paymentAmountCtrl = TextEditingController(
       text: (card.data['miktar'] ?? card.data['amount'] ?? 500).toString(),
     );
+    final odemeYapanCtrl = TextEditingController(
+      text: (card.data['odemeYapan'] ?? 'İşveren / Hakediş Tahsilatı').toString(),
+    );
 
-    // Günlük Rapor için
+    // Günlük Rapor veya Alınan Ödeme için Şantiye Seçimi
     String? selectedSiteId;
-    if (card.type == AIActionType.submitDailyLog) {
+    if (card.type == AIActionType.submitDailyLog ||
+        card.type == AIActionType.addReceivedPayment) {
       final sId = card.data['santiye_id']?.toString();
       final sAdi = (card.data['santiyeAdi'] ?? card.data['site'])?.toString().toLowerCase();
-      if (sId != null && widget.santiyeler.any((s) => s.id == sId)) {
+      if (sId != null && _liveSantiyeler.any((s) => s.id == sId)) {
         selectedSiteId = sId;
-      } else if (sAdi != null && widget.santiyeler.any((s) => s.ad.toLowerCase() == sAdi)) {
-        selectedSiteId = widget.santiyeler.firstWhere((s) => s.ad.toLowerCase() == sAdi).id;
-      } else if (widget.santiyeler.isNotEmpty) {
-        selectedSiteId = widget.santiyeler.first.id;
+      } else if (sAdi != null && _liveSantiyeler.any((s) => s.ad.toLowerCase() == sAdi)) {
+        selectedSiteId = _liveSantiyeler.firstWhere((s) => s.ad.toLowerCase() == sAdi).id;
+      } else if (_liveSantiyeler.isNotEmpty) {
+        selectedSiteId = _liveSantiyeler.first.id;
       }
     }
     final Map<String, String> tempIsciDurumlari = {};
@@ -561,7 +655,7 @@ class _AIChatScreenState extends State<AIChatScreen>
         tempIsciDurumlari[entry.key.toString()] = entry.value.toString();
       }
     }
-    for (final isci in widget.isciler) {
+    for (final isci in _liveIsciler) {
       final key = isci.id ?? isci.ad;
       if (!tempIsciDurumlari.containsKey(key) && !tempIsciDurumlari.containsKey(isci.ad)) {
         tempIsciDurumlari[key] = 'Tam Gün';
@@ -707,7 +801,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                   // ─── 2. AVANS / ÖDEME DÜZENLEME (LİSTEDEN İŞÇİ SEÇİMİ) ───
                   if (card.type == AIActionType.addPayment) ...[
                     _buildLabel('👷 Personel Seçimi (Ekip Listesinden)', isDark),
-                    if (widget.isciler.isEmpty)
+                    if (_liveIsciler.isEmpty)
                       Container(
                         padding: const EdgeInsets.all(12),
                         decoration: BoxDecoration(
@@ -733,7 +827,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                             value: selectedWorkerId,
                             isExpanded: true,
                             dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                            items: widget.isciler.map((i) {
+                            items: _liveIsciler.map((i) {
                               final id = i.id ?? i.ad;
                               return DropdownMenuItem<String>(
                                 value: id,
@@ -783,10 +877,67 @@ class _AIChatScreenState extends State<AIChatScreen>
                     ),
                   ],
 
+                  // ─── 2.5 ALINAN ÖDEME / HAKEDİŞ TAHSİLATI DÜZENLEME ───
+                  if (card.type == AIActionType.addReceivedPayment) ...[
+                    _buildLabel('🏗️ Şantiye Seçimi', isDark),
+                    if (_liveSantiyeler.isEmpty)
+                      Text(
+                        'Kayıtlı şantiye bulunamadı. Önce şantiye ekleyebilirsiniz.',
+                        style: GoogleFonts.poppins(fontSize: 12, color: Colors.amber[800]),
+                      )
+                    else
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 14),
+                        decoration: BoxDecoration(
+                          color: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF0F7FA),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value: selectedSiteId,
+                            isExpanded: true,
+                            dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+                            items: _liveSantiyeler.map((s) {
+                              return DropdownMenuItem<String>(
+                                value: s.id,
+                                child: Text(
+                                  s.ad,
+                                  style: GoogleFonts.poppins(
+                                    fontSize: 13.5,
+                                    fontWeight: FontWeight.w600,
+                                    color: isDark ? Colors.white : Colors.black87,
+                                  ),
+                                ),
+                              );
+                            }).toList(),
+                            onChanged: (val) {
+                              if (val != null) setModalState(() => selectedSiteId = val);
+                            },
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 14),
+                    _buildLabel('🤝 Ödeme Yapan / Açıklama', isDark),
+                    _buildTextInput(
+                      controller: odemeYapanCtrl,
+                      hint: 'Örn: İşveren 1. Hakediş Ödemesi',
+                      isDark: isDark,
+                    ),
+                    const SizedBox(height: 14),
+                    _buildLabel('💵 Alınan Tutar (₺)', isDark),
+                    _buildTextInput(
+                      controller: paymentAmountCtrl,
+                      hint: '25000',
+                      isDark: isDark,
+                      keyboardType: const TextInputType.numberWithOptions(decimal: true),
+                    ),
+                  ],
+
                   // ─── 3. GÜNLÜK RAPOR & PUANTAJ (LİSTEDEN ŞANTİYE VE İŞÇİ PUANTAJI) ───
                   if (card.type == AIActionType.submitDailyLog) ...[
                     _buildLabel('🏗️ Şantiye Seçimi', isDark),
-                    if (widget.santiyeler.isEmpty)
+                    if (_liveSantiyeler.isEmpty)
                       Text(
                         'Kayıtlı şantiye bulunamadı. Lütfen önce şantiye ekleyin.',
                         style: GoogleFonts.poppins(fontSize: 12, color: Colors.redAccent),
@@ -804,7 +955,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                             value: selectedSiteId,
                             isExpanded: true,
                             dropdownColor: isDark ? const Color(0xFF1E293B) : Colors.white,
-                            items: widget.santiyeler.map((s) {
+                            items: _liveSantiyeler.map((s) {
                               return DropdownMenuItem<String>(
                                 value: s.id,
                                 child: Text(
@@ -828,13 +979,13 @@ class _AIChatScreenState extends State<AIChatScreen>
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
                         _buildLabel('👥 Personel Puantajı', isDark),
-                        if (widget.isciler.isNotEmpty)
+                        if (_liveIsciler.isNotEmpty)
                           Row(
                             children: [
                               InkWell(
                                 onTap: () {
                                   setModalState(() {
-                                    for (var isci in widget.isciler) {
+                                    for (var isci in _liveIsciler) {
                                       final k = isci.id ?? isci.ad;
                                       tempIsciDurumlari[k] = 'Tam Gün';
                                       tempIsciDurumlari[isci.ad] = 'Tam Gün';
@@ -862,7 +1013,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                               InkWell(
                                 onTap: () {
                                   setModalState(() {
-                                    for (var isci in widget.isciler) {
+                                    for (var isci in _liveIsciler) {
                                       final k = isci.id ?? isci.ad;
                                       tempIsciDurumlari[k] = 'Yarım Gün';
                                       tempIsciDurumlari[isci.ad] = 'Yarım Gün';
@@ -890,7 +1041,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                           ),
                       ],
                     ),
-                    if (widget.isciler.isEmpty)
+                    if (_liveIsciler.isEmpty)
                       Text(
                         'Ekipte işçi bulunamadı.',
                         style: GoogleFonts.poppins(fontSize: 12, color: Colors.grey),
@@ -904,7 +1055,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                           border: Border.all(color: isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
                         ),
                         child: Column(
-                          children: widget.isciler.map((isci) {
+                          children: _liveIsciler.map((isci) {
                             final key = isci.id ?? isci.ad;
                             final rawStatus = tempIsciDurumlari[key] ?? tempIsciDurumlari[isci.ad] ?? 'Tam Gün';
                             final currentStatus = (rawStatus == 'Gelmedi' || rawStatus == 'İzinli') ? 'Yok' : rawStatus;
@@ -1172,7 +1323,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                             ),
                             padding: const EdgeInsets.symmetric(vertical: 13),
                           ),
-                          onPressed: () {
+                          onPressed: () async {
                             final updatedData = Map<String, dynamic>.from(card.data);
 
                             if (card.type == AIActionType.addWorker) {
@@ -1185,7 +1336,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                             } else if (card.type == AIActionType.addPayment) {
                               Isci? pickedWorker;
                               if (selectedWorkerId != null) {
-                                for (var i in widget.isciler) {
+                                for (var i in _liveIsciler) {
                                   if (i.id == selectedWorkerId || i.ad == selectedWorkerId) {
                                     pickedWorker = i;
                                     break;
@@ -1197,10 +1348,27 @@ class _AIChatScreenState extends State<AIChatScreen>
                               final amt = double.tryParse(paymentAmountCtrl.text.trim()) ?? 0.0;
                               updatedData['amount'] = amt;
                               updatedData['miktar'] = amt;
+                            } else if (card.type == AIActionType.addReceivedPayment) {
+                              Santiye? pickedSite;
+                              if (selectedSiteId != null) {
+                                for (var s in _liveSantiyeler) {
+                                  if (s.id == selectedSiteId) {
+                                    pickedSite = s;
+                                    break;
+                                  }
+                                }
+                              }
+                              updatedData['santiye_id'] = pickedSite?.id ?? selectedSiteId ?? '';
+                              updatedData['site'] = pickedSite?.ad ?? (updatedData['site'] ?? 'Merkez Şantiye');
+                              updatedData['santiyeAdi'] = pickedSite?.ad ?? (updatedData['santiyeAdi'] ?? 'Merkez Şantiye');
+                              updatedData['odemeYapan'] = odemeYapanCtrl.text.trim();
+                              final amt = double.tryParse(paymentAmountCtrl.text.trim()) ?? 0.0;
+                              updatedData['amount'] = amt;
+                              updatedData['miktar'] = amt;
                             } else if (card.type == AIActionType.submitDailyLog) {
                               Santiye? pickedSite;
                               if (selectedSiteId != null) {
-                                for (var s in widget.santiyeler) {
+                                for (var s in _liveSantiyeler) {
                                   if (s.id == selectedSiteId) {
                                     pickedSite = s;
                                     break;
@@ -1220,6 +1388,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                               updatedData['benzinGideri'] = bz;
                               updatedData['ek_masraf'] = ek;
                               updatedData['ekMasraflar'] = ek;
+                              updatedData['aciklama'] = aciklamaCtrl.text.trim();
                               final calisanSayisi = tempIsciDurumlari.values.where((v) => v != 'Yok' && v != 'Gelmedi').length;
                               final tamSayisi = tempIsciDurumlari.values.where((v) => v == 'Tam Gün').length;
                               final yarimSayisi = tempIsciDurumlari.values.where((v) => v == 'Yarım Gün').length;
@@ -1240,8 +1409,30 @@ class _AIChatScreenState extends State<AIChatScreen>
                             }
 
                             Navigator.pop(ctx);
-                            final updatedCard = card.copyWith(data: updatedData);
-                            _handleCardConfirm(updatedCard);
+                            final updatedCard = card.copyWith(
+                              data: updatedData,
+                              status: AIActionStatus.confirmed,
+                            );
+                            try {
+                              await _handleCardConfirm(updatedCard);
+                              if (mounted) {
+                                setState(() {
+                                  card.data
+                                    ..clear()
+                                    ..addAll(updatedData);
+                                  card.status = AIActionStatus.confirmed;
+                                });
+                              }
+                            } catch (e) {
+                              if (mounted) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(
+                                    content: Text('İşlem başarısız: $e'),
+                                    backgroundColor: Colors.redAccent,
+                                  ),
+                                );
+                              }
+                            }
                           },
                           child: Text(
                             'Kaydet & Onayla',
@@ -1382,8 +1573,12 @@ class _AIChatScreenState extends State<AIChatScreen>
                   '"Ali ustaya 3000 TL elden avans verdim"',
                 ),
                 _helpItem(
-                  '📋 Günlük Puantaj',
-                  '"Merkez şantiyede Ali tam gün Veli yarım gün çalıştı 600 TL yemek"',
+                  '💵 Hakediş Tahsilatı',
+                  '"Kadıköy şantiyesinden 50.000 TL ödeme aldık"',
+                ),
+                _helpItem(
+                  '📋 Günlük & Dünkü Puantaj',
+                  '"Merkez şantiyede dün Ali tam gün Veli yarım gün çalıştı 600 TL yemek"',
                 ),
                 _helpItem(
                   '🏗️ Şantiye Açma',
@@ -1838,37 +2033,46 @@ class _AIChatScreenState extends State<AIChatScreen>
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
-                // Geri Butonu
+                // Geri Butonu (Apple HIG min 44x44pt dokunma alanı)
                 Material(
                   color: Colors.transparent,
                   child: InkWell(
-                    onTap: () => Navigator.pop(context),
-                    borderRadius: BorderRadius.circular(20),
-                    child: Container(
-                      width: 36,
-                      height: 36,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF161A22)
-                            : Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : const Color(0xFFE2E8F0),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      Navigator.pop(context);
+                    },
+                    borderRadius: BorderRadius.circular(22),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: Container(
+                          width: 38,
+                          height: 38,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF161A22)
+                                : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.12)
+                                  : const Color(0xFFE2E8F0),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.3 : 0.05),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.arrow_back_ios_new_rounded,
-                        size: 15,
-                        color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          child: Icon(
+                            Icons.arrow_back_ios_new_rounded,
+                            size: 16,
+                            color: isDark ? Colors.white : const Color(0xFF0F172A),
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -1952,71 +2156,89 @@ class _AIChatScreenState extends State<AIChatScreen>
 
               if (_messages.isNotEmpty)
                 Padding(
-                  padding: const EdgeInsets.only(right: 4),
+                  padding: const EdgeInsets.only(right: 2),
                   child: InkWell(
-                    onTap: () => setState(() => _messages.clear()),
-                    borderRadius: BorderRadius.circular(18),
-                    child: Container(
-                      width: 35,
-                      height: 35,
-                      decoration: BoxDecoration(
-                        color: isDark
-                            ? const Color(0xFF161A22)
-                            : Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(
-                          color: isDark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : const Color(0xFFE2E8F0),
-                        ),
-                        boxShadow: [
-                          BoxShadow(
-                            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-                            blurRadius: 8,
-                            offset: const Offset(0, 2),
+                    onTap: () {
+                      HapticFeedback.selectionClick();
+                      setState(() => _messages.clear());
+                    },
+                    borderRadius: BorderRadius.circular(22),
+                    child: SizedBox(
+                      width: 44,
+                      height: 44,
+                      child: Center(
+                        child: Container(
+                          width: 36,
+                          height: 36,
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? const Color(0xFF161A22)
+                                : Colors.white,
+                            shape: BoxShape.circle,
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white.withValues(alpha: 0.12)
+                                  : const Color(0xFFE2E8F0),
+                            ),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                                blurRadius: 8,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
                           ),
-                        ],
-                      ),
-                      child: Icon(
-                        Icons.refresh_rounded,
-                        size: 17,
-                        color: isDark ? Colors.white70 : const Color(0xFF475569),
+                          child: Icon(
+                            Icons.refresh_rounded,
+                            size: 17,
+                            color: isDark ? Colors.white70 : const Color(0xFF475569),
+                          ),
+                        ),
                       ),
                     ),
                   ),
                 ),
 
-              // Dairesel Ayar Butonu
+              // Dairesel Ayar Butonu (Apple HIG 44x44pt dokunma alanı)
               Material(
                 color: Colors.transparent,
                 child: InkWell(
-                  onTap: _openHelpGuide,
-                  borderRadius: BorderRadius.circular(18),
-                  child: Container(
-                    width: 35,
-                    height: 35,
-                    decoration: BoxDecoration(
-                      color: isDark
-                          ? const Color(0xFF161A22)
-                          : Colors.white,
-                      shape: BoxShape.circle,
-                      border: Border.all(
-                        color: isDark
-                            ? Colors.white.withValues(alpha: 0.12)
-                            : const Color(0xFFE2E8F0),
-                      ),
-                      boxShadow: [
-                        BoxShadow(
-                          color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
-                          blurRadius: 8,
-                          offset: const Offset(0, 2),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _openHelpGuide();
+                  },
+                  borderRadius: BorderRadius.circular(22),
+                  child: SizedBox(
+                    width: 44,
+                    height: 44,
+                    child: Center(
+                      child: Container(
+                        width: 36,
+                        height: 36,
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? const Color(0xFF161A22)
+                              : Colors.white,
+                          shape: BoxShape.circle,
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.12)
+                                : const Color(0xFFE2E8F0),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
-                      ],
-                    ),
-                    child: Icon(
-                      Icons.settings_outlined,
-                      size: 17,
-                      color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        child: Icon(
+                          Icons.settings_outlined,
+                          size: 17,
+                          color: isDark ? Colors.white : const Color(0xFF0F172A),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -2076,43 +2298,49 @@ class _AIChatScreenState extends State<AIChatScreen>
           ),
         );
       },
-      borderRadius: BorderRadius.circular(18),
-      child: Container(
-        width: 35,
-        height: 35,
-        decoration: BoxDecoration(
-          color: _autoVoicePlayback
-              ? (isDark
-                  ? const Color(0xFF10B981).withValues(alpha: 0.16)
-                  : const Color(0xFFE6FBF5))
-              : (isDark ? const Color(0xFF161A22) : Colors.white),
-          shape: BoxShape.circle,
-          border: Border.all(
-            color: _autoVoicePlayback
-                ? const Color(0xFF10B981).withValues(alpha: 0.45)
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.12)
-                    : const Color(0xFFE2E8F0)),
-            width: _autoVoicePlayback ? 1.4 : 1.0,
-          ),
-          boxShadow: [
-            BoxShadow(
+      borderRadius: BorderRadius.circular(22),
+      child: SizedBox(
+        width: 44,
+        height: 44,
+        child: Center(
+          child: Container(
+            width: 36,
+            height: 36,
+            decoration: BoxDecoration(
               color: _autoVoicePlayback
-                  ? const Color(0xFF10B981).withValues(alpha: 0.20)
-                  : Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
-              blurRadius: 10,
-              offset: const Offset(0, 3),
+                  ? (isDark
+                      ? const Color(0xFF10B981).withValues(alpha: 0.16)
+                      : const Color(0xFFE6FBF5))
+                  : (isDark ? const Color(0xFF161A22) : Colors.white),
+              shape: BoxShape.circle,
+              border: Border.all(
+                color: _autoVoicePlayback
+                    ? const Color(0xFF10B981).withValues(alpha: 0.45)
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : const Color(0xFFE2E8F0)),
+                width: _autoVoicePlayback ? 1.4 : 1.0,
+              ),
+              boxShadow: [
+                BoxShadow(
+                  color: _autoVoicePlayback
+                      ? const Color(0xFF10B981).withValues(alpha: 0.20)
+                      : Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
+                  blurRadius: 10,
+                  offset: const Offset(0, 3),
+                ),
+              ],
             ),
-          ],
-        ),
-        child: Icon(
-          _autoVoicePlayback
-              ? Icons.volume_up_rounded
-              : Icons.volume_off_rounded,
-          size: 17,
-          color: _autoVoicePlayback
-              ? const Color(0xFF10B981)
-              : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+            child: Icon(
+              _autoVoicePlayback
+                  ? Icons.volume_up_rounded
+                  : Icons.volume_off_rounded,
+              size: 17,
+              color: _autoVoicePlayback
+                  ? const Color(0xFF10B981)
+                  : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
+            ),
+          ),
         ),
       ),
     );
@@ -2471,6 +2699,13 @@ class _AIChatScreenState extends State<AIChatScreen>
                 icon: Icons.price_check_rounded,
                 iconColor: const Color(0xFF059669),
                 text: 'Ahmet ustaya 2.000 ₺ avans verdim',
+                isDark: isDark,
+              ),
+              const SizedBox(width: 10),
+              _buildPromptPill(
+                icon: Icons.savings_rounded,
+                iconColor: const Color(0xFF0EA5E9),
+                text: 'Şantiyeden 50.000 ₺ hakediş ödemesi aldık',
                 isDark: isDark,
               ),
               const SizedBox(width: 10),

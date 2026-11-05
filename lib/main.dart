@@ -6,7 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:provider/provider.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'auth_gate.dart';
+import 'widgets/acilis_animasyon_ekrani.dart';
 import 'firebase_options.dart';
 import 'auth_servisi.dart';
 import 'deep_link_service.dart';
@@ -211,6 +211,13 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
               scaffoldBackgroundColor: AppColors.lightBackground,
               textTheme: GoogleFonts.poppinsTextTheme(textTheme),
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: {
+                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                },
+              ),
               colorSchemeSeed: Colors.green,
               appBarTheme: AppBarTheme(
                 surfaceTintColor: Colors.transparent,
@@ -235,6 +242,13 @@ class MyApp extends StatelessWidget {
               useMaterial3: true,
               brightness: Brightness.dark,
               scaffoldBackgroundColor: Colors.black,
+              pageTransitionsTheme: const PageTransitionsTheme(
+                builders: {
+                  TargetPlatform.iOS: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.macOS: CupertinoPageTransitionsBuilder(),
+                  TargetPlatform.android: ZoomPageTransitionsBuilder(),
+                },
+              ),
               textTheme: GoogleFonts.poppinsTextTheme(
                 Theme.of(context).primaryTextTheme,
               ),
@@ -293,7 +307,7 @@ class MyApp extends StatelessWidget {
             ],
             supportedLocales: const [Locale('tr', 'TR')],
             locale: const Locale('tr', 'TR'),
-            home: const AuthGate(),
+            home: const AppLaunchGate(),
           );
         },
       ),

@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
+import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../bildirim_servisi.dart';
 import '../fcm_servisi.dart';
 import 'glass_surface.dart';
 
@@ -14,9 +16,28 @@ class BildirimOnboardingDialog extends StatelessWidget {
     final bool gosterildi = prefs.getBool('bildirim_onboarding_gosterildi') ?? false;
     if (gosterildi) return;
 
-    final status = await Permission.notification.status;
-    if (status.isGranted) {
+    bool izinli = false;
+    try {
+      final status = await Permission.notification.status;
+      if (status.isGranted || status.isLimited || status.isProvisional) {
+        izinli = true;
+      }
+    } catch (_) {}
+
+    if (!izinli) {
+      try {
+        final settings = await FirebaseMessaging.instance.getNotificationSettings();
+        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional) {
+          izinli = true;
+        }
+      } catch (_) {}
+    }
+
+    if (izinli) {
       await prefs.setBool('bildirim_onboarding_gosterildi', true);
+      await FcmServisi().kullaniciBagla();
+      await BildirimServisi().varsayilanHatirlaticilariSenkronizeEt();
       return;
     }
 
@@ -37,9 +58,32 @@ class BildirimOnboardingDialog extends StatelessWidget {
       Navigator.of(context).pop();
     }
 
-    final status = await Permission.notification.request();
-    if (status.isGranted) {
+    bool izinAlindi = false;
+    try {
+      final status = await Permission.notification.request();
+      if (status.isGranted || status.isLimited || status.isProvisional) {
+        izinAlindi = true;
+      }
+    } catch (_) {}
+
+    if (!izinAlindi) {
+      try {
+        final settings = await FirebaseMessaging.instance.requestPermission(
+          alert: true,
+          badge: true,
+          sound: true,
+          provisional: false,
+        );
+        if (settings.authorizationStatus == AuthorizationStatus.authorized ||
+            settings.authorizationStatus == AuthorizationStatus.provisional) {
+          izinAlindi = true;
+        }
+      } catch (_) {}
+    }
+
+    if (izinAlindi) {
       await FcmServisi().kullaniciBagla();
+      await BildirimServisi().varsayilanHatirlaticilariSenkronizeEt();
     }
   }
 

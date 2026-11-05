@@ -468,61 +468,70 @@ class _LoginEkraniState extends State<LoginEkrani> {
                         ],
                       ),
                       const SizedBox(height: 14),
+                      if (!kIsWeb &&
+                          (defaultTargetPlatform == TargetPlatform.iOS ||
+                              defaultTargetPlatform == TargetPlatform.macOS)) ...[
+                        OutlinedButton.icon(
+                          icon: Icon(
+                            Icons.apple,
+                            size: 22,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
+                          label: Text(
+                            "Apple ile Devam Et",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              letterSpacing: -0.2,
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
+                          ),
+                          onPressed: _loading ? null : _signInWithApple,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 50),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            side: BorderSide(
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                            backgroundColor: isDark ? Colors.white : Colors.black,
+                            foregroundColor: isDark ? Colors.black : Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       OutlinedButton.icon(
                         icon: Image.asset('assets/google_logo.png', height: 20),
                         label: const Text(
                           "Google ile Devam Et",
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                         onPressed: _loading ? null : _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                           side: BorderSide(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.12)
+                                ? Colors.white.withValues(alpha: 0.14)
                                 : const Color(0xFFBFD0D6),
                           ),
                           backgroundColor: isDark
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.white.withValues(alpha: 0.85),
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.white.withValues(alpha: 0.90),
                           foregroundColor: isDark
                               ? Colors.white
                               : const Color(0xFF10232C),
                         ),
                       ),
-                      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ...[
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          icon: const Icon(
-                            Icons.apple,
-                            size: 22,
-                            color: Colors.white,
-                          ),
-                          label: const Text(
-                            "Apple ile Devam Et",
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
-                          ),
-                          onPressed: _loading ? null : _signInWithApple,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            side: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.20)
-                                  : const Color(0xFF0F172A),
-                            ),
-                            backgroundColor: isDark
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : Colors.black,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

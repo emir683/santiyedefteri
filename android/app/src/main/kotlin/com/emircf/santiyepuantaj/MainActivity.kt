@@ -174,6 +174,12 @@ class MainActivity: FlutterActivity() {
                 displayName = displayName!!.substringAfterLast("/")
             }
 
+            val lower = displayName!!.lowercase()
+            if (!lower.endsWith(".dwg") && !lower.endsWith(".bin")) {
+                Log.w(TAG, "Yalnizca .dwg ve .bin dosyalari desteklenmektedir, yok sayildi: $displayName")
+                return null
+            }
+
             val inboxDir = File(cacheDir, "cad_inbox")
             if (!inboxDir.exists()) inboxDir.mkdirs()
 

@@ -2,12 +2,20 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_local_notifications_plus/flutter_local_notifications_plus.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:shared_preferences/shared_preferences.dart';
 import 'package:timezone/data/latest_all.dart' as tz;
 import 'package:timezone/timezone.dart' as tz;
 import 'main.dart' show navigatorKey;
 import 'cad_webgl_ekrani.dart';
+import 'dwg_goruntuleyici_ekrani.dart';
 import 'haftalik_ozet_ekrani.dart';
 import 'gunluk_rapor_ekrani.dart';
+import 'isci_ekrani.dart';
+import 'santiye_ekrani.dart';
+import 'odemeler_ekrani.dart';
+import 'ekip_yonetimi_ekrani.dart';
+import 'bildirim_ekrani.dart';
 
 class BildirimServisi {
   static const String _androidNotificationIcon = '@drawable/notification_icon';
@@ -68,39 +76,68 @@ class BildirimServisi {
 
     if (payload.startsWith('cad_project:')) {
       final data = payload.substring('cad_project:'.length).split('|');
-      if (data.isNotEmpty) {
-        final url = data[0];
+      if (data.isNotEmpty && data[0].trim().isNotEmpty) {
+        final url = data[0].trim();
         final title = data.length > 1 ? data[1] : 'CAD Çizimi';
-        _navigateToCadViewer(url, title);
+        _navigateToPage(CadWebglEkrani(webglUrl: url, projeAdi: title));
+      } else {
+        _navigateToPage(const DwgGoruntuleyiciEkrani());
       }
+    } else if (payload.startsWith('cad_screen:')) {
+      _navigateToPage(const DwgGoruntuleyiciEkrani());
     } else if (payload.startsWith('weekly_summary:')) {
       final teamId = payload.substring('weekly_summary:'.length).trim();
-      if (teamId.isNotEmpty) {
-        _navigateToWeeklySummary(teamId);
-      }
+      _resolveTeamIdAndNavigate(
+        teamId,
+        (resolvedTeamId) => HaftalikOzetEkrani(teamId: resolvedTeamId),
+      );
     } else if (payload.startsWith('daily_report:')) {
       final teamId = payload.substring('daily_report:'.length).trim();
-      if (teamId.isNotEmpty) {
-        _navigateToDailyReport(teamId);
-      }
+      _resolveTeamIdAndNavigate(
+        teamId,
+        (resolvedTeamId) => GunlukRaporEkrani(teamId: resolvedTeamId),
+      );
+    } else if (payload.startsWith('workers:')) {
+      final teamId = payload.substring('workers:'.length).trim();
+      _resolveTeamIdAndNavigate(
+        teamId,
+        (resolvedTeamId) => IsciEkrani(teamId: resolvedTeamId),
+      );
+    } else if (payload.startsWith('sites:')) {
+      final teamId = payload.substring('sites:'.length).trim();
+      _resolveTeamIdAndNavigate(
+        teamId,
+        (resolvedTeamId) => SantiyeEkrani(teamId: resolvedTeamId),
+      );
+    } else if (payload.startsWith('payments:')) {
+      final teamId = payload.substring('payments:'.length).trim();
+      _resolveTeamIdAndNavigate(
+        teamId,
+        (resolvedTeamId) => OdemelerEkrani(teamId: resolvedTeamId),
+      );
+    } else if (payload.startsWith('team_management:')) {
+      final teamId = payload.substring('team_management:'.length).trim();
+      _resolveTeamIdAndNavigate(
+        teamId,
+        (resolvedTeamId) => EkipYonetimiEkrani(teamId: resolvedTeamId),
+      );
+    } else if (payload.startsWith('notifications:')) {
+      final teamId = payload.substring('notifications:'.length).trim();
+      _resolveTeamIdAndNavigate(
+        teamId,
+        (resolvedTeamId) => BildirimEkrani(teamId: resolvedTeamId),
+      );
     }
   }
 
-  static void _navigateToCadViewer(String url, String title) {
+  static void _navigateToPage(Widget page) {
     void doNavigate() {
       final navState = navigatorKey.currentState;
       if (navState == null) {
         Future.delayed(const Duration(milliseconds: 200), doNavigate);
         return;
       }
-      navState.push(
-        MaterialPageRoute(
-          builder: (_) => CadWebglEkrani(
-            webglUrl: url,
-            projeAdi: title,
-          ),
-        ),
-      );
+      navState.push(MaterialPageRoute(builder: (_) => page));
     }
 
     WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -108,42 +145,24 @@ class BildirimServisi {
     });
   }
 
-  static void _navigateToWeeklySummary(String teamId) {
-    void doNavigate() {
-      final navState = navigatorKey.currentState;
-      if (navState == null) {
-        Future.delayed(const Duration(milliseconds: 200), doNavigate);
-        return;
-      }
-      navState.push(
-        MaterialPageRoute(
-          builder: (_) => HaftalikOzetEkrani(teamId: teamId),
-        ),
-      );
+  static Future<void> _resolveTeamIdAndNavigate(
+    String rawTeamId,
+    Widget Function(String teamId) pageBuilder,
+  ) async {
+    String targetTeamId = rawTeamId.trim();
+    if (targetTeamId.isEmpty) {
+      try {
+        final uid = FirebaseAuth.instance.currentUser?.uid;
+        if (uid != null && uid.isNotEmpty) {
+          final userDoc =
+              await FirebaseFirestore.instance.collection('users').doc(uid).get();
+          targetTeamId = (userDoc.data()?['teamId'] as String?)?.trim() ?? '';
+        }
+      } catch (_) {}
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      doNavigate();
-    });
-  }
-
-  static void _navigateToDailyReport(String teamId) {
-    void doNavigate() {
-      final navState = navigatorKey.currentState;
-      if (navState == null) {
-        Future.delayed(const Duration(milliseconds: 200), doNavigate);
-        return;
-      }
-      navState.push(
-        MaterialPageRoute(
-          builder: (_) => GunlukRaporEkrani(teamId: teamId),
-        ),
-      );
+    if (targetTeamId.isNotEmpty) {
+      _navigateToPage(pageBuilder(targetTeamId));
     }
-
-    WidgetsBinding.instance.addPostFrameCallback((_) {
-      doNavigate();
-    });
   }
 
   static int _notifIdFromFileId(String fileId) {
@@ -400,6 +419,7 @@ class BildirimServisi {
       saat: TimeOfDay(hour: saat, minute: dakika),
       channelId: 'gunluk_rapor_kanali',
       channelName: 'Günlük Rapor Hatırlatıcı',
+      payload: 'daily_report:',
     );
   }
 
@@ -415,6 +435,7 @@ class BildirimServisi {
       saat: TimeOfDay(hour: saat, minute: dakika),
       channelId: 'hava_durumu_kanali',
       channelName: 'Saha Koşulları & Hava Durumu Hatırlatıcı',
+      payload: 'daily_report:',
     );
   }
 
@@ -430,6 +451,7 @@ class BildirimServisi {
       saat: TimeOfDay(hour: saat, minute: dakika),
       channelId: 'odeme_kanali',
       channelName: 'Ödeme ve Hakediş Hatırlatıcı',
+      payload: 'payments:',
     );
   }
 
@@ -445,11 +467,45 @@ class BildirimServisi {
       saat: TimeOfDay(hour: saat, minute: dakika),
       channelId: 'cad_kanali',
       channelName: 'Projeler ve CAD Çizimleri',
+      payload: 'cad_screen:',
     );
   }
 
   Future<void> iptalEtCadHatirlatici() async {
     await flutterLocalNotificationsPlugin.cancel(9003);
+  }
+
+  /// Bildirim izni verildiğinde veya uygulama açıldığında varsayılan yerel hatırlatıcıları senkronize eder.
+  Future<void> varsayilanHatirlaticilariSenkronizeEt() async {
+    if (kIsWeb) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final puantajAktif =
+          prefs.getBool('puantajHatirlaticiAktif') ??
+          prefs.getBool('hatirlatmalarAktif') ??
+          true;
+      final havaAktif = prefs.getBool('havaDurumuBildirimleriAktif') ?? true;
+      final odemeAktif = prefs.getBool('odemeBildirimleriAktif') ?? true;
+      final cadAktif = prefs.getBool('cadBildirimleriAktif') ?? true;
+
+      final saat = prefs.getInt('hatirlatmaSaati') ?? 20;
+      final dakika = prefs.getInt('hatirlatmaDakikasi') ?? 0;
+
+      if (puantajAktif) {
+        await planlaPuantajHatirlatici(saat: saat, dakika: dakika);
+      }
+      if (havaAktif) {
+        await planlaHavaDurumuHatirlatici(saat: 8, dakika: 0);
+      }
+      if (odemeAktif) {
+        await planlaOdemeHatirlatici(saat: 10, dakika: 0);
+      }
+      if (cadAktif) {
+        await planlaCadHatirlatici(saat: 14, dakika: 0);
+      }
+    } catch (e) {
+      debugPrint('Varsayılan hatırlatıcı senkronizasyon uyarısı: $e');
+    }
   }
 
   tz.TZDateTime _sonrakiBildirimZamani(TimeOfDay saat) {

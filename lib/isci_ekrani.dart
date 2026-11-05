@@ -237,8 +237,9 @@ class _IsciEkraniState extends State<IsciEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withValues(alpha: 0.8),
-      transitionDuration: const Duration(milliseconds: 200),
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      transitionDuration: const Duration(milliseconds: 240),
+      transitionBuilder: AnimasyonluDialog.gecisYapici,
       pageBuilder: (ctx, anim1, anim2) {
         return StatefulBuilder(
           builder: (context, setStateDialog) {
@@ -450,8 +451,9 @@ class _IsciEkraniState extends State<IsciEkrani>
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withValues(alpha: 0.8),
-      transitionDuration: const Duration(milliseconds: 200),
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      transitionDuration: const Duration(milliseconds: 240),
+      transitionBuilder: AnimasyonluDialog.gecisYapici,
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
           children: [
@@ -1128,7 +1130,11 @@ class _IsciEkraniState extends State<IsciEkrani>
           ),
           floatingActionButton: isFinans
               ? Padding(
-                  padding: const EdgeInsets.only(bottom: _shellDockFabPadding),
+                  padding: EdgeInsets.only(
+                    bottom: Navigator.of(context).canPop()
+                        ? 24
+                        : _shellDockFabPadding,
+                  ),
                   child: FloatingActionButton.extended(
                     key: _fabKey,
                     heroTag: 'isci_fab',

@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'auth_servisi.dart';
+import 'animasyon_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 
@@ -18,12 +19,14 @@ class ProfilEkrani extends StatefulWidget {
 }
 
 class _ProfilEkraniState extends State<ProfilEkrani> {
+  final _adSoyadController = TextEditingController();
   final _usernameController = TextEditingController();
   final _authServisi = AuthServisi();
   bool _degisiklikYapildi = false;
 
   @override
   void dispose() {
+    _adSoyadController.dispose();
     _usernameController.dispose();
     super.dispose();
   }
@@ -40,8 +43,9 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withValues(alpha: 0.8),
-      transitionDuration: const Duration(milliseconds: 200),
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      transitionDuration: const Duration(milliseconds: 240),
+      transitionBuilder: AnimasyonluDialog.gecisYapici,
       pageBuilder: (ctx, anim1, anim2) {
         return StatefulBuilder(
           builder: (context, setDialogState) => Stack(
@@ -160,16 +164,17 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
   void _hesabiSilDialog() {
     bool loading = false;
     String hataMesaji = "";
-    bool sifreGerekiyor = false;
     final bool hasPassword = _authServisi.hasPasswordProvider;
+    bool sifreGerekiyor = hasPassword;
     final parolaController = TextEditingController();
 
     showGeneralDialog(
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withValues(alpha: 0.8),
-      transitionDuration: const Duration(milliseconds: 200),
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      transitionDuration: const Duration(milliseconds: 240),
+      transitionBuilder: AnimasyonluDialog.gecisYapici,
       pageBuilder: (ctx, anim1, anim2) {
         return StatefulBuilder(
           builder: (context, setDialogState) => Stack(
@@ -302,13 +307,22 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                                           ),
                                         ),
                                         onPressed: () async {
+                                          final girilenSifre =
+                                              parolaController.text.trim();
+                                          if (hasPassword &&
+                                              girilenSifre.isEmpty) {
+                                            setDialogState(() {
+                                              sifreGerekiyor = true;
+                                              hataMesaji =
+                                                  "Lütfen mevcut şifrenizi girin.";
+                                            });
+                                            return;
+                                          }
                                           setDialogState(() {
                                             loading = true;
                                             hataMesaji = "";
                                           });
                                           try {
-                                            final girilenSifre =
-                                                parolaController.text.trim();
                                             await _authServisi.hesabiVeVerileriSil(
                                               parola: girilenSifre.isNotEmpty
                                                   ? girilenSifre
@@ -463,42 +477,10 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
               controller.text,
               style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black),
             ),
+            const SizedBox(width: 8),
+            const Icon(Icons.edit_outlined, size: 18, color: _kBrandTeal),
           ],
         ),
-      ),
-    );
-  }
-
-  // --- 3. BİLGİ KARTI (Sadece Gösterim) ---
-  Widget _buildInfoCard(BuildContext context, String label, String value, IconData icon) {
-    final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF1E1E1E) : Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: isDark ? Colors.grey[800]! : Colors.grey[300]!, width: 1.5),
-      ),
-      child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.blue.withValues(alpha: 0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: Colors.blue),
-          ),
-          const SizedBox(width: 16),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Text(label, style: const TextStyle(fontSize: 12, color: Colors.grey)),
-              const SizedBox(height: 2),
-              Text(value, style: const TextStyle(fontSize: 16, fontWeight: FontWeight.bold)),
-            ],
-          ),
-        ],
       ),
     );
   }
@@ -530,9 +512,20 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
             final userData = snapshot.data!.data() as Map<String, dynamic>;
             final String mevcutKullaniciAdi = userData['username'] ?? '';
             final String adSoyad = userData['adSoyad'] ?? 'İsimsiz Kullanıcı';
-            final String email = userData['email'] ?? 'E-posta yok';
+            final String rawEmail =
+                (userData['email'] as String?)?.trim() ??
+                (_authServisi.currentUserEmail ?? '').trim();
+            final String email =
+                rawEmail.isNotEmpty
+                    ? (rawEmail.endsWith('@privaterelay.appleid.com')
+                        ? 'Apple Gizli E-posta ($rawEmail)'
+                        : rawEmail)
+                    : 'Apple ID ile Giriş Yapıldı';
 
-            if (!_degisiklikYapildi) _usernameController.text = mevcutKullaniciAdi;
+            if (!_degisiklikYapildi) {
+              _adSoyadController.text = adSoyad;
+              _usernameController.text = mevcutKullaniciAdi;
+            }
 
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
@@ -553,10 +546,14 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                   ),
                   const SizedBox(height: 16),
                   Text(adSoyad, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
-                  Text(email, style: const TextStyle(fontSize: 14, color: Colors.grey)),
+                  Text(
+                    email,
+                    textAlign: TextAlign.center,
+                    style: const TextStyle(fontSize: 13.5, color: Colors.grey),
+                  ),
                   const SizedBox(height: 32),
 
-                  _buildInfoCard(context, "Ad Soyad", adSoyad, Icons.badge_outlined),
+                  _buildFocusInput(context, _adSoyadController, "Ad Soyad", Icons.badge_outlined),
                   const SizedBox(height: 16),
 
                   _buildFocusInput(context, _usernameController, "Kullanıcı Adı", Icons.alternate_email),
@@ -575,17 +572,22 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
                         onPressed: () async {
-                          if (_usernameController.text.trim().isNotEmpty) {
-                            await firestoreServisi.kullaniciAdiniGuncelle(_usernameController.text.trim());
-                            if (!mounted || !context.mounted) return;
-                            setState(() => _degisiklikYapildi = false);
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              const SnackBar(
-                                content: Text("Kullanıcı adı güncellendi."),
-                                backgroundColor: _kBrandTeal,
-                              ),
-                            );
+                          final yeniAdSoyad = _adSoyadController.text.trim();
+                          final yeniUsername = _usernameController.text.trim();
+                          if (yeniAdSoyad.isNotEmpty && yeniAdSoyad != adSoyad) {
+                            await firestoreServisi.adSoyadGuncelle(yeniAdSoyad);
                           }
+                          if (yeniUsername.isNotEmpty && yeniUsername != mevcutKullaniciAdi) {
+                            await firestoreServisi.kullaniciAdiniGuncelle(yeniUsername);
+                          }
+                          if (!mounted || !context.mounted) return;
+                          setState(() => _degisiklikYapildi = false);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            const SnackBar(
+                              content: Text("Profil bilgileriniz güncellendi."),
+                              backgroundColor: _kBrandTeal,
+                            ),
+                          );
                         },
                       ),
                     ),

@@ -53,12 +53,18 @@ class CadIntentService {
           final filePath = args['filePath'] as String?;
           final fileName = args['fileName'] as String?;
           if (filePath != null && filePath.isNotEmpty) {
-            final payload = CadFilePayload(
-              filePath: filePath,
-              fileName: fileName ?? 'Proje_Cizimi.dwg',
-            );
-            debugPrint('[CAD_INTENT] Gelen dosya yakalandi: $payload');
-            _handleIncomingCadFile(payload);
+            final name = fileName ?? 'Proje_Cizimi.dwg';
+            final lower = name.toLowerCase();
+            if (lower.endsWith('.dwg') || lower.endsWith('.bin')) {
+              final payload = CadFilePayload(
+                filePath: filePath,
+                fileName: name,
+              );
+              debugPrint('[CAD_INTENT] Gelen dosya yakalandi: $payload');
+              _handleIncomingCadFile(payload);
+            } else {
+              debugPrint('[CAD_INTENT] Desteklenmeyen uzanti yok sayildi: $name');
+            }
           }
         }
       }
@@ -73,16 +79,20 @@ class CadIntentService {
         final filePath = initialData['filePath'] as String?;
         final fileName = initialData['fileName'] as String?;
         if (filePath != null && filePath.isNotEmpty) {
-          _pendingPayload = CadFilePayload(
-            filePath: filePath,
-            fileName: fileName ?? 'Proje_Cizimi.dwg',
-          );
-          debugPrint(
-            '[CAD_INTENT] Soguk acilis CAD dosyasi mevcut: $_pendingPayload',
-          );
-          WidgetsBinding.instance.addPostFrameCallback((_) {
-            tryPresentPendingCadFile();
-          });
+          final name = fileName ?? 'Proje_Cizimi.dwg';
+          final lower = name.toLowerCase();
+          if (lower.endsWith('.dwg') || lower.endsWith('.bin')) {
+            _pendingPayload = CadFilePayload(
+              filePath: filePath,
+              fileName: name,
+            );
+            debugPrint(
+              '[CAD_INTENT] Soguk acilis CAD dosyasi mevcut: $_pendingPayload',
+            );
+            WidgetsBinding.instance.addPostFrameCallback((_) {
+              tryPresentPendingCadFile();
+            });
+          }
         }
       }
     } catch (e) {
@@ -91,6 +101,10 @@ class CadIntentService {
   }
 
   void _handleIncomingCadFile(CadFilePayload payload) {
+    final lower = payload.fileName.toLowerCase();
+    if (!lower.endsWith('.dwg') && !lower.endsWith('.bin')) {
+      return;
+    }
     _pendingPayload = payload;
     _fileStreamController.add(payload);
     tryPresentPendingCadFile();

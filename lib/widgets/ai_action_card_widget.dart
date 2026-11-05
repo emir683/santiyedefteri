@@ -34,6 +34,8 @@ class _AIActionCardWidgetState extends State<AIActionCardWidget> {
         return Icons.person_add_alt_1_rounded;
       case AIActionType.addPayment:
         return Icons.payments_rounded;
+      case AIActionType.addReceivedPayment:
+        return Icons.savings_rounded;
       case AIActionType.submitDailyLog:
         return Icons.assignment_turned_in_rounded;
       case AIActionType.addSite:
@@ -53,6 +55,8 @@ class _AIActionCardWidgetState extends State<AIActionCardWidget> {
         return const Color(0xFF10B981);
       case AIActionType.addPayment:
         return const Color(0xFF059669);
+      case AIActionType.addReceivedPayment:
+        return const Color(0xFF0EA5E9);
       case AIActionType.submitDailyLog:
         return const Color(0xFFF59E0B);
       case AIActionType.addSite:
@@ -169,14 +173,14 @@ class _AIActionCardWidgetState extends State<AIActionCardWidget> {
                           flex: 3,
                           child: InkWell(
                             onTap: _isLoading ? null : _handleConfirm,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              height: 38,
+                              height: 44,
                               decoration: BoxDecoration(
                                 gradient: const LinearGradient(
                                   colors: [Color(0xFF10B981), Color(0xFF0D9488)],
                                 ),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(12),
                                 boxShadow: [
                                   BoxShadow(
                                     color: const Color(0xFF10B981).withValues(alpha: 0.3),
@@ -225,14 +229,14 @@ class _AIActionCardWidgetState extends State<AIActionCardWidget> {
                           flex: 2,
                           child: InkWell(
                             onTap: _isLoading ? null : widget.onEdit,
-                            borderRadius: BorderRadius.circular(10),
+                            borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              height: 38,
+                              height: 44,
                               decoration: BoxDecoration(
                                 color: widget.isDark
                                     ? Colors.white.withValues(alpha: 0.06)
                                     : const Color(0xFFF1F5F9),
-                                borderRadius: BorderRadius.circular(10),
+                                borderRadius: BorderRadius.circular(12),
                                 border: Border.all(
                                   color: widget.isDark
                                       ? Colors.white.withValues(alpha: 0.1)
@@ -392,6 +396,24 @@ class _AIActionCardWidgetState extends State<AIActionCardWidget> {
 
         rows.add(_buildInfoRow('👷 Personel:', '$worker'));
         rows.add(_buildInfoRow('💰 Avans Tutarı:', amtText, isHighlight: true));
+        break;
+
+      case AIActionType.addReceivedPayment:
+        final site = d['santiyeAdi'] ?? d['site'] ?? 'Mevcut Şantiye';
+        final odemeYapan = (d['odemeYapan'] ?? 'İşveren / Müşteri').toString();
+        final amt = d['miktar'] ?? d['amount'];
+        final amtText = amt != null ? '$amt ₺' : '0 ₺';
+
+        rows.add(_buildInfoRow('🏗️ Şantiye:', '$site'));
+        rows.add(_buildInfoRow('🤝 Ödeme Yapan:', odemeYapan));
+        rows.add(
+          _buildInfoRow(
+            '💵 Tahsilat Tutarı:',
+            amtText,
+            isHighlight: true,
+            highlightColor: const Color(0xFF0EA5E9),
+          ),
+        );
         break;
 
       case AIActionType.submitDailyLog:

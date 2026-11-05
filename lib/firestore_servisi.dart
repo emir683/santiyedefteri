@@ -1148,16 +1148,27 @@ class FirestoreServisi {
     _usernameCache[kullaniciId] = clean;
   }
 
+  Future<void> adSoyadGuncelle(String yeniAdSoyad) async {
+    final clean = yeniAdSoyad.trim();
+    if (clean.isEmpty) return;
+    await _kullaniciRef.update({'adSoyad': clean});
+    try {
+      await FirebaseAuth.instance.currentUser?.updateDisplayName(clean);
+    } catch (_) {}
+  }
+
   Future<void> completeGoogleUserProfile(
     String userId,
     String adSoyad,
     String username,
   ) async {
+    final currentEmail = FirebaseAuth.instance.currentUser?.email?.trim();
     await _db.collection('users').doc(userId).set({
       'username': username,
       'username_lowercase': username.toLowerCase(),
       'adSoyad': adSoyad,
-      'email': FirebaseAuth.instance.currentUser?.email,
+      if (currentEmail != null && currentEmail.isNotEmpty)
+        'email': currentEmail,
     }, SetOptions(merge: true));
   }
 
@@ -1856,8 +1867,8 @@ class FirestoreServisi {
         'gun': 31,
       },
       {
-        'tip': 'AVANS_VERME',
-        'data': {'isciAdi': isciler[0].ad, 'miktar': 2500},
+        'tip': 'AVANS_EKLEME',
+        'data': {'isci': isciler[0].ad, 'miktar': 2500},
         'gun': 18,
       },
       {
@@ -1876,8 +1887,8 @@ class FirestoreServisi {
         'gun': 12,
       },
       {
-        'tip': 'AVANS_VERME',
-        'data': {'isciAdi': isciler[1].ad, 'miktar': 1500},
+        'tip': 'AVANS_EKLEME',
+        'data': {'isci': isciler[1].ad, 'miktar': 1500},
         'gun': 6,
       },
       {
@@ -1886,8 +1897,8 @@ class FirestoreServisi {
         'gun': 8,
       },
       {
-        'tip': 'AVANS_VERME',
-        'data': {'isciAdi': isciler[0].ad, 'miktar': 2000},
+        'tip': 'AVANS_EKLEME',
+        'data': {'isci': isciler[0].ad, 'miktar': 2000},
         'gun': 2,
       },
       {
@@ -1905,9 +1916,12 @@ class FirestoreServisi {
     for (var log in loglar) {
       final tarih = now.subtract(Duration(days: log['gun'] as int));
       await _ekipRef(teamId).collection('history').add({
-        'tip': log['tip'],
-        'veri': log['data'],
+        'kullaniciUid': 'demo_system',
+        'kullaniciUsername': 'Sistem (Demo)',
+        'islemTipi': log['tip'],
+        'detaylar': log['data'],
         'tarih': Timestamp.fromDate(tarih),
+        'okuyanlar': <String>[],
       });
     }
   }
@@ -1982,9 +1996,24 @@ class FirestoreServisi {
         return "$username ekipte rol değişikliği yaptı ($rolAdi).";
       case 'EKIBE_KATILIM':
         return "$username ekibe katıldı.";
+      case 'UYE_CIKARMA':
+        return "$username bir üyeyi ekipten çıkardı.";
       case 'ISCI_KART_ESLESMESI':
         final isciAdi = detaylar['isciAdi'] ?? 'işçi';
         return "$username, $isciAdi kartını kullanıcı hesabıyla eşleştirdi.";
+      case 'EKIP_ADI_DEGISTIRME':
+        return "$username ekip adını '${detaylar['yeniAd'] ?? ''}' olarak güncelledi.";
+      case 'EKIP_PAROLA_DEGISTIRME':
+        return "$username ekip parolasını güncelledi.";
+      case 'HAFTALIK_OZET':
+        return "Haftalık şantiye özetiniz hazırlandı.";
+      case 'CAD_PROJECT':
+        final projeAdi = detaylar['project_name'] ?? 'CAD çizimi';
+        return "$username, $projeAdi projesini yükledi.";
+      case 'DEMO_VERI_YUKLEME':
+        return "Örnek demo verileri yüklendi.";
+      case 'VERI_SIFIRLAMA':
+        return "$username ekip verilerini sıfırladı.";
       default:
         return "$username bir işlem gerçekleştirdi.";
     }

@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import '../performance_provider.dart';
 
@@ -97,7 +98,12 @@ class FloatingLiquidBottomBar extends StatelessWidget {
                 child: _BarItem(
                   data: item,
                   isSelected: index == visualIndex,
-                  onTap: () => onSelected(_visualToPageIndex[index]),
+                  onTap: () {
+                    if (index != visualIndex) {
+                      HapticFeedback.selectionClick();
+                    }
+                    onSelected(_visualToPageIndex[index]);
+                  },
                 ),
               );
             }),
@@ -260,53 +266,56 @@ class _BarItem extends StatelessWidget {
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(18),
-      child: TweenAnimationBuilder<double>(
-        tween: Tween<double>(end: isSelected ? 1 : 0),
-        duration: FloatingLiquidBottomBar._itemDuration,
-        curve: FloatingLiquidBottomBar._itemCurve,
-        builder: (context, value, child) {
-          final iconColor = Color.lerp(baseColor, data.color, value)!;
-          final textColor = Color.lerp(baseColor, data.color, value)!;
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(minHeight: 46, minWidth: 44),
+        child: TweenAnimationBuilder<double>(
+          tween: Tween<double>(end: isSelected ? 1 : 0),
+          duration: FloatingLiquidBottomBar._itemDuration,
+          curve: FloatingLiquidBottomBar._itemCurve,
+          builder: (context, value, child) {
+            final iconColor = Color.lerp(baseColor, data.color, value)!;
+            final textColor = Color.lerp(baseColor, data.color, value)!;
 
-          return Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.end,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                SizedBox(
-                  width: _iconSize,
-                  height: _iconSize,
-                  child:
-                      isSelected
-                          ? null
-                          : AnimatedScale(
-                            scale: 1.0 + (value * 0.05),
-                            duration: FloatingLiquidBottomBar._itemDuration,
-                            curve: Curves.easeOutCubic,
-                            child: Icon(
-                              data.icon,
-                              size: _iconSize,
-                              color: iconColor,
+            return Padding(
+              padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.end,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  SizedBox(
+                    width: _iconSize,
+                    height: _iconSize,
+                    child:
+                        isSelected
+                            ? null
+                            : AnimatedScale(
+                              scale: 1.0 + (value * 0.05),
+                              duration: FloatingLiquidBottomBar._itemDuration,
+                              curve: Curves.easeOutCubic,
+                              child: Icon(
+                                data.icon,
+                                size: _iconSize,
+                                color: iconColor,
+                              ),
                             ),
-                          ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  data.label,
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                  style: TextStyle(
-                    fontSize: 10.5,
-                    height: 1.0,
-                    fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
-                    color: textColor,
                   ),
-                ),
-              ],
-            ),
-          );
-        },
+                  const SizedBox(height: 4),
+                  Text(
+                    data.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: TextStyle(
+                      fontSize: 10.5,
+                      height: 1.0,
+                      fontWeight: isSelected ? FontWeight.w700 : FontWeight.w600,
+                      color: textColor,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        ),
       ),
     );
   }

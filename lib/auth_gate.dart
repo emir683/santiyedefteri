@@ -71,7 +71,7 @@ class _AuthGateState extends State<AuthGate> {
         }
 
         return StreamBuilder<User?>(
-          stream: FirebaseAuth.instance.userChanges(),
+          stream: FirebaseAuth.instance.authStateChanges(),
           initialData: FirebaseAuth.instance.currentUser,
           builder: (context, snapshot) {
             final user = snapshot.data ?? FirebaseAuth.instance.currentUser;
@@ -86,7 +86,10 @@ class _AuthGateState extends State<AuthGate> {
                   FcmServisi().kullaniciBagla();
                 });
               }
-              return Wrapper(userId: user.uid);
+              return Wrapper(
+                key: ValueKey('wrapper_${user.uid}'),
+                userId: user.uid,
+              );
             }
 
             // Auth henüz ilk durumunu belirliyorsa ve cache'de kullanıcı yoksa

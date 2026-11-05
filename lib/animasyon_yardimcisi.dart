@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'format_yardimcisi.dart';
 
 // ============================================
@@ -16,10 +17,33 @@ class SayfaGecisi<T> extends CupertinoPageRoute<T> {
 }
 
 // ============================================
-// 2. DİALOG ANİMASYONU (Scale-up + Fade)
+// 2. DİALOG ANİMASYONU (Apple HIG Scale-up + Fade)
 // ============================================
 
 class AnimasyonluDialog {
+  static Widget gecisYapici(
+    BuildContext context,
+    Animation<double> anim1,
+    Animation<double> anim2,
+    Widget child,
+  ) {
+    final curvedAnimation = CurvedAnimation(
+      parent: anim1,
+      curve: Curves.easeOutCubic,
+      reverseCurve: Curves.easeInCubic,
+    );
+    return ScaleTransition(
+      scale: Tween<double>(begin: 0.94, end: 1.0).animate(curvedAnimation),
+      child: FadeTransition(
+        opacity: Tween<double>(
+          begin: 0.0,
+          end: 1.0,
+        ).animate(curvedAnimation),
+        child: child,
+      ),
+    );
+  }
+
   /// Scale-up efektli dialog gösterir
   static Future<T?> goster<T>({
     required BuildContext context,
@@ -31,42 +55,29 @@ class AnimasyonluDialog {
       barrierDismissible: barrierDismissible,
       barrierLabel: MaterialLocalizations.of(context).modalBarrierDismissLabel,
       barrierColor: Colors.black54,
-      transitionDuration: const Duration(milliseconds: 300),
+      transitionDuration: const Duration(milliseconds: 240),
       pageBuilder: (ctx, anim1, anim2) => builder(ctx),
-      transitionBuilder: (ctx, anim1, anim2, child) {
-        final curvedAnimation = CurvedAnimation(
-          parent: anim1,
-          curve: Curves.easeOutBack,
-        );
-        return ScaleTransition(
-          scale: Tween<double>(begin: 0.7, end: 1.0).animate(curvedAnimation),
-          child: FadeTransition(
-            opacity: Tween<double>(
-              begin: 0.0,
-              end: 1.0,
-            ).animate(curvedAnimation),
-            child: child,
-          ),
-        );
-      },
+      transitionBuilder: gecisYapici,
     );
   }
 }
 
 // ============================================
-// 3. BUTON BOUNCE EFEKTİ
+// 3. BUTON BOUNCE EFEKTİ (Apple HIG + Haptic)
 // ============================================
 
 class AnimasyonluButon extends StatefulWidget {
   final Widget child;
   final VoidCallback? onPressed;
   final double scaleFactor;
+  final bool hapticAktif;
 
   const AnimasyonluButon({
     super.key,
     required this.child,
     this.onPressed,
-    this.scaleFactor = 0.95,
+    this.scaleFactor = 0.96,
+    this.hapticAktif = true,
   });
 
   @override
@@ -84,12 +95,12 @@ class _AnimasyonluButonState extends State<AnimasyonluButon>
     _controller = AnimationController(
       vsync: this,
       duration: const Duration(milliseconds: 100),
-      reverseDuration: const Duration(milliseconds: 200),
+      reverseDuration: const Duration(milliseconds: 180),
     );
     _scaleAnimation = Tween<double>(
       begin: 1.0,
       end: widget.scaleFactor,
-    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeInOut));
+    ).animate(CurvedAnimation(parent: _controller, curve: Curves.easeOutCubic));
   }
 
   @override
@@ -99,7 +110,12 @@ class _AnimasyonluButonState extends State<AnimasyonluButon>
   }
 
   void _onTapDown(TapDownDetails details) {
-    _controller.forward();
+    if (widget.onPressed != null) {
+      _controller.forward();
+      if (widget.hapticAktif) {
+        HapticFeedback.lightImpact();
+      }
+    }
   }
 
   void _onTapUp(TapUpDetails details) {
@@ -115,6 +131,7 @@ class _AnimasyonluButonState extends State<AnimasyonluButon>
   @override
   Widget build(BuildContext context) {
     return GestureDetector(
+      behavior: HitTestBehavior.opaque,
       onTapDown: _onTapDown,
       onTapUp: _onTapUp,
       onTapCancel: _onTapCancel,

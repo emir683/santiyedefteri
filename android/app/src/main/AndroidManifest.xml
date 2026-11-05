@@ -73,7 +73,7 @@
                     android:pathPrefix="/quick-report" />
             </intent-filter>
 
-            <!-- DWG & DXF Dosyalarını Açma (WhatsApp, Dosya Yöneticisi, E-posta vb.) -->
+            <!-- DWG & BIN Dosyalarını Açma (WhatsApp, Dosya Yöneticisi, E-posta vb.) -->
             <intent-filter>
                 <action android:name="android.intent.action.VIEW" />
                 <category android:name="android.intent.category.DEFAULT" />
@@ -83,8 +83,8 @@
                 <data android:mimeType="*/*" />
                 <data android:pathPattern=".*\\.dwg" />
                 <data android:pathPattern=".*\\.DWG" />
-                <data android:pathPattern=".*\\.dxf" />
-                <data android:pathPattern=".*\\.DXF" />
+                <data android:pathPattern=".*\\.bin" />
+                <data android:pathPattern=".*\\.BIN" />
             </intent-filter>
 
             <intent-filter>
@@ -100,20 +100,18 @@
                 <data android:mimeType="image/x-dwg" />
                 <data android:mimeType="application/dwg" />
                 <data android:mimeType="application/x-dwg" />
-                <data android:mimeType="application/dxf" />
-                <data android:mimeType="image/vnd.dxf" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
 
-            <!-- Paylaşım ile DWG/DXF Gönderme -->
+            <!-- Paylaşım ile DWG/BIN Gönderme -->
             <intent-filter>
                 <action android:name="android.intent.action.SEND" />
                 <category android:name="android.intent.category.DEFAULT" />
                 <data android:mimeType="*/*" />
                 <data android:pathPattern=".*\\.dwg" />
                 <data android:pathPattern=".*\\.DWG" />
-                <data android:pathPattern=".*\\.dxf" />
-                <data android:pathPattern=".*\\.DXF" />
+                <data android:pathPattern=".*\\.bin" />
+                <data android:pathPattern=".*\\.BIN" />
             </intent-filter>
 
             <intent-filter>
@@ -125,7 +123,6 @@
                 <data android:mimeType="image/vnd.dwg" />
                 <data android:mimeType="image/x-dwg" />
                 <data android:mimeType="application/dwg" />
-                <data android:mimeType="application/dxf" />
                 <data android:mimeType="application/octet-stream" />
             </intent-filter>
         </activity>
@@ -152,6 +149,16 @@
         </receiver>
 
         <receiver android:exported="false" android:name="com.dexterous.flutterlocalnotifications.ScheduledNotificationReceiver" />
+
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_channel_id"
+            android:value="santiye_bildirim_kanali" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_icon"
+            android:resource="@drawable/notification_icon" />
+        <meta-data
+            android:name="com.google.firebase.messaging.default_notification_color"
+            android:resource="@android:color/holo_green_dark" />
 
         <meta-data
             android:name="flutterEmbedding"

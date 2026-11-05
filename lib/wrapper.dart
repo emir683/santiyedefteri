@@ -7,60 +7,88 @@ import 'package:santiyeyonetim2/firestore_servisi.dart';
 import 'package:santiyeyonetim2/profil_tamamlama_ekrani.dart';
 import 'package:santiyeyonetim2/team_gate.dart';
 
-class Wrapper extends StatelessWidget {
+class Wrapper extends StatefulWidget {
   const Wrapper({super.key, required this.userId});
 
   final String userId;
 
   @override
-  Widget build(BuildContext context) {
-    debugPrint(
-      "Wrapper: User mevcut (UID: $userId). Firestore profili dinleniyor...",
-    );
+  State<Wrapper> createState() => _WrapperState();
+}
 
+class _WrapperState extends State<Wrapper> {
+  late Stream<DocumentSnapshot> _userDocStream;
+  DocumentSnapshot? _lastSnapshot;
+
+  @override
+  void initState() {
+    super.initState();
+    _initStream();
+  }
+
+  @override
+  void didUpdateWidget(covariant Wrapper oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.userId != widget.userId) {
+      _lastSnapshot = null;
+      _initStream();
+    }
+  }
+
+  void _initStream() {
+    _userDocStream =
+        FirestoreServisi(kullaniciId: widget.userId).getKullaniciVeriStream();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return StreamBuilder<DocumentSnapshot>(
-      stream: FirestoreServisi(kullaniciId: userId).getKullaniciVeriStream(),
+      stream: _userDocStream,
+      initialData: _lastSnapshot,
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.hasData && snapshot.data!.exists) {
+          _lastSnapshot = snapshot.data;
+        }
+
+        // Eğer henüz hiçbir veri gelmediyse ve önbellek de yoksa
+        if (snapshot.connectionState == ConnectionState.waiting &&
+            _lastSnapshot == null) {
           return const Scaffold(
-            body: Center(child: CircularProgressIndicator()),
+            backgroundColor: Color(0xFF0F172A),
+            body: Center(
+              child: CircularProgressIndicator(color: Color(0xFF14B8A6)),
+            ),
           );
         }
 
-        if (snapshot.hasError) {
+        if (snapshot.hasError && _lastSnapshot == null) {
           debugPrint("Wrapper: Firestore stream HATA: ${snapshot.error}");
           return const Scaffold(
-            body: Center(child: Text("Bir hata olustu! Lutfen tekrar deneyin.")),
+            body: Center(child: Text("Bir hata oluştu! Lütfen tekrar deneyin.")),
           );
         }
 
-        if (!snapshot.hasData || !snapshot.data!.exists) {
-          debugPrint(
-            "Wrapper: Kullanici Firestore'da bulunamadi. Profil tamamlamaya yonlendiriliyor.",
-          );
+        final currentSnap = snapshot.data ?? _lastSnapshot;
+        if (currentSnap == null || !currentSnap.exists) {
           return const ProfilTamamlamaEkrani();
         }
 
-        final userData = snapshot.data!.data() as Map<String, dynamic>;
+        final userData = currentSnap.data() as Map<String, dynamic>;
         final String? username = userData['username'];
 
         if (username == null || username.isEmpty) {
-          debugPrint(
-            "Wrapper: Kullanici profili eksik. Profil tamamlamaya yonlendiriliyor.",
-          );
           return const ProfilTamamlamaEkrani();
         }
 
         final String? teamId = userData['teamId'];
 
         if (teamId != null && teamId.isNotEmpty) {
-          debugPrint(
-            "Wrapper: Profil tamam, ekip bulundu ($teamId). Ana menu aciliyor.",
+          return AnaMenuEkrani(
+            key: ValueKey('ana_menu_$teamId'),
+            teamId: teamId,
           );
-          return AnaMenuEkrani(teamId: teamId);
         }
 
-        debugPrint("Wrapper: Profil tamam, ekip bulunamadi. TeamGate aciliyor.");
         return const TeamGate();
       },
     );

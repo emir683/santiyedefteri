@@ -1,5 +1,6 @@
 import 'dart:ui';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:liquid_glass_widgets/liquid_glass_widgets.dart';
 import 'package:provider/provider.dart';
 import '../privacy_provider.dart';
@@ -136,7 +137,7 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
         onPressed: () => Navigator.maybePop(context),
       );
     } else {
-      effectiveLeading = const SizedBox(width: 40);
+      effectiveLeading = const SizedBox(width: 44);
     }
 
     final effectiveActions = <Widget>[
@@ -162,7 +163,7 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
     ];
 
     Widget titleRow = SizedBox(
-      height: 40.0,
+      height: 44.0,
       child: Row(
         children: [
           effectiveLeading,
@@ -175,7 +176,7 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
                   maxLines: 1,
                   overflow: TextOverflow.ellipsis,
                   style: TextStyle(
-                    fontSize: 18,
+                    fontSize: 17.5,
                     fontWeight: FontWeight.w700,
                     color: textColor,
                     letterSpacing: -0.3,
@@ -189,7 +190,7 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
               children: effectiveActions,
             )
           else
-            const SizedBox(width: 40),
+            const SizedBox(width: 44),
         ],
       ),
     );
@@ -335,14 +336,19 @@ class _AppBarIconButton extends StatelessWidget {
     Widget button = Material(
       color: Colors.transparent,
       child: InkWell(
-        onTap: onPressed,
+        onTap: () {
+          HapticFeedback.selectionClick();
+          onPressed();
+        },
         borderRadius: BorderRadius.circular(16),
-        child: Padding(
-          padding: const EdgeInsets.all(8),
-          child: Icon(
-            icon,
-            color: defaultColor,
-            size: size,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 44, minHeight: 44),
+          child: Center(
+            child: Icon(
+              icon,
+              color: defaultColor,
+              size: size,
+            ),
           ),
         ),
       ),

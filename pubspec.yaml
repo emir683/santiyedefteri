@@ -73,6 +73,8 @@ flutter:
 
   assets:
     - assets/logo.png
+    - assets/spd_clean_icon.png
+    - assets/notification_icon.png
     - assets/fonts/
     - assets/google_logo.png
     - assets/audio/

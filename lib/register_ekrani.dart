@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
+import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 
 import 'auth_servisi.dart';
 import 'fcm_servisi.dart';
@@ -111,6 +112,16 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
 
     try {
       await _authServisi.signInWithApple();
+    } on SignInWithAppleAuthorizationException catch (e) {
+      if (!mounted) return;
+      if (e.code == AuthorizationErrorCode.canceled) {
+        setState(() => _loading = false);
+        return;
+      }
+      setState(() {
+        _error = "Apple ile giriş: ${e.message}";
+        _loading = false;
+      });
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       final msgLower = (e.message ?? '').toLowerCase();
@@ -121,8 +132,13 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
         setState(() => _loading = false);
         return;
       }
+      String msg = e.message ?? e.code;
+      if (e.code == 'account-exists-with-different-credential') {
+        msg =
+            "Bu e-posta adresiyle ilişkili farklı bir hesap mevcut. Lütfen önceki giriş yönteminizi kullanın.";
+      }
       setState(() {
-        _error = "Apple ile giriş: ${e.message ?? e.code}";
+        _error = "Apple ile giriş: $msg";
         _loading = false;
       });
     } catch (e) {
@@ -130,204 +146,16 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
       final errStr = e.toString().toLowerCase();
       if (errStr.contains('cancel') ||
           errStr.contains('1001') ||
+          errStr.contains('authorizationerrorcode.canceled') ||
           errStr.contains('com.apple.authenticationservices.authorizationerror')) {
         setState(() => _loading = false);
         return;
       }
       setState(() {
-        _error = "Apple ile giriş: $e";
+        _error = "Apple ile giriş tamamlanamadı: $e";
         _loading = false;
       });
     }
-  }
-
-  /// Kayıt sonrası bildirim izin onboarding dialog'ı.
-  Future<void> _bildirimOnboardingGoster() async {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    await showGeneralDialog(
-      context: context,
-      barrierDismissible: false,
-      barrierLabel: 'bildirim_onboarding',
-      barrierColor: Colors.black.withValues(alpha: 0.75),
-      transitionDuration: const Duration(milliseconds: 350),
-      transitionBuilder: (ctx, anim, _, child) {
-        return SlideTransition(
-          position: Tween<Offset>(
-            begin: const Offset(0, 0.12),
-            end: Offset.zero,
-          ).animate(CurvedAnimation(parent: anim, curve: Curves.easeOutCubic)),
-          child: FadeTransition(opacity: anim, child: child),
-        );
-      },
-      pageBuilder: (ctx, _, __) {
-        return Center(
-          child: Container(
-            margin: const EdgeInsets.symmetric(horizontal: 24),
-            padding: const EdgeInsets.all(28),
-            decoration: BoxDecoration(
-              borderRadius: BorderRadius.circular(28),
-              gradient: LinearGradient(
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-                colors: isDark
-                    ? const [Color(0xFF151B24), Color(0xFF0D1117)]
-                    : const [Color(0xFFFFFFFF), Color(0xFFF0F7FA)],
-              ),
-              border: Border.all(
-                color: isDark
-                    ? Colors.white.withValues(alpha: 0.10)
-                    : const Color(0xFFB6DDE8),
-                width: 1.2,
-              ),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: isDark ? 0.35 : 0.12),
-                  blurRadius: 32,
-                  offset: const Offset(0, 14),
-                ),
-              ],
-            ),
-            child: Material(
-              color: Colors.transparent,
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: [
-                  // İkon
-                  Container(
-                    width: 72,
-                    height: 72,
-                    decoration: BoxDecoration(
-                      gradient: const LinearGradient(
-                        colors: [Color(0xFF14B8A6), Color(0xFF0F7C86)],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
-                      ),
-                      borderRadius: BorderRadius.circular(22),
-                      boxShadow: [
-                        BoxShadow(
-                          color: const Color(0xFF14B8A6).withValues(alpha: 0.35),
-                          blurRadius: 18,
-                          offset: const Offset(0, 6),
-                        ),
-                      ],
-                    ),
-                    child: const Icon(
-                      Icons.notifications_active_rounded,
-                      color: Colors.white,
-                      size: 36,
-                    ),
-                  ),
-                  const SizedBox(height: 22),
-                  Text(
-                    'Bildirimlerden Haberdar Ol',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 22,
-                      fontWeight: FontWeight.w800,
-                      color: isDark ? Colors.white : const Color(0xFF102A43),
-                      height: 1.2,
-                    ),
-                  ),
-                  const SizedBox(height: 12),
-                  Text(
-                    'Ekibindeki işlemler, avans ve rapor girdiğinde anında bildirim al. Uygulama kapalıyken de çalışır.',
-                    textAlign: TextAlign.center,
-                    style: TextStyle(
-                      fontSize: 14.5,
-                      height: 1.55,
-                      color: isDark ? Colors.white60 : const Color(0xFF526772),
-                    ),
-                  ),
-                  const SizedBox(height: 8),
-                  // Özellik listesi (Emoji içermeyen temiz kurumsal dil)
-                  ..._bildirimOzellikleri(isDark),
-                  const SizedBox(height: 24),
-                  // Aktif et butonu
-                  SizedBox(
-                    width: double.infinity,
-                    child: ElevatedButton.icon(
-                      onPressed: () async {
-                        Navigator.pop(ctx);
-                      },
-                      icon: const Icon(Icons.notifications_active_rounded, size: 18),
-                      label: const Text(
-                        'Bildirimleri Aç',
-                        style: TextStyle(fontWeight: FontWeight.w700, fontSize: 15),
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF14B8A6),
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 15),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        elevation: 0,
-                      ),
-                    ),
-                  ),
-                  const SizedBox(height: 10),
-                  TextButton(
-                    onPressed: () => Navigator.pop(ctx),
-                    child: Text(
-                      'Daha sonra',
-                      style: TextStyle(
-                        fontSize: 13,
-                        color: isDark ? Colors.white38 : Colors.black38,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-        );
-      },
-    );
-  }
-
-  List<Widget> _bildirimOzellikleri(bool isDark) {
-    final ozellikler = [
-      ('İşçi ve Puantaj', 'Ekleme, güncelleme ve ödeme bildirimleri'),
-      ('Günlük Raporlar', 'Günlük rapor kaydedilince anında haberdar olun'),
-      ('Kesintisiz Bildirim', 'Uygulama kapalıyken de bildirimler iletilir'),
-    ];
-    return [
-      const SizedBox(height: 16),
-      ...ozellikler.map(
-        (o) => Padding(
-          padding: const EdgeInsets.only(bottom: 10),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                decoration: BoxDecoration(
-                  color: const Color(0xFF14B8A6).withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: Text(
-                  o.$1,
-                  style: const TextStyle(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Color(0xFF0F7C86),
-                  ),
-                ),
-              ),
-              const SizedBox(width: 10),
-              Expanded(
-                child: Text(
-                  o.$2,
-                  style: TextStyle(
-                    fontSize: 13,
-                    color: isDark ? Colors.white60 : const Color(0xFF526772),
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
-      ),
-    ];
   }
 
   @override
@@ -536,61 +364,70 @@ class _RegisterEkraniState extends State<RegisterEkrani> {
                         ],
                       ),
                       const SizedBox(height: 12),
+                      if (!kIsWeb &&
+                          (defaultTargetPlatform == TargetPlatform.iOS ||
+                              defaultTargetPlatform == TargetPlatform.macOS)) ...[
+                        OutlinedButton.icon(
+                          icon: Icon(
+                            Icons.apple,
+                            size: 22,
+                            color: isDark ? Colors.black : Colors.white,
+                          ),
+                          label: Text(
+                            "Apple ile Devam Et",
+                            style: TextStyle(
+                              fontWeight: FontWeight.w600,
+                              fontSize: 15,
+                              letterSpacing: -0.2,
+                              color: isDark ? Colors.black : Colors.white,
+                            ),
+                          ),
+                          onPressed: _loading ? null : _signInWithApple,
+                          style: OutlinedButton.styleFrom(
+                            minimumSize: const Size(double.infinity, 50),
+                            padding: const EdgeInsets.symmetric(vertical: 13),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(16),
+                            ),
+                            side: BorderSide(
+                              color: isDark ? Colors.white : Colors.black,
+                            ),
+                            backgroundColor: isDark ? Colors.white : Colors.black,
+                            foregroundColor: isDark ? Colors.black : Colors.white,
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+                      ],
                       OutlinedButton.icon(
                         icon: Image.asset('assets/google_logo.png', height: 20),
                         label: const Text(
                           "Google ile Devam Et",
-                          style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
+                          style: TextStyle(
+                            fontWeight: FontWeight.w600,
+                            fontSize: 15,
+                            letterSpacing: -0.2,
+                          ),
                         ),
                         onPressed: _loading ? null : _signInWithGoogle,
                         style: OutlinedButton.styleFrom(
+                          minimumSize: const Size(double.infinity, 50),
                           padding: const EdgeInsets.symmetric(vertical: 13),
                           shape: RoundedRectangleBorder(
                             borderRadius: BorderRadius.circular(16),
                           ),
                           side: BorderSide(
                             color: isDark
-                                ? Colors.white.withValues(alpha: 0.12)
+                                ? Colors.white.withValues(alpha: 0.14)
                                 : const Color(0xFFBFD0D6),
                           ),
                           backgroundColor: isDark
-                              ? Colors.white.withValues(alpha: 0.04)
-                              : Colors.white.withValues(alpha: 0.85),
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : Colors.white.withValues(alpha: 0.90),
                           foregroundColor: isDark
                               ? Colors.white
                               : const Color(0xFF10232C),
                         ),
                       ),
-                      if (!kIsWeb && defaultTargetPlatform == TargetPlatform.iOS) ...[
-                        const SizedBox(height: 10),
-                        OutlinedButton.icon(
-                          icon: const Icon(
-                            Icons.apple,
-                            size: 22,
-                            color: Colors.white,
-                          ),
-                          label: const Text(
-                            "Apple ile Devam Et",
-                            style: TextStyle(fontWeight: FontWeight.w600, fontSize: 14.5),
-                          ),
-                          onPressed: _loading ? null : _signInWithApple,
-                          style: OutlinedButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 13),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(16),
-                            ),
-                            side: BorderSide(
-                              color: isDark
-                                  ? Colors.white.withValues(alpha: 0.20)
-                                  : const Color(0xFF0F172A),
-                            ),
-                            backgroundColor: isDark
-                                ? Colors.white.withValues(alpha: 0.06)
-                                : Colors.black,
-                            foregroundColor: Colors.white,
-                          ),
-                        ),
-                      ],
                       const SizedBox(height: 12),
                       Row(
                         mainAxisAlignment: MainAxisAlignment.center,

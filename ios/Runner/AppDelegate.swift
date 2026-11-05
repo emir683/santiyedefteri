@@ -56,7 +56,7 @@ import UIKit
 
     let fileName = url.lastPathComponent
     let lower = fileName.lowercased()
-    guard lower.hasSuffix(".dwg") || lower.hasSuffix(".dxf") else {
+    guard lower.hasSuffix(".dwg") || lower.hasSuffix(".bin") else {
       return
     }
 

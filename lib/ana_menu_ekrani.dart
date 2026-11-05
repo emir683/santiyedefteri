@@ -23,6 +23,7 @@ import 'gunluk_rapor_ekrani.dart';
 import 'ay_sonu_rapor_ekrani.dart';
 import 'odemeler_ekrani.dart';
 import 'hatirlatmalar_ekrani.dart';
+import 'bildirim_ekrani.dart';
 import 'islem_gecmisi_ekrani.dart';
 import 'ekip_yonetimi_ekrani.dart';
 import 'profil_ekrani.dart';
@@ -225,10 +226,29 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
     final now = DateTime.now();
     final ayBaslangic = DateTime(now.year, now.month, 1);
     final ayBitis = DateTime(now.year, now.month + 1, 0, 23, 59, 59);
-    final token =
-        '${widget.teamId}_${servisi.kullaniciId}_${finansalErisim}_${now.year}_${now.month}_${now.day}';
+    final coreToken =
+        '${widget.teamId}_${servisi.kullaniciId}_${now.year}_${now.month}_${now.day}';
 
-    if (_panelStream != null && _panelStreamToken == token) {
+    if (_panelStream != null && _panelStreamToken == coreToken) {
+      // Eğer finansal erişim sonradan aktif olduysa ve ödeme dinleyicisi henüz yoksa ekle
+      if (finansalErisim && _panelOdemeSub == null) {
+        _panelOdemeSub = servisi.getOdemelerStream(widget.teamId).listen((data) {
+          _panelOdemeler = data;
+          if (_panelSantiyeler != null &&
+              _panelIsciler != null &&
+              _panelRaporlar != null) {
+            final veri = _AnaPanelVerisi.olustur(
+              santiyeler: _panelSantiyeler!,
+              isciler: _panelIsciler!,
+              raporlar: _panelRaporlar!,
+              odemeler: _panelOdemeler,
+              finansalErisim: true,
+            );
+            _lastPanelVerisi = veri;
+            _panelController?.add(veri);
+          }
+        }, onError: (e) => debugPrint("⚠️ Ödeme stream hatası: $e"));
+      }
       return _panelStream!;
     }
 
@@ -297,7 +317,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
 
     _panelController = controller;
     _panelStream = controller.stream;
-    _panelStreamToken = token;
+    _panelStreamToken = coreToken;
     return _panelStream!;
   }
 
@@ -440,34 +460,163 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       minimum: const EdgeInsets.only(top: 8, right: 68),
       child: Align(
         alignment: Alignment.topRight,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Material(
-              color:
-                  isDark
-                      ? Colors.black.withValues(alpha: 0.26)
-                      : Colors.white.withValues(alpha: 0.56),
-              child: InkWell(
-                onTap: () => _turBaslat(),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
+        child: Tooltip(
+          message: 'Ekran Rehberi',
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Material(
+                color:
+                    isDark
+                        ? Colors.black.withValues(alpha: 0.26)
+                        : Colors.white.withValues(alpha: 0.56),
+                child: InkWell(
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _turBaslat();
+                  },
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 46,
+                      minHeight: 46,
                     ),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Icon(
-                    Icons.help_outline_rounded,
-                    color: isDark ? Colors.white : Colors.black87,
-                    size: 22,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18),
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Icon(
+                        Icons.help_outline_rounded,
+                        color: isDark ? Colors.white : Colors.black87,
+                        size: 22,
+                      ),
+                    ),
                   ),
                 ),
               ),
             ),
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildNotificationButton(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final uid =
+        FirebaseAuth.instance.currentUser?.uid ??
+        Provider.of<UserModel?>(context, listen: false)?.uid ??
+        '';
+    final servisi = FirestoreServisi(kullaniciId: uid);
+
+    return SafeArea(
+      minimum: const EdgeInsets.only(top: 8, right: 122),
+      child: Align(
+        alignment: Alignment.topRight,
+        child: StreamBuilder<List<Map<String, dynamic>>>(
+          stream:
+              uid.isNotEmpty
+                  ? servisi.getKullaniciBildirimleri(widget.teamId, uid)
+                  : const Stream.empty(),
+          builder: (context, snapshot) {
+            final bildirimler = snapshot.data ?? const [];
+            final okunmamisSayisi =
+                bildirimler.where((b) => b['okundu'] != true).length;
+
+            return Tooltip(
+              message: 'Bildirim Kutusu',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Material(
+                    color:
+                        isDark
+                            ? Colors.black.withValues(alpha: 0.26)
+                            : Colors.white.withValues(alpha: 0.56),
+                    child: InkWell(
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        Navigator.push(
+                          context,
+                          SayfaGecisi(
+                            sayfa: BildirimEkrani(teamId: widget.teamId),
+                          ),
+                        );
+                      },
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 46,
+                          minHeight: 46,
+                        ),
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Stack(
+                            clipBehavior: Clip.none,
+                            alignment: Alignment.center,
+                            children: [
+                              Icon(
+                                okunmamisSayisi > 0
+                                    ? Icons.notifications_active_rounded
+                                    : Icons.notifications_none_rounded,
+                                color:
+                                    okunmamisSayisi > 0
+                                        ? const Color(0xFF14B8A6)
+                                        : (isDark ? Colors.white : Colors.black87),
+                                size: 22,
+                              ),
+                              if (okunmamisSayisi > 0)
+                                Positioned(
+                                  right: -5,
+                                  top: -5,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 5,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(0xFFEF4444),
+                                      borderRadius: BorderRadius.circular(10),
+                                      border: Border.all(
+                                        color:
+                                            isDark
+                                                ? const Color(0xFF0C1219)
+                                                : Colors.white,
+                                        width: 1.5,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      okunmamisSayisi > 9
+                                          ? '9+'
+                                          : '$okunmamisSayisi',
+                                      style: const TextStyle(
+                                        color: Colors.white,
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
         ),
       ),
     );
@@ -480,30 +629,42 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       minimum: const EdgeInsets.only(left: 14, top: 8),
       child: Align(
         alignment: Alignment.topLeft,
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(18),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Material(
-              color:
-                  isDark
-                      ? Colors.black.withValues(alpha: 0.26)
-                      : Colors.white.withValues(alpha: 0.56),
-              child: InkWell(
-                key: _menuButtonKey,
-                onTap: () => _shellScaffoldKey.currentState?.openDrawer(),
-                child: Container(
-                  padding: const EdgeInsets.all(12),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.white.withValues(alpha: 0.18),
+        child: Tooltip(
+          message: 'Menü',
+          child: ClipRRect(
+            borderRadius: BorderRadius.circular(18),
+            child: BackdropFilter(
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+              child: Material(
+                color:
+                    isDark
+                        ? Colors.black.withValues(alpha: 0.26)
+                        : Colors.white.withValues(alpha: 0.56),
+                child: InkWell(
+                  key: _menuButtonKey,
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    _shellScaffoldKey.currentState?.openDrawer();
+                  },
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(
+                      minWidth: 46,
+                      minHeight: 46,
                     ),
-                    borderRadius: BorderRadius.circular(18),
-                  ),
-                  child: Icon(
-                    Icons.menu_rounded,
-                    color: isDark ? Colors.white : Colors.black87,
-                    size: 22,
+                    child: Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        border: Border.all(
+                          color: Colors.white.withValues(alpha: 0.18),
+                        ),
+                        borderRadius: BorderRadius.circular(18),
+                      ),
+                      child: Icon(
+                        Icons.menu_rounded,
+                        color: isDark ? Colors.white : Colors.black87,
+                        size: 22,
+                      ),
+                    ),
                   ),
                 ),
               ),
@@ -523,32 +684,45 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
         alignment: Alignment.topRight,
         child: Consumer<PrivacyProvider>(
           builder: (context, privacy, _) {
-            return ClipRRect(
-              borderRadius: BorderRadius.circular(18),
-              child: BackdropFilter(
-                filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-                child: Material(
-                  color:
-                      isDark
-                          ? Colors.black.withValues(alpha: 0.26)
-                          : Colors.white.withValues(alpha: 0.56),
-                  child: InkWell(
-                    key: _privacyButtonKey,
-                    onTap: () => privacy.togglePrivacy(),
-                    child: Container(
-                      padding: const EdgeInsets.all(12),
-                      decoration: BoxDecoration(
-                        border: Border.all(
-                          color: Colors.white.withValues(alpha: 0.18),
+            return Tooltip(
+              message:
+                  privacy.isHidden ? 'Tutarları Göster' : 'Tutarları Gizle',
+              child: ClipRRect(
+                borderRadius: BorderRadius.circular(18),
+                child: BackdropFilter(
+                  filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+                  child: Material(
+                    color:
+                        isDark
+                            ? Colors.black.withValues(alpha: 0.26)
+                            : Colors.white.withValues(alpha: 0.56),
+                    child: InkWell(
+                      key: _privacyButtonKey,
+                      onTap: () {
+                        HapticFeedback.selectionClick();
+                        privacy.togglePrivacy();
+                      },
+                      child: ConstrainedBox(
+                        constraints: const BoxConstraints(
+                          minWidth: 46,
+                          minHeight: 46,
                         ),
-                        borderRadius: BorderRadius.circular(18),
-                      ),
-                      child: Icon(
-                        privacy.isHidden
-                            ? Icons.visibility_off_rounded
-                            : Icons.visibility_rounded,
-                        color: isDark ? Colors.white : Colors.black87,
-                        size: 22,
+                        child: Container(
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.white.withValues(alpha: 0.18),
+                            ),
+                            borderRadius: BorderRadius.circular(18),
+                          ),
+                          child: Icon(
+                            privacy.isHidden
+                                ? Icons.visibility_off_rounded
+                                : Icons.visibility_rounded,
+                            color: isDark ? Colors.white : Colors.black87,
+                            size: 22,
+                          ),
+                        ),
                       ),
                     ),
                   ),
@@ -569,13 +743,12 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           HapticFeedback.mediumImpact();
           Navigator.push(
             context,
-            MaterialPageRoute(
-              builder:
-                  (_) => AIChatScreen(
-                    teamId: widget.teamId,
-                    isciler: _panelIsciler ?? const [],
-                    santiyeler: _panelSantiyeler ?? const [],
-                  ),
+            SayfaGecisi(
+              sayfa: AIChatScreen(
+                teamId: widget.teamId,
+                isciler: _panelIsciler ?? const [],
+                santiyeler: _panelSantiyeler ?? const [],
+              ),
             ),
           );
         },
@@ -638,6 +811,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
           _buildMenuButton(context),
           _buildPrivacyButton(context),
           _buildTourButton(context),
+          _buildNotificationButton(context),
         ],
         Align(
           alignment: Alignment.bottomCenter,
@@ -2055,13 +2229,12 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     Navigator.pop(context);
                     Navigator.push(
                       context,
-                      MaterialPageRoute(
-                        builder:
-                            (_) => AIChatScreen(
-                              teamId: teamId,
-                              isciler: _panelIsciler ?? const [],
-                              santiyeler: _panelSantiyeler ?? const [],
-                            ),
+                      SayfaGecisi(
+                        sayfa: AIChatScreen(
+                          teamId: teamId,
+                          isciler: _panelIsciler ?? const [],
+                          santiyeler: _panelSantiyeler ?? const [],
+                        ),
                       ),
                     );
                   },
@@ -2109,6 +2282,18 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     Navigator.push(
                       context,
                       SayfaGecisi(sayfa: IslemGecmisiEkrani(teamId: teamId)),
+                    );
+                  },
+                ),
+                _buildGlassDrawerItem(
+                  context,
+                  icon: Icons.notifications_none_rounded,
+                  title: 'Bildirim Kutusu',
+                  onTap: () {
+                    Navigator.pop(context);
+                    Navigator.push(
+                      context,
+                      SayfaGecisi(sayfa: BildirimEkrani(teamId: teamId)),
                     );
                   },
                 ),

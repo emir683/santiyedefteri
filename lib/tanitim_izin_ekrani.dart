@@ -2,6 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:permission_handler/permission_handler.dart';
+import 'package:shared_preferences/shared_preferences.dart';
+import 'bildirim_servisi.dart';
+import 'fcm_servisi.dart';
 
 class TanitimIzinEkrani extends StatefulWidget {
   final VoidCallback onTamamlandi;
@@ -109,6 +112,15 @@ class _TanitimIzinEkraniState extends State<TanitimIzinEkrani>
           izinAlindi = true;
         }
       } catch (_) {}
+    }
+
+    if (izinAlindi) {
+      try {
+        final prefs = await SharedPreferences.getInstance();
+        await prefs.setBool('bildirim_onboarding_gosterildi', true);
+      } catch (_) {}
+      FcmServisi().kullaniciBagla().catchError((_) {});
+      BildirimServisi().varsayilanHatirlaticilariSenkronizeEt().catchError((_) {});
     }
 
     if (mounted) {

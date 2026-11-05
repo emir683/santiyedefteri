@@ -43,6 +43,7 @@ class AIService {
     String userPrompt, {
     List<String> workerNames = const [],
     List<String> siteNames = const [],
+    List<AIChatMessage> history = const [],
   }) async {
     final text = userPrompt.toLowerCase().trim();
 
@@ -87,7 +88,12 @@ class AIService {
       }
 
       try {
-        final intent = await _askGemini(userPrompt, workerNames, siteNames);
+        final intent = await _askGemini(
+          userPrompt,
+          workerNames,
+          siteNames,
+          history: history,
+        );
         // Kalan hak sayısını mesaja ekle
         if (limitResult.remaining <= 3 && limitResult.remaining >= 0) {
           final msg =
@@ -117,6 +123,7 @@ class AIService {
     List<Santiye> santiyeler = const [],
     String teamId = '',
     FirestoreServisi? servisi,
+    List<AIChatMessage> history = const [],
   }) async {
     final text = userPrompt.toLowerCase().trim();
     final norm = AkilliSesAyristirici.normalize(text);
@@ -197,20 +204,38 @@ class AIService {
           userPrompt
               .replaceAll(
                 RegExp(
-                  r'(yeni|işçi|isci|personel|eleman|olarak|ekle|usta|ustası|kalfa|çırak|yevmiye|maaş|tl|lira|₺|\d+)',
+                  r'\b(yeni|işçi|isci|işçiyi|isciyi|personel|personeli|eleman|elemanı|çalışan|calisan|olarak|ekibime|ekibe|ekle|ekler\s*misin|ustayı|ustayi|usta|ustası|kalfayı|kalfayi|kalfa|çırak|cirak|yevmiyeli|yevmiyesi|yevmiye|günlük|gunluk|maaşı|maasi|maaş|maas|tl|lira|₺|ile|adında|adinda|isimli|adı|adi|misafir|taşeron|taseron|günlükçü|gunlukcu)\b',
                   caseSensitive: false,
+                  unicode: true,
                 ),
                 ' ',
               )
+              .replaceAll(RegExp(r'(\d+[\.,]?\d*)'), ' ')
+              .replaceAll(RegExp(r'''['’`][a-zA-ZçğıöşüÇĞİÖŞÜ]+'''), '')
+              .replaceAll(RegExp(r'[:,\-\.]'), ' ')
               .replaceAll(RegExp(r'\s+'), ' ')
               .trim();
       if (cleaned.isNotEmpty) {
-        name = cleaned.split(' ').first;
-        if (name.isNotEmpty) {
-          name =
-              name[0].toUpperCase() +
-              (name.length > 1 ? name.substring(1) : '');
-        }
+        final tokens =
+            cleaned
+                .split(' ')
+                .map((w) => w.trim())
+                .where((w) => w.length >= 2)
+                .take(3)
+                .map((w) {
+                  final stripped = w.replaceAll(
+                    RegExp(
+                      r'(yı|yi|yu|yü|ya|ye|dan|den)$',
+                      caseSensitive: false,
+                    ),
+                    '',
+                  );
+                  final base = stripped.length >= 2 ? stripped : w;
+                  return base[0].toUpperCase() +
+                      (base.length > 1 ? base.substring(1).toLowerCase() : '');
+                })
+                .toList();
+        name = tokens.join(' ');
       }
       if (name.isEmpty) name = 'Yeni Personel';
 
@@ -289,6 +314,75 @@ class AIService {
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         text:
             '💰 **$workerName** için avans kaydı hazırlandı. Listeden personeli değiştirebilir veya onaylayabilirsiniz:',
+        isUser: false,
+        timestamp: DateTime.now(),
+        actionCard: card,
+      );
+    }
+
+    // 2.5 Alınan Ödeme / Hakediş Tahsilatı Kontrolü (addReceivedPayment - AlinanOdeme)
+    final bool isReceivedPayment =
+        ((norm.contains('odeme') ||
+                norm.contains('ödeme') ||
+                norm.contains('hakedis') ||
+                norm.contains('hakediş') ||
+                norm.contains('tahsilat') ||
+                norm.contains('kasa girisi') ||
+                norm.contains('para')) &&
+            (norm.contains('aldim') ||
+                norm.contains('aldik') ||
+                norm.contains('tahsil') ||
+                norm.contains('geldi') ||
+                norm.contains('yatti') ||
+                norm.contains('alindi'))) ||
+        (norm.contains('santiyeden') &&
+            (norm.contains('odeme') ||
+                norm.contains('hakedis') ||
+                norm.contains('tahsilat')));
+
+    if (isReceivedPayment) {
+      final cleanNumText = text.replaceAllMapped(
+        RegExp(r'(\d)\.(\d{3})\b'),
+        (m) => '${m.group(1)}${m.group(2)}',
+      );
+      double amount = 0.0;
+      final amountMatch = RegExp(r'(\d+[\.,]?\d*)').firstMatch(cleanNumText);
+      if (amountMatch != null) {
+        amount =
+            double.tryParse(amountMatch.group(1)!.replaceAll(',', '.')) ?? 0.0;
+      }
+
+      Santiye? matchedSite;
+      for (final s in santiyeler) {
+        if (norm.contains(AkilliSesAyristirici.normalize(s.ad))) {
+          matchedSite = s;
+          break;
+        }
+      }
+      matchedSite ??= (santiyeler.isNotEmpty ? santiyeler.first : null);
+
+      final siteName = matchedSite?.ad ?? 'Merkez Şantiye';
+      final siteId = matchedSite?.id ?? '';
+
+      final card = AIActionCardData(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        type: AIActionType.addReceivedPayment,
+        title: 'Alınan Ödeme / Hakediş Onayı',
+        description: 'Şantiyeden alınan ödeme kaydı hazırlandı.',
+        data: {
+          'santiye_id': siteId,
+          'santiyeAdi': siteName,
+          'site': siteName,
+          'odemeYapan': 'İşveren / Hakediş Tahsilatı',
+          'amount': amount > 0 ? amount : 25000.0,
+          'miktar': amount > 0 ? amount : 25000.0,
+        },
+      );
+
+      return AIChatMessage(
+        id: DateTime.now().millisecondsSinceEpoch.toString(),
+        text:
+            '💵 **$siteName** için alınan hakediş / ödeme kaydı hazırlandı. Bilgileri düzenleyebilir veya onaylayabilirsiniz:',
         isUser: false,
         timestamp: DateTime.now(),
         actionCard: card,
@@ -726,15 +820,50 @@ class AIService {
             0;
       }
 
+      final ekMasrafMatch =
+          RegExp(
+            r'(\d+[\.,]?\d*)\s*(tl|lira|₺)?\s*(ek\s*masraf|malzeme|nalbur|hırdavat|hirdavat|diğer|diger)',
+            caseSensitive: false,
+          ).firstMatch(text) ??
+          RegExp(
+            r'(ek\s*masraf|malzeme|nalbur|hırdavat|hirdavat|diğer|diger)\s*(\d+[\.,]?\d*)',
+            caseSensitive: false,
+          ).firstMatch(text);
+      if (ekMasrafMatch != null) {
+        final rawEk =
+            RegExp(r'^\d').hasMatch(ekMasrafMatch.group(1) ?? '')
+                ? ekMasrafMatch.group(1)!
+                : (ekMasrafMatch.group(2) ?? '0');
+        ekMasraf = double.tryParse(rawEk.replaceAll(',', '.')) ?? 0;
+      }
+
+      final bool isYesterday =
+          norm.contains('dun ') ||
+          norm.contains('dunku') ||
+          norm.endsWith('dun');
+      final now = DateTime.now();
+      final reportDate =
+          isYesterday
+              ? DateTime(
+                now.year,
+                now.month,
+                now.day,
+              ).subtract(const Duration(days: 1))
+              : DateTime(now.year, now.month, now.day);
+
       final card = AIActionCardData(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         type: AIActionType.submitDailyLog,
-        title: 'Günlük Şantiye Raporu',
+        title:
+            isYesterday
+                ? 'Dünkü Şantiye Raporu (${reportDate.day}.${reportDate.month}.${reportDate.year})'
+                : 'Günlük Şantiye Raporu',
         description: 'Puantaj ve masraflar hazırlandı.',
         data: {
           'santiye_id': targetSite.id ?? '',
           'site': targetSite.ad,
           'santiyeAdi': targetSite.ad,
+          'tarih': reportDate.toIso8601String(),
           'isci_durumlari': isciDurumlari,
           'workers_summary': '${isciDurumlari.length} personel puantajda',
           'expenses_summary': [
@@ -755,7 +884,7 @@ class AIService {
       return AIChatMessage(
         id: DateTime.now().millisecondsSinceEpoch.toString(),
         text:
-            '📋 **${targetSite.ad}** için günlük rapor ve puantaj kartı oluşturuldu:',
+            '📋 **${targetSite.ad}** için ${isYesterday ? 'dünkü' : 'günlük'} rapor ve puantaj kartı oluşturuldu:',
         isUser: false,
         timestamp: DateTime.now(),
         actionCard: card,
@@ -767,6 +896,7 @@ class AIService {
       userPrompt,
       workerNames: workerNames,
       siteNames: siteNames,
+      history: history,
     );
 
     return AIChatMessage(
@@ -1070,13 +1200,43 @@ class AIService {
   static Future<AIIntent> _askGemini(
     String userPrompt,
     List<String> workerNames,
-    List<String> siteNames,
-  ) async {
-    const systemInstruction =
+    List<String> siteNames, {
+    List<AIChatMessage> history = const [],
+  }) async {
+    final santiyeContext =
+        siteNames.isNotEmpty
+            ? 'Aktif şantiyeler: ${siteNames.join(', ')}. '
+            : '';
+    final isciContext =
+        workerNames.isNotEmpty
+            ? 'Kayıtlı ekip personelleri: ${workerNames.join(', ')}. '
+            : '';
+
+    final systemInstruction =
         'Sen ŞPD (Şantiye Puantaj Defteri) uygulamasının uzman yapay zeka asistanı ve tecrübeli bir inşaat mühendisisin. '
-        'Şantiye yönetimi, inşaat tekniği, statik, malzeme özellikleri (beton, demir, harç, tuğla, yalıtım vb.), '
+        '$santiyeContext$isciContext'
+        'Şantiye yönetimi, inşaat tekniği, TS 500 / TBDY 2018 standartları, statik, malzeme özellikleri (beton, demir, harç, tuğla, yalıtım vb.), '
         'iş güvenliği ve şantiye organizasyonu konularında profesyonel, doğru ve net cevaplar verirsin. '
         'Türkçe, samimi, anlaşılır ve yapıcı bir dille yanıt ver. Gerekirse maddeler ve emojiler kullan.';
+
+    final recentHistory =
+        history.length > 6 ? history.sublist(history.length - 6) : history;
+    final contents = <Map<String, dynamic>>[
+      for (final msg in recentHistory)
+        if (msg.text.trim().isNotEmpty)
+          {
+            'role': msg.isUser ? 'user' : 'model',
+            'parts': [
+              {'text': msg.text},
+            ],
+          },
+      {
+        'role': 'user',
+        'parts': [
+          {'text': userPrompt},
+        ],
+      },
+    ];
 
     final body = jsonEncode({
       'system_instruction': {
@@ -1084,13 +1244,7 @@ class AIService {
           {'text': systemInstruction},
         ],
       },
-      'contents': [
-        {
-          'parts': [
-            {'text': userPrompt},
-          ],
-        },
-      ],
+      'contents': contents,
       'generationConfig': {'temperature': 0.7, 'maxOutputTokens': 1200},
     });
 
@@ -1132,10 +1286,12 @@ class AIService {
   }
 
   // ═══════════════════════════════════════════════════════
-  // LOCAL FALLBACK
+  // LOCAL FALLBACK & ÇEVRİMDIŞI İNŞAAT BİLGİ BANKASI
   // ═══════════════════════════════════════════════════════
   static AIIntent _localFallback(String original, {bool isError = false}) {
     final text = original.toLowerCase();
+    final norm = AkilliSesAyristirici.normalize(text);
+
     if (_m(text, [
       'merhaba',
       'selam',
@@ -1150,14 +1306,155 @@ class AIService {
         params: {},
       );
     }
-    if (_m(text, ['isg', 'iş güvenliği', 'kask', 'önlem', 'kaza', 'risk'])) {
+
+    // 1. Beton dökümü öncesi kontrol listesi
+    if ((norm.contains('beton') &&
+            (norm.contains('dokum') ||
+                norm.contains('oncesi') ||
+                norm.contains('dikkat') ||
+                norm.contains('kontrol'))) &&
+        !norm.contains('priz') &&
+        !norm.contains('dayanim')) {
       return AIIntent(
         action: 'chat_response',
-        message:
-            '⛑️ İSG için 6331 sayılı İş Sağlığı ve Güvenliği Kanunu geçerlidir. Şantiyede baret, yelek ve emniyet kemeri kullanımı zorunludur.',
+        message: '''🏗️ **Beton Dökümü Öncesi Kritik Saha Kontrol Listesi**
+
+1. **Kalıp & İskele Kontrolü**
+• Kalıp dikmeleri, payandalar ve kama bağlantıları sağlam mı?
+• Kalıp içi talaş, toz ve yabancı maddelerden temizlenip kalıp yağı sürüldü mü?
+• Kalıp sızdırmazlığı ve şakul/terazi kotları kontrol edildi mi?
+
+2. **Donatı (Demir) & Paspayı Kontrolü**
+• Projeye uygun donatı çapı, adedi, etriye sıklaştırması ve kanca açıları (135°) tamam mı?
+• **Paspayı takozları** (temelde ~5 cm, kolon/kirişte 2.5–3 cm, döşemede 2 cm) eksiksiz yerleştirildi mi?
+• Tesisat geçişleri ve rezervasyon boşlukları bırakıldı mı?
+
+3. **Lojistik & Ekipman Hazırlığı**
+• **En az 2 adet vibratör** (1 asıl + 1 yedek) çalışır durumda hazır mı?
+• Hava durumuna göre naylon örtü, antifriz veya kürleme suyu hazırlandı mı?
+
+4. **Taze Beton Kabulü**
+• İrsaliyedeki beton sınıfı (örn. C30/37), kıvam sınıfı (S3/S4) ve santral çıkış saati kontrol edilmeli.
+• Numune küpleri ve **Slump (Çökme) deneyleri** yapı denetim eşliğinde alınmalıdır. *(Kesinlikle miksere sahada su eklenmemelidir!)*''',
         params: {},
       );
     }
+
+    // 2. C25 / C30 / C35 Beton Dayanımı, Priz Alma ve Kürleme Süreleri
+    if (norm.contains('c25') ||
+        norm.contains('c30') ||
+        norm.contains('c35') ||
+        norm.contains('priz') ||
+        (norm.contains('beton') &&
+            (norm.contains('dayanim') ||
+                norm.contains('kurleme') ||
+                norm.contains('sulama') ||
+                norm.contains('ozellik')))) {
+      return AIIntent(
+        action: 'chat_response',
+        message: '''🧪 **C30/37 Beton Dayanımı, Priz Alma ve Kürleme Rehberi**
+
+• **Karakteristik Basınç Dayanımı (TS EN 206):**
+  - **15×30 cm Silindir Dayanımı:** minimum **30 MPa** (30 N/mm²)
+  - **15×15×15 cm Küp Dayanımı:** minimum **37 MPa** (37 N/mm²)
+
+• **Priz Alma ve Dayanım Kazanma Süreleri:**
+  - **Priz Başlangıcı:** Dökümden sonra yaklaşık **1.5 – 3 saat** (sıcaklığa bağlı)
+  - **Priz Sonu (Üzerinde yürünebilme):** **6 – 10 saat**
+  - **7 Günlük Dayanım:** Nihai dayanımın yaklaşık **%65 – %70**'ine ulaşır (~25–27 MPa küp)
+  - **28 Günlük Standart Dayanım:** Tasarım dayanımının **%100**'üne ulaşır (≥37 MPa küp)
+
+• **Kürleme (Sulama) Kuralları:**
+  - İlk sulama priz tamamlandıktan sonra (yazın 3–4 saat sonra) göllendirme veya yağmurlama ile başlamalıdır.
+  - **En az 7 gün** boyunca sabah ve akşam düzenli kürleme yapılmalı, beton yüzeyi nemli tutulmalıdır.''',
+        params: {},
+      );
+    }
+
+    // 3. Demir Donatı Bindirme Boyu, Etriye ve Paspayı Kuralları
+    if (norm.contains('paspayi') ||
+        norm.contains('pas payi') ||
+        norm.contains('bindirme') ||
+        norm.contains('etriye') ||
+        (norm.contains('demir') && norm.contains('donati'))) {
+      return AIIntent(
+        action: 'chat_response',
+        message:
+            '''📏 **Demir Donatı Bindirme Boyu & Paspayı Kuralları (TS 500 / TBDY 2018)**
+
+1. **Minimum Net Beton Örtüsü (Paspayı):**
+• **Temeller (Toprakla temaslı):** 5.0 cm (50 mm)
+• **Kolon, Kiriş ve Perdeler:** 2.5 – 3.0 cm (Dış cephede 3.5 cm)
+• **Döşemeler ve İç Duvarlar:** 1.5 – 2.0 cm
+
+2. **Bindirme (Ek) Boyu (l₀):**
+• B420C nervürlü demir ve C30 beton için pratik saha kuralı olarak bindirme boyu ortalama **45Ø – 55Ø** (çapın 50 katı) alınır:
+  - **Ø12 demir:** ~60 cm
+  - **Ø14 demir:** ~70 cm
+  - **Ø16 demir:** ~80 cm
+  - **Ø20 demir:** ~100 cm
+• Kolon boyuna donatı bindirmeleri kolonun **orta üçte birlik (L/3) bölgesinde** yapılmalı ve bindirme boyunca etriyeler sıklaştırılmalıdır.
+
+3. **Etriye & Çiroz Kuralları:**
+• Tüm etriye ve çiroz kancaları **135° deprem kancası** olmalı, kanca uç boyu en az **10Ø (veya ≥7.5 cm)** çekirdek içine dönmelidir.''',
+        params: {},
+      );
+    }
+
+    // 4. Kalıp Söküm Süreleri
+    if (norm.contains('kalip') &&
+        (norm.contains('sokum') ||
+            norm.contains('ne zaman') ||
+            norm.contains('kac gun'))) {
+      return AIIntent(
+        action: 'chat_response',
+        message:
+            '''🪵 **Standart Kalıp Söküm Süreleri (TS 500 - Normal Portland Çimentosu)**
+
+*(Ortalama ortam sıcaklığı +5°C üzerinde olduğunda)*
+• **Kiriş Yanları, Kolon ve Perde Yan Kalıpları:** **2 – 3 Gün**
+• **Döşeme Alt Kalıpları (Dikmeler hariç):** **7 – 10 Gün**
+• **Kiriş Alt Kalıpları (Dikmeler hariç):** **14 Gün**
+• **Döşeme ve Kiriş Altı Taşıyıcı Dikmeler (Payandalar):** **21 – 28 Gün**
+
+⚠️ **Önemli:** Don olaylarının yaşandığı günlerde (+5°C altı) geçen süreler kalıp söküm süresine **eklenmelidir**.''',
+        params: {},
+      );
+    }
+
+    // 5. İSG / İş Güvenliği ve Risk Kontrol Listesi
+    if (_m(text, [
+      'isg',
+      'iş güvenliği',
+      'is guvenligi',
+      'kask',
+      'önlem',
+      'kaza',
+      'risk',
+      'baret',
+    ])) {
+      return AIIntent(
+        action: 'chat_response',
+        message: '''⛑️ **Şantiye İş Güvenliği (İSG) ve Risk Kontrol Listesi**
+
+1. **Kişisel Koruyucu Donanım (KKD)**
+• Sahadaki tüm personelde **EN 397 baret**, **reflektörlü yelek**, **çelik burunlu/tabanlı iş ayakkabısı** ve işe uygun eldiven zorunludur.
+• Yüksekte çalışmalarda **çift lanyardlı paraşüt tipi emniyet kemeri** yaşam hattına bağlı olmalıdır.
+
+2. **Yüksekte Çalışma & Kenar Koruma**
+• Kat boşlukları, asansör kuyuları, merdiven kovaları ve dış cephe kenarları **110 cm yüksekliğinde korkuluk + 15 cm topuk levhası** ve güvenlik ağı ile kapatılmalıdır.
+• İskeleler TSE belgeli olmalı, her katta tam yürüme platformu ve bina ankrajı bulunmalıdır.
+
+3. **Elektrik & Makine Güvenliği**
+• Tüm şantiye panolarında **30 mA Kaçak Akım Rölesi** aktif olmalı, kablolar yerden/sudan yüksekte askıya alınmalıdır.
+• Kule vinç, mikser ve pompa operasyonlarında işaretçi (bayrakçı) bulundurulmalı, bom altında personel durmamalıdır.
+
+4. **Kazı & Hafriyat Güvenliği**
+• 1.50 m'yi aşan kazılarda **iksa / kademeli şev** uygulanmalı ve kazı kenarına güvenli mesafede bariyer çekilmelidir.''',
+        params: {},
+      );
+    }
+
     if (isError) {
       return AIIntent(
         action: 'chat_response',
@@ -1169,7 +1466,7 @@ class AIService {
     return AIIntent(
       action: 'chat_response',
       message:
-          '🤔 Sorunuzu tam anlayamadım.\n\n💡 Kullanabileceğiniz örnekler:\n• "C30 beton özellikleri nelerdir?"\n• "350 m2 tabliyeye kaç mikser beton gider?"\n• "Ali\'ye 500 TL avans ver"\n• "Yeni işçi ekle: Ahmet 1500 TL"\n• "Kadıköy şantiyesine puantaj gir"',
+          '🤔 Sorunuzu tam anlayamadım.\n\n💡 Kullanabileceğiniz örnekler:\n• "C30 beton dayanımı ve priz alma süreleri"\n• "350 m2 tabliyeye 15 cm kaç mikser beton gider?"\n• "Ali\'ye 2000 TL avans verdim"\n• "Kadıköy şantiyesinden 50000 TL ödeme aldık"\n• "Yeni işçi ekle: Ahmet Kaya 2000 TL"\n• "Bugün bütün ekip tam gün çalıştı"',
       params: {},
     );
   }

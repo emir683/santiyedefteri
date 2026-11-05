@@ -9,7 +9,17 @@ const compression = require('compression');
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-app.use(compression({ threshold: 1024 }));
+app.use(compression({
+  threshold: 1024,
+  filter: (req, res) => {
+    // .bin dosyaları ham float32 ikili verisidir; 100-200 MB dosyayı gzip sıkıştırması yapmak
+    // Cloudflare tünelinde HTTP/2 RST_STREAM (ERR_HTTP2_PROTOCOL_ERROR) hatasına yol açar!
+    if (req.path && req.path.endsWith('.bin')) {
+      return false;
+    }
+    return compression.filter(req, res);
+  }
+}));
 
 const UPLOAD_DIR = path.join(__dirname, 'uploads');
 const PUBLIC_DIR = path.join(__dirname, 'public');
@@ -138,10 +148,47 @@ function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfP
 
     console.log(`[CAD ENGINE V2 START] ${fileId} dönüşümü başlatıldı...`);
     const isDwg = inputPath.toLowerCase().endsWith('.dwg');
+    const isBin = inputPath.toLowerCase().endsWith('.bin');
+    let isPrebakedBin = false;
+
     if (isDwg) {
       if (!fs.existsSync(dxfPath) || fs.statSync(dxfPath).size < 100) {
         console.log(`[CAD ENGINE V2] dwg2dxf çalıştırılıyor: ${fileId}...`);
         await runDwgToDxf(inputPath, dxfPath);
+      }
+    } else if (isBin) {
+      // .bin dosyası: DWG ikili başlığına mı sahip (AC10xx) yoksa doğrudan WebGL vertex paketi mi?
+      let hasDwgHeader = false;
+      try {
+        const headerBuf = Buffer.alloc(6);
+        const fd = fs.openSync(inputPath, 'r');
+        fs.readSync(fd, headerBuf, 0, 6, 0);
+        fs.closeSync(fd);
+        if (headerBuf.toString('ascii').startsWith('AC')) {
+          hasDwgHeader = true;
+        }
+      } catch (_) {}
+
+      if (hasDwgHeader) {
+        console.log(`[CAD ENGINE V2] .bin dosyası DWG ikili başlığı içeriyor, dwg2dxf çalıştırılıyor: ${fileId}...`);
+        await runDwgToDxf(inputPath, dxfPath);
+      } else {
+        console.log(`[CAD ENGINE V2] .bin dosyası doğrudan WebGL geometri paketi olarak kaydediliyor: ${fileId}...`);
+        const targetBin = path.join(UPLOAD_DIR, `${fileId}_cad_vertices.bin`);
+        fs.copyFileSync(inputPath, targetBin);
+        const targetMeta = path.join(UPLOAD_DIR, `${fileId}_cad_meta.json`);
+        if (!fs.existsSync(targetMeta)) {
+          const stats = fs.statSync(targetBin);
+          const totalLines = Math.floor(stats.size / 40); // 10 float32 x 4 byte = 40 byte / line
+          const metaPayload = {
+            totalLines,
+            bounds: { minX: -1000, minY: -1000, w: 2000, h: 2000 },
+            layers: [{ name: '0', color: 0xffffff, count: totalLines, visible: true }],
+            texts: []
+          };
+          fs.writeFileSync(targetMeta, JSON.stringify(metaPayload), 'utf8');
+        }
+        isPrebakedBin = true;
       }
     } else if (inputPath.toLowerCase().endsWith('.dxf')) {
       if (inputPath !== dxfPath && !fs.existsSync(dxfPath)) {
@@ -149,22 +196,30 @@ function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfP
       }
     }
 
-    console.log(`[CAD ENGINE V2] Python V2 DXF-Öncelikli Binary üretiliyor: ${fileId}...`);
-    await new Promise((resolve, reject) => {
-      execFile(
-        'python3',
-        [PYTHON_SCRIPT_PATH_V2, svgPath, jsonTarget],
-        { maxBuffer: 128 * 1024 * 1024, timeout: 600000 },
-        (err) => {
-          if (err) {
-            console.error(`[CAD ENGINE V2 ERROR] ${fileId}:`, err);
-            return reject(err);
+    if (!isPrebakedBin) {
+      console.log(`[CAD ENGINE V2] Python V2 DXF-Öncelikli Binary üretiliyor: ${fileId}...`);
+      await new Promise((resolve, reject) => {
+        const isLinux = process.platform === 'linux';
+        const cmd = isLinux ? 'nice' : 'python3';
+        const args = isLinux
+          ? ['-n', '10', 'python3', PYTHON_SCRIPT_PATH_V2, svgPath, jsonTarget]
+          : [PYTHON_SCRIPT_PATH_V2, svgPath, jsonTarget];
+
+        execFile(
+          cmd,
+          args,
+          { maxBuffer: 128 * 1024 * 1024, timeout: 600000 },
+          (err) => {
+            if (err) {
+              console.error(`[CAD ENGINE V2 ERROR] ${fileId}:`, err);
+              return reject(err);
+            }
+            console.log(`[CAD ENGINE V2 SUCCESS] ${fileId} başarıyla tamamlandı!`);
+            resolve();
           }
-          console.log(`[CAD ENGINE V2 SUCCESS] ${fileId} başarıyla tamamlandı!`);
-          resolve();
-        }
-      );
-    });
+        );
+      });
+    }
 
     // Kullanıcı uygulamayı tamamen kapatmış olsa bile uzaktan FCM push bildirimi gönder
     if (meta && meta.fcmToken) {
@@ -174,16 +229,6 @@ function startV2Conversion(fileId, inputPath, dxfPath, svgPath, jsonTarget, pdfP
         webglUrl: meta.webglUrl,
         fileId: fileId,
       });
-    }
-
-    // Arka planda SVG ve PDF fallback üretimi
-    if (isDwg) {
-      runDwgToSvg(inputPath, svgPath).then(() => {
-        smartFixSvg(svgPath);
-        if (fs.existsSync(svgPath) && fs.statSync(svgPath).size > 50) {
-          execFile('rsvg-convert', ['-f', 'pdf', '-o', pdfPath, svgPath], () => {});
-        }
-      }).catch(() => {});
     }
   })();
 
@@ -487,7 +532,12 @@ function smartFixSvg(filePath) {
 
 function runDwgToDxf(inputPath, dxfPath) {
   return new Promise((resolve) => {
-    execFile('dwg2dxf', ['-y', inputPath, '-o', dxfPath], { timeout: 300000 }, () => resolve());
+    const isLinux = process.platform === 'linux';
+    const cmd = isLinux ? 'nice' : 'dwg2dxf';
+    const args = isLinux
+      ? ['-n', '10', 'dwg2dxf', '-y', inputPath, '-o', dxfPath]
+      : ['-y', inputPath, '-o', dxfPath];
+    execFile(cmd, args, { timeout: 300000 }, () => resolve());
   });
 }
 

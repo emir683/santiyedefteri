@@ -112,20 +112,18 @@
 			<array>
 				<string>com.autodesk.dwg</string>
 				<string>org.gnu.gnu-dwg</string>
-				<string>public.data</string>
 			</array>
 		</dict>
 		<dict>
 			<key>CFBundleTypeName</key>
-			<string>AutoCAD DXF Drawing</string>
+			<string>CAD Binary Data</string>
 			<key>CFBundleTypeRole</key>
 			<string>Viewer</string>
 			<key>LSHandlerRank</key>
 			<string>Alternate</string>
 			<key>LSItemContentTypes</key>
 			<array>
-				<string>com.autodesk.dxf</string>
-				<string>public.data</string>
+				<string>com.emrcore.cad.bin</string>
 			</array>
 		</dict>
 	</array>
@@ -160,28 +158,24 @@
 		</dict>
 		<dict>
 			<key>UTTypeIdentifier</key>
-			<string>com.autodesk.dxf</string>
+			<string>com.emrcore.cad.bin</string>
 			<key>UTTypeDescription</key>
-			<string>AutoCAD DXF Drawing</string>
+			<string>CAD Binary Data</string>
 			<key>UTTypeConformsTo</key>
 			<array>
 				<string>public.data</string>
 				<string>public.item</string>
-				<string>public.plain-text</string>
 			</array>
 			<key>UTTypeTagSpecification</key>
 			<dict>
 				<key>public.filename-extension</key>
 				<array>
-					<string>dxf</string>
-					<string>DXF</string>
+					<string>bin</string>
+					<string>BIN</string>
 				</array>
 				<key>public.mime-type</key>
 				<array>
-					<string>application/dxf</string>
-					<string>application/x-dxf</string>
-					<string>image/vnd.dxf</string>
-					<string>image/x-dxf</string>
+					<string>application/octet-stream</string>
 				</array>
 			</dict>
 		</dict>

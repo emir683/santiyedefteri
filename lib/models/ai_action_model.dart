@@ -1,6 +1,7 @@
 enum AIActionType {
   addWorker,
   addPayment,
+  addReceivedPayment,
   submitDailyLog,
   addSite,
   siteMonthlySummary,

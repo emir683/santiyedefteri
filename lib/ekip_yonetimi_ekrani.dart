@@ -7,6 +7,7 @@ import 'package:share_plus/share_plus.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'team_gate.dart';
+import 'animasyon_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 
@@ -29,8 +30,9 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withValues(alpha: 0.8),
-      transitionDuration: const Duration(milliseconds: 200),
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      transitionDuration: const Duration(milliseconds: 240),
+      transitionBuilder: AnimasyonluDialog.gecisYapici,
       pageBuilder: (ctx, anim1, anim2) {
         return Stack(
           children: [
@@ -45,7 +47,9 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
@@ -165,8 +169,9 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
       context: context,
       barrierDismissible: true,
       barrierLabel: "Kapat",
-      barrierColor: Colors.black.withValues(alpha: 0.8),
-      transitionDuration: const Duration(milliseconds: 200),
+      barrierColor: Colors.black.withValues(alpha: 0.65),
+      transitionDuration: const Duration(milliseconds: 240),
+      transitionBuilder: AnimasyonluDialog.gecisYapici,
       pageBuilder: (ctx, anim1, anim2) {
         return StatefulBuilder(
           builder:
@@ -400,7 +405,9 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                 decoration: BoxDecoration(
                   color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.1),
+                  ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
@@ -725,11 +732,15 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                     decoration: BoxDecoration(
                                       color:
                                           isDark
-                                              ? Colors.white.withValues(alpha: 0.05)
+                                              ? Colors.white.withValues(
+                                                alpha: 0.05,
+                                              )
                                               : Colors.grey.shade100,
                                       borderRadius: BorderRadius.circular(999),
                                       border: Border.all(
-                                        color: Colors.grey.withValues(alpha: 0.12),
+                                        color: Colors.grey.withValues(
+                                          alpha: 0.12,
+                                        ),
                                       ),
                                     ),
                                     child: Row(
@@ -817,8 +828,8 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                 ),
                                                             border: Border.all(
                                                               color: Colors.grey
-                                                                  .withValues(alpha: 
-                                                                    0.1,
+                                                                  .withValues(
+                                                                    alpha: 0.1,
                                                                   ),
                                                             ),
                                                           ),
@@ -1102,7 +1113,9 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
       decoration: BoxDecoration(
         color: color.withValues(alpha: isDark ? 0.18 : 0.10),
         borderRadius: BorderRadius.circular(999),
-        border: Border.all(color: color.withValues(alpha: isDark ? 0.26 : 0.16)),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.26 : 0.16),
+        ),
       ),
       child: Text(
         label,
