@@ -68,3 +68,5 @@ certificates/
 *.certSigningRequest
 emrcore-website/
 test_*.dart
+scratch/
+scratch_*.py

@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
 import '../data/turkiye_il_ilce.dart';
+import '../tema_ayarlari.dart';
 import 'il_ilce_secici_modal.dart';
 
 class WeatherDashboardCard extends StatefulWidget {
@@ -191,27 +192,20 @@ class _WeatherDashboardCardState extends State<WeatherDashboardCard> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            (isDark ? const Color(0xFF15181D) : const Color(0xFFE7EEF1))
-                .withValues(alpha: isDark ? 0.96 : 0.90),
-            (isDark ? const Color(0xFF090B0F) : const Color(0xFFD6E1E6))
-                .withValues(alpha: isDark ? 0.98 : 0.94),
-          ],
+          colors: AppTheme.cardGradient(isDark),
         ),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.07)
-              : const Color(0xFFBFD0D6).withValues(alpha: 0.92),
+          color: AppTheme.cardBorder(isDark),
         ),
         borderRadius: BorderRadius.circular(22),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
+            color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.05),
             blurRadius: isDark ? 18 : 12,
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.03 : 0.08),
+            color: AppTheme.glow(context).withValues(alpha: isDark ? 0.04 : 0.08),
             blurRadius: isDark ? 12 : 18,
             offset: const Offset(0, 10),
           ),
@@ -501,7 +495,11 @@ class _LocationSearchDialogState extends State<_LocationSearchDialog> {
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return AlertDialog(
-      backgroundColor: isDark ? const Color(0xFF1E293B) : Colors.white,
+      backgroundColor: isDark ? const Color(0xFF0A0C10) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(24),
+        side: BorderSide(color: AppTheme.cardBorder(isDark)),
+      ),
       title: const Text("Konum Ara"),
       content: SizedBox(
         width: double.maxFinite,

@@ -12,6 +12,7 @@ import 'cad_webgl_ekrani.dart';
 import 'cad_arkaplan_servisi.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'widgets/glass_surface.dart';
+import 'tema_ayarlari.dart';
 
 /// Önbelleğe kaydedilen ve son açılan CAD projeleri modeli
 class SavedCadProject {
@@ -75,6 +76,10 @@ class DwgGoruntuleyiciEkrani extends StatefulWidget {
 }
 
 class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+
   // Oracle Cloud üzerinde çalışan özel CAD Vektör sunucumuz
   static String get _kCadServerUrl => CadArkaplanServisi.cadServerUrl;
 
@@ -714,7 +719,6 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
   }
 
   // Ana Menü Tasarım Sistemi Renkleri ve Yardımcıları
-  static const Color _kBrandTeal = Color(0xFF0F7C86);
   static const Color _kTitleDark = Color(0xFF102A43);
 
   Widget _buildPanelGlassCard({
@@ -730,17 +734,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            (isDark ? const Color(0xFF15181D) : const Color(0xFFE7EEF1))
-                .withValues(alpha: isDark ? 0.96 : 0.90),
-            (isDark ? const Color(0xFF090B0F) : const Color(0xFFD6E1E6))
-                .withValues(alpha: isDark ? 0.98 : 0.94),
-          ],
+          colors: AppTheme.cardGradient(isDark),
         ),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.07)
-              : const Color(0xFFBFD0D6).withValues(alpha: 0.92),
+          color: AppTheme.cardBorder(isDark),
         ),
         borderRadius: BorderRadius.circular(borderRadius),
         boxShadow: [
@@ -750,7 +747,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
             offset: const Offset(0, 8),
           ),
           BoxShadow(
-            color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.03 : 0.08),
+            color: AppTheme.glow(context).withValues(alpha: isDark ? 0.04 : 0.08),
             blurRadius: isDark ? 12 : 18,
             offset: const Offset(0, 10),
           ),
@@ -776,11 +773,12 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
 
   Widget _buildPanelGlassIconBadge({
     required IconData icon,
-    Color accentColor = _kBrandTeal,
+    Color? accentColor,
     double size = 48,
     double iconSize = 24,
     double borderRadius = 14,
   }) {
+    final effectiveAccent = accentColor ?? _themeContrastIcon;
     final isDark = Theme.of(context).brightness == Brightness.dark;
 
     return Container(
@@ -791,17 +789,17 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
           colors: [
-            accentColor.withValues(alpha: isDark ? 0.20 : 0.18),
-            (isDark ? const Color(0xFF15313A) : const Color(0xFFE9F8FA))
+            effectiveAccent.withValues(alpha: isDark ? 0.20 : 0.18),
+            (isDark ? Colors.black : const Color(0xFFE9F8FA))
                 .withValues(alpha: isDark ? 0.72 : 0.96),
           ],
         ),
         borderRadius: BorderRadius.circular(borderRadius),
         border: Border.all(
-          color: accentColor.withValues(alpha: isDark ? 0.20 : 0.14),
+          color: effectiveAccent.withValues(alpha: isDark ? 0.35 : 0.22),
         ),
       ),
-      child: Icon(icon, color: accentColor, size: iconSize),
+      child: Icon(icon, color: effectiveAccent, size: iconSize),
     );
   }
 
@@ -948,7 +946,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
             children: [
               _buildPanelGlassIconBadge(
                 icon: Icons.file_open_rounded,
-                accentColor: _kBrandTeal,
+                accentColor: _themeContrastIcon,
                 size: 58,
                 iconSize: 28,
                 borderRadius: 18,
@@ -980,30 +978,30 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      _kBrandTeal.withValues(alpha: isDark ? 0.16 : 0.10),
-                      (isDark ? const Color(0xFF15313A) : const Color(0xFFE9F8FA))
+                      _themeContrastIcon.withValues(alpha: isDark ? 0.16 : 0.10),
+                      (isDark ? Colors.black : const Color(0xFFE9F8FA))
                           .withValues(alpha: isDark ? 0.6 : 0.8),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(20),
                   border: Border.all(
-                    color: _kBrandTeal.withValues(alpha: isDark ? 0.22 : 0.18),
+                    color: _themeContrastIcon.withValues(alpha: isDark ? 0.22 : 0.18),
                   ),
                 ),
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.layers_outlined,
-                      color: _kBrandTeal,
+                      color: _themeContrastIcon,
                       size: 14,
                     ),
                     const SizedBox(width: 6),
                     Text(
                       'DWG & BIN Format Desteği',
                       style: TextStyle(
-                        color: isDark ? const Color(0xFF5EEAD4) : _kBrandTeal,
+                        color: _themeContrastIcon,
                         fontSize: 11.5,
                         fontWeight: FontWeight.w700,
                       ),
@@ -1046,13 +1044,13 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                   Container(
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(
-                      color: _kBrandTeal.withValues(alpha: 0.14),
+                      color: _themeContrastIcon.withValues(alpha: 0.14),
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Text(
                       '${_savedProjects.length}',
-                      style: const TextStyle(
-                        color: _kBrandTeal,
+                      style: TextStyle(
+                        color: _themeContrastIcon,
                         fontSize: 11,
                         fontWeight: FontWeight.w800,
                       ),
@@ -1152,10 +1150,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       child: Row(
         children: [
-          // İkon Rozeti (Ana Menü Teal)
+          // İkon Rozeti
           _buildPanelGlassIconBadge(
             icon: Icons.architecture_rounded,
-            accentColor: _kBrandTeal,
+            accentColor: _themeContrastIcon,
             size: 42,
             iconSize: 22,
             borderRadius: 12,
@@ -1273,10 +1271,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                 value: 'open',
                 child: Row(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.open_in_new_rounded,
                       size: 16,
-                      color: _kBrandTeal,
+                      color: _themeContrastIcon,
                     ),
                     const SizedBox(width: 8),
                     Text(
@@ -1432,13 +1430,13 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    isDark ? const Color(0xFF161F2E) : Colors.white,
+                    isDark ? Colors.black : Colors.white,
                     isDark ? const Color(0xFF0F172A) : const Color(0xFFF1F5F9),
                   ],
                 ),
                 borderRadius: BorderRadius.circular(22),
                 border: Border.all(
-                  color: const Color(0xFF0F7C86).withValues(alpha: 0.35),
+                  color: _themeContrastIcon.withValues(alpha: 0.35),
                   width: 1.2,
                 ),
                 boxShadow: const [
@@ -1459,22 +1457,22 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                       shape: BoxShape.circle,
                       gradient: LinearGradient(
                         colors: [
-                          const Color(0xFF0F7C86).withValues(alpha: 0.25),
-                          const Color(0xFF38BDF8).withValues(alpha: 0.15),
+                          _themeContrastIcon.withValues(alpha: 0.25),
+                          _themePrimary.withValues(alpha: 0.15),
                         ],
                       ),
                       border: Border.all(
-                        color: const Color(0xFF0F7C86).withValues(alpha: 0.5),
+                        color: _themeContrastIcon.withValues(alpha: 0.5),
                         width: 1.5,
                       ),
                     ),
-                    child: const Center(
+                    child: Center(
                       child: SizedBox(
                         width: 36,
                         height: 36,
                         child: CircularProgressIndicator(
                           strokeWidth: 3.2,
-                          valueColor: AlwaysStoppedAnimation<Color>(_kBrandTeal),
+                          valueColor: AlwaysStoppedAnimation<Color>(_themeContrastIcon),
                         ),
                       ),
                     ),
@@ -1514,7 +1512,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                       child: Row(
                         mainAxisSize: MainAxisSize.min,
                         children: [
-                          const Icon(Icons.description_outlined, size: 15, color: _kBrandTeal),
+                          Icon(Icons.description_outlined, size: 15, color: _themeContrastIcon),
                           const SizedBox(width: 6),
                           Flexible(
                             child: Text(
@@ -1561,10 +1559,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                     width: double.infinity,
                     padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
                     decoration: BoxDecoration(
-                      color: (isDark ? const Color(0xFF1E293B) : const Color(0xFFF1F5F9)).withValues(alpha: 0.8),
+                      color: (isDark ? Colors.black : const Color(0xFFF1F5F9)).withValues(alpha: 0.8),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color: _kBrandTeal.withValues(alpha: 0.25),
+                        color: _themeContrastIcon.withValues(alpha: 0.25),
                       ),
                     ),
                     child: Column(
@@ -1574,10 +1572,10 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                           children: [
                             Text(
                               _kMuhendislikIpuclari[_guncelIpucuIndeksi]['kategori'] ?? '💡 Bilgi',
-                              style: const TextStyle(
+                              style: TextStyle(
                                 fontSize: 11,
                                 fontWeight: FontWeight.w700,
-                                color: _kBrandTeal,
+                                color: _themeContrastIcon,
                               ),
                             ),
                             const Spacer(),
@@ -1633,7 +1631,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                         flex: 2,
                         child: ElevatedButton.icon(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: _kBrandTeal,
+                            backgroundColor: _themePrimary,
                             foregroundColor: Colors.white,
                             elevation: 0,
                             padding: const EdgeInsets.symmetric(vertical: 10),
@@ -1695,21 +1693,21 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF0F7C86).withValues(alpha: 0.16),
-                      const Color(0xFF38BDF8).withValues(alpha: 0.12),
+                      _themeContrastIcon.withValues(alpha: 0.16),
+                      _themePrimary.withValues(alpha: 0.12),
                     ],
                   ),
                   borderRadius: BorderRadius.circular(14),
-                  border: Border.all(color: const Color(0xFF0F7C86).withValues(alpha: 0.3)),
+                  border: Border.all(color: _themeContrastIcon.withValues(alpha: 0.3)),
                 ),
                 child: Row(
                   children: [
-                    const SizedBox(
+                    SizedBox(
                       width: 18,
                       height: 18,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.2,
-                        valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF0F7C86)),
+                        valueColor: AlwaysStoppedAnimation<Color>(_themeContrastIcon),
                       ),
                     ),
                     const SizedBox(width: 12),
@@ -1726,7 +1724,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
                               const Spacer(),
                               Text(
                                 '%${g.tahminYuzde} (${g.gecenSaniye} sn)',
-                                style: const TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: Color(0xFF0F7C86)),
+                                style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: _themeContrastIcon),
                               ),
                             ],
                           ),
@@ -1755,7 +1753,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
     final isActive = _loadingStep == stepNumber;
     final color = isDone
         ? const Color(0xFF10B981)
-        : (isActive ? _kBrandTeal : (isDark ? Colors.white24 : Colors.black26));
+        : (isActive ? _themeContrastIcon : (isDark ? Colors.white24 : Colors.black26));
 
     return Expanded(
       child: Column(
@@ -1767,7 +1765,7 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
               shape: BoxShape.circle,
               color: isDone
                   ? const Color(0xFF10B981)
-                  : (isActive ? _kBrandTeal.withValues(alpha: 0.2) : Colors.transparent),
+                  : (isActive ? _themeContrastIcon.withValues(alpha: 0.2) : Colors.transparent),
               border: Border.all(color: color, width: 1.5),
             ),
             child: Center(

@@ -10,8 +10,7 @@ import 'fcm_servisi.dart';
 import 'bildirim_servisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
-
-const Color _kBrandTeal = Color(0xFF14B8A6);
+import 'tema_ayarlari.dart';
 
 class HatirlatmalarEkrani extends StatefulWidget {
   const HatirlatmalarEkrani({super.key});
@@ -22,6 +21,9 @@ class HatirlatmalarEkrani extends StatefulWidget {
 
 class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
     with WidgetsBindingObserver {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
   // Kategori bazlı tercihler
   bool _puantajHatirlaticiAktif = true;
   bool _cadBildirimleriAktif = true;
@@ -110,9 +112,9 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
           _bildirimIzniVar = true;
         });
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Bildirim izinleri başarıyla aktifleştirildi!'),
-            backgroundColor: _kBrandTeal,
+          SnackBar(
+            content: const Text('Bildirim izinleri başarıyla aktifleştirildi!'),
+            backgroundColor: _themePrimary,
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -140,7 +142,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                 ),
                 ElevatedButton(
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: _kBrandTeal,
+                    backgroundColor: _themePrimary,
                     foregroundColor: Colors.white,
                   ),
                   onPressed: () {
@@ -297,9 +299,9 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
     if (!mounted) return;
     setState(() => _isLoading = false);
     ScaffoldMessenger.of(context).showSnackBar(
-      const SnackBar(
-        content: Text('Bildirim tercihleri başarıyla kaydedildi.'),
-        backgroundColor: _kBrandTeal,
+      SnackBar(
+        content: const Text('Bildirim tercihleri başarıyla kaydedildi.'),
+        backgroundColor: _themePrimary,
         behavior: SnackBarBehavior.floating,
       ),
     );
@@ -315,7 +317,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
         return Theme(
           data: theme.copyWith(
             colorScheme: theme.colorScheme.copyWith(
-              primary: _kBrandTeal,
+              primary: _themePrimary,
               onPrimary: Colors.white,
               surface:
                   isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
@@ -348,8 +350,8 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
         preferSoftLightBackground: true,
         child:
             _isLoading
-                ? const Center(
-                  child: CircularProgressIndicator(color: _kBrandTeal),
+                ? Center(
+                  child: CircularProgressIndicator(color: _themePrimary),
                 )
                 : SafeArea(
                   top: false,
@@ -473,17 +475,17 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                       Container(
                         padding: const EdgeInsets.all(14),
                         decoration: BoxDecoration(
-                          color: _kBrandTeal.withValues(alpha: 0.10),
+                          color: _themePrimary.withValues(alpha: 0.10),
                           borderRadius: BorderRadius.circular(16),
                           border: Border.all(
-                            color: _kBrandTeal.withValues(alpha: 0.25),
+                            color: _themePrimary.withValues(alpha: 0.25),
                           ),
                         ),
                         child: Row(
                           children: [
-                            const Icon(
+                            Icon(
                               Icons.tune_rounded,
-                              color: _kBrandTeal,
+                              color: _themeContrastIcon,
                               size: 22,
                             ),
                             const SizedBox(width: 12),
@@ -542,14 +544,14 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                                         setState(() => _puantajHatirlaticiAktif = val);
                                         _ayarlariKaydetVeUygula();
                                       },
-                                      activeThumbColor: _kBrandTeal,
+                                      activeThumbColor: _themePrimary,
                                       secondary: Icon(
                                         _puantajHatirlaticiAktif
                                             ? Icons.notification_important_rounded
                                             : Icons.notifications_off_outlined,
                                         color:
                                             _puantajHatirlaticiAktif
-                                                ? _kBrandTeal
+                                                ? _themeContrastIcon
                                                 : Colors.grey,
                                       ),
                                     ),
@@ -560,9 +562,9 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                                           horizontal: 18,
                                           vertical: 4,
                                         ),
-                                        leading: const Icon(
+                                        leading: Icon(
                                           Icons.access_time_filled,
-                                          color: _kBrandTeal,
+                                          color: _themeContrastIcon,
                                         ),
                                         title: const Text(
                                           'Hatırlatma Saati',
@@ -576,10 +578,10 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                                           borderRadius: 10,
                                           child: Text(
                                             _geciciSeciliSaat.format(context),
-                                            style: const TextStyle(
+                                            style: TextStyle(
                                               fontWeight: FontWeight.bold,
                                               fontSize: 14,
-                                              color: _kBrandTeal,
+                                              color: _themeContrastIcon,
                                             ),
                                           ),
                                         ),
@@ -617,7 +619,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                                     setState(() => _cadBildirimleriAktif = val);
                                     _ayarlariKaydetVeUygula();
                                   },
-                                  activeThumbColor: _kBrandTeal,
+                                  activeThumbColor: _themePrimary,
                                   secondary: Icon(
                                     Icons.architecture_rounded,
                                     color:
@@ -655,7 +657,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                                     setState(() => _odemeBildirimleriAktif = val);
                                     _ayarlariKaydetVeUygula();
                                   },
-                                  activeThumbColor: _kBrandTeal,
+                                  activeThumbColor: _themePrimary,
                                   secondary: Icon(
                                     Icons.payments_rounded,
                                     color:
@@ -693,7 +695,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                                     setState(() => _ekipBildirimleriAktif = val);
                                     _ayarlariKaydetVeUygula();
                                   },
-                                  activeThumbColor: _kBrandTeal,
+                                  activeThumbColor: _themePrimary,
                                   secondary: Icon(
                                     Icons.groups_rounded,
                                     color:
@@ -731,7 +733,7 @@ class _HatirlatmalarEkraniState extends State<HatirlatmalarEkrani>
                                     setState(() => _havaDurumuBildirimleriAktif = val);
                                     _ayarlariKaydetVeUygula();
                                   },
-                                  activeThumbColor: _kBrandTeal,
+                                  activeThumbColor: _themePrimary,
                                   secondary: Icon(
                                     Icons.cloudy_snowing,
                                     color:

@@ -16,11 +16,10 @@ import 'widgets/glass_empty_state.dart';
 import 'puanlama_servisi.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
+import 'tema_ayarlari.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
-const Color _kBrandTeal = Color(0xFF14B8A6);
-const Color _kBrandTealDark = Color(0xFF0F7C86);
 
 class IsciEkrani extends StatefulWidget {
   final String teamId;
@@ -37,6 +36,10 @@ class IsciEkrani extends StatefulWidget {
 
 class _IsciEkraniState extends State<IsciEkrani>
     with SingleTickerProviderStateMixin {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+
   final TextEditingController _adController = TextEditingController();
   final TextEditingController _maasController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
@@ -257,13 +260,17 @@ class _IsciEkraniState extends State<IsciEkrani>
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: AppTheme.cardGradient(true),
+                      ),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      border: Border.all(color: AppTheme.cardBorder(true)),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(alpha: 0.5),
-                          blurRadius: 20,
+                          blurRadius: 24,
                         ),
                       ],
                     ),
@@ -294,7 +301,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                 onSelected: (val) {
                                   if (val) setStateDialog(() => seciliTur = "Çekirdek Ekip");
                                 },
-                                selectedColor: _kBrandTeal.withValues(alpha: 0.3),
+                                selectedColor: _themePrimary.withValues(alpha: 0.3),
                                 labelStyle: TextStyle(
                                   color: seciliTur == "Çekirdek Ekip" ? Colors.white : Colors.grey,
                                   fontWeight: FontWeight.bold,
@@ -310,7 +317,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                 onSelected: (val) {
                                   if (val) setStateDialog(() => seciliTur = "Misafir");
                                 },
-                                selectedColor: _kBrandTeal.withValues(alpha: 0.3),
+                                selectedColor: _themePrimary.withValues(alpha: 0.3),
                                 labelStyle: TextStyle(
                                   color: seciliTur == "Misafir" ? Colors.white : Colors.grey,
                                   fontWeight: FontWeight.bold,
@@ -410,7 +417,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _kBrandTeal,
+                                    backgroundColor: _themePrimary,
                                     padding: const EdgeInsets.symmetric(
                                       vertical: 14,
                                     ),
@@ -466,13 +473,17 @@ class _IsciEkraniState extends State<IsciEkrani>
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: AppTheme.cardGradient(true),
+                  ),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(color: AppTheme.cardBorder(true)),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 20,
+                      blurRadius: 24,
                     ),
                   ],
                 ),
@@ -569,8 +580,11 @@ class _IsciEkraniState extends State<IsciEkrani>
         return StatefulBuilder(
           builder: (context, setState) {
             return AlertDialog(
-              backgroundColor: isDark ? const Color(0xFF161A22) : Colors.white,
-              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+              backgroundColor: isDark ? const Color(0xFF0A0C10) : Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(24),
+                side: BorderSide(color: AppTheme.cardBorder(isDark)),
+              ),
               titlePadding: const EdgeInsets.fromLTRB(24, 24, 24, 10),
               contentPadding: const EdgeInsets.symmetric(horizontal: 24),
               actionsPadding: const EdgeInsets.fromLTRB(24, 16, 24, 20),
@@ -1141,7 +1155,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                     onPressed: () => _isciEkleVeyaDuzenleDialog(servisi),
                     icon: const Icon(Icons.person_add),
                     label: const Text("İşçi Ekle"),
-                    backgroundColor: _kBrandTeal,
+                    backgroundColor: _themePrimary,
                     foregroundColor: Colors.white,
                   ),
                 )
@@ -1167,23 +1181,27 @@ class _IsciEkraniState extends State<IsciEkrani>
     Key? moreKey,
     bool isDemo = false,
   }) {
-    return Card(
-      elevation: 2,
+    return Container(
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color:
-              isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : const Color(0xFFD8EAF0),
+        border: Border.all(
+          color: AppTheme.cardBorder(isDark),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      color:
-          isDark
-              ? const Color(0xFF101317)
-              : const Color(0xFFF7FBFD),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
@@ -1213,7 +1231,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                           key: badgeKey,
                           isDark: isDark,
                           adSoyad: isci.ad,
-                          color: _kBrandTealDark,
+                          color: _themeContrastIcon,
                         ),
                         // Bağlı hesap işareti
                         if (isci.linkedUserId != null)
@@ -1355,7 +1373,7 @@ class _IsciEkraniState extends State<IsciEkrani>
                                           height: 42,
                                           child: Row(
                                             children: [
-                                              const Icon(Icons.edit_rounded, size: 18, color: _kBrandTealDark),
+                                              Icon(Icons.edit_rounded, size: 18, color: _themeContrastIcon),
                                               const SizedBox(width: 12),
                                               Text(
                                                 'Düzenle',

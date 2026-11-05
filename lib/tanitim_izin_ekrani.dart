@@ -5,6 +5,8 @@ import 'package:permission_handler/permission_handler.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'bildirim_servisi.dart';
 import 'fcm_servisi.dart';
+import 'widgets/glass_surface.dart';
+import 'tema_ayarlari.dart';
 
 class TanitimIzinEkrani extends StatefulWidget {
   final VoidCallback onTamamlandi;
@@ -210,77 +212,9 @@ class _TanitimIzinEkraniState extends State<TanitimIzinEkrani>
     return Scaffold(
       backgroundColor:
           isDark ? const Color(0xFF030712) : const Color(0xFFF1F5F9),
-      body: Stack(
-        children: [
-          // 1. Arka Plan Degrade ve Işıma Katmanları
-          Positioned.fill(
-            child: DecoratedBox(
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  begin: Alignment.topCenter,
-                  end: Alignment.bottomCenter,
-                  stops: const [0.0, 0.25, 0.65, 1.0],
-                  colors:
-                      isDark
-                          ? const [
-                            Color(0xFF020408),
-                            Color(0xFF080D1A),
-                            Color(0xFF0D1526),
-                            Color(0xFF050811),
-                          ]
-                          : const [
-                            Color(0xFFF8FAFC),
-                            Color(0xFFF1F5F9),
-                            Color(0xFFE2E8F0),
-                            Color(0xFFCBD5E1),
-                          ],
-                ),
-              ),
-            ),
-          ),
-
-          // Üst ve Alt Teal / Cyan Ortam Işıması
-          Positioned(
-            top: -90,
-            right: -60,
-            child: Container(
-              width: 300,
-              height: 300,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(
-                      0xFF14B8A6,
-                    ).withValues(alpha: isDark ? 0.16 : 0.12),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-          Positioned(
-            bottom: 60,
-            left: -80,
-            child: Container(
-              width: 340,
-              height: 340,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                gradient: RadialGradient(
-                  colors: [
-                    const Color(
-                      0xFF3B82F6,
-                    ).withValues(alpha: isDark ? 0.14 : 0.09),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // 2. Ana İçerik ve SafeArea
-          SafeArea(
+      body: GlassPageSurface(
+        preferSoftLightBackground: true,
+        child: SafeArea(
             child: Column(
               children: [
                 // ÜST BAR: Başlık & "Atla" Butonu
@@ -533,8 +467,7 @@ class _TanitimIzinEkraniState extends State<TanitimIzinEkrani>
               ],
             ),
           ),
-        ],
-      ),
+        ),
     );
   }
 
@@ -597,15 +530,17 @@ class _TanitimIzinEkraniState extends State<TanitimIzinEkrani>
       altIcerik: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: (isDark ? const Color(0xFF0F172A) : Colors.white).withValues(
-            alpha: 0.85,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: AppTheme.cardGradient(isDark),
           ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color:
                 _mikrofonIzinli
                     ? const Color(0xFF10B981).withValues(alpha: 0.5)
-                    : const Color(0xFF06B6D4).withValues(alpha: 0.35),
+                    : AppTheme.cardBorder(isDark),
             width: 1.2,
           ),
         ),
@@ -727,15 +662,17 @@ class _TanitimIzinEkraniState extends State<TanitimIzinEkrani>
       altIcerik: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: (isDark ? const Color(0xFF0F172A) : Colors.white).withValues(
-            alpha: 0.85,
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: AppTheme.cardGradient(isDark),
           ),
           borderRadius: BorderRadius.circular(18),
           border: Border.all(
             color:
                 _bildirimIzinli
                     ? const Color(0xFF10B981).withValues(alpha: 0.5)
-                    : const Color(0xFFF59E0B).withValues(alpha: 0.35),
+                    : AppTheme.cardBorder(isDark),
             width: 1.2,
           ),
         ),
@@ -1098,12 +1035,14 @@ class _TanitimIzinEkraniState extends State<TanitimIzinEkrani>
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
       decoration: BoxDecoration(
-        color: (isDark ? const Color(0xFF0F172A) : Colors.white).withValues(
-          alpha: 0.8,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardInsetGradient(isDark),
         ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: (isDark ? Colors.white : Colors.black).withValues(alpha: 0.08),
+          color: AppTheme.cardInsetBorder(isDark),
         ),
       ),
       child: Row(

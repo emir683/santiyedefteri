@@ -28,23 +28,6 @@ final GlobalKey<NavigatorState> navigatorKey = GlobalKey<NavigatorState>();
 bool _firebaseReady = false;
 String? _bootstrapError;
 
-// Tema yönetimi sınıfı
-class ThemeProvider with ChangeNotifier {
-  ThemeMode _themeMode = ThemeMode.light;
-  ThemeMode get themeMode => _themeMode;
-
-  ThemeProvider(bool isDarkMode) {
-    _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
-  }
-
-  void toggleTheme(bool isDarkMode) async {
-    _themeMode = isDarkMode ? ThemeMode.dark : ThemeMode.light;
-    SharedPreferences prefs = await SharedPreferences.getInstance();
-    prefs.setBool('isDarkMode', isDarkMode);
-    notifyListeners();
-  }
-}
-
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   debugPrint("--- UYGULAMA BAŞLATILIYOR ---");
@@ -180,7 +163,9 @@ class MyApp extends StatelessWidget {
       );
     }
 
-    final isDarkMode = prefs.getBool('isDarkMode') ?? false;
+    final bool? isDarkMode =
+        prefs.containsKey('isDarkMode') ? prefs.getBool('isDarkMode') : null;
+    final savedPaletteId = prefs.getString('themePaletteId');
     final authServisi = AuthServisi();
 
     // MultiProvider, birden fazla Provider'ı bir araya getirir.
@@ -189,7 +174,12 @@ class MyApp extends StatelessWidget {
         ChangeNotifierProvider.value(
           value: ConnectivitySyncService.instance,
         ),
-        ChangeNotifierProvider(create: (_) => ThemeProvider(isDarkMode)),
+        ChangeNotifierProvider(
+          create: (_) => ThemeProvider(
+            isDarkMode,
+            initialPaletteId: savedPaletteId,
+          ),
+        ),
         ChangeNotifierProvider.value(value: perfProvider),
         ChangeNotifierProvider(create: (_) => PrivacyProvider()),
         ChangeNotifierProvider(create: (_) => RolProvider()),
@@ -209,9 +199,10 @@ class MyApp extends StatelessWidget {
             themeMode: themeProvider.themeMode,
             theme: ThemeData(
               useMaterial3: true,
-              scaffoldBackgroundColor: AppColors.lightBackground,
+              scaffoldBackgroundColor:
+                  themeProvider.currentPalette.lightScaffoldBg,
               textTheme: GoogleFonts.poppinsTextTheme(textTheme),
-              colorSchemeSeed: Colors.green,
+              colorSchemeSeed: themeProvider.currentPalette.seedColor,
               appBarTheme: AppBarTheme(
                 surfaceTintColor: Colors.transparent,
                 backgroundColor: Colors.transparent,
@@ -229,16 +220,18 @@ class MyApp extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
+                color: themeProvider.currentPalette.lightCardBg,
               ),
             ),
             darkTheme: ThemeData(
               useMaterial3: true,
               brightness: Brightness.dark,
-              scaffoldBackgroundColor: Colors.black,
+              scaffoldBackgroundColor:
+                  themeProvider.currentPalette.darkScaffoldBg,
               textTheme: GoogleFonts.poppinsTextTheme(
                 Theme.of(context).primaryTextTheme,
               ),
-              colorSchemeSeed: Colors.green,
+              colorSchemeSeed: themeProvider.currentPalette.seedColor,
               appBarTheme: AppBarTheme(
                 surfaceTintColor: Colors.transparent,
                 backgroundColor: Colors.transparent,
@@ -254,7 +247,7 @@ class MyApp extends StatelessWidget {
                 shape: RoundedRectangleBorder(
                   borderRadius: BorderRadius.circular(20),
                 ),
-                color: const Color(0xFF1C1C1E),
+                color: themeProvider.currentPalette.darkCardBg,
               ),
               listTileTheme: const ListTileThemeData(
                 iconColor: Colors.white70,
@@ -293,6 +286,12 @@ class MyApp extends StatelessWidget {
             ],
             supportedLocales: const [Locale('tr', 'TR')],
             locale: const Locale('tr', 'TR'),
+            scrollBehavior: const MaterialScrollBehavior().copyWith(
+              physics: const BouncingScrollPhysics(
+                parent: AlwaysScrollableScrollPhysics(),
+              ),
+              overscroll: false,
+            ),
             home: const AppLaunchGate(),
           );
         },

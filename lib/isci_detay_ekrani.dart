@@ -16,9 +16,9 @@ import 'rol_provider.dart';
 import 'format_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
+import 'tema_ayarlari.dart';
 
 const double _shellDockBodyPadding = 132;
-const Color _kBrandTealDark = Color(0xFF0F7C86);
 
 class IsciDetayEkrani extends StatefulWidget {
   final Isci isci;
@@ -31,6 +31,10 @@ class IsciDetayEkrani extends StatefulWidget {
 }
 
 class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+
   VoidCallback? _onPaylasimTiklandi;
   late DateTime _gosterilenAy;
 
@@ -96,25 +100,30 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color:
-                      isDark
-                          ? const Color(0xFF101317).withValues(alpha: 0.94)
-                          : const Color(0xFFF7FBFD),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : const Color(0xFFD8EAF0),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: AppTheme.cardGradient(isDark),
                   ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppTheme.cardBorder(isDark),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.chevron_left,
-                        color: _kBrandTealDark,
+                        color: _themeContrastIcon,
                       ),
                       onPressed:
                           () => setState(
@@ -133,9 +142,9 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.chevron_right,
-                        color: _kBrandTealDark,
+                        color: _themeContrastIcon,
                       ),
                       onPressed:
                           () => setState(
@@ -398,32 +407,20 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                               padding: const EdgeInsets.all(16),
                               decoration: BoxDecoration(
                                 gradient: LinearGradient(
-                                  colors:
-                                      isDark
-                                          ? const [
-                                            Color(0xFF182330),
-                                            Color(0xFF10212A),
-                                          ]
-                                          : const [
-                                            Color(0xFFEAF4F8),
-                                            Color(0xFFDDECF3),
-                                          ],
+                                  colors: AppTheme.cardGradient(isDark),
                                   begin: Alignment.topLeft,
                                   end: Alignment.bottomRight,
                                 ),
                                 borderRadius: BorderRadius.circular(20),
                                 border: Border.all(
-                                  color:
-                                      isDark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : const Color(0xFFD8EAF0),
+                                  color: AppTheme.cardBorder(isDark),
                                 ),
                                 boxShadow: [
                                   BoxShadow(
                                     color: Colors.black.withValues(
-                                      alpha: isDark ? 0.2 : 0.06,
+                                      alpha: isDark ? 0.25 : 0.06,
                                     ),
-                                    blurRadius: isDark ? 8 : 12,
+                                    blurRadius: isDark ? 10 : 12,
                                     offset: const Offset(0, 6),
                                   ),
                                 ],
@@ -441,7 +438,7 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                                             centerSpaceRadius: 20,
                                             sections: [
                                               PieChartSectionData(
-                                                color: _kBrandTealDark,
+                                                color: _themePrimary,
                                                 value: tamGun.toDouble(),
                                                 title:
                                                     tamGun > 0 ? '$tamGun' : '',
@@ -563,10 +560,7 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                                         Text(
                                           "${toplamKarsilananGider.toStringAsFixed(2)} TL",
                                           style: TextStyle(
-                                            color:
-                                                isDark
-                                                    ? const Color(0xFF5EEAD4)
-                                                    : const Color(0xFF0F7C86),
+                                            color: _themeContrastIcon,
                                             fontWeight: FontWeight.bold,
                                           ),
                                         ),
@@ -782,36 +776,43 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                                             (item['tutar'] as double)
                                                 .abs(); // Mutlak değer
 
-                                        return Card(
-                                          elevation: 2,
+                                        return Container(
                                           margin: const EdgeInsets.only(
                                             bottom: 10,
                                           ),
-                                          shape: RoundedRectangleBorder(
-                                            borderRadius: BorderRadius.circular(
-                                              12,
+                                          decoration: BoxDecoration(
+                                            gradient: LinearGradient(
+                                              begin: Alignment.topLeft,
+                                              end: Alignment.bottomRight,
+                                              colors: AppTheme.cardGradient(isDark),
                                             ),
-                                            side: BorderSide(
+                                            borderRadius: BorderRadius.circular(
+                                              14,
+                                            ),
+                                            border: Border.all(
                                               color:
                                                   isAvans
                                                       ? Colors.red.withValues(
-                                                        alpha: 0.3,
+                                                        alpha: 0.35,
                                                       )
                                                       : isGider
                                                       ? Colors.orange
                                                           .withValues(
-                                                            alpha: 0.3,
+                                                            alpha: 0.35,
                                                           )
-                                                      : Colors.green.withValues(
-                                                        alpha: 0.3,
-                                                      ),
+                                                      : AppTheme.cardBorder(isDark),
                                               width: 1,
                                             ),
+                                            boxShadow: [
+                                              BoxShadow(
+                                                color: Colors.black.withValues(
+                                                  alpha: isDark ? 0.20 : 0.04,
+                                                ),
+                                                blurRadius: 6,
+                                                offset: const Offset(0, 2),
+                                              ),
+                                            ],
                                           ),
-                                          color:
-                                              isDark
-                                                  ? const Color(0xFF101317)
-                                                  : const Color(0xFFF7FBFD),
                                           child: ListTile(
                                             leading: Container(
                                               padding: const EdgeInsets.all(10),
@@ -967,16 +968,14 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                   return Container(
                     margin: const EdgeInsets.only(bottom: 8),
                     decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? const Color(0xFF11212B)
-                              : const Color(0xFFEAF5FA),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: AppTheme.cardInsetGradient(isDark),
+                      ),
                       borderRadius: BorderRadius.circular(12),
                       border: Border.all(
-                        color:
-                            isDark
-                                ? const Color(0xFF1E3A47)
-                                : const Color(0xFFCCE3EC),
+                        color: AppTheme.cardInsetBorder(isDark),
                       ),
                     ),
                     child: ExpansionTile(
@@ -989,9 +988,9 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                         right: 8,
                         bottom: 6,
                       ),
-                      leading: const Icon(
+                      leading: Icon(
                         Icons.domain_rounded,
-                        color: Color(0xFF0F7C86),
+                        color: _themeContrastIcon,
                       ),
                       title: Text(
                         santiye,
@@ -1018,10 +1017,10 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                                 left: 8,
                                 right: 6,
                               ),
-                              leading: const Icon(
+                              leading: Icon(
                                 Icons.receipt_long_rounded,
                                 size: 18,
-                                color: Color(0xFF0F7C86),
+                                color: _themeContrastIcon,
                               ),
                               title: Text("${d['kalem']}"),
                               subtitle: Text(
@@ -1638,19 +1637,17 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 decoration: BoxDecoration(
-                  color:
-                      isDark
-                          ? const Color(0xFF131922).withValues(alpha: 0.95)
-                          : Colors.white.withValues(alpha: 0.95),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: AppTheme.cardGradient(isDark),
+                  ),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
                   border: Border(
                     top: BorderSide(
-                      color:
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : Colors.black.withValues(alpha: 0.08),
+                      color: AppTheme.cardBorder(isDark),
                     ),
                   ),
                 ),
@@ -1739,7 +1736,7 @@ class _IsciDetayEkraniState extends State<IsciDetayEkrani> {
                     // Buton 1: PDF Olarak Paylaş / Yazdır
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F7C86),
+                        backgroundColor: _themePrimary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 48),
                         shape: RoundedRectangleBorder(

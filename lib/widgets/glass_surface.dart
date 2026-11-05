@@ -1,12 +1,15 @@
+import 'dart:math' as math;
 import 'package:flutter/material.dart';
+import 'package:provider/provider.dart';
 import 'package:liquid_glass_renderer/liquid_glass_renderer.dart';
 import 'package:liquid_glass_widgets/types/glass_quality.dart';
 import 'package:liquid_glass_widgets/widgets/containers/glass_card.dart';
 import 'package:liquid_glass_widgets/widgets/containers/glass_container.dart';
 import 'package:liquid_glass_widgets/widgets/shared/adaptive_liquid_glass_layer.dart';
 import '../performance_provider.dart';
+import '../tema_ayarlari.dart';
 
-class GlassPageSurface extends StatelessWidget {
+class GlassPageSurface extends StatefulWidget {
   const GlassPageSurface({
     super.key,
     required this.child,
@@ -21,122 +24,150 @@ class GlassPageSurface extends StatelessWidget {
   final bool performanceMode;
 
   @override
+  State<GlassPageSurface> createState() => _GlassPageSurfaceState();
+}
+
+class _GlassPageSurfaceState extends State<GlassPageSurface>
+    with SingleTickerProviderStateMixin {
+  late final AnimationController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    _controller = AnimationController(
+      vsync: this,
+      duration: const Duration(seconds: 12),
+    );
+    if (!widget.performanceMode) {
+      _controller.repeat();
+    }
+  }
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    final isPerf = widget.performanceMode || PerformanceProvider.of(context);
+    if (isPerf) {
+      if (_controller.isAnimating) {
+        _controller.stop();
+      }
+    } else {
+      if (!_controller.isAnimating) {
+        _controller.repeat();
+      }
+    }
+  }
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final isPerf = performanceMode || PerformanceProvider.of(context);
+    final isPerf = widget.performanceMode || PerformanceProvider.of(context);
 
     if (isPerf) {
       return Container(
-        color: isDark ? const Color(0xFF0C1017) : const Color(0xFFF1F5F8),
-        padding: padding,
-        child: child,
+        color: isDark ? const Color(0xFF000000) : const Color(0xFFF1F5F8),
+        padding: widget.padding,
+        child: widget.child,
       );
     }
 
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                stops: const [0.0, 0.18, 0.52, 1.0],
-                colors:
-                    isDark
-                        ? const [
-                          Color(0xFF020304),
-                          Color(0xFF06080B),
-                          Color(0xFF0A1115),
-                          Color(0xFF07090C),
-                        ]
-                        : (preferSoftLightBackground
-                            ? const [
-                              Color(0xFFF8FCFE),
-                              Color(0xFFF2F8FC),
-                              Color(0xFFEAF2F8),
-                              Color(0xFFE4EDF5),
-                            ]
-                            : const [
-                              Color(0xFF020304),
-                              Color(0xFF12171C),
-                              Color(0xFFE7EFF2),
-                              Color(0xFFF4FAFC),
-                            ]),
+    final themeProvider = Provider.of<ThemeProvider>(context, listen: false);
+    final Color glowCol = themeProvider.glowColor;
+    final Color secCol = themeProvider.secondaryColor;
+
+    return AnimatedBuilder(
+      animation: _controller,
+      builder: (context, _) {
+        final t = _controller.value;
+        final angle = t * 2 * math.pi;
+
+        // Ekranın çevresinde (kenar ve köşelerde) kesintisiz dönen koordinatlar
+        final double x1 = math.cos(angle) * 1.30;
+        final double y1 = math.sin(angle) * 1.15;
+
+        final double x2 = math.cos(angle + math.pi * 0.85) * 1.20;
+        final double y2 = math.sin(angle + math.pi * 0.85) * 1.10;
+
+        return Stack(
+          children: [
+            // 1. Zemin taban rengi (Karanlık modda saf simsiyah)
+            Positioned.fill(
+              child: ColoredBox(
+                color: isDark
+                    ? const Color(0xFF000000)
+                    : (widget.preferSoftLightBackground
+                        ? const Color(0xFFF8FCFE)
+                        : const Color(0xFFF1F6F8)),
               ),
             ),
-          ),
-        ),
-        if (!performanceMode)
-          Positioned(
-            top: -120,
-            left: -80,
-            right: -80,
-            child: IgnorePointer(
-              child: Container(
-                height: 260,
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.topCenter,
-                    radius: 1.2,
-                    colors: [
-                      const Color(0xFF5EEAD4).withValues(alpha: 
-                        isDark
-                            ? 0.08
-                            : (preferSoftLightBackground ? 0.035 : 0.05),
-                      ),
-                      const Color(0xFF2DD4BF).withValues(alpha: 
-                        isDark
-                            ? 0.04
-                            : (preferSoftLightBackground ? 0.02 : 0.03),
-                      ),
-                      Colors.transparent,
-                    ],
+
+            // 2. Ana yeşil gradyan - Ekranın çevresinde yumuşakça döner
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(x1, y1),
+                      radius: 1.35,
+                      colors: [
+                        glowCol.withValues(
+                          alpha: isDark ? 0.22 : 0.16,
+                        ),
+                        glowCol.withValues(
+                          alpha: isDark ? 0.08 : 0.05,
+                        ),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.45, 1.0],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        if (!performanceMode)
-          Positioned(
-            left: -40,
-            right: -40,
-            bottom: -36,
-            child: IgnorePointer(
-              child: Container(
-                height: 220,
-                decoration: BoxDecoration(
-                  gradient: RadialGradient(
-                    center: Alignment.bottomCenter,
-                    radius: 0.95,
-                    colors: [
-                      const Color(0xFF5EEAD4).withValues(alpha: 
-                        isDark
-                            ? 0.10
-                            : (preferSoftLightBackground ? 0.09 : 0.14),
-                      ),
-                      const Color(0xFFB6F5ED).withValues(alpha: 
-                        isDark
-                            ? 0.05
-                            : (preferSoftLightBackground ? 0.055 : 0.08),
-                      ),
-                      Colors.transparent,
-                    ],
+
+            // 3. İkincil yumuşak aura gradyanı - Karşı çevreden eşlik eder
+            Positioned.fill(
+              child: IgnorePointer(
+                child: DecoratedBox(
+                  decoration: BoxDecoration(
+                    gradient: RadialGradient(
+                      center: Alignment(x2, y2),
+                      radius: 1.20,
+                      colors: [
+                        secCol.withValues(
+                          alpha: isDark ? 0.14 : 0.10,
+                        ),
+                        secCol.withValues(
+                          alpha: isDark ? 0.04 : 0.03,
+                        ),
+                        Colors.transparent,
+                      ],
+                      stops: const [0.0, 0.40, 1.0],
+                    ),
                   ),
                 ),
               ),
             ),
-          ),
-        Positioned.fill(
-          child: AdaptiveLiquidGlassLayer(
-            settings: _layerSettings(isDark, performanceMode),
-            child: Padding(
-              padding: padding,
-              child: child,
+
+            // 4. Ön plan içeriği
+            Positioned.fill(
+              child: AdaptiveLiquidGlassLayer(
+                settings: _layerSettings(isDark, widget.performanceMode),
+                child: Padding(
+                  padding: widget.padding,
+                  child: widget.child,
+                ),
+              ),
             ),
-          ),
-        ),
-      ],
+          ],
+        );
+      },
     );
   }
 
@@ -148,7 +179,7 @@ class GlassPageSurface extends StatelessWidget {
       lightIntensity: performanceMode ? (isDark ? 1.15 : 0.98) : (isDark ? 1.35 : 1.05),
       ambientStrength: 0.42,
       saturation: 1.02,
-      chromaticAberration: performanceMode ? 0.014 : 0.028,
+      chromaticAberration: 0.0,
       glassColor:
           isDark
               ? const Color(0xFF0A0C10).withValues(alpha: 0.20)
@@ -183,12 +214,14 @@ class GlassSectionCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(borderRadius),
         child: Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF161C24) : Colors.white,
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: AppTheme.cardGradient(isDark),
+            ),
             borderRadius: BorderRadius.circular(borderRadius),
             border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.08)
-                  : const Color(0xFFD8E2E7),
+              color: AppTheme.cardBorder(isDark),
               width: 1.0,
             ),
             boxShadow: [
@@ -222,18 +255,10 @@ class GlassSectionCard extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              (isDark ? const Color(0xFF15181D) : const Color(0xFFD7E3E7))
-                  .withValues(alpha: isDark ? 0.96 : 0.72),
-              (isDark ? const Color(0xFF090B0F) : const Color(0xFFC6D2D7))
-                  .withValues(alpha: isDark ? 0.98 : 0.90),
-            ],
+            colors: AppTheme.cardGradient(isDark),
           ),
           border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.07)
-                    : const Color(0xFFBFD0D6).withValues(alpha: 0.92),
+            color: AppTheme.cardBorder(isDark),
           ),
           borderRadius: BorderRadius.circular(borderRadius),
           boxShadow: [
@@ -243,7 +268,7 @@ class GlassSectionCard extends StatelessWidget {
               offset: const Offset(0, 12),
             ),
             BoxShadow(
-              color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.04 : 0.10),
+              color: AppTheme.glow(context).withValues(alpha: isDark ? 0.04 : 0.10),
               blurRadius: isDark ? 18 : 28,
               offset: const Offset(0, 14),
             ),
@@ -301,12 +326,14 @@ class GlassInsetSurface extends StatelessWidget {
       return Container(
         padding: padding,
         decoration: BoxDecoration(
-          color: isDark ? const Color(0xFF171A1F) : const Color(0xFFE8F0F3),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: AppTheme.cardInsetGradient(isDark),
+          ),
           borderRadius: BorderRadius.circular(borderRadius),
           border: Border.all(
-            color: isDark
-                ? Colors.white.withValues(alpha: 0.06)
-                : const Color(0xFFBFD0D6),
+            color: AppTheme.cardInsetBorder(isDark),
           ),
         ),
         child: child,
@@ -323,20 +350,10 @@ class GlassInsetSurface extends StatelessWidget {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              (isDark ? const Color(0xFF171A1F) : const Color(0xFFD6E1E5))
-                  .withValues(alpha: 
-                isDark ? 0.88 : 0.40,
-              ),
-              (isDark ? const Color(0xFF0D0F13) : const Color(0xFFC7D2D7))
-                  .withValues(alpha: isDark ? 0.96 : 0.94),
-            ],
+            colors: AppTheme.cardInsetGradient(isDark),
           ),
           border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(alpha: 0.05)
-                    : const Color(0xFFBFD0D6).withValues(alpha: 0.95),
+            color: AppTheme.cardInsetBorder(isDark),
           ),
           borderRadius: BorderRadius.circular(borderRadius),
         ),
@@ -460,7 +477,7 @@ class GlassDialogFrame extends StatelessWidget {
       lightIntensity: isDark ? 1.35 : 1.05,
       ambientStrength: 0.42,
       saturation: 1.02,
-      chromaticAberration: 0.028,
+      chromaticAberration: 0.0,
       glassColor:
           isDark
               ? const Color(0xFF0A0C10).withValues(alpha: 0.20)

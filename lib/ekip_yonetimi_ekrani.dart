@@ -10,8 +10,7 @@ import 'team_gate.dart';
 import 'animasyon_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
-
-const Color _kBrandTeal = Color(0xFF14B8A6);
+import 'tema_ayarlari.dart';
 
 class EkipYonetimiEkrani extends StatefulWidget {
   final String teamId;
@@ -22,6 +21,9 @@ class EkipYonetimiEkrani extends StatefulWidget {
 }
 
 class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
   bool _uyelerListesiAcik = false;
   // --- 1. EKİP ADI DEĞİŞTİRME ---
   void _isimDegistirDialog(FirestoreServisi servisi, String mevcutAd) {
@@ -37,7 +39,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
         return Stack(
           children: [
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(color: Colors.transparent),
             ),
             Center(
@@ -45,15 +47,22 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0C0E14).withValues(alpha: 0.90),
+                      const Color(0xFF040508).withValues(alpha: 0.95),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: Colors.white.withValues(alpha: 0.14),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 20,
+                      color: Colors.black.withValues(alpha: 0.6),
+                      blurRadius: 30,
                     ),
                   ],
                 ),
@@ -116,16 +125,16 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                   if (mounted && ctx.mounted) {
                                     Navigator.pop(ctx);
                                     messenger.showSnackBar(
-                                      const SnackBar(
-                                        content: Text("Ekip adı güncellendi."),
-                                        backgroundColor: _kBrandTeal,
+                                      SnackBar(
+                                        content: const Text("Ekip adı güncellendi."),
+                                        backgroundColor: _themePrimary,
                                       ),
                                     );
                                   }
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _kBrandTeal,
+                                backgroundColor: _themePrimary,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 14,
                                 ),
@@ -297,17 +306,17 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                         if (mounted && ctx.mounted) {
                                           Navigator.pop(ctx);
                                           messenger.showSnackBar(
-                                            const SnackBar(
-                                              content: Text(
+                                            SnackBar(
+                                              content: const Text(
                                                 "Ekip parolası başarıyla değiştirildi.",
                                               ),
-                                              backgroundColor: _kBrandTeal,
+                                              backgroundColor: _themePrimary,
                                             ),
                                           );
                                         }
                                       },
                                       style: ElevatedButton.styleFrom(
-                                        backgroundColor: _kBrandTeal,
+                                        backgroundColor: _themePrimary,
                                         padding: const EdgeInsets.symmetric(
                                           vertical: 14,
                                         ),
@@ -383,7 +392,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
     required String baslik,
     required String mesaj,
     required String onayMetni,
-    Color onayRengi = _kBrandTeal,
+    Color? onayRengi,
   }) async {
     final sonuc = await showGeneralDialog<bool>(
       context: context,
@@ -395,7 +404,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
         return Stack(
           children: [
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(color: Colors.transparent),
             ),
             Center(
@@ -403,15 +412,22 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0C0E14).withValues(alpha: 0.90),
+                      const Color(0xFF040508).withValues(alpha: 0.95),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: Colors.white.withValues(alpha: 0.14),
                   ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 20,
+                      color: Colors.black.withValues(alpha: 0.6),
+                      blurRadius: 30,
                     ),
                   ],
                 ),
@@ -455,7 +471,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                             child: ElevatedButton(
                               onPressed: () => Navigator.pop(ctx, true),
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: onayRengi,
+                                backgroundColor: onayRengi ?? _themePrimary,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 14,
                                 ),
@@ -493,10 +509,6 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
     final user = Provider.of<UserModel?>(context, listen: false);
     final firestoreServisi = FirestoreServisi(kullaniciId: user?.uid ?? '');
     final bool isDark = Theme.of(context).brightness == Brightness.dark;
-    final Color cardColor =
-        isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD);
-    final Color cardBorderColor =
-        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -540,13 +552,23 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
               ),
               children: [
                 // 1. EKİP BİLGİLERİ KARTI
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: AppTheme.cardGradient(isDark),
+                    ),
                     borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(color: cardBorderColor, width: 2),
+                    border: Border.all(color: AppTheme.cardBorder(isDark), width: 1.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  color: cardColor,
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: Column(
@@ -596,16 +618,27 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                   ),
                 ),
                 const SizedBox(height: 20),
-                // 2. PAYLAŞIM KARTI
-                Card(
-                  color:
-                      isDark
-                          ? const Color(0xFF12202A)
-                          : const Color(0xFF0F7C86),
-                  shape: RoundedRectangleBorder(
+                // 2. PAYLAŞIM KARTI (EKİP DAVETİ)
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: AppTheme.cardGradient(isDark),
+                    ),
                     borderRadius: BorderRadius.circular(20),
+                    border: Border.all(
+                      color: AppTheme.cardBorder(isDark),
+                      width: 1.2,
+                    ),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  elevation: 6,
                   child: InkWell(
                     borderRadius: BorderRadius.circular(20),
                     onTap:
@@ -621,42 +654,42 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                           Container(
                             padding: const EdgeInsets.all(12),
                             decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.2),
+                              color: _themePrimary.withValues(alpha: isDark ? 0.22 : 0.14),
                               shape: BoxShape.circle,
                             ),
-                            child: const Icon(
-                              Icons.share,
-                              color: Colors.white,
-                              size: 28,
+                            child: Icon(
+                              Icons.share_rounded,
+                              color: _themePrimary,
+                              size: 26,
                             ),
                           ),
                           const SizedBox(width: 16),
-                          const Expanded(
+                          Expanded(
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Text(
                                   "Ekip Bağlantısını Paylaş",
                                   style: TextStyle(
-                                    color: Colors.white,
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.bold,
+                                    color: isDark ? Colors.white : const Color(0xFF102A43),
+                                    fontSize: 17,
+                                    fontWeight: FontWeight.w800,
                                   ),
                                 ),
-                                SizedBox(height: 4),
+                                const SizedBox(height: 4),
                                 Text(
                                   "Çalışanları davet et",
                                   style: TextStyle(
-                                    color: Colors.white70,
+                                    color: isDark ? Colors.white70 : const Color(0xFF64748B),
                                     fontSize: 13,
                                   ),
                                 ),
                               ],
                             ),
                           ),
-                          const Icon(
-                            Icons.arrow_forward_ios,
-                            color: Colors.white70,
+                          Icon(
+                            Icons.arrow_forward_ios_rounded,
+                            color: isDark ? Colors.white60 : Colors.black45,
                             size: 16,
                           ),
                         ],
@@ -666,13 +699,23 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                 ),
                 const SizedBox(height: 24),
                 // 3. ÜYELER KARTI
-                Card(
-                  elevation: 4,
-                  shape: RoundedRectangleBorder(
+                Container(
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: AppTheme.cardGradient(isDark),
+                    ),
                     borderRadius: BorderRadius.circular(20),
-                    side: BorderSide(color: cardBorderColor, width: 2),
+                    border: Border.all(color: AppTheme.cardBorder(isDark), width: 1.2),
+                    boxShadow: [
+                      BoxShadow(
+                        color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                        blurRadius: 12,
+                        offset: const Offset(0, 4),
+                      ),
+                    ],
                   ),
-                  color: cardColor,
                   child: Padding(
                     padding: const EdgeInsets.all(20.0),
                     child: StreamBuilder<List<Map<String, dynamic>>>(
@@ -750,10 +793,10 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                           _uyelerListesiAcik
                                               ? "Gizle"
                                               : "Göster",
-                                          style: const TextStyle(
+                                          style: TextStyle(
                                             fontSize: 12,
                                             fontWeight: FontWeight.w600,
-                                            color: _kBrandTeal,
+                                            color: _themeContrastIcon,
                                           ),
                                         ),
                                         const SizedBox(width: 6),
@@ -763,9 +806,9 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                             milliseconds: 220,
                                           ),
                                           curve: Curves.easeOutCubic,
-                                          child: const Icon(
+                                          child: Icon(
                                             Icons.keyboard_arrow_down,
-                                            color: _kBrandTeal,
+                                            color: _themeContrastIcon,
                                           ),
                                         ),
                                       ],
@@ -815,22 +858,17 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                 8,
                                                               ),
                                                           decoration: BoxDecoration(
-                                                            color:
-                                                                isDark
-                                                                    ? Colors
-                                                                        .black26
-                                                                    : Colors
-                                                                        .grey
-                                                                        .shade50,
+                                                            gradient: LinearGradient(
+                                                              begin: Alignment.topLeft,
+                                                              end: Alignment.bottomRight,
+                                                              colors: AppTheme.cardInsetGradient(isDark),
+                                                            ),
                                                             borderRadius:
                                                                 BorderRadius.circular(
-                                                                  12,
+                                                                  14,
                                                                 ),
                                                             border: Border.all(
-                                                              color: Colors.grey
-                                                                  .withValues(
-                                                                    alpha: 0.1,
-                                                                  ),
+                                                              color: AppTheme.cardInsetBorder(isDark),
                                                             ),
                                                           ),
                                                           child: ListTile(
@@ -840,7 +878,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                 ),
                                                             leading: CircleAvatar(
                                                               backgroundColor:
-                                                                  _kBrandTeal,
+                                                                  _themePrimary,
                                                               child: Text(
                                                                 uye['username']
                                                                         .isNotEmpty
@@ -893,7 +931,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                             0xFFF59E0B,
                                                                           )
                                                                           : (isMemberYonetici
-                                                                              ? _kBrandTeal
+                                                                              ? _themeContrastIcon
                                                                               : Colors.grey),
                                                                 ),
                                                               ],
@@ -921,7 +959,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                                       ? const Color(
                                                                                         0xFFF59E0B,
                                                                                       )
-                                                                                      : _kBrandTeal,
+                                                                                      : _themeContrastIcon,
                                                                             ),
                                                                             onPressed: () async {
                                                                               final bool
@@ -943,7 +981,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                                         ? const Color(
                                                                                           0xFFF59E0B,
                                                                                         )
-                                                                                        : _kBrandTeal,
+                                                                                        : _themeContrastIcon,
                                                                               );
                                                                               if (!onaylandi) {
                                                                                 return;
@@ -962,7 +1000,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                                         "${uye['username']} artık üye rolünde.",
                                                                                       ),
                                                                                       backgroundColor:
-                                                                                          _kBrandTeal,
+                                                                                          _themePrimary,
                                                                                     ),
                                                                                   );
                                                                                 }
@@ -980,7 +1018,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                                                                                         "${uye['username']} yönetici yapıldı.",
                                                                                       ),
                                                                                       backgroundColor:
-                                                                                          _kBrandTeal,
+                                                                                          _themePrimary,
                                                                                     ),
                                                                                   );
                                                                                 }
@@ -1053,12 +1091,12 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
                   icon: const Icon(Icons.swap_horiz),
                   label: const Text("Başka Ekibe Geç"),
                   style: OutlinedButton.styleFrom(
-                    foregroundColor: _kBrandTeal,
+                    foregroundColor: _themePrimary,
                     padding: const EdgeInsets.symmetric(vertical: 16),
                     shape: RoundedRectangleBorder(
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    side: const BorderSide(color: _kBrandTeal),
+                    side: BorderSide(color: _themePrimary),
                   ),
                   onPressed: () {
                     Navigator.push(
@@ -1141,7 +1179,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
   }) {
     return Row(
       children: [
-        Icon(icon, color: _kBrandTeal, size: 28),
+        Icon(icon, color: _themeContrastIcon, size: 28),
         const SizedBox(width: 16),
         Expanded(
           child: Column(
@@ -1164,7 +1202,7 @@ class _EkipYonetimiEkraniState extends State<EkipYonetimiEkrani> {
         ),
         if (canEdit)
           IconButton(
-            icon: const Icon(Icons.edit, color: _kBrandTeal),
+            icon: Icon(Icons.edit, color: _themeContrastIcon),
             onPressed: onEdit,
           ),
         IconButton(

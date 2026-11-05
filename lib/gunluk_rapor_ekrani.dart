@@ -18,6 +18,7 @@ import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/offline_sync_banner.dart';
 import 'services/connectivity_sync_service.dart';
 import 'puanlama_servisi.dart';
+import 'tema_ayarlari.dart';
 
 class GunlukRaporEkrani extends StatefulWidget {
   final String teamId;
@@ -34,6 +35,10 @@ class GunlukRaporEkrani extends StatefulWidget {
 
 class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
     with SingleTickerProviderStateMixin {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+
   DateTime _seciliGun = DateTime.now();
   DateTime _odaklanilanGun = DateTime.now();
   bool _calendarVisible = false;
@@ -183,23 +188,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors:
-              isDark
-                  ? [
-                    (hepsiTamam
-                            ? const Color(0xFF065F46)
-                            : const Color(0xFF1E293B))
-                        .withValues(alpha: 0.70),
-                    const Color(0xFF0F172A).withValues(alpha: 0.85),
-                  ]
-                  : [
-                    hepsiTamam
-                        ? const Color(0xFFECFDF5)
-                        : Colors.white.withValues(alpha: 0.95),
-                    hepsiTamam
-                        ? const Color(0xFFD1FAE5)
-                        : const Color(0xFFF8FAFC).withValues(alpha: 0.95),
-                  ],
+          colors: AppTheme.cardGradient(isDark),
         ),
         border: Border.all(
           color:
@@ -207,9 +196,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                   ? const Color(
                     0xFF10B981,
                   ).withValues(alpha: isDark ? 0.6 : 0.45)
-                  : (isDark
-                      ? Colors.white.withValues(alpha: 0.12)
-                      : const Color(0xFFE2E8F0)),
+                  : AppTheme.cardBorder(isDark),
           width: 1.3,
         ),
         boxShadow: [
@@ -971,19 +958,17 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                 final String durum = geciciDurumlar[id] ?? "Yok";
                 final bool isMesai = durum.contains("Mesai");
                 return Container(
-                  margin: const EdgeInsets.only(bottom: 12),
+                  margin: const EdgeInsets.only(bottom: 10),
                   padding: const EdgeInsets.all(12),
                   decoration: BoxDecoration(
-                    color:
-                        isDark
-                            ? const Color(0xFF181E27)
-                            : const Color(0xFFF9FCFD),
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                      colors: AppTheme.cardGradient(isDark),
+                    ),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
-                      color:
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.06)
-                              : const Color(0xFFDCE8ED),
+                      color: AppTheme.cardBorder(isDark),
                     ),
                   ),
                   child: Column(
@@ -1207,30 +1192,36 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                   top: Radius.circular(24),
                 ),
                 child: BackdropFilter(
-                  filter: ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                  filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
                   child: Container(
                     height: MediaQuery.of(context).size.height * 0.85,
                     decoration: BoxDecoration(
-                      color:
-                          isDark
-                              ? const Color(0xFF121821).withValues(alpha: 0.84)
-                              : Colors.white.withValues(alpha: 0.86),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: isDark
+                            ? [
+                                const Color(0xFF0C0E14).withValues(alpha: 0.92),
+                                const Color(0xFF040508).withValues(alpha: 0.96),
+                              ]
+                            : [
+                                const Color(0xFFF8FAFC).withValues(alpha: 0.92),
+                                const Color(0xFFE2E8F0).withValues(alpha: 0.96),
+                              ],
+                      ),
                       borderRadius: const BorderRadius.vertical(
                         top: Radius.circular(24),
                       ),
                       border: Border.all(
-                        color:
-                            isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : const Color(0xFFD9E6EC),
-                        width: 1,
+                        color: AppTheme.cardBorder(isDark),
+                        width: 1.2,
                       ),
                       boxShadow: [
                         BoxShadow(
                           color: Colors.black.withValues(
-                            alpha: isDark ? 0.24 : 0.08,
+                            alpha: isDark ? 0.65 : 0.15,
                           ),
-                          blurRadius: 28,
+                          blurRadius: 30,
                           offset: const Offset(0, -6),
                         ),
                       ],
@@ -1559,27 +1550,87 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                     context: context,
                                     builder:
                                         (dc) => AlertDialog(
-                                          title: const Text("Misafir Ekle"),
+                                          backgroundColor:
+                                              isDark
+                                                  ? const Color(0xFF0C0E14)
+                                                  : Colors.white,
+                                          shape: RoundedRectangleBorder(
+                                            borderRadius:
+                                                BorderRadius.circular(22),
+                                            side: BorderSide(
+                                              color: AppTheme.cardBorder(isDark),
+                                            ),
+                                          ),
+                                          title: Text(
+                                            "Misafir Ekle",
+                                            style: TextStyle(
+                                              fontWeight: FontWeight.w800,
+                                              color:
+                                                  isDark
+                                                      ? Colors.white
+                                                      : const Color(0xFF0F172A),
+                                            ),
+                                          ),
                                           content: Column(
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               TextField(
                                                 controller: adCtrl,
-                                                decoration:
-                                                    const InputDecoration(
-                                                      labelText: "Ad Soyad",
+                                                style: TextStyle(
+                                                  color:
+                                                      isDark
+                                                          ? Colors.white
+                                                          : Colors.black87,
+                                                ),
+                                                decoration: InputDecoration(
+                                                  labelText: "Ad Soyad",
+                                                  labelStyle: TextStyle(
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white60
+                                                            : Colors.black54,
+                                                  ),
+                                                  enabledBorder:
+                                                      UnderlineInputBorder(
+                                                    borderSide: BorderSide(
+                                                      color:
+                                                          isDark
+                                                              ? Colors.white24
+                                                              : const Color(0xFFCBD5E1),
                                                     ),
+                                                  ),
+                                                ),
                                               ),
                                               const SizedBox(height: 10),
                                               TextField(
                                                 controller: maasCtrl,
                                                 keyboardType:
                                                     TextInputType.number,
-                                                decoration:
-                                                    const InputDecoration(
-                                                      labelText:
-                                                          "Günlük Yevmiye (TL)",
+                                                style: TextStyle(
+                                                  color:
+                                                      isDark
+                                                          ? Colors.white
+                                                          : Colors.black87,
+                                                ),
+                                                decoration: InputDecoration(
+                                                  labelText:
+                                                      "Günlük Yevmiye (TL)",
+                                                  labelStyle: TextStyle(
+                                                    color:
+                                                        isDark
+                                                            ? Colors.white60
+                                                            : Colors.black54,
+                                                  ),
+                                                  enabledBorder:
+                                                      UnderlineInputBorder(
+                                                    borderSide: BorderSide(
+                                                      color:
+                                                          isDark
+                                                              ? Colors.white24
+                                                              : const Color(0xFFCBD5E1),
                                                     ),
+                                                  ),
+                                                ),
                                               ),
                                             ],
                                           ),
@@ -1587,9 +1638,25 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                             TextButton(
                                               onPressed:
                                                   () => Navigator.pop(dc),
-                                              child: const Text("İptal"),
+                                              child: Text(
+                                                "İptal",
+                                                style: TextStyle(
+                                                  color:
+                                                      isDark
+                                                          ? Colors.white60
+                                                          : Colors.black54,
+                                                ),
+                                              ),
                                             ),
                                             ElevatedButton(
+                                              style: ElevatedButton.styleFrom(
+                                                backgroundColor: const Color(0xFF14B8A6),
+                                                foregroundColor: Colors.white,
+                                                shape: RoundedRectangleBorder(
+                                                  borderRadius:
+                                                      BorderRadius.circular(12),
+                                                ),
+                                              ),
                                               onPressed: () async {
                                                 if (adCtrl.text.isNotEmpty &&
                                                     maasCtrl.text.isNotEmpty) {
@@ -2565,332 +2632,196 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 controller: scrollController,
                                 padding: const EdgeInsets.all(24),
                                 children: [
-                                  // Şantiye Başlık Kartı (Premium Cam Kutu Tasarımı) 🏢
+                                  // Şantiye Başlık Kartı (Sade & Minimal Cam Tasarım) 🏢
                                   Container(
-                                    padding: const EdgeInsets.all(16),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 14,
+                                      vertical: 10,
+                                    ),
                                     decoration: BoxDecoration(
                                       gradient: LinearGradient(
                                         begin: Alignment.topLeft,
                                         end: Alignment.bottomRight,
-                                        colors: [
-                                          (isDark
-                                                  ? const Color(0xFF1E2633)
-                                                  : const Color(0xFFE3EDF2))
-                                              .withValues(
-                                                alpha: isDark ? 0.96 : 0.92,
-                                              ),
-                                          (isDark
-                                                  ? const Color(0xFF0C1017)
-                                                  : const Color(0xFFCFDDE4))
-                                              .withValues(
-                                                alpha: isDark ? 0.98 : 0.95,
-                                              ),
-                                        ],
+                                        colors: AppTheme.cardGradient(isDark),
                                       ),
-                                      borderRadius: BorderRadius.circular(22),
+                                      borderRadius: BorderRadius.circular(18),
                                       border: Border.all(
-                                        color:
-                                            isDark
-                                                ? const Color(
-                                                  0xFF14B8A6,
-                                                ).withValues(alpha: 0.25)
-                                                : const Color(0xFFBFD0D6),
+                                        color: AppTheme.cardBorder(isDark),
                                         width: 1.2,
                                       ),
                                       boxShadow: [
                                         BoxShadow(
                                           color: Colors.black.withValues(
-                                            alpha: isDark ? 0.25 : 0.06,
+                                            alpha: isDark ? 0.25 : 0.05,
                                           ),
-                                          blurRadius: 16,
-                                          offset: const Offset(0, 5),
-                                        ),
-                                        BoxShadow(
-                                          color: const Color(
-                                            0xFF14B8A6,
-                                          ).withValues(
-                                            alpha: isDark ? 0.06 : 0.08,
-                                          ),
-                                          blurRadius: 18,
-                                          offset: const Offset(0, 6),
+                                          blurRadius: 14,
+                                          offset: const Offset(0, 4),
                                         ),
                                       ],
                                     ),
-                                    child: Column(
-                                      mainAxisSize: MainAxisSize.min,
+                                    child: Row(
                                       children: [
-                                        // Üst Köşeler: Kapatma Tuşu (Sol Köşe) ve Soru İşareti + Kayıtlı Rapor Rozeti (Sağ Köşe)
-                                        Row(
-                                          mainAxisAlignment:
-                                              MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            // Sol Köşe: Kapatma Tuşu
-                                            Material(
-                                              color: Colors.transparent,
-                                              child: InkWell(
+                                        // Sol: Kapat Tuşu
+                                        Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            borderRadius:
+                                                BorderRadius.circular(10),
+                                            onTap: kapatmayiDene,
+                                            child: Container(
+                                              padding: const EdgeInsets.all(6),
+                                              decoration: BoxDecoration(
+                                                color: (isDark
+                                                        ? Colors.white
+                                                        : Colors.black)
+                                                    .withValues(alpha: 0.07),
                                                 borderRadius:
-                                                    BorderRadius.circular(12),
-                                                onTap: kapatmayiDene,
-                                                child: Container(
-                                                  padding: const EdgeInsets.all(
-                                                    7,
-                                                  ),
-                                                  decoration: BoxDecoration(
-                                                    color: (isDark
-                                                            ? Colors.white
-                                                            : Colors.black)
-                                                        .withValues(
-                                                          alpha: 0.06,
-                                                        ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: (isDark
-                                                              ? Colors.white
-                                                              : Colors.black)
-                                                          .withValues(
-                                                            alpha: 0.10,
-                                                          ),
-                                                    ),
-                                                  ),
-                                                  child: const Icon(
-                                                    Icons.close_rounded,
-                                                    size: 18,
-                                                  ),
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: (isDark
+                                                          ? Colors.white
+                                                          : Colors.black)
+                                                      .withValues(alpha: 0.12),
                                                 ),
                                               ),
+                                              child: const Icon(
+                                                Icons.close_rounded,
+                                                size: 16,
+                                              ),
                                             ),
-
-                                            // Sağ Köşe: Soru Tuşu & Kayıtlı/Yeni Rapor Rozeti
-                                            Row(
-                                              mainAxisSize: MainAxisSize.min,
-                                              children: [
-                                                // Soru Tuşu (?)
-                                                Material(
-                                                  color: Colors.transparent,
-                                                  child: InkWell(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          12,
-                                                        ),
-                                                    onTap:
-                                                        () =>
-                                                            _puantajRehberiniGoster(
-                                                              ctx,
-                                                              isDark,
-                                                            ),
-                                                    child: Container(
-                                                      padding:
-                                                          const EdgeInsets.all(
-                                                            7,
-                                                          ),
-                                                      decoration: BoxDecoration(
-                                                        color: const Color(
-                                                          0xFF14B8A6,
-                                                        ).withValues(
-                                                          alpha:
-                                                              isDark
-                                                                  ? 0.20
-                                                                  : 0.14,
-                                                        ),
-                                                        borderRadius:
-                                                            BorderRadius.circular(
-                                                              12,
-                                                            ),
-                                                        border: Border.all(
-                                                          color: const Color(
-                                                            0xFF14B8A6,
-                                                          ).withValues(
-                                                            alpha: 0.45,
-                                                          ),
-                                                        ),
-                                                      ),
-                                                      child: const Icon(
-                                                        Icons
-                                                            .help_outline_rounded,
-                                                        size: 18,
-                                                        color: Color(
-                                                          0xFF14B8A6,
-                                                        ),
-                                                      ),
-                                                    ),
-                                                  ),
-                                                ),
-                                                const SizedBox(width: 8),
-                                                // Kayıtlı / Yeni Rapor Rozeti
-                                                Container(
-                                                  padding:
-                                                      const EdgeInsets.symmetric(
-                                                        horizontal: 10,
-                                                        vertical: 6,
-                                                      ),
-                                                  decoration: BoxDecoration(
-                                                    color: (dahaOnceGirildi
-                                                            ? const Color(
-                                                              0xFF14B8A6,
-                                                            )
-                                                            : const Color(
-                                                              0xFF3B82F6,
-                                                            ))
-                                                        .withValues(
-                                                          alpha:
-                                                              isDark
-                                                                  ? 0.22
-                                                                  : 0.14,
-                                                        ),
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          14,
-                                                        ),
-                                                    border: Border.all(
-                                                      color: (dahaOnceGirildi
-                                                              ? const Color(
-                                                                0xFF14B8A6,
-                                                              )
-                                                              : const Color(
-                                                                0xFF3B82F6,
-                                                              ))
-                                                          .withValues(
-                                                            alpha: 0.4,
-                                                          ),
-                                                      width: 1,
-                                                    ),
-                                                  ),
-                                                  child: Row(
-                                                    mainAxisSize:
-                                                        MainAxisSize.min,
-                                                    children: [
-                                                      Container(
-                                                        width: 7,
-                                                        height: 7,
-                                                        decoration: BoxDecoration(
-                                                          color:
-                                                              dahaOnceGirildi
-                                                                  ? const Color(
-                                                                    0xFF14B8A6,
-                                                                  )
-                                                                  : const Color(
-                                                                    0xFF3B82F6,
-                                                                  ),
-                                                          shape:
-                                                              BoxShape.circle,
-                                                        ),
-                                                      ),
-                                                      const SizedBox(width: 6),
-                                                      Text(
-                                                        dahaOnceGirildi
-                                                            ? "Kayıtlı Rapor"
-                                                            : "Yeni Rapor",
-                                                        style: TextStyle(
-                                                          fontSize: 11.5,
-                                                          fontWeight:
-                                                              FontWeight.w800,
-                                                          color:
-                                                              dahaOnceGirildi
-                                                                  ? const Color(
-                                                                    0xFF14B8A6,
-                                                                  )
-                                                                  : const Color(
-                                                                    0xFF3B82F6,
-                                                                  ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                ),
-                                              ],
-                                            ),
-                                          ],
+                                          ),
                                         ),
-                                        const SizedBox(height: 10),
+                                        const SizedBox(width: 10),
 
-                                        // Ortalanmış Şantiye Adı ve Tarih (Kartal - 23 Ekim Cuma)
-                                        Center(
+                                        // Orta: Şantiye Adı ve Tarih (Minimal ve kompakt)
+                                        Expanded(
                                           child: Column(
+                                            crossAxisAlignment:
+                                                CrossAxisAlignment.center,
                                             mainAxisSize: MainAxisSize.min,
                                             children: [
                                               Text(
                                                 santiyeAdi,
                                                 textAlign: TextAlign.center,
+                                                maxLines: 1,
+                                                overflow: TextOverflow.ellipsis,
                                                 style: const TextStyle(
-                                                  fontSize: 20,
-                                                  fontWeight: FontWeight.w900,
-                                                  letterSpacing: -0.4,
+                                                  fontSize: 16.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  letterSpacing: -0.3,
                                                 ),
                                               ),
-                                              const SizedBox(height: 6),
-                                              Container(
-                                                padding:
-                                                    const EdgeInsets.symmetric(
-                                                      horizontal: 12,
-                                                      vertical: 4,
+                                              const SizedBox(height: 2),
+                                              Row(
+                                                mainAxisSize: MainAxisSize.min,
+                                                children: [
+                                                  Icon(
+                                                    Icons.calendar_today_rounded,
+                                                    size: 11,
+                                                    color: AppTheme.contrastIcon(
+                                                      context,
+                                                      isDark: isDark,
                                                     ),
-                                                decoration: BoxDecoration(
-                                                  color:
-                                                      isDark
-                                                          ? Colors.white
-                                                              .withValues(
-                                                                alpha: 0.06,
-                                                              )
-                                                          : Colors.white
-                                                              .withValues(
-                                                                alpha: 0.65,
-                                                              ),
-                                                  borderRadius:
-                                                      BorderRadius.circular(10),
-                                                  border: Border.all(
-                                                    color:
-                                                        isDark
-                                                            ? Colors.white10
-                                                            : const Color(
-                                                              0xFFCBD5E1,
-                                                            ),
                                                   ),
-                                                ),
-                                                child: Row(
-                                                  mainAxisSize:
-                                                      MainAxisSize.min,
-                                                  children: [
-                                                    Icon(
-                                                      Icons
-                                                          .calendar_month_rounded,
-                                                      size: 14,
+                                                  const SizedBox(width: 4),
+                                                  Text(
+                                                    DateFormat(
+                                                      'd MMMM EEEE',
+                                                      'tr_TR',
+                                                    ).format(_seciliGun),
+                                                    style: TextStyle(
+                                                      fontSize: 11.5,
+                                                      fontWeight: FontWeight.w600,
                                                       color:
                                                           isDark
-                                                              ? const Color(
-                                                                0xFF5EEAD4,
-                                                              )
+                                                              ? Colors.white70
                                                               : const Color(
-                                                                0xFF0F766E,
+                                                                0xFF334155,
                                                               ),
                                                     ),
-                                                    const SizedBox(width: 6),
-                                                    Text(
-                                                      DateFormat(
-                                                        'd MMMM EEEE',
-                                                        'tr_TR',
-                                                      ).format(_seciliGun),
-                                                      style: TextStyle(
-                                                        fontSize: 12.5,
-                                                        fontWeight:
-                                                            FontWeight.w700,
-                                                        color:
-                                                            isDark
-                                                                ? Colors.white70
-                                                                : const Color(
-                                                                  0xFF334155,
-                                                                ),
-                                                      ),
-                                                    ),
-                                                  ],
-                                                ),
+                                                  ),
+                                                ],
                                               ),
                                             ],
                                           ),
                                         ),
-                                        const SizedBox(height: 2),
+                                        const SizedBox(width: 10),
+
+                                        // Sağ: Rapor Durum Rozeti & Yardım İkonu
+                                        Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: [
+                                            Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 7,
+                                                vertical: 4,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: (dahaOnceGirildi
+                                                        ? const Color(0xFF14B8A6)
+                                                        : const Color(0xFF3B82F6))
+                                                    .withValues(
+                                                      alpha: isDark ? 0.22 : 0.14,
+                                                    ),
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                border: Border.all(
+                                                  color: (dahaOnceGirildi
+                                                          ? const Color(0xFF14B8A6)
+                                                          : const Color(0xFF3B82F6))
+                                                      .withValues(alpha: 0.4),
+                                                ),
+                                              ),
+                                              child: Text(
+                                                dahaOnceGirildi ? "Kayıtlı" : "Yeni",
+                                                style: TextStyle(
+                                                  fontSize: 10.5,
+                                                  fontWeight: FontWeight.w800,
+                                                  color:
+                                                      dahaOnceGirildi
+                                                          ? const Color(0xFF14B8A6)
+                                                          : const Color(0xFF3B82F6),
+                                                ),
+                                              ),
+                                            ),
+                                            const SizedBox(width: 6),
+                                            Material(
+                                              color: Colors.transparent,
+                                              child: InkWell(
+                                                borderRadius:
+                                                    BorderRadius.circular(10),
+                                                onTap:
+                                                    () => _puantajRehberiniGoster(
+                                                      ctx,
+                                                      isDark,
+                                                    ),
+                                                child: Container(
+                                                  padding:
+                                                      const EdgeInsets.all(6),
+                                                  decoration: BoxDecoration(
+                                                    color: const Color(
+                                                      0xFF14B8A6,
+                                                    ).withValues(
+                                                      alpha: isDark ? 0.20 : 0.14,
+                                                    ),
+                                                    borderRadius:
+                                                        BorderRadius.circular(10),
+                                                    border: Border.all(
+                                                      color: const Color(
+                                                        0xFF14B8A6,
+                                                      ).withValues(alpha: 0.45),
+                                                    ),
+                                                  ),
+                                                  child: const Icon(
+                                                    Icons.help_outline_rounded,
+                                                    size: 15,
+                                                    color: Color(0xFF14B8A6),
+                                                  ),
+                                                ),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
                                       ],
                                     ),
                                   ),
@@ -3047,31 +2978,11 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                         gradient: LinearGradient(
                                           begin: Alignment.topLeft,
                                           end: Alignment.bottomRight,
-                                          colors: [
-                                            (isDark
-                                                    ? const Color(0xFF171A1F)
-                                                    : const Color(0xFFE0EAEE))
-                                                .withValues(
-                                                  alpha: isDark ? 0.88 : 0.82,
-                                                ),
-                                            (isDark
-                                                    ? const Color(0xFF0D0F13)
-                                                    : const Color(0xFFCCD9DE))
-                                                .withValues(
-                                                  alpha: isDark ? 0.96 : 0.90,
-                                                ),
-                                          ],
+                                          colors: AppTheme.cardGradient(isDark),
                                         ),
                                         borderRadius: BorderRadius.circular(16),
                                         border: Border.all(
-                                          color:
-                                              isDark
-                                                  ? Colors.white.withValues(
-                                                    alpha: 0.08,
-                                                  )
-                                                  : const Color(
-                                                    0xFFBFD0D6,
-                                                  ).withValues(alpha: 0.90),
+                                          color: AppTheme.cardBorder(isDark),
                                         ),
                                       ),
                                       child: const Center(
@@ -3098,33 +3009,13 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                           gradient: LinearGradient(
                                             begin: Alignment.topLeft,
                                             end: Alignment.bottomRight,
-                                            colors: [
-                                              (isDark
-                                                      ? const Color(0xFF171A1F)
-                                                      : const Color(0xFFE0EAEE))
-                                                  .withValues(
-                                                    alpha: isDark ? 0.88 : 0.82,
-                                                  ),
-                                              (isDark
-                                                      ? const Color(0xFF0D0F13)
-                                                      : const Color(0xFFCCD9DE))
-                                                  .withValues(
-                                                    alpha: isDark ? 0.96 : 0.90,
-                                                  ),
-                                            ],
+                                            colors: AppTheme.cardGradient(isDark),
                                           ),
                                           borderRadius: BorderRadius.circular(
                                             16,
                                           ),
                                           border: Border.all(
-                                            color:
-                                                isDark
-                                                    ? Colors.white.withValues(
-                                                      alpha: 0.08,
-                                                    )
-                                                    : const Color(
-                                                      0xFFBFD0D6,
-                                                    ).withValues(alpha: 0.90),
+                                            color: AppTheme.cardBorder(isDark),
                                           ),
                                           boxShadow: [
                                             BoxShadow(
@@ -3328,34 +3219,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                               gradient: LinearGradient(
                                                 begin: Alignment.topLeft,
                                                 end: Alignment.bottomRight,
-                                                colors: [
-                                                  (isDark
-                                                          ? const Color(
-                                                            0xFF171A1F,
-                                                          )
-                                                          : const Color(
-                                                            0xFFE0EAEE,
-                                                          ))
-                                                      .withValues(
-                                                        alpha:
-                                                            isDark
-                                                                ? 0.92
-                                                                : 0.88,
-                                                      ),
-                                                  (isDark
-                                                          ? const Color(
-                                                            0xFF0D0F13,
-                                                          )
-                                                          : const Color(
-                                                            0xFFCCD9DE,
-                                                          ))
-                                                      .withValues(
-                                                        alpha:
-                                                            isDark
-                                                                ? 0.98
-                                                                : 0.94,
-                                                      ),
-                                                ],
+                                                colors: AppTheme.cardGradient(isDark),
                                               ),
                                               borderRadius:
                                                   BorderRadius.circular(18),
@@ -3365,16 +3229,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                                         ? const Color(
                                                           0xFF14B8A6,
                                                         ).withValues(alpha: 0.5)
-                                                        : (isDark
-                                                            ? Colors.white
-                                                                .withValues(
-                                                                  alpha: 0.08,
-                                                                )
-                                                            : const Color(
-                                                              0xFFBFD0D6,
-                                                            ).withValues(
-                                                              alpha: 0.90,
-                                                            )),
+                                                        : AppTheme.cardBorder(isDark),
                                                 width: 1,
                                               ),
                                               boxShadow: [
@@ -3563,49 +3418,12 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                               gradient: LinearGradient(
                                                 begin: Alignment.topLeft,
                                                 end: Alignment.bottomRight,
-                                                colors: [
-                                                  (isDark
-                                                          ? const Color(
-                                                            0xFF171A1F,
-                                                          )
-                                                          : const Color(
-                                                            0xFFE0EAEE,
-                                                          ))
-                                                      .withValues(
-                                                        alpha:
-                                                            isDark
-                                                                ? 0.92
-                                                                : 0.88,
-                                                      ),
-                                                  (isDark
-                                                          ? const Color(
-                                                            0xFF0D0F13,
-                                                          )
-                                                          : const Color(
-                                                            0xFFCCD9DE,
-                                                          ))
-                                                      .withValues(
-                                                        alpha:
-                                                            isDark
-                                                                ? 0.98
-                                                                : 0.94,
-                                                      ),
-                                                ],
+                                                colors: AppTheme.cardGradient(isDark),
                                               ),
                                               borderRadius:
                                                   BorderRadius.circular(18),
                                               border: Border.all(
-                                                color:
-                                                    isDark
-                                                        ? Colors.white
-                                                            .withValues(
-                                                              alpha: 0.08,
-                                                            )
-                                                        : const Color(
-                                                          0xFFBFD0D6,
-                                                        ).withValues(
-                                                          alpha: 0.90,
-                                                        ),
+                                                color: AppTheme.cardBorder(isDark),
                                               ),
                                               boxShadow: [
                                                 BoxShadow(
@@ -4234,21 +4052,14 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            (isDark ? const Color(0xFF171A1F) : const Color(0xFFE0EAEE))
-                .withValues(alpha: isDark ? 0.92 : 0.88),
-            (isDark ? const Color(0xFF0D0F13) : const Color(0xFFCCD9DE))
-                .withValues(alpha: isDark ? 0.98 : 0.94),
-          ],
+          colors: AppTheme.cardGradient(isDark),
         ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color:
               girildi
                   ? temaRengi.withValues(alpha: isDark ? 0.65 : 0.50)
-                  : (isDark
-                      ? Colors.white.withValues(alpha: 0.08)
-                      : const Color(0xFFBFD0D6).withValues(alpha: 0.90)),
+                  : AppTheme.cardBorder(isDark),
           width: girildi ? 1.4 : 1.0,
         ),
         boxShadow: [
@@ -5079,7 +4890,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
     required bool santiyelerBos,
     required bool iscilerBos,
   }) {
-    const accent = Color(0xFF14B8A6);
+    final accent = AppTheme.contrastIcon(context, isDark: isDark);
     return Center(
       child: Padding(
         padding: const EdgeInsets.all(20),
@@ -5548,12 +5359,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 weekendTextStyle: TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w600,
-                                  color:
-                                      isDark
-                                          ? const Color(
-                                            0xFF5EEAD4,
-                                          ).withValues(alpha: 0.8)
-                                          : const Color(0xFF0F7C86),
+                                  color: _themeContrastIcon,
                                 ),
                                 outsideTextStyle: TextStyle(
                                   fontSize: 12,
@@ -5569,10 +5375,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 todayTextStyle: TextStyle(
                                   fontSize: 12.5,
                                   fontWeight: FontWeight.w800,
-                                  color:
-                                      isDark
-                                          ? const Color(0xFF5EEAD4)
-                                          : const Color(0xFF0F7C86),
+                                  color: _themeContrastIcon,
                                 ),
                                 defaultDecoration: BoxDecoration(
                                   borderRadius: BorderRadius.circular(10),
@@ -5673,10 +5476,7 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                 weekendStyle: TextStyle(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
-                                  color:
-                                      isDark
-                                          ? const Color(0xFF5EEAD4)
-                                          : const Color(0xFF0F7C86),
+                                  color: _themeContrastIcon,
                                 ),
                               ),
                               onDaySelected:
@@ -6282,21 +6082,13 @@ class _GunlukRaporEkraniState extends State<GunlukRaporEkrani>
                                       ),
                                       decoration: BoxDecoration(
                                         borderRadius: BorderRadius.circular(22),
-                                        color:
-                                            isDark
-                                                ? const Color(
-                                                  0xFF1E293B,
-                                                ).withValues(alpha: 0.45)
-                                                : Colors.white.withValues(
-                                                  alpha: 0.90,
-                                                ),
+                                        gradient: LinearGradient(
+                                          begin: Alignment.topLeft,
+                                          end: Alignment.bottomRight,
+                                          colors: AppTheme.cardGradient(isDark),
+                                        ),
                                         border: Border.all(
-                                          color:
-                                              isDark
-                                                  ? Colors.white.withValues(
-                                                    alpha: 0.08,
-                                                  )
-                                                  : const Color(0xFFE2E8F0),
+                                          color: AppTheme.cardBorder(isDark),
                                           width: 1.0,
                                         ),
                                         boxShadow: [

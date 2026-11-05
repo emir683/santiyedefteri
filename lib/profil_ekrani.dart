@@ -8,8 +8,9 @@ import 'auth_servisi.dart';
 import 'animasyon_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
-
-const Color _kBrandTeal = Color(0xFF14B8A6);
+import 'tema_ayarlari.dart';
+import 'models/kullanici_saha_profili.dart';
+import 'widgets/saha_rol_secici_formu.dart';
 
 class ProfilEkrani extends StatefulWidget {
   const ProfilEkrani({super.key});
@@ -19,8 +20,54 @@ class ProfilEkrani extends StatefulWidget {
 }
 
 class _ProfilEkraniState extends State<ProfilEkrani> {
+  Color get _themePrimary {
+    try {
+      if (!mounted) return const Color(0xFF10B981);
+      return AppTheme.primary(context, listen: false);
+    } catch (_) {
+      return const Color(0xFF10B981);
+    }
+  }
+
+  Color get _themeAccent {
+    try {
+      if (!mounted) return const Color(0xFF06B6D4);
+      return AppTheme.accent(context, listen: false);
+    } catch (_) {
+      return const Color(0xFF06B6D4);
+    }
+  }
+
+  Color get _themeContrastIcon {
+    try {
+      if (!mounted) return const Color(0xFF5EEAD4);
+      return AppTheme.contrastIcon(context, listen: false);
+    } catch (_) {
+      return const Color(0xFF5EEAD4);
+    }
+  }
+
+  int _aktifSekme = 0; // 0: Hesap Bilgileri, 1: Mesleki Kimlik & Saha
+
   final _adSoyadController = TextEditingController();
   final _usernameController = TextEditingController();
+  final _sirketAdiController = TextEditingController();
+  final _telefonController = TextEditingController();
+  final _hakkindaController = TextEditingController();
+  final _yevmiyeBeklentisiController = TextEditingController();
+
+  String _seciliRol = '';
+  String _seciliBrans = '';
+  String _seciliSeviye = '';
+  String _seciliKapasite = '';
+  String _seciliSehir = 'İstanbul';
+  bool _isAriyorum = false;
+  bool _ustaAriyorum = false;
+  bool _vitrindeGoster = true;
+  bool _meslekiVeriYuklendi = false;
+  bool _meslekiKaydediliyor = false;
+  bool _meslekiDuzenlemeModu = false;
+
   final _authServisi = AuthServisi();
   bool _degisiklikYapildi = false;
 
@@ -28,6 +75,10 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
   void dispose() {
     _adSoyadController.dispose();
     _usernameController.dispose();
+    _sirketAdiController.dispose();
+    _telefonController.dispose();
+    _hakkindaController.dispose();
+    _yevmiyeBeklentisiController.dispose();
     super.dispose();
   }
 
@@ -124,9 +175,9 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                                             if (mounted && ctx.mounted) {
                                               Navigator.pop(ctx);
                                               ScaffoldMessenger.of(context).showSnackBar(
-                                                const SnackBar(
-                                                  content: Text("Parolanız başarıyla güncellendi."),
-                                                  backgroundColor: _kBrandTeal,
+                                                SnackBar(
+                                                  content: const Text("Parolanız başarıyla güncellendi."),
+                                                  backgroundColor: _themePrimary,
                                                 ),
                                               );
                                             }
@@ -435,7 +486,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
                               Navigator.pop(ctx);
                             },
                             style: ElevatedButton.styleFrom(
-                              backgroundColor: _kBrandTeal,
+                              backgroundColor: _themePrimary,
                               foregroundColor: Colors.white,
                               padding: const EdgeInsets.symmetric(horizontal: 40, vertical: 16),
                               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -470,18 +521,246 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
               ),
               child: Icon(icon, color: Colors.grey),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 14),
             Text(label, style: const TextStyle(color: Colors.grey, fontWeight: FontWeight.w500)),
-            const Spacer(),
-            Text(
-              controller.text,
-              style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black),
+            const SizedBox(width: 12),
+            Expanded(
+              child: Text(
+                controller.text,
+                textAlign: TextAlign.end,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: isDark ? Colors.white : Colors.black),
+              ),
             ),
             const SizedBox(width: 8),
-            const Icon(Icons.edit_outlined, size: 18, color: _kBrandTeal),
+            Icon(Icons.edit_outlined, size: 18, color: _themeContrastIcon),
           ],
         ),
       ),
+    );
+  }
+
+  Widget _buildKayitliBilgiSatiri({
+    required BuildContext context,
+    required String baslik,
+    required String deger,
+    required IconData ikon,
+    Color? badgeColor,
+  }) {
+    final bool isDark = Theme.of(context).brightness == Brightness.dark;
+    return Container(
+      margin: const EdgeInsets.only(bottom: 10),
+      padding: const EdgeInsets.all(14),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardGradient(isDark),
+        ),
+        borderRadius: BorderRadius.circular(18),
+        border: Border.all(
+          color: AppTheme.cardBorder(isDark),
+        ),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(9),
+            decoration: BoxDecoration(
+              color: (badgeColor ?? _themePrimary).withValues(alpha: isDark ? 0.20 : 0.12),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(ikon, size: 20, color: badgeColor ?? _themeContrastIcon),
+          ),
+          const SizedBox(width: 14),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  baslik,
+                  style: TextStyle(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                    color: isDark ? Colors.white60 : Colors.black54,
+                  ),
+                ),
+                const SizedBox(height: 3),
+                Text(
+                  deger,
+                  style: TextStyle(
+                    fontSize: 14.5,
+                    fontWeight: FontWeight.w700,
+                    color: isDark ? Colors.white : const Color(0xFF102A43),
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildKayitliMeslekiBilgilerGorunumu({
+    required BuildContext context,
+    required KullaniciSahaProfili sahaProfili,
+    required bool isDark,
+  }) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // ÜST KART
+        Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: AppTheme.cardGradient(isDark),
+            ),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: _themePrimary.withValues(alpha: 0.35)),
+          ),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: _themePrimary,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  KullaniciRolu.rolIkonu(sahaProfili.kullaniciTipi),
+                  color: Colors.white,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      KullaniciRolu.rolBasligi(sahaProfili.kullaniciTipi),
+                      style: TextStyle(
+                        fontSize: 16.5,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF102A43),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      '${sahaProfili.brans} • ${sahaProfili.sehir}',
+                      style: TextStyle(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                        color: _themeContrastIcon,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              IconButton(
+                icon: Icon(Icons.edit_outlined, color: _themeContrastIcon),
+                tooltip: 'Düzenle',
+                onPressed: () {
+                  setState(() => _meslekiDuzenlemeModu = true);
+                },
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 16),
+
+        _buildKayitliBilgiSatiri(
+          context: context,
+          baslik: 'Faaliyet / Ustalık Alanı',
+          deger: sahaProfili.brans,
+          ikon: Icons.construction_rounded,
+        ),
+        _buildKayitliBilgiSatiri(
+          context: context,
+          baslik: 'Pozisyon / Seviye',
+          deger: sahaProfili.seviye,
+          ikon: Icons.workspace_premium_rounded,
+        ),
+        _buildKayitliBilgiSatiri(
+          context: context,
+          baslik: 'Kapasite / Proje Ölçeği',
+          deger: sahaProfili.calismaKapasitesi,
+          ikon: Icons.groups_2_rounded,
+        ),
+        _buildKayitliBilgiSatiri(
+          context: context,
+          baslik: 'Bulunduğu Şehir (İl)',
+          deger: sahaProfili.sehir,
+          ikon: Icons.location_on_rounded,
+        ),
+        if (sahaProfili.sirketAdi.trim().isNotEmpty)
+          _buildKayitliBilgiSatiri(
+            context: context,
+            baslik: 'Şirket / Ekip Adı',
+            deger: sahaProfili.sirketAdi,
+            ikon: Icons.business_rounded,
+          ),
+        if (sahaProfili.telefon.trim().isNotEmpty)
+          _buildKayitliBilgiSatiri(
+            context: context,
+            baslik: 'İletişim Telefonu',
+            deger: sahaProfili.telefon,
+            ikon: Icons.phone_rounded,
+          ),
+        if (sahaProfili.gunlukYevmiyeBeklentisi > 0)
+          _buildKayitliBilgiSatiri(
+            context: context,
+            baslik: 'Günlük Yevmiye Beklentisi',
+            deger: '${sahaProfili.gunlukYevmiyeBeklentisi.toStringAsFixed(0)} TL / Gün',
+            ikon: Icons.payments_rounded,
+          ),
+        if (sahaProfili.hakkinda.trim().isNotEmpty)
+          _buildKayitliBilgiSatiri(
+            context: context,
+            baslik: 'Tanıtım & Referans Notu',
+            deger: sahaProfili.hakkinda,
+            ikon: Icons.notes_rounded,
+          ),
+        _buildKayitliBilgiSatiri(
+          context: context,
+          baslik: 'Pazar & Çalışma Durumu',
+          deger: sahaProfili.isAriyorum
+              ? 'İş Arıyor (Müsait)'
+              : (sahaProfili.ustaAriyorum ? 'Usta / Ekip Arıyor' : 'Aktif Projede'),
+          ikon: Icons.verified_user_rounded,
+          badgeColor: sahaProfili.isAriyorum || sahaProfili.ustaAriyorum ? Colors.green : null,
+        ),
+        _buildKayitliBilgiSatiri(
+          context: context,
+          baslik: 'Şantiye Pazarı Vitrini',
+          deger: sahaProfili.vitrindeGoster ? 'Vitrinde Gösteriliyor' : 'Gizli',
+          ikon: Icons.storefront_rounded,
+        ),
+
+        const SizedBox(height: 16),
+
+        SizedBox(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            icon: const Icon(Icons.edit_note_rounded),
+            label: const Text("Mesleki Bilgileri Düzenle"),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: _themePrimary,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 16),
+              shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+            ),
+            onPressed: () {
+              setState(() => _meslekiDuzenlemeModu = true);
+            },
+          ),
+        ),
+      ],
     );
   }
 
@@ -497,7 +776,7 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
       backgroundColor:
           isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
       appBar: const FloatingLiquidAppBar(
-        title: "Profilim",
+        title: "Profilim & Mesleki Kimlik",
         showPrivacyButton: false,
       ),
       body: GlassPageSurface(
@@ -527,107 +806,482 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
               _usernameController.text = mevcutKullaniciAdi;
             }
 
+            final sahaProfili = KullaniciSahaProfili.fromUserDoc(userData);
+            if (!_meslekiVeriYuklendi) {
+              _seciliRol = sahaProfili.kullaniciTipi.isNotEmpty
+                  ? sahaProfili.kullaniciTipi
+                  : KullaniciRolu.muteahhit;
+              final branslar = KullaniciRolu.bransSecenekleri(_seciliRol);
+              final seviyeler = KullaniciRolu.seviyeSecenekleri(_seciliRol);
+              final kapasiteler =
+                  KullaniciRolu.kapasiteVeyaCalismaSekliSecenekleri(_seciliRol);
+              _seciliBrans = branslar.contains(sahaProfili.brans)
+                  ? sahaProfili.brans
+                  : branslar.first;
+              _seciliSeviye = seviyeler.contains(sahaProfili.seviye)
+                  ? sahaProfili.seviye
+                  : seviyeler.first;
+              _seciliKapasite = kapasiteler.contains(sahaProfili.calismaKapasitesi)
+                  ? sahaProfili.calismaKapasitesi
+                  : kapasiteler.first;
+              _seciliSehir = sahaProfili.sehir.isNotEmpty
+                  ? sahaProfili.sehir
+                  : 'İstanbul';
+              _sirketAdiController.text = sahaProfili.sirketAdi;
+              _telefonController.text = sahaProfili.telefon;
+              _hakkindaController.text = sahaProfili.hakkinda;
+              _yevmiyeBeklentisiController.text =
+                  sahaProfili.gunlukYevmiyeBeklentisi > 0
+                      ? sahaProfili.gunlukYevmiyeBeklentisi.toStringAsFixed(0)
+                      : '';
+              _isAriyorum = sahaProfili.isAriyorum;
+              _ustaAriyorum = sahaProfili.ustaAriyorum;
+              _vitrindeGoster = sahaProfili.vitrindeGoster;
+              _meslekiDuzenlemeModu = !sahaProfili.tamamlandiMi;
+              _meslekiVeriYuklendi = true;
+            }
+
             return SingleChildScrollView(
               padding: EdgeInsets.fromLTRB(
-                24.0,
+                20.0,
                 FloatingLiquidAppBar.topPadding(context, extra: 4),
-                24.0,
-                24.0,
+                20.0,
+                32.0,
               ),
               child: Column(
                 children: [
                   CircleAvatar(
-                    radius: 50,
-                    backgroundColor: const Color(0xFF0F7C86),
+                    radius: 46,
+                    backgroundColor: _themePrimary,
                     child: Text(
                       adSoyad.isNotEmpty ? adSoyad[0].toUpperCase() : '?',
-                      style: const TextStyle(fontSize: 40, color: Colors.white),
+                      style: const TextStyle(fontSize: 38, color: Colors.white, fontWeight: FontWeight.bold),
                     ),
                   ),
-                  const SizedBox(height: 16),
-                  Text(adSoyad, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.bold)),
+                  const SizedBox(height: 12),
+                  Text(
+                    adSoyad,
+                    style: TextStyle(
+                      fontSize: 21,
+                      fontWeight: FontWeight.w800,
+                      color: isDark ? Colors.white : const Color(0xFF102A43),
+                    ),
+                  ),
+                  const SizedBox(height: 2),
                   Text(
                     email,
                     textAlign: TextAlign.center,
-                    style: const TextStyle(fontSize: 13.5, color: Colors.grey),
+                    style: TextStyle(
+                      fontSize: 13,
+                      color: isDark ? Colors.white60 : Colors.black54,
+                    ),
                   ),
-                  const SizedBox(height: 32),
+                  const SizedBox(height: 8),
 
-                  _buildFocusInput(context, _adSoyadController, "Ad Soyad", Icons.badge_outlined),
-                  const SizedBox(height: 16),
-
-                  _buildFocusInput(context, _usernameController, "Kullanıcı Adı", Icons.alternate_email),
-                  const SizedBox(height: 16),
-
-                  if (_degisiklikYapildi)
-                    SizedBox(
-                      width: double.infinity,
-                      child: ElevatedButton.icon(
-                        icon: const Icon(Icons.check),
-                        label: const Text("Değişiklikleri Kaydet"),
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: _kBrandTeal,
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(vertical: 16),
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
-                        ),
-                        onPressed: () async {
-                          final yeniAdSoyad = _adSoyadController.text.trim();
-                          final yeniUsername = _usernameController.text.trim();
-                          if (yeniAdSoyad.isNotEmpty && yeniAdSoyad != adSoyad) {
-                            await firestoreServisi.adSoyadGuncelle(yeniAdSoyad);
-                          }
-                          if (yeniUsername.isNotEmpty && yeniUsername != mevcutKullaniciAdi) {
-                            await firestoreServisi.kullaniciAdiniGuncelle(yeniUsername);
-                          }
-                          if (!mounted || !context.mounted) return;
-                          setState(() => _degisiklikYapildi = false);
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            const SnackBar(
-                              content: Text("Profil bilgileriniz güncellendi."),
-                              backgroundColor: _kBrandTeal,
+                  // MESLEKİ ROZET KARTI
+                  if (sahaProfili.tamamlandiMi)
+                    Container(
+                      constraints: BoxConstraints(
+                        maxWidth: MediaQuery.of(context).size.width - 40,
+                      ),
+                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                      decoration: BoxDecoration(
+                        color: _themePrimary.withValues(alpha: 0.12),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(color: _themePrimary.withValues(alpha: 0.35)),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            KullaniciRolu.rolIkonu(sahaProfili.kullaniciTipi),
+                            size: 16,
+                            color: _themeContrastIcon,
+                          ),
+                          const SizedBox(width: 6),
+                          Flexible(
+                            child: Text(
+                              '${KullaniciRolu.rolBasligi(sahaProfili.kullaniciTipi)} • ${sahaProfili.brans}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w700,
+                                color: _themeContrastIcon,
+                              ),
                             ),
-                          );
-                        },
+                          ),
+                        ],
+                      ),
+                    )
+                  else
+                    InkWell(
+                      onTap: () => setState(() => _aktifSekme = 1),
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        constraints: BoxConstraints(
+                          maxWidth: MediaQuery.of(context).size.width - 40,
+                        ),
+                        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 6),
+                        decoration: BoxDecoration(
+                          color: Colors.amber.withValues(alpha: 0.15),
+                          borderRadius: BorderRadius.circular(20),
+                          border: Border.all(color: Colors.amber.withValues(alpha: 0.40)),
+                        ),
+                        child: const Row(
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
+                            Icon(Icons.warning_amber_rounded, size: 16, color: Colors.amber),
+                            SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Meslek Bilgisi Eksik (Tamamlamak İçin Dokunun)',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 12.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.amber,
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
                       ),
                     ),
 
-                  if (_degisiklikYapildi) const SizedBox(height: 24) else const SizedBox(height: 16),
+                  const SizedBox(height: 20),
 
-                  // 3. PAROLA DEĞİŞTİR (Sadece e-posta/parola ile kayıt olan kullanıcılar için gösterilir)
-                  if (hasPassword) ...[
+                  // SEKME SEÇİCİ (HESAP BİLGİLERİ & MESLEKİ KİMLİK)
+                  PanelGlassWidgets.buildCard(
+                    context: context,
+                    padding: const EdgeInsets.all(5),
+                    child: Row(
+                      children: [
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setState(() => _aktifSekme = 0),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _aktifSekme == 0 ? _themePrimary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.person_outline_rounded,
+                                    size: 18,
+                                    color: _aktifSekme == 0 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Hesap Bilgileri",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: _aktifSekme == 0 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Expanded(
+                          child: InkWell(
+                            borderRadius: BorderRadius.circular(14),
+                            onTap: () => setState(() => _aktifSekme = 1),
+                            child: AnimatedContainer(
+                              duration: const Duration(milliseconds: 200),
+                              padding: const EdgeInsets.symmetric(vertical: 10),
+                              decoration: BoxDecoration(
+                                color: _aktifSekme == 1 ? _themePrimary : Colors.transparent,
+                                borderRadius: BorderRadius.circular(14),
+                              ),
+                              child: Row(
+                                mainAxisAlignment: MainAxisAlignment.center,
+                                children: [
+                                  Icon(
+                                    Icons.badge_outlined,
+                                    size: 18,
+                                    color: _aktifSekme == 1 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    "Mesleki Kimlik",
+                                    style: TextStyle(
+                                      fontSize: 13,
+                                      fontWeight: FontWeight.w700,
+                                      color: _aktifSekme == 1 ? Colors.white : (isDark ? Colors.white70 : Colors.black87),
+                                    ),
+                                  ),
+                                  if (!sahaProfili.tamamlandiMi) ...[
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      width: 8,
+                                      height: 8,
+                                      decoration: const BoxDecoration(
+                                        color: Colors.amber,
+                                        shape: BoxShape.circle,
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  const SizedBox(height: 20),
+
+                  // 1. SEKME: HESAP BİLGİLERİ & GÜVENLİK
+                  if (_aktifSekme == 0) ...[
+                    _buildFocusInput(context, _adSoyadController, "Ad Soyad", Icons.badge_outlined),
+                    const SizedBox(height: 16),
+
+                    _buildFocusInput(context, _usernameController, "Kullanıcı Adı", Icons.alternate_email),
+                    const SizedBox(height: 16),
+
+                    if (_degisiklikYapildi) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: const Icon(Icons.check),
+                          label: const Text("Hesap Bilgilerini Kaydet"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _themePrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          onPressed: () async {
+                            final safePrimary = _themePrimary;
+                            final yeniAdSoyad = _adSoyadController.text.trim();
+                            final yeniUsername = _usernameController.text.trim();
+                            if (yeniAdSoyad.isNotEmpty && yeniAdSoyad != adSoyad) {
+                              await firestoreServisi.adSoyadGuncelle(yeniAdSoyad);
+                            }
+                            if (yeniUsername.isNotEmpty && yeniUsername != mevcutKullaniciAdi) {
+                              await firestoreServisi.kullaniciAdiniGuncelle(yeniUsername);
+                            }
+                            if (!mounted || !context.mounted) return;
+                            setState(() => _degisiklikYapildi = false);
+                            ScaffoldMessenger.of(context).showSnackBar(
+                              SnackBar(
+                                content: const Text("Profil bilgileriniz güncellendi."),
+                                backgroundColor: safePrimary,
+                              ),
+                            );
+                          },
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                    ] else
+                      const SizedBox(height: 16),
+
+                    // PAROLA DEĞİŞTİR
+                    if (hasPassword) ...[
+                      SizedBox(
+                        width: double.infinity,
+                        child: OutlinedButton.icon(
+                          icon: const Icon(Icons.lock_reset),
+                          label: const Text("Giriş Parolasını Değiştir"),
+                          style: OutlinedButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 18),
+                            side: BorderSide(color: _themePrimary.withValues(alpha: 0.6)),
+                            foregroundColor: _themeContrastIcon,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          onPressed: _kisiselParolaDegistirDialog,
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
+                    // HESABIMI VE VERİLERİMİ SİL
                     SizedBox(
                       width: double.infinity,
                       child: OutlinedButton.icon(
-                        icon: const Icon(Icons.lock_reset),
-                        label: const Text("Giriş Parolasını Değiştir"),
+                        icon: const Icon(Icons.delete_forever_outlined),
+                        label: const Text("Hesabımı ve Verilerimi Sil"),
                         style: OutlinedButton.styleFrom(
                           padding: const EdgeInsets.symmetric(vertical: 18),
-                          side: BorderSide(color: Colors.teal.shade300),
-                          foregroundColor: Colors.teal.shade300,
+                          side: BorderSide(color: Colors.red.shade400),
+                          foregroundColor: Colors.red.shade400,
                           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
                         ),
-                        onPressed: _kisiselParolaDegistirDialog,
+                        onPressed: _hesabiSilDialog,
                       ),
                     ),
-                    const SizedBox(height: 16),
                   ],
 
-                  // 4. HESABIMI VE VERİLERİMİ SİL (APPLE GUIDELINE 5.1.1(v) UYUMLU)
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon: const Icon(Icons.delete_forever_outlined),
-                      label: const Text("Hesabımı ve Verilerimi Sil"),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 18),
-                        side: BorderSide(color: Colors.red.shade400),
-                        foregroundColor: Colors.red.shade400,
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  // 2. SEKME: MESLEKİ KİMLİK & SAHA BİLGİLERİ
+                  if (_aktifSekme == 1) ...[
+                    if (!_meslekiDuzenlemeModu && sahaProfili.tamamlandiMi) ...[
+                      _buildKayitliMeslekiBilgilerGorunumu(
+                        context: context,
+                        sahaProfili: sahaProfili,
+                        isDark: isDark,
                       ),
-                      onPressed: _hesabiSilDialog,
-                    ),
-                  ),
+                    ] else ...[
+                      Row(
+                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                        children: [
+                          Text(
+                            "Mesleki Bilgileri Düzenle",
+                            style: TextStyle(
+                              fontSize: 16,
+                              fontWeight: FontWeight.w800,
+                              color: isDark ? Colors.white : const Color(0xFF102A43),
+                            ),
+                          ),
+                          if (sahaProfili.tamamlandiMi)
+                            TextButton.icon(
+                              onPressed: () {
+                                setState(() => _meslekiDuzenlemeModu = false);
+                              },
+                              icon: const Icon(Icons.close_rounded, size: 16),
+                              label: const Text("Vazgeç"),
+                              style: TextButton.styleFrom(
+                                foregroundColor: Colors.grey,
+                              ),
+                            ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      SahaRolSeciciFormu(
+                        seciliRol: _seciliRol,
+                        seciliBrans: _seciliBrans,
+                        seciliSeviye: _seciliSeviye,
+                        seciliKapasite: _seciliKapasite,
+                        seciliSehir: _seciliSehir,
+                        sirketAdiController: _sirketAdiController,
+                        telefonController: _telefonController,
+                        hakkindaController: _hakkindaController,
+                        yevmiyeBeklentisiController: _yevmiyeBeklentisiController,
+                        isAriyorum: _isAriyorum,
+                        ustaAriyorum: _ustaAriyorum,
+                        vitrindeGoster: _vitrindeGoster,
+                        detayliMod: true,
+                        onRolChanged: (rol) {
+                          setState(() {
+                            _seciliRol = rol;
+                            final branslar = KullaniciRolu.bransSecenekleri(rol);
+                            final seviyeler = KullaniciRolu.seviyeSecenekleri(rol);
+                            final kapasiteler =
+                                KullaniciRolu.kapasiteVeyaCalismaSekliSecenekleri(
+                                  rol,
+                                );
+                            _seciliBrans = branslar.first;
+                            _seciliSeviye = seviyeler.first;
+                            _seciliKapasite = kapasiteler.first;
+                          });
+                        },
+                        onBransChanged: (b) => setState(() => _seciliBrans = b),
+                        onSeviyeChanged: (s) => setState(() => _seciliSeviye = s),
+                        onKapasiteChanged: (k) => setState(() => _seciliKapasite = k),
+                        onSehirChanged: (seh) => setState(() => _seciliSehir = seh),
+                        onIsAriyorumChanged: (val) => setState(() => _isAriyorum = val),
+                        onUstaAriyorumChanged: (val) => setState(() => _ustaAriyorum = val),
+                        onVitrindeGosterChanged: (val) => setState(() => _vitrindeGoster = val),
+                      ),
+                      const SizedBox(height: 24),
+                      SizedBox(
+                        width: double.infinity,
+                        child: ElevatedButton.icon(
+                          icon: _meslekiKaydediliyor
+                              ? const SizedBox(
+                                  width: 18,
+                                  height: 18,
+                                  child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
+                                )
+                              : const Icon(Icons.check_circle_outline_rounded),
+                          label: Text(_meslekiKaydediliyor ? "Kaydediliyor..." : "Mesleki Bilgileri Kaydet"),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: _themePrimary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                          ),
+                          onPressed: _meslekiKaydediliyor
+                              ? null
+                              : () async {
+                                  final safePrimary = _themePrimary;
+                                  setState(() => _meslekiKaydediliyor = true);
+                                  try {
+                                    final rolToSave = _seciliRol.isNotEmpty
+                                        ? _seciliRol
+                                        : (sahaProfili.kullaniciTipi.isNotEmpty
+                                            ? sahaProfili.kullaniciTipi
+                                            : KullaniciRolu.muteahhit);
+                                    final branslar = KullaniciRolu.bransSecenekleri(rolToSave);
+                                    final seviyeler = KullaniciRolu.seviyeSecenekleri(rolToSave);
+                                    final bransToSave = _seciliBrans.isNotEmpty && branslar.contains(_seciliBrans)
+                                        ? _seciliBrans
+                                        : branslar.first;
+                                    final seviyeToSave = _seciliSeviye.isNotEmpty && seviyeler.contains(_seciliSeviye)
+                                        ? _seciliSeviye
+                                        : seviyeler.first;
+
+                                    final yeniProfil = KullaniciSahaProfili(
+                                      kullaniciTipi: rolToSave,
+                                      brans: bransToSave,
+                                      seviye: seviyeToSave,
+                                      calismaKapasitesi: _seciliKapasite,
+                                      sirketAdi: _sirketAdiController.text.trim(),
+                                      sehir: _seciliSehir,
+                                      telefon: _telefonController.text.trim(),
+                                      hakkinda: _hakkindaController.text.trim(),
+                                      gunlukYevmiyeBeklentisi:
+                                          double.tryParse(
+                                            _yevmiyeBeklentisiController.text
+                                                .replaceAll(',', '.')
+                                                .trim(),
+                                          ) ??
+                                          0,
+                                      isAriyorum: _isAriyorum,
+                                      ustaAriyorum: _ustaAriyorum,
+                                      vitrindeGoster: _vitrindeGoster,
+                                    );
+                                    await firestoreServisi.sahaProfiliniGuncelle(
+                                      yeniProfil.toMap(),
+                                    );
+                                    if (!mounted) return;
+                                    setState(() {
+                                      _meslekiDuzenlemeModu = false;
+                                    });
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: const Text(
+                                          "Mesleki kimlik ve saha bilgileriniz güncellendi.",
+                                        ),
+                                        backgroundColor: safePrimary,
+                                      ),
+                                    );
+                                  } catch (e) {
+                                    if (!mounted) return;
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      SnackBar(
+                                        content: Text("Hata oluştu: $e"),
+                                        backgroundColor: Colors.redAccent,
+                                      ),
+                                    );
+                                  } finally {
+                                    if (mounted) setState(() => _meslekiKaydediliyor = false);
+                                  }
+                                },
+                        ),
+                      ),
+                    ],
+                  ],
                 ],
               ),
             );

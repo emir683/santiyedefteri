@@ -78,8 +78,9 @@ class AuthServisi {
     String email,
     String password,
     String adSoyad,
-    String username,
-  ) async {
+    String username, {
+    Map<String, dynamic>? sahaProfili,
+  }) async {
     final usernameQuery =
         await _firestore
             .collection('users')
@@ -99,12 +100,17 @@ class AuthServisi {
       User? user = result.user;
 
       if (user != null) {
-        await _firestore.collection('users').doc(user.uid).set({
+        final userDocData = <String, dynamic>{
           'username': username,
           'username_lowercase': username.toLowerCase(),
           'adSoyad': adSoyad,
           'email': email,
-        });
+        };
+        if (sahaProfili != null && sahaProfili.isNotEmpty) {
+          userDocData['sahaProfili'] = sahaProfili;
+          userDocData.addAll(sahaProfili);
+        }
+        await _firestore.collection('users').doc(user.uid).set(userDocData);
       }
       return _userFromFirebaseUser(user);
     } catch (e) {

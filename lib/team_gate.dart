@@ -6,6 +6,7 @@ import 'firestore_servisi.dart';
 import 'user_model.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
+import 'tema_ayarlari.dart';
 
 enum _KullanimTipi { ekipli, kisisel }
 
@@ -19,9 +20,12 @@ class TeamGate extends StatefulWidget {
 class _TeamGateState extends State<TeamGate> {
   final _ekipAdiController = TextEditingController();
   final _sifreController = TextEditingController();
+  final _sifreTekrarController = TextEditingController();
 
   bool _isJoining = true;
   bool _loading = false;
+  bool _sifreGizli = true;
+  bool _sifreTekrarGizli = true;
   String _error = '';
   _KullanimTipi? _kullanimTipi;
 
@@ -29,15 +33,27 @@ class _TeamGateState extends State<TeamGate> {
   void dispose() {
     _ekipAdiController.dispose();
     _sifreController.dispose();
+    _sifreTekrarController.dispose();
     super.dispose();
   }
 
   Future<void> _submitTeamAction() async {
     final uid = Provider.of<UserModel?>(context, listen: false)?.uid ?? FirebaseAuth.instance.currentUser?.uid ?? '';
 
-    if (_ekipAdiController.text.isEmpty || _sifreController.text.isEmpty) {
-      setState(() => _error = "Lütfen tüm alanları doldurun.");
+    if (_ekipAdiController.text.trim().isEmpty || _sifreController.text.trim().isEmpty) {
+      setState(() => _error = "Lütfen tüm zorunlu alanları doldurun.");
       return;
+    }
+
+    if (!_isJoining) {
+      if (_sifreController.text.trim() != _sifreTekrarController.text.trim()) {
+        setState(() => _error = "Girdiğiniz şifreler birbiriyle eşleşmiyor. Lütfen iki alanı da kontrol edin.");
+        return;
+      }
+      if (_sifreController.text.trim().length < 4) {
+        setState(() => _error = "Ekip şifresi güvenlik için en az 4 karakter olmalıdır.");
+        return;
+      }
     }
 
     setState(() {
@@ -76,7 +92,7 @@ class _TeamGateState extends State<TeamGate> {
                   ? "Tebrikler! Ekibe başarıyla katıldınız."
                   : "Ekip başarıyla oluşturuldu.",
             ),
-            backgroundColor: const Color(0xFF14B8A6),
+            backgroundColor: AppTheme.primary(context),
           ),
         );
         // Kök AuthGate -> Wrapper zaten users/{uid} dokümanını canlı dinlediği için
@@ -117,9 +133,9 @@ class _TeamGateState extends State<TeamGate> {
     if (teamId != null) {
       if (mounted && context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text("Bireysel çalışma alanı hazırlandı."),
-            backgroundColor: Color(0xFF14B8A6),
+          SnackBar(
+            content: const Text("Bireysel çalışma alanı hazırlandı."),
+            backgroundColor: AppTheme.primary(context),
           ),
         );
         Navigator.of(context, rootNavigator: true).popUntil(
@@ -138,7 +154,7 @@ class _TeamGateState extends State<TeamGate> {
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const accent = Color(0xFF0F7C86);
+    final accent = AppTheme.contrastIcon(context);
 
     return Scaffold(
       extendBodyBehindAppBar: true,
@@ -248,12 +264,15 @@ class _TeamGateState extends State<TeamGate> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : const Color(0xFFD8EAF0),
+          color: AppTheme.cardBorder(isDark),
+          width: 1.2,
         ),
       ),
       child: Column(
@@ -279,6 +298,7 @@ class _TeamGateState extends State<TeamGate> {
             children: [
               Expanded(
                 child: _miniSecimButonu(
+                  context: context,
                   secili: _isJoining,
                   label: "Ekibe katıl",
                   onTap: () {
@@ -292,6 +312,7 @@ class _TeamGateState extends State<TeamGate> {
               const SizedBox(width: 10),
               Expanded(
                 child: _miniSecimButonu(
+                  context: context,
                   secili: !_isJoining,
                   label: "Ekip kur",
                   onTap: () {
@@ -307,6 +328,9 @@ class _TeamGateState extends State<TeamGate> {
           const SizedBox(height: 18),
           TextField(
             controller: _ekipAdiController,
+            onChanged: (_) {
+              if (_error.isNotEmpty) setState(() => _error = '');
+            },
             decoration: InputDecoration(
               labelText: "Ekip adı",
               prefixIcon: const Icon(Icons.groups_outlined),
@@ -318,15 +342,87 @@ class _TeamGateState extends State<TeamGate> {
           const SizedBox(height: 14),
           TextField(
             controller: _sifreController,
-            obscureText: true,
+            obscureText: _sifreGizli,
+            onChanged: (_) {
+              if (_error.isNotEmpty) setState(() => _error = '');
+            },
             decoration: InputDecoration(
               labelText: "Ekip şifresi",
               prefixIcon: const Icon(Icons.lock_outline),
+              suffixIcon: IconButton(
+                icon: Icon(
+                  _sifreGizli
+                      ? Icons.visibility_off_rounded
+                      : Icons.visibility_rounded,
+                ),
+                onPressed: () => setState(() => _sifreGizli = !_sifreGizli),
+              ),
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
               ),
             ),
           ),
+          if (!_isJoining) ...[
+            const SizedBox(height: 14),
+            TextField(
+              controller: _sifreTekrarController,
+              obscureText: _sifreTekrarGizli,
+              onChanged: (_) {
+                if (_error.isNotEmpty) setState(() => _error = '');
+              },
+              decoration: InputDecoration(
+                labelText: "Ekip şifresi (Tekrar)",
+                prefixIcon: const Icon(Icons.lock_reset_rounded),
+                suffixIcon: IconButton(
+                  icon: Icon(
+                    _sifreTekrarGizli
+                        ? Icons.visibility_off_rounded
+                        : Icons.visibility_rounded,
+                  ),
+                  onPressed:
+                      () => setState(
+                        () => _sifreTekrarGizli = !_sifreTekrarGizli,
+                      ),
+                ),
+                border: OutlineInputBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+              ),
+            ),
+          ],
+          if (_error.isNotEmpty) ...[
+            const SizedBox(height: 14),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: isDark ? 0.20 : 0.10),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: Colors.red.withValues(alpha: 0.45),
+                ),
+              ),
+              child: Row(
+                children: [
+                  const Icon(
+                    Icons.error_outline_rounded,
+                    color: Colors.redAccent,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      _error,
+                      style: const TextStyle(
+                        color: Colors.redAccent,
+                        fontSize: 13,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
           const SizedBox(height: 18),
           _loading
               ? const Center(child: CircularProgressIndicator())
@@ -356,12 +452,15 @@ class _TeamGateState extends State<TeamGate> {
     return Container(
       padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
-        color: isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(20),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : const Color(0xFFD8EAF0),
+          color: AppTheme.cardBorder(isDark),
+          width: 1.2,
         ),
       ),
       child: Column(
@@ -423,7 +522,7 @@ class _TeamGateState extends State<TeamGate> {
     required VoidCallback onTap,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    const accent = Color(0xFF0F7C86);
+    final accent = AppTheme.contrastIcon(context);
 
     return InkWell(
       onTap: onTap,
@@ -432,16 +531,21 @@ class _TeamGateState extends State<TeamGate> {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(18),
         decoration: BoxDecoration(
-          color: secili
-              ? accent.withValues(alpha: isDark ? 0.18 : 0.12)
-              : (isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: secili
+                ? [
+                    accent.withValues(alpha: isDark ? 0.24 : 0.16),
+                    accent.withValues(alpha: isDark ? 0.12 : 0.08),
+                  ]
+                : AppTheme.cardGradient(isDark),
+          ),
           borderRadius: BorderRadius.circular(20),
           border: Border.all(
             color: secili
-                ? accent.withValues(alpha: 0.55)
-                : (isDark
-                    ? Colors.white.withValues(alpha: 0.08)
-                    : const Color(0xFFD8EAF0)),
+                ? accent.withValues(alpha: 0.65)
+                : AppTheme.cardBorder(isDark),
             width: secili ? 1.4 : 1,
           ),
         ),
@@ -457,8 +561,8 @@ class _TeamGateState extends State<TeamGate> {
                     color: accent.withValues(alpha: isDark ? 0.22 : 0.14),
                     borderRadius: BorderRadius.circular(14),
                   ),
-                  child: const Icon(
-                    Icons.construction_rounded,
+                  child: Icon(
+                    icon,
                     color: accent,
                   ),
                 ),
@@ -497,8 +601,8 @@ class _TeamGateState extends State<TeamGate> {
                 child: Row(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                    const Padding(
-                      padding: EdgeInsets.only(top: 3),
+                    Padding(
+                      padding: const EdgeInsets.only(top: 3),
                       child: Icon(
                         Icons.check_circle_outline_rounded,
                         size: 16,
@@ -528,11 +632,12 @@ class _TeamGateState extends State<TeamGate> {
   }
 
   Widget _miniSecimButonu({
+    required BuildContext context,
     required bool secili,
     required String label,
     required VoidCallback onTap,
   }) {
-    const accent = Color(0xFF0F7C86);
+    final accent = AppTheme.contrastIcon(context);
     return InkWell(
       onTap: onTap,
       borderRadius: BorderRadius.circular(12),
@@ -561,10 +666,15 @@ class _TeamGateState extends State<TeamGate> {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : Colors.black.withValues(alpha: 0.03),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardInsetGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(14),
+        border: Border.all(
+          color: AppTheme.cardInsetBorder(isDark),
+        ),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

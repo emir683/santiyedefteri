@@ -15,11 +15,10 @@ import 'widgets/il_ilce_secici_modal.dart';
 import 'widgets/glass_empty_state.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
+import 'tema_ayarlari.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
-const Color _kBrandTeal = Color(0xFF14B8A6);
-const Color _kBrandTealDark = Color(0xFF0F7C86);
 
 class SantiyeEkrani extends StatefulWidget {
   final String teamId;
@@ -36,6 +35,10 @@ class SantiyeEkrani extends StatefulWidget {
 
 class _SantiyeEkraniState extends State<SantiyeEkrani>
     with SingleTickerProviderStateMixin {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+
   final TextEditingController _controller = TextEditingController();
   final TextEditingController _ilController = TextEditingController();
   final TextEditingController _searchController = TextEditingController();
@@ -228,11 +231,15 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                     margin: const EdgeInsets.symmetric(horizontal: 24),
                     padding: const EdgeInsets.all(24),
                     decoration: BoxDecoration(
-                      color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                      gradient: LinearGradient(
+                        begin: Alignment.topLeft,
+                        end: Alignment.bottomRight,
+                        colors: AppTheme.cardGradient(true),
+                      ),
                       borderRadius: BorderRadius.circular(24),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                      border: Border.all(color: AppTheme.cardBorder(true)),
                       boxShadow: [
-                        BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20),
+                        BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 24),
                       ],
                     ),
                     child: Material(
@@ -256,7 +263,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                             decoration: InputDecoration(
                               labelText: "Şantiye Adı",
                               labelStyle: TextStyle(color: Colors.grey[400]),
-                              prefixIcon: const Icon(Icons.location_city, color: _kBrandTeal),
+                              prefixIcon: Icon(Icons.location_city, color: _themeContrastIcon),
                               filled: true,
                               fillColor: Colors.white.withValues(alpha: 0.05),
                               border: OutlineInputBorder(
@@ -265,7 +272,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                               ),
                               focusedBorder: OutlineInputBorder(
                                 borderRadius: BorderRadius.circular(16),
-                                borderSide: const BorderSide(color: _kBrandTeal),
+                                borderSide: BorderSide(color: _themePrimary),
                               ),
                             ),
                           ),
@@ -305,21 +312,21 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                                   color: Colors.white.withValues(alpha: 0.05),
                                   borderRadius: BorderRadius.circular(16),
                                   border: Border.all(
-                                    color: _kBrandTeal.withValues(alpha: 0.4),
+                                    color: _themePrimary.withValues(alpha: 0.4),
                                     style: BorderStyle.solid,
                                   ),
                                 ),
-                                child: const Row(
+                                child: Row(
                                   children: [
-                                    Icon(Icons.add_location_alt_rounded, color: _kBrandTeal, size: 22),
-                                    SizedBox(width: 12),
-                                    Expanded(
+                                    Icon(Icons.add_location_alt_rounded, color: _themeContrastIcon, size: 22),
+                                    const SizedBox(width: 12),
+                                    const Expanded(
                                       child: Text(
                                         "İl ve İlçe Seçin (81 İl / Tüm İlçeler)",
                                         style: TextStyle(color: Colors.white70, fontSize: 13.5),
                                       ),
                                     ),
-                                    Icon(Icons.chevron_right_rounded, color: Colors.white38),
+                                    const Icon(Icons.chevron_right_rounded, color: Colors.white38),
                                   ],
                                 ),
                               ),
@@ -329,15 +336,15 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                               width: double.infinity,
                               padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
                               decoration: BoxDecoration(
-                                color: _kBrandTeal.withValues(alpha: 0.12),
+                                color: _themePrimary.withValues(alpha: 0.12),
                                 borderRadius: BorderRadius.circular(16),
                                 border: Border.all(
-                                  color: _kBrandTeal.withValues(alpha: 0.4),
+                                  color: _themePrimary.withValues(alpha: 0.4),
                                 ),
                               ),
                               child: Row(
                                 children: [
-                                  const Icon(Icons.location_on_rounded, color: _kBrandTeal, size: 24),
+                                  Icon(Icons.location_on_rounded, color: _themeContrastIcon, size: 24),
                                   const SizedBox(width: 10),
                                   Expanded(
                                     child: Column(
@@ -361,7 +368,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                                   ),
                                   IconButton(
                                     tooltip: "Değiştir",
-                                    icon: const Icon(Icons.edit_location_alt_rounded, color: _kBrandTeal, size: 20),
+                                    icon: Icon(Icons.edit_location_alt_rounded, color: _themeContrastIcon, size: 20),
                                     onPressed: () async {
                                       final res = await IlIlceSeciciModal.goster(
                                         ctx,
@@ -429,7 +436,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                                     }
                                   },
                                   style: ElevatedButton.styleFrom(
-                                    backgroundColor: _kBrandTeal,
+                                    backgroundColor: _themePrimary,
                                     padding: const EdgeInsets.symmetric(vertical: 14),
                                     shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
                                   ),
@@ -474,10 +481,14 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: AppTheme.cardGradient(true),
+                  ),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 20)],
+                  border: Border.all(color: AppTheme.cardBorder(true)),
+                  boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.5), blurRadius: 24)],
                 ),
                 child: Material(
                   color: Colors.transparent,
@@ -585,18 +596,28 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
     Key? menuKey,
     bool isDemo = false,
   }) {
-    return Card(
+    return Container(
       key: cardKey,
-      elevation: 2,
       margin: const EdgeInsets.only(bottom: 16),
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(
-          color: isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0),
+        border: Border.all(
+          color: AppTheme.cardBorder(isDark),
           width: 1,
         ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
-      color: isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD),
       child: Padding(
         padding: const EdgeInsets.all(12.0),
         child: Row(
@@ -623,7 +644,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                     _buildGlassIconBadge(
                       isDark: isDark,
                       icon: Icons.domain_rounded,
-                      color: _kBrandTealDark,
+                      color: _themeContrastIcon,
                     ),
                     const SizedBox(width: 16),
                     Expanded(
@@ -646,7 +667,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                                 padding: const EdgeInsets.only(top: 4),
                                 child: Row(
                                   children: [
-                                    const Icon(Icons.location_on_rounded, size: 14, color: _kBrandTeal),
+                                    Icon(Icons.location_on_rounded, size: 14, color: _themeContrastIcon),
                                     const SizedBox(width: 4),
                                     Expanded(
                                       child: Text(
@@ -724,7 +745,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
                       height: 42,
                       child: Row(
                         children: [
-                          const Icon(Icons.edit_rounded, size: 18, color: _kBrandTealDark),
+                          Icon(Icons.edit_rounded, size: 18, color: _themeContrastIcon),
                           const SizedBox(width: 12),
                           Text(
                             'Düzenle',
@@ -967,7 +988,7 @@ class _SantiyeEkraniState extends State<SantiyeEkrani>
           onPressed: () => _santiyeEkleVeyaDuzenleDialog(servisi),
           icon: const Icon(Icons.add_business_rounded),
           label: const Text("Şantiye Ekle"),
-          backgroundColor: _kBrandTeal,
+          backgroundColor: _themePrimary,
           foregroundColor: Colors.white,
         ),
       ),

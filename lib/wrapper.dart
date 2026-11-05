@@ -6,6 +6,7 @@ import 'package:santiyeyonetim2/ana_menu_ekrani.dart';
 import 'package:santiyeyonetim2/firestore_servisi.dart';
 import 'package:santiyeyonetim2/profil_tamamlama_ekrani.dart';
 import 'package:santiyeyonetim2/team_gate.dart';
+import 'package:santiyeyonetim2/widgets/acilis_animasyon_ekrani.dart';
 
 class Wrapper extends StatefulWidget {
   const Wrapper({super.key, required this.userId});
@@ -53,12 +54,7 @@ class _WrapperState extends State<Wrapper> {
         // Eğer henüz hiçbir veri gelmediyse ve önbellek de yoksa
         if (snapshot.connectionState == ConnectionState.waiting &&
             _lastSnapshot == null) {
-          return const Scaffold(
-            backgroundColor: Color(0xFF0F172A),
-            body: Center(
-              child: CircularProgressIndicator(color: Color(0xFF14B8A6)),
-            ),
-          );
+          return const AcilisYuklemeEkrani();
         }
 
         if (snapshot.hasError && _lastSnapshot == null) {

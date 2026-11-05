@@ -78,7 +78,7 @@ class _AcilisAnimasyonEkraniState extends State<AcilisAnimasyonEkrani>
   @override
   Widget build(BuildContext context) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final bgColor = isDark ? Colors.black : Colors.white;
+    final bgColor = isDark ? const Color(0xFF000000) : const Color(0xFFF8FAFC);
 
     return FadeTransition(
       opacity: _fadeAnimation,
@@ -96,11 +96,15 @@ class _AcilisAnimasyonEkraniState extends State<AcilisAnimasyonEkrani>
                 'assets/spd_clean_icon.png',
                 fit: BoxFit.contain,
                 filterQuality: FilterQuality.high,
+                color: isDark ? null : const Color(0xFF0F7C86),
+                colorBlendMode: isDark ? null : BlendMode.srcIn,
                 errorBuilder: (_, __, ___) {
                   return Image.asset(
                     'assets/notification_icon.png',
                     fit: BoxFit.contain,
                     filterQuality: FilterQuality.high,
+                    color: isDark ? null : const Color(0xFF0F7C86),
+                    colorBlendMode: isDark ? null : BlendMode.srcIn,
                   );
                 },
               ),
@@ -147,3 +151,74 @@ class _AppLaunchGateState extends State<AppLaunchGate> {
     );
   }
 }
+
+/// Açılış animasyonunun görsel diline (koyu modda tam siyah, açık modda #F8FAFC + teal logo)
+/// birebir uyan, geçişlerde ve Firestore yüklemelerinde lacivert ekran patlamasını önleyen
+/// minimalist ve zarif yükleme ekranı.
+class AcilisYuklemeEkrani extends StatelessWidget {
+  final String? mesaj;
+
+  const AcilisYuklemeEkrani({
+    super.key,
+    this.mesaj,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final bgColor = isDark ? const Color(0xFF000000) : const Color(0xFFF8FAFC);
+    final accentColor = isDark ? const Color(0xFF14B8A6) : const Color(0xFF0F7C86);
+
+    return Scaffold(
+      backgroundColor: bgColor,
+      body: Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SizedBox(
+              width: 80,
+              height: 80,
+              child: Image.asset(
+                'assets/spd_clean_icon.png',
+                fit: BoxFit.contain,
+                filterQuality: FilterQuality.high,
+                color: isDark ? null : const Color(0xFF0F7C86),
+                colorBlendMode: isDark ? null : BlendMode.srcIn,
+                errorBuilder: (_, __, ___) {
+                  return Image.asset(
+                    'assets/notification_icon.png',
+                    fit: BoxFit.contain,
+                    filterQuality: FilterQuality.high,
+                    color: isDark ? null : const Color(0xFF0F7C86),
+                    colorBlendMode: isDark ? null : BlendMode.srcIn,
+                  );
+                },
+              ),
+            ),
+            const SizedBox(height: 24),
+            SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(
+                strokeWidth: 2.2,
+                valueColor: AlwaysStoppedAnimation<Color>(accentColor),
+              ),
+            ),
+            if (mesaj != null && mesaj!.isNotEmpty) ...[
+              const SizedBox(height: 14),
+              Text(
+                mesaj!,
+                style: TextStyle(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w500,
+                  color: isDark ? Colors.white60 : const Color(0xFF64748B),
+                ),
+              ),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+

@@ -17,10 +17,9 @@ import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'data/turkiye_il_ilce.dart';
 import 'widgets/il_ilce_secici_modal.dart';
+import 'tema_ayarlari.dart';
 
 const double _shellDockBodyPadding = 132;
-const Color _kBrandTeal = Color(0xFF14B8A6);
-const Color _kBrandTealDark = Color(0xFF0F7C86);
 
 class SantiyeDetayEkrani extends StatefulWidget {
   final String santiyeAdi;
@@ -41,6 +40,10 @@ class SantiyeDetayEkrani extends StatefulWidget {
 }
 
 class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+
   VoidCallback? _onPaylasimTiklandi;
   late DateTime _gosterilenAy;
   String? _secilenIl;
@@ -135,25 +138,30 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                 decoration: BoxDecoration(
-                  color:
-                      isDark
-                          ? const Color(0xFF101317).withValues(alpha: 0.94)
-                          : const Color(0xFFF7FBFD),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(
-                    color:
-                        isDark
-                            ? Colors.white.withValues(alpha: 0.08)
-                            : const Color(0xFFD8EAF0),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: AppTheme.cardGradient(isDark),
                   ),
+                  borderRadius: BorderRadius.circular(16),
+                  border: Border.all(
+                    color: AppTheme.cardBorder(isDark),
+                  ),
+                  boxShadow: [
+                    BoxShadow(
+                      color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+                      blurRadius: 8,
+                      offset: const Offset(0, 2),
+                    ),
+                  ],
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.chevron_left,
-                        color: _kBrandTealDark,
+                        color: _themeContrastIcon,
                       ),
                       onPressed:
                           () => setState(
@@ -172,9 +180,9 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                       ),
                     ),
                     IconButton(
-                      icon: const Icon(
+                      icon: Icon(
                         Icons.chevron_right,
-                        color: _kBrandTealDark,
+                        color: _themeContrastIcon,
                       ),
                       onPressed:
                           () => setState(
@@ -268,32 +276,20 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           padding: const EdgeInsets.all(16),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors:
-                                  isDark
-                                      ? const [
-                                        Color(0xFF182330),
-                                        Color(0xFF10212A),
-                                      ]
-                                      : const [
-                                        Color(0xFFEAF4F8),
-                                        Color(0xFFDDECF3),
-                                      ],
+                              colors: AppTheme.cardGradient(isDark),
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
                             borderRadius: BorderRadius.circular(20),
                             border: Border.all(
-                              color:
-                                  isDark
-                                      ? Colors.white.withValues(alpha: 0.08)
-                                      : const Color(0xFFD8EAF0),
+                              color: AppTheme.cardBorder(isDark),
                             ),
                             boxShadow: [
                               BoxShadow(
                                 color: Colors.black.withValues(
-                                  alpha: isDark ? 0.2 : 0.06,
+                                  alpha: isDark ? 0.25 : 0.06,
                                 ),
-                                blurRadius: isDark ? 8 : 12,
+                                blurRadius: isDark ? 10 : 12,
                                 offset: const Offset(0, 6),
                               ),
                             ],
@@ -527,34 +523,40 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                 ),
                             ];
 
-                            return Card(
-                              elevation: 3,
+                            return Container(
                               margin: const EdgeInsets.only(bottom: 12),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(16),
-                                side: BorderSide(
-                                  color:
-                                      isDark
-                                          ? Colors.white.withValues(alpha: 0.08)
-                                          : const Color(0xFFD8EAF0),
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: AppTheme.cardGradient(isDark),
                                 ),
+                                borderRadius: BorderRadius.circular(16),
+                                border: Border.all(
+                                  color: AppTheme.cardBorder(isDark),
+                                ),
+                                boxShadow: [
+                                  BoxShadow(
+                                    color: Colors.black.withValues(
+                                      alpha: isDark ? 0.20 : 0.05,
+                                    ),
+                                    blurRadius: 6,
+                                    offset: const Offset(0, 2),
+                                  ),
+                                ],
                               ),
-                              color:
-                                  isDark
-                                      ? const Color(0xFF101317)
-                                      : const Color(0xFFF7FBFD),
                               child: ExpansionTile(
                                 leading: Container(
                                   padding: const EdgeInsets.all(8),
                                   decoration: BoxDecoration(
-                                    color: _kBrandTeal.withValues(alpha: 0.14),
+                                    color: _themePrimary.withValues(alpha: 0.14),
                                     borderRadius: BorderRadius.circular(8),
                                   ),
                                   child: Text(
                                     DateFormat('dd').format(rapor.tarih),
-                                    style: const TextStyle(
+                                    style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      color: _kBrandTealDark,
+                                      color: _themeContrastIcon,
                                     ),
                                   ),
                                 ),
@@ -691,23 +693,11 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
           gradient: LinearGradient(
             begin: Alignment.topLeft,
             end: Alignment.bottomRight,
-            colors: [
-              (isDark ? const Color(0xFF141920) : const Color(0xFFF0FDF4))
-                  .withValues(alpha: isDark ? 0.95 : 0.92),
-              (isDark ? const Color(0xFF0F141B) : const Color(0xFFE6F4EA))
-                  .withValues(alpha: isDark ? 0.98 : 0.96),
-            ],
+            colors: AppTheme.cardGradient(isDark),
           ),
           borderRadius: BorderRadius.circular(_isWeatherExpanded ? 20 : 16),
           border: Border.all(
-            color:
-                isDark
-                    ? Colors.white.withValues(
-                      alpha: _isWeatherExpanded ? 0.12 : 0.07,
-                    )
-                    : const Color(
-                      0xFF14B8A6,
-                    ).withValues(alpha: _isWeatherExpanded ? 0.3 : 0.2),
+            color: AppTheme.cardBorder(isDark),
           ),
           boxShadow: [
             BoxShadow(
@@ -743,7 +733,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                         width: 34,
                         height: 34,
                         decoration: BoxDecoration(
-                          color: _kBrandTeal.withValues(alpha: 0.15),
+                          color: _themePrimary.withValues(alpha: 0.15),
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
@@ -757,7 +747,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                   ? TurkiyeIlIlce.getWeatherColor(
                                     _weatherData!['weathercode'] ?? 0,
                                   )
-                                  : _kBrandTeal,
+                                  : _themeContrastIcon,
                           size: 19,
                         ),
                       ),
@@ -793,17 +783,17 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                       vertical: 2,
                                     ),
                                     decoration: BoxDecoration(
-                                      color: _kBrandTeal.withValues(
+                                      color: _themePrimary.withValues(
                                         alpha: 0.15,
                                       ),
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: Text(
                                       "${_weatherData!['temperature']?.round() ?? '--'}°C",
-                                      style: const TextStyle(
+                                      style: TextStyle(
                                         fontSize: 12,
                                         fontWeight: FontWeight.bold,
-                                        color: _kBrandTeal,
+                                        color: _themeContrastIcon,
                                       ),
                                     ),
                                   ),
@@ -832,24 +822,24 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                         ),
                       ),
                       if (_isLoadingWeather)
-                        const Padding(
-                          padding: EdgeInsets.only(right: 6),
+                        Padding(
+                          padding: const EdgeInsets.only(right: 6),
                           child: SizedBox(
                             width: 16,
                             height: 16,
                             child: CircularProgressIndicator(
                               strokeWidth: 2,
-                              color: _kBrandTeal,
+                              color: _themePrimary,
                             ),
                           ),
                         ),
                       if (_isWeatherExpanded) ...[
                         IconButton(
                           tooltip: "İl / İlçe Değiştir",
-                          icon: const Icon(
+                          icon: Icon(
                             Icons.tune_rounded,
                             size: 20,
-                            color: _kBrandTeal,
+                            color: _themeContrastIcon,
                           ),
                           visualDensity: VisualDensity.compact,
                           padding: EdgeInsets.zero,
@@ -947,25 +937,25 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                               horizontal: 14,
                             ),
                             decoration: BoxDecoration(
-                              color: _kBrandTeal.withValues(alpha: 0.1),
+                              color: _themePrimary.withValues(alpha: 0.1),
                               borderRadius: BorderRadius.circular(14),
                               border: Border.all(
-                                color: _kBrandTeal.withValues(alpha: 0.3),
+                                color: _themePrimary.withValues(alpha: 0.3),
                               ),
                             ),
-                            child: const Row(
+                            child: Row(
                               mainAxisAlignment: MainAxisAlignment.center,
                               children: [
                                 Icon(
                                   Icons.add_location_alt_rounded,
-                                  color: _kBrandTeal,
+                                  color: _themeContrastIcon,
                                   size: 20,
                                 ),
-                                SizedBox(width: 8),
+                                const SizedBox(width: 8),
                                 Text(
                                   "İl ve İlçe Seçerek Hava Durumunu Aktifleştir",
                                   style: TextStyle(
-                                    color: _kBrandTeal,
+                                    color: _themeContrastIcon,
                                     fontWeight: FontWeight.w600,
                                     fontSize: 13,
                                   ),
@@ -975,8 +965,8 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                           ),
                         )
                       else if (_isLoadingWeather && _weatherData == null)
-                        const Padding(
-                          padding: EdgeInsets.symmetric(vertical: 16),
+                        Padding(
+                          padding: const EdgeInsets.symmetric(vertical: 16),
                           child: Center(
                             child: Row(
                               mainAxisSize: MainAxisSize.min,
@@ -986,11 +976,11 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                   height: 18,
                                   child: CircularProgressIndicator(
                                     strokeWidth: 2,
-                                    color: _kBrandTeal,
+                                    color: _themePrimary,
                                   ),
                                 ),
-                                SizedBox(width: 12),
-                                Text(
+                                const SizedBox(width: 12),
+                                const Text(
                                   "Hava durumu verisi alınıyor...",
                                   style: TextStyle(
                                     fontSize: 13,
@@ -1034,12 +1024,12 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                                                 : const Color(0xFF0F172A),
                                       ),
                                     ),
-                                    const Text(
+                                    Text(
                                       "°C",
                                       style: TextStyle(
                                         fontSize: 18,
                                         fontWeight: FontWeight.bold,
-                                        color: _kBrandTeal,
+                                        color: _themeContrastIcon,
                                       ),
                                     ),
                                   ],
@@ -1773,19 +1763,17 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
               child: Container(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
                 decoration: BoxDecoration(
-                  color:
-                      isDark
-                          ? const Color(0xFF131922).withValues(alpha: 0.95)
-                          : Colors.white.withValues(alpha: 0.95),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: AppTheme.cardGradient(isDark),
+                  ),
                   borderRadius: const BorderRadius.vertical(
                     top: Radius.circular(24),
                   ),
                   border: Border(
                     top: BorderSide(
-                      color:
-                          isDark
-                              ? Colors.white.withValues(alpha: 0.12)
-                              : Colors.black.withValues(alpha: 0.08),
+                      color: AppTheme.cardBorder(isDark),
                     ),
                   ),
                 ),
@@ -1874,7 +1862,7 @@ class _SantiyeDetayEkraniState extends State<SantiyeDetayEkrani> {
                     // Buton 1: PDF Olarak Paylaş / Yazdır
                     ElevatedButton.icon(
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF0F7C86),
+                        backgroundColor: _themePrimary,
                         foregroundColor: Colors.white,
                         minimumSize: const Size(double.infinity, 48),
                         shape: RoundedRectangleBorder(

@@ -10,8 +10,7 @@ import 'user_model.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/glass_empty_state.dart';
-
-const Color _kBrandTeal = Color(0xFF14B8A6);
+import 'tema_ayarlari.dart';
 
 class HaftalikOzetEkrani extends StatefulWidget {
   final String teamId;
@@ -22,6 +21,10 @@ class HaftalikOzetEkrani extends StatefulWidget {
 }
 
 class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+
   int _seciliHaftaOfseti = 0; // 0: Bu hafta, -1: Geçen hafta, -2: 2 hafta önce
 
   DateTime _haftaBaslangici(DateTime tarih) {
@@ -108,7 +111,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
             ),
           ],
         ),
-        backgroundColor: const Color(0xFF0F7C86),
+        backgroundColor: _themePrimary,
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
       ),
@@ -208,13 +211,13 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
           end: Alignment.bottomRight,
           colors: [
             accentColor.withValues(alpha: isDark ? 0.20 : 0.18),
-            (isDark ? const Color(0xFF15313A) : const Color(0xFFE9F8FA))
+            (isDark ? Colors.black : const Color(0xFFE9F8FA))
                 .withValues(alpha: isDark ? 0.72 : 0.96),
           ],
         ),
         borderRadius: BorderRadius.circular(compact ? 12 : 14),
         border: Border.all(
-          color: accentColor.withValues(alpha: isDark ? 0.20 : 0.14),
+          color: accentColor.withValues(alpha: isDark ? 0.35 : 0.20),
         ),
       ),
       child: Center(
@@ -239,7 +242,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
           Icon(
             icon,
             size: 18,
-            color: isDark ? Colors.white70 : const Color(0xFF0F7C86),
+            color: _themeContrastIcon,
           ),
           const SizedBox(width: 8),
           Expanded(
@@ -384,10 +387,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                   Icon(
                                     icon,
                                     size: 24,
-                                    color:
-                                        isDark
-                                            ? Colors.white70
-                                            : const Color(0xFF0F7C86),
+                                    color: _themeContrastIcon,
                                   ),
                                   const SizedBox(width: 12),
                                   Expanded(
@@ -544,8 +544,8 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                 ),
                 builder: (context, snapshot) {
                   if (snapshot.connectionState == ConnectionState.waiting) {
-                    return const Center(
-                      child: CircularProgressIndicator(color: _kBrandTeal),
+                    return Center(
+                      child: CircularProgressIndicator(color: _themePrimary),
                     );
                   }
 
@@ -625,10 +625,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                 fontSize: 12,
                                 fontWeight: FontWeight.w700,
                                 letterSpacing: 1.1,
-                                color:
-                                    isDark
-                                        ? const Color(0xFF5EEAD4)
-                                        : const Color(0xFF0F7C86),
+                                color: _themeContrastIcon,
                               ),
                             ),
                             const SizedBox(height: 4),
@@ -714,10 +711,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                     style: TextStyle(
                                       fontSize: 12,
                                       fontWeight: FontWeight.w700,
-                                      color:
-                                          isDark
-                                              ? const Color(0xFF5EEAD4)
-                                              : const Color(0xFF0F7C86),
+                                      color: _themeContrastIcon,
                                     ),
                                   ),
                                 ),
@@ -1022,9 +1016,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                           children: [
                                             _buildPanelGlassIconBadge(
                                               icon: Icons.apartment_rounded,
-                                              accentColor: const Color(
-                                                0xFF0F7C86,
-                                              ),
+                                              accentColor: _themeContrastIcon,
                                               compact: true,
                                             ),
                                             const SizedBox(width: 12),
@@ -1072,10 +1064,10 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                               fit: BoxFit.scaleDown,
                                               child: Text(
                                                 _formatTutar(santiyeMasraf),
-                                                style: const TextStyle(
+                                                style: TextStyle(
                                                   fontSize: 14,
                                                   fontWeight: FontWeight.w800,
-                                                  color: _kBrandTeal,
+                                                  color: _themeContrastIcon,
                                                 ),
                                               ),
                                             ),
@@ -1094,9 +1086,9 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                                     ? Colors.white12
                                                     : const Color(0xFFD8EAF0),
                                             valueColor:
-                                                const AlwaysStoppedAnimation<
+                                                AlwaysStoppedAnimation<
                                                   Color
-                                                >(_kBrandTeal),
+                                                >(_themePrimary),
                                           ),
                                         ),
                                       ],
@@ -1183,7 +1175,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                               vertical: 4,
                                             ),
                                             decoration: BoxDecoration(
-                                              color: _kBrandTeal.withValues(
+                                              color: _themePrimary.withValues(
                                                 alpha: isDark ? 0.20 : 0.12,
                                               ),
                                               borderRadius:
@@ -1191,10 +1183,10 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                             ),
                                             child: Text(
                                               '${e.value.toStringAsFixed(e.value.truncateToDouble() == e.value ? 0 : 1)} Gün',
-                                              style: const TextStyle(
+                                              style: TextStyle(
                                                 fontSize: 13,
                                                 fontWeight: FontWeight.w800,
-                                                color: _kBrandTeal,
+                                                color: _themeContrastIcon,
                                               ),
                                             ),
                                           ),
@@ -1239,10 +1231,10 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                                       fit: BoxFit.scaleDown,
                                       child: Text(
                                         _formatTutar(toplamGider),
-                                        style: const TextStyle(
+                                        style: TextStyle(
                                           fontSize: 15,
                                           fontWeight: FontWeight.w800,
-                                          color: _kBrandTeal,
+                                          color: _themeContrastIcon,
                                         ),
                                       ),
                                     ),
@@ -1335,13 +1327,13 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
         duration: const Duration(milliseconds: 200),
         padding: const EdgeInsets.symmetric(vertical: 9, horizontal: 4),
         decoration: BoxDecoration(
-          color: isSelected ? const Color(0xFF0F7C86) : Colors.transparent,
+          color: isSelected ? _themePrimary : Colors.transparent,
           borderRadius: BorderRadius.circular(12),
           boxShadow:
               isSelected
                   ? [
                     BoxShadow(
-                      color: const Color(0xFF0F7C86).withValues(alpha: 0.35),
+                      color: _themePrimary.withValues(alpha: 0.35),
                       blurRadius: 8,
                       offset: const Offset(0, 3),
                     ),
@@ -1394,10 +1386,10 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
             children: [
               Text(
                 hasActivity ? '$count' : '',
-                style: const TextStyle(
+                style: TextStyle(
                   fontSize: 11,
                   fontWeight: FontWeight.w700,
-                  color: _kBrandTeal,
+                  color: _themeContrastIcon,
                 ),
               ),
               const SizedBox(height: 4),
@@ -1408,10 +1400,10 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                 decoration: BoxDecoration(
                   gradient:
                       hasActivity
-                          ? const LinearGradient(
+                          ? LinearGradient(
                             begin: Alignment.topCenter,
                             end: Alignment.bottomCenter,
-                            colors: [Color(0xFF5EEAD4), Color(0xFF0F7C86)],
+                            colors: [_themeContrastIcon, _themePrimary],
                           )
                           : null,
                   color:
@@ -1423,9 +1415,7 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
                       hasActivity
                           ? [
                             BoxShadow(
-                              color: const Color(
-                                0xFF0F7C86,
-                              ).withValues(alpha: 0.35),
+                              color: _themePrimary.withValues(alpha: 0.35),
                               blurRadius: 6,
                               offset: const Offset(0, 2),
                             ),
@@ -1534,10 +1524,10 @@ class _HaftalikOzetEkraniState extends State<HaftalikOzetEkrani> {
           fit: BoxFit.scaleDown,
           child: Text(
             _formatTutar(amount),
-            style: const TextStyle(
+            style: TextStyle(
               fontSize: 13.5,
               fontWeight: FontWeight.w700,
-              color: _kBrandTeal,
+              color: _themeContrastIcon,
             ),
           ),
         ),

@@ -63,21 +63,21 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
   static const LiquidGlassSettings _darkSettings = LiquidGlassSettings(
     thickness: 24,
     blur: 7,
-    refractiveIndex: 1.12,
+    refractiveIndex: 1.10,
     lightIntensity: 1.18,
     ambientStrength: 0.34,
     saturation: 1.0,
-    chromaticAberration: 0.014,
+    chromaticAberration: 0.0,
   );
 
   static const LiquidGlassSettings _lightSettings = LiquidGlassSettings(
     thickness: 20,
     blur: 6,
-    refractiveIndex: 1.10,
+    refractiveIndex: 1.08,
     lightIntensity: 0.96,
     ambientStrength: 0.28,
     saturation: 1.0,
-    chromaticAberration: 0.010,
+    chromaticAberration: 0.0,
   );
 
   static double topPadding(
@@ -255,7 +255,7 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
       child: RepaintBoundary(
         child: AdaptiveLiquidGlassLayer(
           quality: GlassQuality.standard,
-          blendAmount: 6,
+          blendAmount: 0,
           settings: isDark ? _darkSettings : _lightSettings,
           shape: LiquidRoundedSuperellipse(borderRadius: borderRadius),
           child: ClipRRect(
@@ -282,7 +282,10 @@ class FloatingLiquidAppBar extends StatelessWidget implements PreferredSizeWidge
                         offset: const Offset(0, 6),
                       ),
                       BoxShadow(
-                        color: const Color(0xFF5EEAD4).withValues(alpha: isDark ? 0.05 : 0.08),
+                        color: Theme.of(context)
+                            .colorScheme
+                            .primary
+                            .withValues(alpha: isDark ? 0.05 : 0.08),
                         blurRadius: 12,
                         offset: const Offset(0, 2),
                       ),

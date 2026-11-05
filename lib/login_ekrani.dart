@@ -6,6 +6,8 @@ import 'package:sign_in_with_apple/sign_in_with_apple.dart';
 import 'auth_servisi.dart';
 import 'web_install_helper.dart';
 import 'widgets/auth_showcase_carousel.dart';
+import 'widgets/glass_surface.dart';
+import 'tema_ayarlari.dart';
 
 class LoginEkrani extends StatefulWidget {
   const LoginEkrani({super.key, required this.onRegisterTap});
@@ -719,79 +721,9 @@ class _AuthBackground extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-
-    return Stack(
-      children: [
-        Positioned.fill(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: isDark
-                    ? const [
-                        Color(0xFF030406),
-                        Color(0xFF06090D),
-                        Color(0xFF0A0F15),
-                        Color(0xFF06080B),
-                      ]
-                    : const [
-                        Color(0xFFF7FCFD),
-                        Color(0xFFEFF5F8),
-                        Color(0xFFE6EFF3),
-                        Color(0xFFF4FAFC),
-                      ],
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          top: -100,
-          left: -60,
-          right: -60,
-          child: IgnorePointer(
-            child: Container(
-              height: 280,
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.topCenter,
-                  radius: 1.1,
-                  colors: [
-                    const Color(0xFF24B7A4).withValues(
-                      alpha: isDark ? 0.16 : 0.10,
-                    ),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Positioned(
-          left: -40,
-          right: -40,
-          bottom: -70,
-          child: IgnorePointer(
-            child: Container(
-              height: 240,
-              decoration: BoxDecoration(
-                gradient: RadialGradient(
-                  center: Alignment.bottomCenter,
-                  radius: 0.95,
-                  colors: [
-                    const Color(0xFF0EA5E9).withValues(
-                      alpha: isDark ? 0.12 : 0.08,
-                    ),
-                    Colors.transparent,
-                  ],
-                ),
-              ),
-            ),
-          ),
-        ),
-        Positioned.fill(child: child),
-      ],
+    return GlassPageSurface(
+      preferSoftLightBackground: true,
+      child: child,
     );
   }
 }
@@ -806,14 +738,14 @@ class _WebInstallCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.05)
-            : const Color(0xFFEAF6F8).withValues(alpha: 0.92),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardInsetGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(18),
         border: Border.all(
-          color: isDark
-              ? const Color(0xFF24B7A4).withValues(alpha: 0.22)
-              : const Color(0xFFB9DDE1),
+          color: AppTheme.cardInsetBorder(isDark),
         ),
       ),
       child: Column(
@@ -941,20 +873,16 @@ class _AuthCardSurface extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: isDark
-              ? const [Color(0xFF161B22), Color(0xFF0D1014)]
-              : const [Color(0xFFFFFFFF), Color(0xFFF1F6F8)],
+          colors: AppTheme.cardGradient(isDark),
         ),
         borderRadius: BorderRadius.circular(26),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.09)
-              : const Color(0xFFCFDDE2),
-          width: 1.1,
+          color: AppTheme.cardBorder(isDark),
+          width: 1.2,
         ),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withValues(alpha: isDark ? 0.32 : 0.07),
+            color: Colors.black.withValues(alpha: isDark ? 0.40 : 0.08),
             blurRadius: 30,
             offset: const Offset(0, 16),
           ),
@@ -984,14 +912,14 @@ class _AuthFieldSurface extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 2),
       decoration: BoxDecoration(
-        color: isDark
-            ? Colors.white.withValues(alpha: 0.045)
-            : Colors.white.withValues(alpha: 0.88),
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardInsetGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isDark
-              ? Colors.white.withValues(alpha: 0.08)
-              : const Color(0xFFD6E2E6),
+          color: AppTheme.cardInsetBorder(isDark),
           width: 1,
         ),
       ),

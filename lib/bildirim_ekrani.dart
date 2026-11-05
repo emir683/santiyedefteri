@@ -24,8 +24,7 @@ import 'odemeler_ekrani.dart';
 import 'ekip_yonetimi_ekrani.dart';
 import 'haftalik_ozet_ekrani.dart';
 import 'cad_webgl_ekrani.dart';
-
-const Color _kBrandTeal = Color(0xFF14B8A6);
+import 'tema_ayarlari.dart';
 
 class BildirimEkrani extends StatelessWidget {
   final String teamId;
@@ -41,7 +40,7 @@ class BildirimEkrani extends StatelessWidget {
     return Scaffold(
       extendBodyBehindAppBar: true,
       backgroundColor:
-          isDark ? const Color(0xFF0C1219) : const Color(0xFFF0F7FA),
+          isDark ? Colors.black : const Color(0xFFF0F7FA),
       appBar: FloatingLiquidAppBar(
         title: 'Bildirimler',
         showPrivacyButton: false,
@@ -54,7 +53,7 @@ class BildirimEkrani extends StatelessWidget {
             icon: Icon(
               Icons.done_all_rounded,
               size: 20,
-              color: isDark ? Colors.white70 : _kBrandTeal,
+              color: AppTheme.contrastIcon(context),
             ),
           ),
         ],
@@ -65,8 +64,8 @@ class BildirimEkrani extends StatelessWidget {
           stream: servisi.getKullaniciBildirimleri(teamId, uid),
           builder: (context, snapshot) {
             if (snapshot.connectionState == ConnectionState.waiting) {
-              return const Center(
-                child: CircularProgressIndicator(color: _kBrandTeal),
+              return Center(
+                child: CircularProgressIndicator(color: AppTheme.primary(context)),
               );
             }
 
@@ -137,7 +136,7 @@ class _BildirimKarti extends StatelessWidget {
       case 'GUNLUK_RAPOR_GUNCELLEME':
         return {'icon': Icons.edit_calendar_rounded, 'color': const Color(0xFF10B981)};
       case 'ODEME_EKLEME':
-        return {'icon': Icons.payments_rounded, 'color': _kBrandTeal};
+        return {'icon': Icons.payments_rounded, 'color': const Color(0xFF10B981)};
       case 'AVANS_EKLEME':
         return {'icon': Icons.account_balance_wallet_rounded, 'color': const Color(0xFFEC4899)};
       case 'ROL_DEGISIMI':
@@ -230,18 +229,31 @@ class _BildirimKarti extends StatelessWidget {
         margin: const EdgeInsets.only(bottom: 10),
         padding: const EdgeInsets.all(14),
         decoration: BoxDecoration(
-          color: okundu
-              ? (isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD))
-              : (isDark
-                  ? renk.withValues(alpha: 0.08)
-                  : renk.withValues(alpha: 0.05)),
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: okundu
+                ? AppTheme.cardGradient(isDark)
+                : [
+                    renk.withValues(alpha: isDark ? 0.20 : 0.12),
+                    (isDark ? const Color(0xFF040508) : Colors.white)
+                        .withValues(alpha: isDark ? 0.65 : 0.85),
+                  ],
+          ),
           borderRadius: BorderRadius.circular(16),
           border: Border.all(
             color: okundu
-                ? (isDark ? Colors.white.withValues(alpha: 0.06) : const Color(0xFFD8EAF0))
-                : renk.withValues(alpha: 0.25),
+                ? AppTheme.cardBorder(isDark)
+                : renk.withValues(alpha: isDark ? 0.45 : 0.35),
             width: okundu ? 1 : 1.5,
           ),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+              blurRadius: 8,
+              offset: const Offset(0, 2),
+            ),
+          ],
         ),
         child: Row(
           crossAxisAlignment: CrossAxisAlignment.start,

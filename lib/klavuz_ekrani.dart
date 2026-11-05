@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'tema_ayarlari.dart';
 
 class KlavuzEkrani extends StatefulWidget {
   final bool isFromMenu;
@@ -65,7 +66,6 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
     final bgTop = isDark ? const Color(0xFF0B0F14) : const Color(0xFFF4F7FB);
     final bgBottom =
         isDark ? const Color(0xFF101822) : const Color(0xFFEAF1F8);
-    final cardColor = isDark ? const Color(0xFF161D27) : Colors.white;
     final titleColor = isDark ? Colors.white : const Color(0xFF102A43);
     final bodyColor = isDark ? Colors.white70 : const Color(0xFF4A5568);
 
@@ -139,17 +139,19 @@ class _KlavuzEkraniState extends State<KlavuzEkrani> {
                       padding: const EdgeInsets.fromLTRB(20, 20, 20, 12),
                       child: Container(
                         decoration: BoxDecoration(
-                          color: cardColor,
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: AppTheme.cardGradient(isDark),
+                          ),
                           borderRadius: BorderRadius.circular(24),
                           border: Border.all(
-                            color: isDark
-                                ? Colors.white.withValues(alpha: 0.08)
-                                : const Color(0xFFD7DFEA),
+                            color: AppTheme.cardBorder(isDark),
                           ),
                           boxShadow: [
                             BoxShadow(
-                              color: Colors.black.withValues(alpha: 
-                                isDark ? 0.24 : 0.06,
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.28 : 0.06,
                               ),
                               blurRadius: 16,
                               offset: const Offset(0, 8),

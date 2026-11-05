@@ -19,3 +19,7 @@ class Formatlayici {
     return double.tryParse(clean) ?? 0;
   }
 }
+
+class FormatYardimcisi {
+  static String paraFormatla(double tutar) => Formatlayici.yap(tutar);
+}

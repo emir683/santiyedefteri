@@ -1,6 +1,8 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
+import 'package:flutter/foundation.dart';
 import 'data_models.dart';
+import 'models/kullanici_saha_profili.dart';
 
 class RaporCakismaGrubu {
   final DateTime gun;
@@ -35,15 +37,21 @@ class FirestoreServisi {
   // --- EKİP İŞLEMLERİ ---
   Future<String?> yeniEkipOlustur(String ekipAdi, String sifre) async {
     try {
-      final query =
-          await _db.collection('teams').where('ad', isEqualTo: ekipAdi).get();
-      if (query.docs.isNotEmpty) {
-        throw Exception("Bu ekip adı zaten kullanılıyor.");
+      final normalized = ekipAdi.trim().toLowerCase();
+      final allTeamsSnap = await _db.collection('teams').get();
+      final duplicate = allTeamsSnap.docs.any((d) {
+        final name = (d.data()['ad'] ?? '').toString().trim().toLowerCase();
+        return name == normalized;
+      });
+      if (duplicate) {
+        throw Exception(
+          "“$ekipAdi” adında bir ekip zaten mevcut. Lütfen farklı bir isim seçin.",
+        );
       }
 
       DocumentReference teamRef = await _db.collection('teams').add({
-        'ad': ekipAdi,
-        'sifre': sifre,
+        'ad': ekipAdi.trim(),
+        'sifre': sifre.trim(),
         'kurucu': kullaniciId,
         'uyeler': [kullaniciId],
         'yoneticiler': [],
@@ -51,7 +59,10 @@ class FirestoreServisi {
         'isPersonal': false,
       });
 
-      await _kullaniciRef.set({'teamId': teamRef.id}, SetOptions(merge: true));
+      await _kullaniciRef.set({
+        'teamId': teamRef.id,
+        'ortakTeamId': teamRef.id,
+      }, SetOptions(merge: true));
       return teamRef.id;
     } catch (e) {
       rethrow;
@@ -82,7 +93,10 @@ class FirestoreServisi {
       await teamDoc.reference.update({
         'uyeler': FieldValue.arrayUnion([kullaniciId]),
       });
-      await _kullaniciRef.set({'teamId': teamDoc.id}, SetOptions(merge: true));
+      await _kullaniciRef.set({
+        'teamId': teamDoc.id,
+        'ortakTeamId': teamDoc.id,
+      }, SetOptions(merge: true));
       await logIslem(teamDoc.id, 'EKIBE_KATILIM', {
         'uyeUid': kullaniciId,
         'ekipAdi': ekipAdi,
@@ -121,7 +135,10 @@ class FirestoreServisi {
       await teamDoc.reference.update({
         'uyeler': FieldValue.arrayUnion([kullaniciId]),
       });
-      await _kullaniciRef.set({'teamId': teamDoc.id}, SetOptions(merge: true));
+      await _kullaniciRef.set({
+        'teamId': teamDoc.id,
+        'ortakTeamId': teamDoc.id,
+      }, SetOptions(merge: true));
       await logIslem(teamDoc.id, 'EKIBE_KATILIM', {
         'uyeUid': kullaniciId,
         'ekipAdi': ekipAdi,
@@ -147,7 +164,10 @@ class FirestoreServisi {
       if (existingQuery.docs.isNotEmpty) {
         // Zaten kişisel ekibi var, onu kullan
         final existingTeamId = existingQuery.docs.first.id;
-        await _kullaniciRef.set({'teamId': existingTeamId}, SetOptions(merge: true));
+        await _kullaniciRef.set({
+          'teamId': existingTeamId,
+          'kisiselTeamId': existingTeamId,
+        }, SetOptions(merge: true));
         return existingTeamId;
       }
 
@@ -164,10 +184,54 @@ class FirestoreServisi {
         'isPersonal': true,
       });
 
-      await _kullaniciRef.set({'teamId': personalTeamId}, SetOptions(merge: true));
+      await _kullaniciRef.set({
+        'teamId': personalTeamId,
+        'kisiselTeamId': personalTeamId,
+      }, SetOptions(merge: true));
       return personalTeamId;
     } catch (e) {
       rethrow;
+    }
+  }
+
+  /// Ortak Ekip Puantajı ile Kişisel Defter arasında 1 dokunuşla geçiş sağlar.
+  /// Ortak ekip varsa döndürür; yoksa null döndürür (kullanıcıyı TeamGate/EkipYonetimi'ne yönlendirmek için).
+  Future<String?> calismaAlaniDegistir({
+    required bool kisiselDefterModu,
+    String? mevcutTeamId,
+  }) async {
+    final userDoc = await _kullaniciRef.get();
+    final userData = userDoc.data() as Map<String, dynamic>? ?? {};
+
+    if (kisiselDefterModu) {
+      // Eğer şu anki ekip ortak bir ekipse, onu ortakTeamId olarak kaydet
+      if (mevcutTeamId != null &&
+          mevcutTeamId.isNotEmpty &&
+          !mevcutTeamId.startsWith('personal_')) {
+        await _kullaniciRef.set({
+          'ortakTeamId': mevcutTeamId,
+        }, SetOptions(merge: true));
+      }
+      return await kisiselEkipOlustur();
+    } else {
+      // Ortak Ekip moduna geçiş
+      String? ortakTeamId = (userData['ortakTeamId'] as String?)?.trim();
+      if (ortakTeamId != null &&
+          ortakTeamId.isNotEmpty &&
+          !ortakTeamId.startsWith('personal_')) {
+        final teamDoc = await _db.collection('teams').doc(ortakTeamId).get();
+        if (teamDoc.exists) {
+          final tData = teamDoc.data() ?? {};
+          final uyeler = List<String>.from(tData['uyeler'] ?? const []);
+          if (tData['kurucu'] == kullaniciId || uyeler.contains(kullaniciId)) {
+            await _kullaniciRef.set({
+              'teamId': ortakTeamId,
+            }, SetOptions(merge: true));
+            return ortakTeamId;
+          }
+        }
+      }
+      return null;
     }
   }
 
@@ -1160,16 +1224,487 @@ class FirestoreServisi {
   Future<void> completeGoogleUserProfile(
     String userId,
     String adSoyad,
-    String username,
-  ) async {
+    String username, {
+    Map<String, dynamic>? sahaProfili,
+  }) async {
     final currentEmail = FirebaseAuth.instance.currentUser?.email?.trim();
-    await _db.collection('users').doc(userId).set({
+    final map = <String, dynamic>{
       'username': username,
       'username_lowercase': username.toLowerCase(),
       'adSoyad': adSoyad,
       if (currentEmail != null && currentEmail.isNotEmpty)
         'email': currentEmail,
+    };
+    if (sahaProfili != null && sahaProfili.isNotEmpty) {
+      map['sahaProfili'] = sahaProfili;
+      map.addAll(sahaProfili);
+    }
+    await _db.collection('users').doc(userId).set(map, SetOptions(merge: true));
+  }
+
+  /// Kullanıcının meslek, görev, seviye ve saha profili bilgilerini günceller
+  Future<void> sahaProfiliniGuncelle(Map<String, dynamic> profilData) async {
+    final payload = <String, dynamic>{
+      'sahaProfili': profilData,
+      ...profilData,
+    };
+    await _kullaniciRef.set(payload, SetOptions(merge: true));
+  }
+
+  /// Şantiye Pazarı'na yeni iş ilanı, usta vitrini veya şirket ilanı ekler
+  Future<void> pazarIlaniEkle(Map<String, dynamic> ilanMap) async {
+    final doc = await _kullaniciRef.get();
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final mevcutList = List<Map<String, dynamic>>.from(
+      (data['pazarIlanlari'] as List? ?? const []).map(
+        (e) => Map<String, dynamic>.from(e as Map),
+      ),
+    );
+    mevcutList.insert(0, ilanMap);
+    await _kullaniciRef.set({
+      'pazarIlanlari': mevcutList,
     }, SetOptions(merge: true));
+  }
+
+  /// Kullanıcının kendi açtığı ilanı siler
+  Future<void> pazarIlaniSil(String ilanId) async {
+    final doc = await _kullaniciRef.get();
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final mevcutList = List<Map<String, dynamic>>.from(
+      (data['pazarIlanlari'] as List? ?? const []).map(
+        (e) => Map<String, dynamic>.from(e as Map),
+      ),
+    );
+    mevcutList.removeWhere((item) => item['id'] == ilanId);
+    await _kullaniciRef.set({
+      'pazarIlanlari': mevcutList,
+    }, SetOptions(merge: true));
+  }
+
+  /// İlanın görüntülenme sayısını 1 artırır
+  Future<void> pazarIlaniGoruntulenmeArtir(
+    String ilanId,
+    String olusturanUid,
+  ) async {
+    try {
+      final docRef = _db.collection('users').doc(
+        olusturanUid.isNotEmpty ? olusturanUid : kullaniciId,
+      );
+      final doc = await docRef.get();
+      if (!doc.exists) return;
+      final data = doc.data() ?? {};
+      final mevcutList = List<Map<String, dynamic>>.from(
+        (data['pazarIlanlari'] as List? ?? const []).map(
+          (e) => Map<String, dynamic>.from(e as Map),
+        ),
+      );
+      final idx = mevcutList.indexWhere((e) => e['id'] == ilanId);
+      if (idx >= 0) {
+        final sayi = (mevcutList[idx]['goruntulenmeSayisi'] ?? 0) as int;
+        mevcutList[idx]['goruntulenmeSayisi'] = sayi + 1;
+        await docRef.set({
+          'pazarIlanlari': mevcutList,
+        }, SetOptions(merge: true));
+      }
+    } catch (e) {
+      debugPrint('Görüntülenme artırma uyarısı: $e');
+    }
+  }
+
+  /// Kullanıcının ilanı favorilere eklemesini / kaldırmasını yönetir
+  Future<void> pazarIlaniFavoriDegistir(
+    String ilanId,
+    bool favorile,
+    String olusturanUid,
+  ) async {
+    try {
+      // 1. Kullanıcının kendi profilindeki favori listesi
+      await _kullaniciRef.set({
+        'pazarFavoriIlanlari':
+            favorile
+                ? FieldValue.arrayUnion([ilanId])
+                : FieldValue.arrayRemove([ilanId]),
+      }, SetOptions(merge: true));
+
+      // 2. İlan sahibinin dokümanındaki ilanın favori sayısını güncelle
+      final hedefUid = olusturanUid.isNotEmpty ? olusturanUid : kullaniciId;
+      final docRef = _db.collection('users').doc(hedefUid);
+      final doc = await docRef.get();
+      if (doc.exists) {
+        final data = doc.data() ?? {};
+        final mevcutList = List<Map<String, dynamic>>.from(
+          (data['pazarIlanlari'] as List? ?? const []).map(
+            (e) => Map<String, dynamic>.from(e as Map),
+          ),
+        );
+        final idx = mevcutList.indexWhere((e) => e['id'] == ilanId);
+        if (idx >= 0) {
+          final fSayisi = (mevcutList[idx]['favoriSayisi'] ?? 0) as int;
+          final fList = List<String>.from(
+            mevcutList[idx]['favorileyenUidler'] as List? ?? const [],
+          );
+          if (favorile) {
+            if (!fList.contains(kullaniciId)) fList.add(kullaniciId);
+            mevcutList[idx]['favoriSayisi'] = fSayisi + 1;
+          } else {
+            fList.remove(kullaniciId);
+            mevcutList[idx]['favoriSayisi'] = (fSayisi - 1).clamp(0, 999999);
+          }
+          mevcutList[idx]['favorileyenUidler'] = fList;
+          await docRef.set({
+            'pazarIlanlari': mevcutList,
+          }, SetOptions(merge: true));
+        }
+      }
+    } catch (e) {
+      debugPrint('Favori değiştirme uyarısı: $e');
+    }
+  }
+
+  /// Şantiye Pazarı için kayıtlı kullanıcıların saha profillerini ve ilanlarını canlı dinler
+  Stream<QuerySnapshot<Map<String, dynamic>>>
+  getSantiyePazariKullanicilariStream() {
+    return _db.collection('users').limit(120).snapshots();
+  }
+
+  /// Kullanıcının gönderdiği veya yanıtladığı anlaşma teklifini/mesajını kendi dokümanında günceller.
+  /// (Firestore kurallarında /users/{uid} herkes tarafından okunabilir ve kendi sahibi tarafından güncellenebilir.)
+  Future<void> pazarAnlasmasiKaydetVeyaGuncelle(
+    PazarAnlasmaTeklifi anlasma,
+  ) async {
+    final doc = await _kullaniciRef.get();
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final mevcutList = List<Map<String, dynamic>>.from(
+      (data['pazarAnlasmalari'] as List? ?? const []).map(
+        (e) => Map<String, dynamic>.from(e as Map),
+      ),
+    );
+    final idx = mevcutList.indexWhere((item) => item['id'] == anlasma.id);
+    if (idx >= 0) {
+      mevcutList[idx] = anlasma.toMap();
+    } else {
+      mevcutList.insert(0, anlasma.toMap());
+    }
+    await _kullaniciRef.set({
+      'pazarAnlasmalari': mevcutList,
+    }, SetOptions(merge: true));
+
+    // Karşı tarafa da (aliciUid) bildirim ve anlaşma kaydı ulaştırma:
+    try {
+      final karsiUid =
+          anlasma.aliciUid == kullaniciId ? anlasma.gonderenUid : anlasma.aliciUid;
+      if (karsiUid.isNotEmpty && karsiUid != kullaniciId) {
+        // Global / paylaşımlı pazar_anlasmalari koleksiyonuna yaz
+        await _db
+            .collection('pazar_anlasmalari')
+            .doc(anlasma.id)
+            .set(anlasma.toMap(), SetOptions(merge: true));
+
+        // Karşı kullanıcının gelen bildirimlerine ekleme
+        final sonMsg =
+            anlasma.mesajlar.isNotEmpty ? anlasma.mesajlar.last : null;
+        final sonMsgMetin =
+            sonMsg?['mesaj']?.toString() ?? 'Yeni bir teklif / mesaj aldınız.';
+        final sonGonderenAd =
+            sonMsg?['gonderenAd']?.toString() ?? 'Kullanıcı';
+
+        await _db
+            .collection('users')
+            .doc(karsiUid)
+            .collection('bildirimler')
+            .add({
+              'baslik': '💬 $sonGonderenAd: ${anlasma.ilanBaslik}',
+              'mesaj': sonMsgMetin,
+              'tarih': FieldValue.serverTimestamp(),
+              'okundu': false,
+              'tip': 'pazar_mesaj',
+              'anlasmaId': anlasma.id,
+            });
+      }
+    } catch (e) {
+      debugPrint('Karşı kullanıcıya bildirim gönderme uyarısı: $e');
+    }
+  }
+
+  /// Kullanıcının benzer ilan ve arama bildirim alarmlarını kaydeder
+  Future<void> ilanAlarmlariniKaydet(List<PazarIlanAlarmi> alarmlar) async {
+    await _kullaniciRef.set({
+      'ilanAlarmlari': alarmlar.map((a) => a.toMap()).toList(),
+    }, SetOptions(merge: true));
+  }
+
+  // --- İŞ GEÇMİŞİ (PORTFÖY) & REFERANSLAR & YORUMLAR ---
+
+  /// Kullanıcının kendi profiline tamamlanan geçmiş iş / portföy ekler
+  Future<void> isGecmisiEkle(Map<String, dynamic> isGecmisiMap) async {
+    final doc = await _kullaniciRef.get();
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final mevcutList = List<Map<String, dynamic>>.from(
+      (data['isGecmisi'] as List? ?? const []).map(
+        (e) => Map<String, dynamic>.from(e as Map),
+      ),
+    );
+    final idx = mevcutList.indexWhere((e) => e['id'] == isGecmisiMap['id']);
+    if (idx >= 0) {
+      mevcutList[idx] = isGecmisiMap;
+    } else {
+      mevcutList.insert(0, isGecmisiMap);
+    }
+    await _kullaniciRef.set({
+      'isGecmisi': mevcutList,
+    }, SetOptions(merge: true));
+  }
+
+  /// Kullanıcının kendi geçmiş iş kaydını siler
+  Future<void> isGecmisiSil(String isGecmisiId) async {
+    final doc = await _kullaniciRef.get();
+    final data = doc.data() as Map<String, dynamic>? ?? {};
+    final mevcutList = List<Map<String, dynamic>>.from(
+      (data['isGecmisi'] as List? ?? const []).map(
+        (e) => Map<String, dynamic>.from(e as Map),
+      ),
+    );
+    mevcutList.removeWhere((e) => e['id'] == isGecmisiId);
+    await _kullaniciRef.set({
+      'isGecmisi': mevcutList,
+    }, SetOptions(merge: true));
+  }
+
+  /// Herhangi bir kullanıcının tamamlanan iş geçmişi listesini çeker
+  Future<List<KullaniciIsGecmisi>> getKullaniciIsGecmisi(String uid) async {
+    try {
+      final doc = await _db.collection('users').doc(uid).get();
+      if (!doc.exists) return const [];
+      final data = doc.data() ?? {};
+      final list = data['isGecmisi'] as List? ?? const [];
+      return list
+          .whereType<Map>()
+          .map((m) => KullaniciIsGecmisi.fromMap(Map<String, dynamic>.from(m)))
+          .toList();
+    } catch (e) {
+      debugPrint('Kullanıcı iş geçmişi çekme hatası: $e');
+      return const [];
+    }
+  }
+
+  /// Şantiye Pazarı için bir kullanıcıya veya şirkete referans & yorum kaydeder
+  Future<void> referansKaydet(KullaniciReferansi ref) async {
+    await _db
+        .collection('pazar_referanslari')
+        .doc(ref.id)
+        .set(ref.toMap(), SetOptions(merge: true));
+
+    // Hedef kullanıcının dokümanına da referansı ekle / güncelle (kendi profilinde hızlı erişim için)
+    try {
+      if (ref.hedefUid == kullaniciId) {
+        final doc = await _kullaniciRef.get();
+        final data = doc.data() as Map<String, dynamic>? ?? {};
+        final list = List<Map<String, dynamic>>.from(
+          (data['kendiReferanslarim'] as List? ?? const []).map(
+            (e) => Map<String, dynamic>.from(e as Map),
+          ),
+        );
+        final idx = list.indexWhere((e) => e['id'] == ref.id);
+        if (idx >= 0) {
+          list[idx] = ref.toMap();
+        } else {
+          list.insert(0, ref.toMap());
+        }
+        await _kullaniciRef.set({
+          'kendiReferanslarim': list,
+        }, SetOptions(merge: true));
+      }
+    } catch (_) {}
+  }
+
+  /// Referansı siler
+  Future<void> referansSil(String refId) async {
+    await _db.collection('pazar_referanslari').doc(refId).delete();
+  }
+
+  /// Bir kullanıcının aldığı referansları (hedefUid == uid) canlı dinler
+  Stream<List<KullaniciReferansi>> getKullaniciReferanslariStream(String hedefUid) {
+    return _db
+        .collection('pazar_referanslari')
+        .where('hedefUid', isEqualTo: hedefUid)
+        .snapshots()
+        .map((snap) {
+          final items = snap.docs
+              .map((d) => KullaniciReferansi.fromMap(d.data()))
+              .toList();
+          items.sort((a, b) => b.tarih.compareTo(a.tarih));
+          return items;
+        });
+  }
+
+  /// Bir kullanıcının başkalarına verdiği referansları (referansVerenUid == uid) canlı dinler
+  Stream<List<KullaniciReferansi>> getVerilenReferanslarStream(String verenUid) {
+    return _db
+        .collection('pazar_referanslari')
+        .where('referansVerenUid', isEqualTo: verenUid)
+        .snapshots()
+        .map((snap) {
+          final items = snap.docs
+              .map((d) => KullaniciReferansi.fromMap(d.data()))
+              .toList();
+          items.sort((a, b) => b.tarih.compareTo(a.tarih));
+          return items;
+        });
+  }
+
+  // --- ŞANTİYEYE ÖZEL EKİPLER & HAKEDİŞ / PUANTAJ ---
+  Stream<List<SantiyeOzelEkibi>> getSantiyeOzelEkipleriStream(String ekipId) {
+    return _ekipRef(ekipId)
+        .collection('santiye_ekipleri')
+        .orderBy('olusturulmaTarihi', descending: true)
+        .snapshots()
+        .map((snap) {
+          return snap.docs
+              .map((d) => SantiyeOzelEkibi.fromMap(d.data(), d.id))
+              .toList();
+        });
+  }
+
+  /// Şantiyeye özel ekip (Örn: "Sıvacı Ekibi") ekler ve aynı zamanda İşçiler sekmesine de düşürür
+  Future<String> santiyeOzelEkibiEkle(
+    String teamId,
+    SantiyeOzelEkibi ozelEkip, {
+    bool iscilereDeEkle = true,
+  }) async {
+    String? bagliIsciId = ozelEkip.bagliIsciId;
+
+    if (iscilereDeEkle && (bagliIsciId == null || bagliIsciId.isEmpty)) {
+      final double gunlukKarsilik =
+          ozelEkip.anlasmaTipi == 'gunluk'
+              ? ozelEkip.birimUcret
+              : (ozelEkip.birimUcret > 0 ? ozelEkip.birimUcret : 2500);
+      final isciAdi =
+          ozelEkip.ekipBasiAd.trim().isNotEmpty &&
+                  !ozelEkip.ekipAdi.contains(ozelEkip.ekipBasiAd)
+              ? '${ozelEkip.ekipAdi} (${ozelEkip.ekipBasiAd} • ${ozelEkip.santiyeAdi})'
+              : '${ozelEkip.ekipAdi} (${ozelEkip.santiyeAdi})';
+      final isciRef = await _ekipRef(teamId).collection('workers').add(
+        Isci(
+          ad: isciAdi,
+          gunlukMaas: gunlukKarsilik,
+          linkedUserId: ozelEkip.ekipBasiUid,
+          isciTuru: 'Çekirdek Ekip',
+        ).toMap(),
+      );
+      bagliIsciId = isciRef.id;
+    }
+
+    final docRef = _ekipRef(teamId).collection('santiye_ekipleri').doc(
+      ozelEkip.id.isNotEmpty ? ozelEkip.id : null,
+    );
+    final kaydedilecek = SantiyeOzelEkibi(
+      id: docRef.id,
+      ekipAdi: ozelEkip.ekipAdi,
+      brans: ozelEkip.brans,
+      ekipBasiAd: ozelEkip.ekipBasiAd,
+      ekipBasiTelefon: ozelEkip.ekipBasiTelefon,
+      ekipBasiUid: ozelEkip.ekipBasiUid,
+      santiyeId: ozelEkip.santiyeId,
+      santiyeAdi: ozelEkip.santiyeAdi,
+      kisiSayisi: ozelEkip.kisiSayisi,
+      anlasmaTipi: ozelEkip.anlasmaTipi,
+      birimUcret: ozelEkip.birimUcret,
+      toplamAnlasmaMiktari: ozelEkip.toplamAnlasmaMiktari,
+      tamamlananMiktar: ozelEkip.tamamlananMiktar,
+      toplamHakedisTutari: ozelEkip.toplamHakedisTutari,
+      odenenTutar: ozelEkip.odenenTutar,
+      bagliIsciId: bagliIsciId,
+      hakedisKayitlari: ozelEkip.hakedisKayitlari,
+      olusturulmaTarihi: ozelEkip.olusturulmaTarihi,
+    );
+
+    await docRef.set(kaydedilecek.toMap());
+    return docRef.id;
+  }
+
+  /// Şantiyedeki özel ekibe (örn. Sıvacı Ekibi) puantaj veya hakediş (m², % veya gün) girer
+  Future<void> santiyeOzelEkibiHakedisVeyaPuantajGir({
+    required String teamId,
+    required SantiyeOzelEkibi ekip,
+    required double eklenecekMiktar, // Yapılan m², ilerleme % veya çalışılan gün
+    required String aciklama,
+    required DateTime tarih,
+  }) async {
+    final yeniTamamlanan = ekip.tamamlananMiktar + eklenecekMiktar;
+    double eklenecekTutar = 0;
+    if (ekip.anlasmaTipi == 'metrekare') {
+      eklenecekTutar = eklenecekMiktar * ekip.birimUcret;
+    } else if (ekip.anlasmaTipi == 'goturu') {
+      // Götürü işte eklenecekMiktar % ilerleme olarak hesaplanır
+      eklenecekTutar = (eklenecekMiktar / 100.0) * ekip.birimUcret;
+    } else {
+      // Günlük ekip yevmiyesi
+      eklenecekTutar = eklenecekMiktar * ekip.birimUcret;
+    }
+    final yeniToplamHakedis = ekip.toplamHakedisTutari + eklenecekTutar;
+
+    final yeniKayit = <String, dynamic>{
+      'tip': 'hakedis',
+      'miktar': eklenecekMiktar,
+      'birim': ekip.birimEtiketi,
+      'tutar': eklenecekTutar,
+      'aciklama': aciklama,
+      'santiyeAdi': ekip.santiyeAdi,
+      'tarih': Timestamp.fromDate(tarih),
+    };
+
+    final guncelKayitlar = [yeniKayit, ...ekip.hakedisKayitlari];
+
+    await _ekipRef(teamId).collection('santiye_ekipleri').doc(ekip.id).update({
+      'tamamlananMiktar': yeniTamamlanan,
+      'toplamHakedisTutari': yeniToplamHakedis,
+      'hakedisKayitlari': guncelKayitlar,
+    });
+  }
+
+  /// Şantiyedeki özel ekibe hakediş ödemesi veya avans girer (ve Avanslar tablosuna da yansıtır)
+  Future<void> santiyeOzelEkibiOdemeGir({
+    required String teamId,
+    required SantiyeOzelEkibi ekip,
+    required double odemeTutari,
+    required String aciklama,
+    required DateTime tarih,
+  }) async {
+    final yeniOdenen = ekip.odenenTutar + odemeTutari;
+    final yeniKayit = <String, dynamic>{
+      'tip': 'odeme',
+      'miktar': 0.0,
+      'birim': '₺',
+      'tutar': odemeTutari,
+      'aciklama': aciklama.isEmpty ? 'Ekip Hakediş / Avans Ödemesi' : aciklama,
+      'santiyeAdi': ekip.santiyeAdi,
+      'tarih': Timestamp.fromDate(tarih),
+    };
+
+    final guncelKayitlar = [yeniKayit, ...ekip.hakedisKayitlari];
+
+    await _ekipRef(teamId).collection('santiye_ekipleri').doc(ekip.id).update({
+      'odenenTutar': yeniOdenen,
+      'hakedisKayitlari': guncelKayitlar,
+    });
+
+    // Finans sekmesindeki Avanslar listesinde de gözükmesi için kayıt oluştur
+    await avansEkle(
+      teamId,
+      VerilenAvans(
+        miktar: odemeTutari,
+        isci: Isci(
+          id: ekip.bagliIsciId,
+          ad: '${ekip.ekipAdi} (${ekip.santiyeAdi})',
+          gunlukMaas: ekip.birimUcret,
+        ),
+        tarih: tarih,
+      ),
+    );
+  }
+
+  Future<void> santiyeOzelEkibiSil(String teamId, String ekipId) async {
+    await _ekipRef(teamId).collection('santiye_ekipleri').doc(ekipId).delete();
   }
 
   Future<void> ekipAdiniGuncelle(String ekipId, String yeniAd) async {

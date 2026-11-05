@@ -16,6 +16,7 @@ import 'santiye_ekrani.dart';
 import 'odemeler_ekrani.dart';
 import 'ekip_yonetimi_ekrani.dart';
 import 'bildirim_ekrani.dart';
+import 'profil_ekrani.dart';
 
 class BildirimServisi {
   static const String _androidNotificationIcon = '@drawable/notification_icon';
@@ -127,6 +128,8 @@ class BildirimServisi {
         teamId,
         (resolvedTeamId) => BildirimEkrani(teamId: resolvedTeamId),
       );
+    } else if (payload.startsWith('profile_role_setup')) {
+      _navigateToPage(const ProfilEkrani());
     }
   }
 
@@ -288,6 +291,49 @@ class BildirimServisi {
       '$aciklama. $tavsiye',
       details,
     );
+  }
+
+  /// Daha önceden kayıt olmuş ama henüz meslek, görev ve seviye bilgisini girmemiş kullanıcılara bildirim gönderir
+  Future<void> meslekProfilTamamlamaBildirimiGonder({
+    required String uid,
+  }) async {
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final prefKey = 'meslek_bildirimi_gonderildi_$uid';
+      if (prefs.getBool(prefKey) == true) return;
+      await prefs.setBool(prefKey, true);
+
+      const androidDetails = AndroidNotificationDetails(
+        'profil_rol_kanali',
+        'Mesleki Profil & Şantiye Pazarı',
+        channelDescription:
+            'Meslek, görev ve seviye özelliklerini tamamlama bildirimleri',
+        icon: _androidNotificationIcon,
+        color: Color(0xFF0F7C86),
+        importance: Importance.high,
+        priority: Priority.high,
+        playSound: true,
+        enableVibration: true,
+      );
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: DarwinNotificationDetails(
+          presentAlert: true,
+          presentBadge: true,
+          presentSound: true,
+        ),
+      );
+
+      await flutterLocalNotificationsPlugin.show(
+        9042,
+        'Yeni Şantiye Profiliniz Hazır! 🏗️',
+        'Ne iş yaptığınızı, görevinizi ve seviyenizi Profilim sayfasından kaydederek size özel ana ekranı ve Şantiye Pazarı ilanlarını aktif edin.',
+        details,
+        payload: 'profile_role_setup',
+      );
+    } catch (e) {
+      debugPrint('Meslek profil bildirimi gönderilemedi: $e');
+    }
   }
 
   /// Akıllı kontrol: Bugün puantaj veya rapor girilmiş mi kontrol eder, girilmediyse uyarır
@@ -526,5 +572,93 @@ class BildirimServisi {
 
   Future<void> tumBildirimleriIptalEt() async {
     await flutterLocalNotificationsPlugin.cancelAll();
+  }
+
+  /// Benzer iş ilanı veya aranan işçi/ekip ilanı eklendiğinde yerel bildirim gönderir
+  Future<void> pazarEslesenIlanBildirimiGonder({
+    required String ilanId,
+    required String baslik,
+    required String detay,
+  }) async {
+    if (kIsWeb) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'pazar_alarm_bildirim_$ilanId';
+      if (prefs.getBool(key) == true) return;
+      await prefs.setBool(key, true);
+
+      const androidDetails = AndroidNotificationDetails(
+        'santiye_pazari_alarm_kanali',
+        'Şantiye Pazarı İlan Alarmları',
+        channelDescription:
+            'Aradığınız kriterlere uygun yeni iş veya ekip ilanı açıldığında bildirim gönderir',
+        icon: _androidNotificationIcon,
+        color: Color(0xFF0F7C86),
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await flutterLocalNotificationsPlugin.show(
+        9100 + (ilanId.hashCode.abs() % 500),
+        '🔔 Aramanıza Uygun Yeni İlan: $baslik',
+        detay,
+        details,
+      );
+    } catch (e) {
+      debugPrint('Pazar ilan alarm bildirimi hatası: $e');
+    }
+  }
+
+  /// Yeni anlaşma teklifi, mesaj veya anlaşma onayı geldiğinde bildirim gönderir
+  Future<void> pazarAnlasmaBildirimiGonder({
+    required String bildirimKey,
+    required String baslik,
+    required String detay,
+  }) async {
+    if (kIsWeb) return;
+    try {
+      final prefs = await SharedPreferences.getInstance();
+      final key = 'pazar_anlasma_bildirim_$bildirimKey';
+      if (prefs.getBool(key) == true) return;
+      await prefs.setBool(key, true);
+
+      const androidDetails = AndroidNotificationDetails(
+        'santiye_anlasma_kanali',
+        'Şantiye Anlaşma & Teklif Bildirimleri',
+        channelDescription:
+            'Ekip anlaşma teklifleri, mesajlar ve onay bildirimleri',
+        icon: _androidNotificationIcon,
+        color: Color(0xFF0F7C86),
+        importance: Importance.max,
+        priority: Priority.high,
+      );
+      const iosDetails = DarwinNotificationDetails(
+        presentAlert: true,
+        presentBadge: true,
+        presentSound: true,
+      );
+      const details = NotificationDetails(
+        android: androidDetails,
+        iOS: iosDetails,
+      );
+
+      await flutterLocalNotificationsPlugin.show(
+        9600 + (bildirimKey.hashCode.abs() % 350),
+        baslik,
+        detay,
+        details,
+      );
+    } catch (e) {
+      debugPrint('Pazar anlaşma bildirimi hatası: $e');
+    }
   }
 }

@@ -29,7 +29,7 @@ class FloatingLiquidBottomBar extends StatelessWidget {
     lightIntensity: 1.18,
     ambientStrength: 0.34,
     saturation: 1.0,
-    chromaticAberration: 0.016,
+    chromaticAberration: 0.0,
   );
   static const LiquidGlassSettings _lightBarSettings = LiquidGlassSettings(
     thickness: 24,
@@ -38,7 +38,7 @@ class FloatingLiquidBottomBar extends StatelessWidget {
     lightIntensity: 0.96,
     ambientStrength: 0.28,
     saturation: 1.0,
-    chromaticAberration: 0.012,
+    chromaticAberration: 0.0,
   );
   static const LiquidGlassSettings _darkCapSettings = LiquidGlassSettings(
     thickness: 22,
@@ -47,7 +47,7 @@ class FloatingLiquidBottomBar extends StatelessWidget {
     lightIntensity: 1.08,
     ambientStrength: 0.30,
     saturation: 1.0,
-    chromaticAberration: 0.014,
+    chromaticAberration: 0.0,
   );
   static const LiquidGlassSettings _lightCapSettings = LiquidGlassSettings(
     thickness: 18,
@@ -56,7 +56,7 @@ class FloatingLiquidBottomBar extends StatelessWidget {
     lightIntensity: 0.92,
     ambientStrength: 0.24,
     saturation: 1.0,
-    chromaticAberration: 0.010,
+    chromaticAberration: 0.0,
   );
   static const LiquidGlassSettings _darkBubbleSettings = LiquidGlassSettings(
     thickness: 30,
@@ -65,7 +65,7 @@ class FloatingLiquidBottomBar extends StatelessWidget {
     lightIntensity: 1.24,
     ambientStrength: 0.34,
     saturation: 1.02,
-    chromaticAberration: 0.018,
+    chromaticAberration: 0.0,
   );
   static const LiquidGlassSettings _lightBubbleSettings = LiquidGlassSettings(
     thickness: 24,
@@ -74,7 +74,7 @@ class FloatingLiquidBottomBar extends StatelessWidget {
     lightIntensity: 1.0,
     ambientStrength: 0.28,
     saturation: 1.01,
-    chromaticAberration: 0.014,
+    chromaticAberration: 0.0,
   );
 
   @override
@@ -187,47 +187,40 @@ class FloatingLiquidBottomBar extends StatelessWidget {
     return [
       const _NavItemData(
         label: 'Şantiye',
-        icon: Icons.home_work_outlined,
-        selectedIcon: Icons.home_work_rounded,
+        icon: Icons.apartment_outlined,
+        selectedIcon: Icons.apartment_rounded,
         color: Color(0xFF0F766E),
       ),
       const _NavItemData(
-        label: 'İşçi',
-        icon: Icons.groups_outlined,
-        selectedIcon: Icons.groups_rounded,
-        color: Color(0xFF2563EB),
+        label: 'Pazar',
+        icon: Icons.storefront_outlined,
+        selectedIcon: Icons.storefront_rounded,
+        color: Color(0xFF0E7490),
       ),
       const _NavItemData(
-        label: 'Merkez',
+        label: 'Ana',
         icon: Icons.home_outlined,
         selectedIcon: Icons.home_rounded,
         color: Color(0xFF14B8A6),
       ),
-      _NavItemData(
-        label: 'Ay Sonu',
-        icon:
-            finansalErisim
-                ? Icons.assessment_outlined
-                : Icons.lock_outline_rounded,
-        selectedIcon:
-            finansalErisim
-                ? Icons.assessment_rounded
-                : Icons.lock_outline_rounded,
-        color:
-            finansalErisim ? const Color(0xFFF59E0B) : Colors.grey.shade500,
+      const _NavItemData(
+        label: 'Saha',
+        icon: Icons.construction_outlined,
+        selectedIcon: Icons.construction_rounded,
+        color: Color(0xFF0F7C86),
       ),
       _NavItemData(
-        label: 'Ödeme',
+        label: 'Finans',
         icon:
             finansalErisim
-                ? Icons.receipt_long_outlined
+                ? Icons.account_balance_wallet_outlined
                 : Icons.lock_outline_rounded,
         selectedIcon:
             finansalErisim
-                ? Icons.receipt_long_rounded
+                ? Icons.account_balance_wallet_rounded
                 : Icons.lock_outline_rounded,
         color:
-            finansalErisim ? const Color(0xFF8B5CF6) : Colors.grey.shade500,
+            finansalErisim ? const Color(0xFFD97706) : Colors.grey.shade500,
       ),
     ];
   }

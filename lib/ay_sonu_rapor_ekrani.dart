@@ -20,10 +20,9 @@ import 'widgets/floating_liquid_app_bar.dart';
 import 'tur_servisi.dart';
 import 'widgets/interactive_tour/interactive_tour_model.dart';
 import 'widgets/interactive_tour/interactive_tour_overlay.dart';
+import 'tema_ayarlari.dart';
 
 const double _shellDockBodyPadding = 132;
-const Color _kBrandTeal = Color(0xFF14B8A6);
-const Color _kBrandTealDark = Color(0xFF0F7C86);
 
 // Yardımcı Sınıf
 class MaasHesaplamaSonucu {
@@ -73,6 +72,10 @@ class AySonuRaporEkrani extends StatefulWidget {
 
 class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
     with SingleTickerProviderStateMixin {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+
   DateTime _seciliAy = DateTime.now();
   DateTimeRange? _seciliTarihAraligi;
   bool _finansDetayAcik = false;
@@ -850,8 +853,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
         return Theme(
           data: Theme.of(context).copyWith(
             colorScheme: Theme.of(context).colorScheme.copyWith(
-              primary: _kBrandTeal,
-              secondary: _kBrandTealDark,
+              primary: _themePrimary,
+              secondary: _themeContrastIcon,
             ),
           ),
           child: child!,
@@ -893,15 +896,19 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                 margin: const EdgeInsets.all(24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: AppTheme.cardGradient(true),
+                  ),
                   borderRadius: BorderRadius.circular(24),
                   border: Border.all(
-                    color: Colors.white.withValues(alpha: 0.1),
+                    color: AppTheme.cardBorder(true),
                   ),
                   boxShadow: [
                     BoxShadow(
                       color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 20,
+                      blurRadius: 24,
                     ),
                   ],
                 ),
@@ -957,7 +964,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                 }
                               },
                               style: ElevatedButton.styleFrom(
-                                backgroundColor: _kBrandTeal,
+                                backgroundColor: _themePrimary,
                                 padding: const EdgeInsets.symmetric(
                                   vertical: 14,
                                 ),
@@ -1143,9 +1150,9 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
           onTourPressed: () => _turBaslat(manual: true),
           bottom: TabBar(
             key: _tabsKey,
-            labelColor: _kBrandTeal,
+            labelColor: _themeContrastIcon,
             unselectedLabelColor: isDark ? Colors.white70 : Colors.black54,
-            indicatorColor: _kBrandTeal,
+            indicatorColor: _themePrimary,
             indicatorWeight: 2.8,
             tabs: const [
               Tab(icon: Icon(Icons.analytics_outlined), text: "Genel Özet"),
@@ -1180,12 +1187,12 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                           leading: Container(
                             padding: const EdgeInsets.all(8),
                             decoration: BoxDecoration(
-                              color: _kBrandTeal.withValues(alpha: 0.12),
+                              color: _themePrimary.withValues(alpha: 0.12),
                               borderRadius: BorderRadius.circular(8),
                             ),
-                            child: const Icon(
+                            child: Icon(
                               Icons.calendar_month,
-                              color: _kBrandTealDark,
+                              color: _themeContrastIcon,
                             ),
                           ),
                           title: Text(
@@ -1601,7 +1608,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                                                         ),
                                                         style: ElevatedButton.styleFrom(
                                                           backgroundColor:
-                                                              _kBrandTeal,
+                                                              _themePrimary,
                                                           foregroundColor:
                                                               Colors.white,
                                                           padding:
@@ -2248,30 +2255,20 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          (isDark ? const Color(0xFF15181D) : const Color(0xFFE7EEF1))
-              .withValues(alpha: isDark ? 0.96 : 0.90),
-          (isDark ? const Color(0xFF090B0F) : const Color(0xFFD6E1E6))
-              .withValues(alpha: isDark ? 0.98 : 0.94),
-        ],
+        colors: AppTheme.cardGradient(isDark),
       ),
       border: Border.all(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.07)
-                : const Color(0xFFBFD0D6).withValues(alpha: 0.92),
+        color: AppTheme.cardBorder(isDark),
       ),
       borderRadius: borderRadius ?? BorderRadius.circular(22),
       boxShadow: [
         BoxShadow(
-          color: Colors.black.withValues(alpha: isDark ? 0.18 : 0.05),
+          color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.05),
           blurRadius: isDark ? 18 : 12,
           offset: const Offset(0, 8),
         ),
         BoxShadow(
-          color: const Color(
-            0xFF79E9D7,
-          ).withValues(alpha: isDark ? 0.03 : 0.08),
+          color: AppTheme.glow(context).withValues(alpha: isDark ? 0.04 : 0.08),
           blurRadius: isDark ? 12 : 18,
           offset: const Offset(0, 10),
         ),
@@ -2287,18 +2284,10 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          (isDark ? const Color(0xFF171A1F) : const Color(0xFFE0EAEE))
-              .withValues(alpha: isDark ? 0.88 : 0.82),
-          (isDark ? const Color(0xFF0D0F13) : const Color(0xFFCCD9DE))
-              .withValues(alpha: isDark ? 0.96 : 0.90),
-        ],
+        colors: AppTheme.cardInsetGradient(isDark),
       ),
       border: Border.all(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.05)
-                : const Color(0xFFC7D7DC).withValues(alpha: 0.85),
+        color: AppTheme.cardInsetBorder(isDark),
       ),
       borderRadius: borderRadius ?? BorderRadius.circular(16),
     );
@@ -3602,7 +3591,7 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
               const SizedBox(width: 4),
               IconButton(
                 icon: const Icon(Icons.share_rounded, size: 18),
-                color: _kBrandTeal,
+                color: _themeContrastIcon,
                 padding: EdgeInsets.zero,
                 constraints: const BoxConstraints(),
                 tooltip: "İşçi Raporunu Metin Olarak Paylaş",
@@ -4326,8 +4315,8 @@ class _AySonuRaporEkraniState extends State<AySonuRaporEkrani>
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
                     colors: [
-                      const Color(0xFF06B6D4).withValues(alpha: 0.8),
-                      const Color(0xFF0F7C86),
+                      _themeContrastIcon.withValues(alpha: 0.8),
+                      _themePrimary,
                     ],
                   ),
                   shape: BoxShape.circle,
@@ -5468,9 +5457,19 @@ class _AyYilSeciciDialogState extends State<_AyYilSeciciDialog> {
             margin: const EdgeInsets.all(24),
             padding: const EdgeInsets.all(16),
             decoration: BoxDecoration(
-              color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: AppTheme.cardGradient(true),
+              ),
               borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+              border: Border.all(color: AppTheme.cardBorder(true)),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withValues(alpha: 0.5),
+                  blurRadius: 24,
+                ),
+              ],
             ),
             child: Material(
               color: Colors.transparent,
@@ -5520,7 +5519,7 @@ class _AyYilSeciciDialogState extends State<_AyYilSeciciDialog> {
                           widget.onSecildi(ayDate);
                           Navigator.pop(context);
                         },
-                        selectedColor: _kBrandTealDark,
+                        selectedColor: AppTheme.primary(context),
                         backgroundColor: Colors.white10,
                         labelStyle: TextStyle(
                           color: isSelected ? Colors.white : Colors.grey,

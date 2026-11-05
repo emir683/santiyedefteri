@@ -9,6 +9,7 @@ import 'data_models.dart';
 import 'firestore_servisi.dart';
 import 'format_yardimcisi.dart';
 import 'user_model.dart';
+import 'tema_ayarlari.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_empty_state.dart';
@@ -54,7 +55,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
         return Stack(
           children: [
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(color: Colors.transparent),
             ),
             Center(
@@ -62,13 +63,22 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                 margin: const EdgeInsets.symmetric(horizontal: 24),
                 padding: const EdgeInsets.all(24),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                  gradient: LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [
+                      const Color(0xFF0C0E14).withValues(alpha: 0.90),
+                      const Color(0xFF040508).withValues(alpha: 0.95),
+                    ],
+                  ),
                   borderRadius: BorderRadius.circular(24),
-                  border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+                  border: Border.all(
+                    color: Colors.white.withValues(alpha: 0.14),
+                  ),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.5),
-                      blurRadius: 20,
+                      color: Colors.black.withValues(alpha: 0.6),
+                      blurRadius: 30,
                     ),
                   ],
                 ),
@@ -118,7 +128,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                               },
                               style: ElevatedButton.styleFrom(
                                 backgroundColor: Colors.redAccent,
-                                padding: const EdgeInsets.symmetric(vertical: 14),
+                                padding: const EdgeInsets.symmetric(
+                                  vertical: 14,
+                                ),
                                 shape: RoundedRectangleBorder(
                                   borderRadius: BorderRadius.circular(12),
                                 ),
@@ -162,7 +174,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
         return Stack(
           children: [
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(color: Colors.transparent),
             ),
             Center(
@@ -176,15 +188,22 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                           margin: const EdgeInsets.all(24),
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFF0C0E14).withValues(alpha: 0.90),
+                                const Color(0xFF040508).withValues(alpha: 0.95),
+                              ],
+                            ),
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
+                              color: Colors.white.withValues(alpha: 0.14),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 20,
+                                color: Colors.black.withValues(alpha: 0.6),
+                                blurRadius: 30,
                               ),
                             ],
                           ),
@@ -214,7 +233,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                         horizontal: 16,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.05),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.05,
+                                        ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: DropdownButtonHideUnderline(
@@ -222,9 +243,13 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                           value: seciliSantiye,
                                           hint: const Text(
                                             '\u015Eantiye Se\u00E7in',
-                                            style: TextStyle(color: Colors.grey),
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                            ),
                                           ),
-                                          dropdownColor: const Color(0xFF2C2C2E),
+                                          dropdownColor: const Color(
+                                            0xFF2C2C2E,
+                                          ),
                                           isExpanded: true,
                                           style: const TextStyle(
                                             color: Colors.white,
@@ -269,13 +294,17 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                         lastDate: DateTime.now(),
                                       );
                                       if (picked != null) {
-                                        setDialogState(() => seciliTarih = picked);
+                                        setDialogState(
+                                          () => seciliTarih = picked,
+                                        );
                                       }
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.05),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.05,
+                                        ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Row(
@@ -306,7 +335,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                           onPressed: () => Navigator.pop(ctx),
                                           child: const Text(
                                             '\u0130ptal',
-                                            style: TextStyle(color: Colors.grey),
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -390,7 +421,7 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
         return Stack(
           children: [
             BackdropFilter(
-              filter: ImageFilter.blur(sigmaX: 5, sigmaY: 5),
+              filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
               child: Container(color: Colors.transparent),
             ),
             Center(
@@ -404,15 +435,22 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                           margin: const EdgeInsets.all(24),
                           padding: const EdgeInsets.all(24),
                           decoration: BoxDecoration(
-                            color: const Color(0xFF1E1E1E).withValues(alpha: 0.95),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [
+                                const Color(0xFF0C0E14).withValues(alpha: 0.90),
+                                const Color(0xFF040508).withValues(alpha: 0.95),
+                              ],
+                            ),
                             borderRadius: BorderRadius.circular(24),
                             border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.1),
+                              color: Colors.white.withValues(alpha: 0.14),
                             ),
                             boxShadow: [
                               BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.5),
-                                blurRadius: 20,
+                                color: Colors.black.withValues(alpha: 0.6),
+                                blurRadius: 30,
                               ),
                             ],
                           ),
@@ -442,7 +480,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                         horizontal: 16,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.05),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.05,
+                                        ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: DropdownButtonHideUnderline(
@@ -450,9 +490,13 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                           value: seciliIsci,
                                           hint: const Text(
                                             '\u0130\u015F\u00E7i Se\u00E7in',
-                                            style: TextStyle(color: Colors.grey),
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                            ),
                                           ),
-                                          dropdownColor: const Color(0xFF2C2C2E),
+                                          dropdownColor: const Color(
+                                            0xFF2C2C2E,
+                                          ),
                                           isExpanded: true,
                                           style: const TextStyle(
                                             color: Colors.white,
@@ -490,13 +534,17 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                         lastDate: DateTime.now(),
                                       );
                                       if (picked != null) {
-                                        setDialogState(() => seciliTarih = picked);
+                                        setDialogState(
+                                          () => seciliTarih = picked,
+                                        );
                                       }
                                     },
                                     child: Container(
                                       padding: const EdgeInsets.all(16),
                                       decoration: BoxDecoration(
-                                        color: Colors.white.withValues(alpha: 0.05),
+                                        color: Colors.white.withValues(
+                                          alpha: 0.05,
+                                        ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Row(
@@ -527,7 +575,9 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                           onPressed: () => Navigator.pop(ctx),
                                           child: const Text(
                                             '\u0130ptal',
-                                            style: TextStyle(color: Colors.grey),
+                                            style: TextStyle(
+                                              color: Colors.grey,
+                                            ),
                                           ),
                                         ),
                                       ),
@@ -540,15 +590,17 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
                                                     if (miktarCtrl
                                                         .text
                                                         .isNotEmpty) {
-                                                      final avans = VerilenAvans(
-                                                        miktar:
-                                                            double.tryParse(
-                                                              miktarCtrl.text,
-                                                            ) ??
-                                                            0,
-                                                        isci: seciliIsci!,
-                                                        tarih: seciliTarih,
-                                                      );
+                                                      final avans =
+                                                          VerilenAvans(
+                                                            miktar:
+                                                                double.tryParse(
+                                                                  miktarCtrl
+                                                                      .text,
+                                                                ) ??
+                                                                0,
+                                                            isci: seciliIsci!,
+                                                            tarih: seciliTarih,
+                                                          );
                                                       Navigator.pop(ctx);
                                                       await servisi.avansEkle(
                                                         widget.teamId,
@@ -802,31 +854,20 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
       gradient: LinearGradient(
         begin: Alignment.topLeft,
         end: Alignment.bottomRight,
-        colors: [
-          (isDark ? const Color(0xFF15181D) : const Color(0xFFEDFFFF))
-              .withValues(alpha: isDark ? 0.96 : 0.72),
-          (isDark ? const Color(0xFF090B0F) : const Color(0xFFF7FBFD))
-              .withValues(alpha: isDark ? 0.98 : 0.90),
-        ],
+        colors: AppTheme.cardGradient(isDark),
       ),
       borderRadius: BorderRadius.circular(20),
-      border: Border.all(
-        color:
-            isDark
-                ? Colors.white.withValues(alpha: 0.07)
-                : const Color(0xFFD8EAF0).withValues(alpha: 0.90),
-        width: 1.2,
-      ),
+      border: Border.all(color: AppTheme.cardBorder(isDark), width: 1.2),
       boxShadow: [
         BoxShadow(
           color: Colors.black.withValues(alpha: isDark ? 0.28 : 0.05),
-          blurRadius: isDark ? 22 : 18,
-          offset: const Offset(0, 12),
+          blurRadius: isDark ? 18 : 12,
+          offset: const Offset(0, 8),
         ),
         BoxShadow(
-          color: const Color(0xFF79E9D7).withValues(alpha: isDark ? 0.04 : 0.10),
-          blurRadius: isDark ? 18 : 28,
-          offset: const Offset(0, 14),
+          color: AppTheme.glow(context).withValues(alpha: isDark ? 0.04 : 0.08),
+          blurRadius: isDark ? 12 : 18,
+          offset: const Offset(0, 10),
         ),
       ],
     );
@@ -845,13 +886,15 @@ class _OdemelerEkraniState extends State<OdemelerEkrani>
           end: Alignment.bottomRight,
           colors: [
             color.withValues(alpha: isDark ? 0.18 : 0.14),
-            (isDark ? const Color(0xFF171B20) : Colors.white).withValues(alpha: 
-              isDark ? 0.82 : 0.92,
+            (isDark ? const Color(0xFF171B20) : Colors.white).withValues(
+              alpha: isDark ? 0.82 : 0.92,
             ),
           ],
         ),
         borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withValues(alpha: isDark ? 0.16 : 0.12)),
+        border: Border.all(
+          color: color.withValues(alpha: isDark ? 0.16 : 0.12),
+        ),
       ),
       child: Icon(icon, color: color, size: 24),
     );

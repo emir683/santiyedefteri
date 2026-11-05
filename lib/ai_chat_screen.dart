@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'tema_ayarlari.dart';
 import 'dart:math' as math;
 import 'dart:ui';
 import 'package:flutter/material.dart';
@@ -37,6 +38,12 @@ class AIChatScreen extends StatefulWidget {
 
 class _AIChatScreenState extends State<AIChatScreen>
     with WidgetsBindingObserver, TickerProviderStateMixin {
+  Color get _themePrimary => AppTheme.primary(context);
+  Color get _themeSecondary => AppTheme.secondary(context);
+  Color get _themeAccent => AppTheme.accent(context);
+  Color get _themeContrastIcon => AppTheme.contrastIcon(context);
+  List<Color> get _themeGradient => AppTheme.gradient(context);
+
   final TextEditingController _textController = TextEditingController();
   final ScrollController _scrollController = ScrollController();
   final FocusNode _focusNode = FocusNode();
@@ -191,7 +198,7 @@ class _AIChatScreenState extends State<AIChatScreen>
     if (!_speechInitialized) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Mikrofon başlatılamadı.')),
+          SnackBar(content: Text('Mikrofon başlatılamadı.')),
         );
       }
       return;
@@ -728,12 +735,12 @@ class _AIChatScreenState extends State<AIChatScreen>
                       Container(
                         padding: const EdgeInsets.all(7),
                         decoration: BoxDecoration(
-                          gradient: const LinearGradient(
-                            colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                          gradient: LinearGradient(
+                            colors: _themeGradient,
                           ),
                           borderRadius: BorderRadius.circular(10),
                         ),
-                        child: const Icon(Icons.edit_note, color: Colors.white, size: 18),
+                        child: Icon(Icons.edit_note, color: Colors.white, size: 18),
                       ),
                       const SizedBox(width: 10),
                       Expanded(
@@ -778,7 +785,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                                 ),
                               ),
                               selected: isSelected,
-                              selectedColor: const Color(0xFF10B981),
+                              selectedColor: _themePrimary,
                               backgroundColor: isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9),
                               onSelected: (val) {
                                 if (val) setModalState(() => selectedIsciTuru = tur);
@@ -845,7 +852,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                                     Container(
                                       padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                                       decoration: BoxDecoration(
-                                        color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                        color: _themePrimary.withValues(alpha: 0.15),
                                         borderRadius: BorderRadius.circular(6),
                                       ),
                                       child: Text(
@@ -853,7 +860,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                                         style: GoogleFonts.poppins(
                                           fontSize: 10,
                                           fontWeight: FontWeight.w600,
-                                          color: const Color(0xFF10B981),
+                                          color: _themePrimary,
                                         ),
                                       ),
                                     ),
@@ -996,7 +1003,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 3),
                                   decoration: BoxDecoration(
-                                    color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                                    color: _themePrimary.withValues(alpha: 0.15),
                                     borderRadius: BorderRadius.circular(6),
                                   ),
                                   child: Text(
@@ -1004,7 +1011,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                                     style: GoogleFonts.poppins(
                                       fontSize: 10.5,
                                       fontWeight: FontWeight.w600,
-                                      color: const Color(0xFF10B981),
+                                      color: _themePrimary,
                                     ),
                                   ),
                                 ),
@@ -1109,12 +1116,12 @@ class _AIChatScreenState extends State<AIChatScreen>
                                               padding: const EdgeInsets.symmetric(vertical: 6),
                                               decoration: BoxDecoration(
                                                 color: currentStatus == 'Tam Gün'
-                                                    ? const Color(0xFF10B981)
+                                                    ? _themePrimary
                                                     : (isDark ? Colors.white.withValues(alpha: 0.05) : const Color(0xFFF1F5F9)),
                                                 borderRadius: BorderRadius.circular(8),
                                                 border: Border.all(
                                                   color: currentStatus == 'Tam Gün'
-                                                      ? const Color(0xFF10B981)
+                                                      ? _themePrimary
                                                       : (isDark ? Colors.white12 : const Color(0xFFE2E8F0)),
                                                 ),
                                               ),
@@ -1316,7 +1323,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                         flex: 2,
                         child: ElevatedButton(
                           style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF10B981),
+                            backgroundColor: _themePrimary,
                             foregroundColor: Colors.white,
                             shape: RoundedRectangleBorder(
                               borderRadius: BorderRadius.circular(14),
@@ -1500,8 +1507,8 @@ class _AIChatScreenState extends State<AIChatScreen>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(
-            color: Color(0xFF10B981),
+          borderSide: BorderSide(
+            color: _themePrimary,
             width: 1.5,
           ),
         ),
@@ -1526,12 +1533,12 @@ class _AIChatScreenState extends State<AIChatScreen>
               Container(
                 padding: const EdgeInsets.all(8),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.15),
+                  color: _themePrimary.withValues(alpha: 0.15),
                   shape: BoxShape.circle,
                 ),
-                child: const Icon(
+                child: Icon(
                   Icons.auto_awesome_rounded,
-                  color: Color(0xFF10B981),
+                  color: _themePrimary,
                   size: 22,
                 ),
               ),
@@ -1551,7 +1558,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                     'Kalan kullanım hakkı: $_remainingAiQuota / ${AiRateLimiter.dailyLimit}',
                     style: GoogleFonts.poppins(
                       fontSize: 11,
-                      color: const Color(0xFF10B981),
+                      color: _themePrimary,
                       fontWeight: FontWeight.w600,
                     ),
                   ),
@@ -1597,7 +1604,7 @@ class _AIChatScreenState extends State<AIChatScreen>
               child: Text(
                 'Tamam',
                 style: GoogleFonts.poppins(
-                  color: const Color(0xFF10B981),
+                  color: _themePrimary,
                   fontWeight: FontWeight.w600,
                 ),
               ),
@@ -1619,7 +1626,7 @@ class _AIChatScreenState extends State<AIChatScreen>
             style: GoogleFonts.poppins(
               fontSize: 13,
               fontWeight: FontWeight.w600,
-              color: const Color(0xFF10B981),
+              color: _themePrimary,
             ),
           ),
           const SizedBox(height: 2),
@@ -1643,7 +1650,7 @@ class _AIChatScreenState extends State<AIChatScreen>
       builder: (ctx) {
         final percent = (_remainingAiQuota / limit).clamp(0.0, 1.0);
         final isLow = _remainingAiQuota <= 2;
-        final statusColor = isLow ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+        final statusColor = isLow ? const Color(0xFFF59E0B) : _themePrimary;
 
         return AlertDialog(
           backgroundColor: isDark ? const Color(0xFF161A22) : Colors.white,
@@ -1791,7 +1798,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                 child: ElevatedButton(
                   onPressed: () => Navigator.pop(ctx),
                   style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFF10B981),
+                    backgroundColor: _themePrimary,
                     foregroundColor: Colors.white,
                     padding: const EdgeInsets.symmetric(vertical: 12),
                     shape: RoundedRectangleBorder(
@@ -1822,7 +1829,7 @@ class _AIChatScreenState extends State<AIChatScreen>
         Icon(
           icon,
           size: 18,
-          color: const Color(0xFF10B981),
+          color: _themePrimary,
         ),
         const SizedBox(width: 10),
         Expanded(
@@ -1859,7 +1866,7 @@ class _AIChatScreenState extends State<AIChatScreen>
   Widget _buildQuotaBadge(bool isDark) {
     final limit = AiRateLimiter.dailyLimit;
     final isLow = _remainingAiQuota <= 2;
-    final color = isLow ? const Color(0xFFF59E0B) : const Color(0xFF10B981);
+    final color = isLow ? const Color(0xFFF59E0B) : _themePrimary;
 
     return Material(
       color: Colors.transparent,
@@ -1935,8 +1942,8 @@ class _AIChatScreenState extends State<AIChatScreen>
                     center: const Alignment(0.0, -0.4),
                     radius: 0.9,
                     colors: [
-                      const Color(0xFF10B981).withValues(alpha: isDark ? 0.16 : 0.22),
-                      const Color(0xFF06B6D4).withValues(alpha: isDark ? 0.08 : 0.12),
+                      _themePrimary.withValues(alpha: isDark ? 0.16 : 0.22),
+                      _themeSecondary.withValues(alpha: isDark ? 0.08 : 0.12),
                       Colors.transparent,
                     ],
                   ),
@@ -1960,10 +1967,10 @@ class _AIChatScreenState extends State<AIChatScreen>
                     center: const Alignment(0.0, 1.0),
                     radius: _isListening ? 1.2 : 0.8,
                     colors: [
-                      const Color(0xFF10B981).withValues(
+                      _themePrimary.withValues(
                         alpha: isDark ? (_isListening ? 0.28 : 0.10) : (_isListening ? 0.32 : 0.14),
                       ),
-                      const Color(0xFF06B6D4).withValues(
+                      _themeSecondary.withValues(
                         alpha: isDark ? (_isListening ? 0.18 : 0.05) : (_isListening ? 0.20 : 0.08),
                       ),
                       Colors.transparent,
@@ -1986,8 +1993,8 @@ class _AIChatScreenState extends State<AIChatScreen>
                 animationDuration: const Duration(milliseconds: 350),
                 waveDuration: const Duration(seconds: 3),
                 waveColors: [
-                  const Color(0xFF10B981).withValues(alpha: 0.65), // Emerald
-                  const Color(0xFF06B6D4).withValues(alpha: 0.55), // Cyan
+                  _themePrimary.withValues(alpha: 0.65), // Emerald
+                  _themeSecondary.withValues(alpha: 0.55), // Cyan
                   const Color(0xFF34D399).withValues(alpha: 0.40), // Mint
                 ],
               ),
@@ -2108,9 +2115,9 @@ class _AIChatScreenState extends State<AIChatScreen>
                         Container(
                           width: 20,
                           height: 20,
-                          decoration: const BoxDecoration(
+                          decoration: BoxDecoration(
                             gradient: LinearGradient(
-                              colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                              colors: _themeGradient,
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
                             ),
@@ -2279,7 +2286,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                       ? Icons.volume_up_rounded
                       : Icons.volume_off_rounded,
                   color: _autoVoicePlayback
-                      ? const Color(0xFF10B981)
+                      ? _themePrimary
                       : Colors.orangeAccent,
                   size: 20,
                 ),
@@ -2309,13 +2316,13 @@ class _AIChatScreenState extends State<AIChatScreen>
             decoration: BoxDecoration(
               color: _autoVoicePlayback
                   ? (isDark
-                      ? const Color(0xFF10B981).withValues(alpha: 0.16)
+                      ? _themePrimary.withValues(alpha: 0.16)
                       : const Color(0xFFE6FBF5))
                   : (isDark ? const Color(0xFF161A22) : Colors.white),
               shape: BoxShape.circle,
               border: Border.all(
                 color: _autoVoicePlayback
-                    ? const Color(0xFF10B981).withValues(alpha: 0.45)
+                    ? _themePrimary.withValues(alpha: 0.45)
                     : (isDark
                         ? Colors.white.withValues(alpha: 0.12)
                         : const Color(0xFFE2E8F0)),
@@ -2324,7 +2331,7 @@ class _AIChatScreenState extends State<AIChatScreen>
               boxShadow: [
                 BoxShadow(
                   color: _autoVoicePlayback
-                      ? const Color(0xFF10B981).withValues(alpha: 0.20)
+                      ? _themePrimary.withValues(alpha: 0.20)
                       : Colors.black.withValues(alpha: isDark ? 0.25 : 0.04),
                   blurRadius: 10,
                   offset: const Offset(0, 3),
@@ -2337,7 +2344,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                   : Icons.volume_off_rounded,
               size: 17,
               color: _autoVoicePlayback
-                  ? const Color(0xFF10B981)
+                  ? _themePrimary
                   : (isDark ? Colors.white38 : const Color(0xFF94A3B8)),
             ),
           ),
@@ -2366,14 +2373,14 @@ class _AIChatScreenState extends State<AIChatScreen>
           padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
           decoration: BoxDecoration(
             color: isSpeakingThis
-                ? const Color(0xFF10B981).withValues(alpha: 0.18)
+                ? _themePrimary.withValues(alpha: 0.18)
                 : (isDark
                     ? Colors.white.withValues(alpha: 0.06)
                     : const Color(0xFFF1F5F9)),
             borderRadius: BorderRadius.circular(14),
             border: Border.all(
               color: isSpeakingThis
-                  ? const Color(0xFF10B981).withValues(alpha: 0.45)
+                  ? _themePrimary.withValues(alpha: 0.45)
                   : (isDark
                       ? Colors.white.withValues(alpha: 0.10)
                       : const Color(0xFFE2E8F0)),
@@ -2389,7 +2396,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                     : Icons.volume_up_rounded,
                 size: 14,
                 color: isSpeakingThis
-                    ? const Color(0xFF10B981)
+                    ? _themePrimary
                     : (isDark ? Colors.white70 : const Color(0xFF64748B)),
               ),
               const SizedBox(width: 4),
@@ -2400,7 +2407,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                   fontWeight:
                       isSpeakingThis ? FontWeight.w600 : FontWeight.w500,
                   color: isSpeakingThis
-                      ? const Color(0xFF10B981)
+                      ? _themePrimary
                       : (isDark ? Colors.white70 : const Color(0xFF64748B)),
                 ),
               ),
@@ -2435,11 +2442,11 @@ class _AIChatScreenState extends State<AIChatScreen>
                   : Colors.white,
               borderRadius: BorderRadius.circular(20),
               border: Border.all(
-                color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                color: _themePrimary.withValues(alpha: 0.3),
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.15 : 0.08),
+                  color: _themePrimary.withValues(alpha: isDark ? 0.15 : 0.08),
                   blurRadius: 10,
                   offset: const Offset(0, 2),
                 ),
@@ -2451,8 +2458,8 @@ class _AIChatScreenState extends State<AIChatScreen>
                 Container(
                   width: 6,
                   height: 6,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFF10B981),
+                  decoration: BoxDecoration(
+                    color: _themePrimary,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -2490,8 +2497,8 @@ class _AIChatScreenState extends State<AIChatScreen>
                   const TextSpan(text: 'Merhaba, Ustam!\nBugün sana nasıl\n'),
                   WidgetSpan(
                     child: ShaderMask(
-                      shaderCallback: (bounds) => const LinearGradient(
-                        colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                      shaderCallback: (bounds) => LinearGradient(
+                        colors: _themeGradient,
                       ).createShader(bounds),
                       child: Text(
                         'yardımcı olabilirim?',
@@ -2553,12 +2560,12 @@ class _AIChatScreenState extends State<AIChatScreen>
               ),
               borderRadius: BorderRadius.circular(32),
               border: Border.all(
-                color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.3 : 0.25),
+                color: _themePrimary.withValues(alpha: isDark ? 0.3 : 0.25),
                 width: 1.5,
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF10B981).withValues(alpha: isDark ? 0.22 : 0.12),
+                  color: _themePrimary.withValues(alpha: isDark ? 0.22 : 0.12),
                   blurRadius: 24,
                   offset: const Offset(0, 8),
                 ),
@@ -2572,15 +2579,15 @@ class _AIChatScreenState extends State<AIChatScreen>
                   width: 68,
                   height: 68,
                   decoration: BoxDecoration(
-                    gradient: const LinearGradient(
-                      colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                    gradient: LinearGradient(
+                      colors: _themeGradient,
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                     ),
                     shape: BoxShape.circle,
                     boxShadow: [
                       BoxShadow(
-                        color: const Color(0xFF10B981).withValues(alpha: 0.45),
+                        color: _themePrimary.withValues(alpha: 0.45),
                         blurRadius: 18,
                         offset: const Offset(0, 4),
                       ),
@@ -2597,8 +2604,8 @@ class _AIChatScreenState extends State<AIChatScreen>
 
                 // Büyük "ŞPD Aİ" Başlığı
                 ShaderMask(
-                  shaderCallback: (bounds) => const LinearGradient(
-                    colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                  shaderCallback: (bounds) => LinearGradient(
+                    colors: _themeGradient,
                   ).createShader(bounds),
                   child: Text(
                     'ŞPD Aİ',
@@ -2645,14 +2652,14 @@ class _AIChatScreenState extends State<AIChatScreen>
             children: [
               _buildPromptPill(
                 icon: Icons.analytics_rounded,
-                iconColor: const Color(0xFF10B981),
+                iconColor: _themePrimary,
                 text: 'Şantiyenin bu ayki harcama ve puantaj özeti',
                 isDark: isDark,
               ),
               const SizedBox(width: 10),
               _buildPromptPill(
                 icon: Icons.account_balance_wallet_rounded,
-                iconColor: const Color(0xFF06B6D4),
+                iconColor: _themeSecondary,
                 text: 'Ustanın bu ayki hakediş ve avans durumu',
                 isDark: isDark,
               ),
@@ -2690,7 +2697,7 @@ class _AIChatScreenState extends State<AIChatScreen>
             children: [
               _buildPromptPill(
                 icon: Icons.assignment_turned_in_rounded,
-                iconColor: const Color(0xFF10B981),
+                iconColor: _themePrimary,
                 text: 'Bugün bütün ekip tam gün çalıştı',
                 isDark: isDark,
               ),
@@ -2718,7 +2725,7 @@ class _AIChatScreenState extends State<AIChatScreen>
               const SizedBox(width: 10),
               _buildPromptPill(
                 icon: Icons.person_add_alt_1_rounded,
-                iconColor: const Color(0xFF06B6D4),
+                iconColor: _themeSecondary,
                 text: 'Ali ustayı 1.500 ₺ yevmiye ile ekle',
                 isDark: isDark,
               ),
@@ -2756,14 +2763,14 @@ class _AIChatScreenState extends State<AIChatScreen>
               const SizedBox(width: 10),
               _buildPromptPill(
                 icon: Icons.grid_view_rounded,
-                iconColor: const Color(0xFF06B6D4),
+                iconColor: _themeSecondary,
                 text: '80 m² alana seramik döşemek için kaç paket ve yapıştırıcı lazım?',
                 isDark: isDark,
               ),
               const SizedBox(width: 10),
               _buildPromptPill(
                 icon: Icons.layers_rounded,
-                iconColor: const Color(0xFF10B981),
+                iconColor: _themePrimary,
                 text: '150 m2 daireye 5 cm şap atacağız, ne kadar kum ve çimento gerekir?',
                 isDark: isDark,
               ),
@@ -2808,14 +2815,14 @@ class _AIChatScreenState extends State<AIChatScreen>
               const SizedBox(width: 10),
               _buildPromptPill(
                 icon: Icons.straighten_rounded,
-                iconColor: const Color(0xFF06B6D4),
+                iconColor: _themeSecondary,
                 text: 'Demir donatı bindirme ve paspayı kuralları',
                 isDark: isDark,
               ),
               const SizedBox(width: 10),
               _buildPromptPill(
                 icon: Icons.science_rounded,
-                iconColor: const Color(0xFF10B981),
+                iconColor: _themePrimary,
                 text: 'C30 beton dayanımı ve priz alma süreleri',
                 isDark: isDark,
               ),
@@ -3003,8 +3010,8 @@ class _AIChatScreenState extends State<AIChatScreen>
             ),
             padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
             decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [Color(0xFF10B981), Color(0xFF059669)],
+              gradient: LinearGradient(
+                colors: _themeGradient,
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
               ),
@@ -3016,7 +3023,7 @@ class _AIChatScreenState extends State<AIChatScreen>
               ),
               boxShadow: [
                 BoxShadow(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.28),
+                  color: _themePrimary.withValues(alpha: 0.28),
                   blurRadius: 10,
                   offset: const Offset(0, 4),
                 ),
@@ -3083,13 +3090,13 @@ class _AIChatScreenState extends State<AIChatScreen>
                       Container(
                         width: 16,
                         height: 16,
-                        decoration: const BoxDecoration(
+                        decoration: BoxDecoration(
                           gradient: LinearGradient(
-                            colors: [Color(0xFF10B981), Color(0xFF06B6D4)],
+                            colors: _themeGradient,
                           ),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(Icons.auto_awesome_rounded,
+                        child: Icon(Icons.auto_awesome_rounded,
                             color: Colors.white, size: 10),
                       ),
                       const SizedBox(width: 6),
@@ -3098,7 +3105,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                         style: GoogleFonts.poppins(
                           fontSize: 11,
                           fontWeight: FontWeight.w600,
-                          color: const Color(0xFF10B981),
+                          color: _themePrimary,
                         ),
                       ),
                     ],
@@ -3167,12 +3174,12 @@ class _AIChatScreenState extends State<AIChatScreen>
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
-            const SizedBox(
+            SizedBox(
               width: 14,
               height: 14,
               child: CircularProgressIndicator(
                 strokeWidth: 2,
-                valueColor: AlwaysStoppedAnimation(Color(0xFF10B981)),
+                valueColor: AlwaysStoppedAnimation(_themePrimary),
               ),
             ),
             const SizedBox(width: 8),
@@ -3211,17 +3218,17 @@ class _AIChatScreenState extends State<AIChatScreen>
               border: Border.all(
                 color: isDark
                     ? (_isProcessing
-                        ? const Color(0xFF10B981).withValues(alpha: 0.5)
+                        ? _themePrimary.withValues(alpha: 0.5)
                         : Colors.white.withValues(alpha: 0.14))
                     : (_isProcessing
-                        ? const Color(0xFF10B981).withValues(alpha: 0.55)
+                        ? _themePrimary.withValues(alpha: 0.55)
                         : const Color(0xFFE2E8F0).withValues(alpha: 0.8)),
                 width: _isProcessing ? 1.5 : 1.0,
               ),
               boxShadow: [
                 BoxShadow(
                   color: _isProcessing
-                      ? const Color(0xFF10B981).withValues(alpha: 0.28)
+                      ? _themePrimary.withValues(alpha: 0.28)
                       : Colors.black.withValues(alpha: isDark ? 0.35 : 0.06),
                   blurRadius: _isProcessing ? 22 : 18,
                   offset: const Offset(0, 4),
@@ -3252,7 +3259,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                       hintStyle: GoogleFonts.poppins(
                         fontSize: 13.5,
                         color: _isListening
-                            ? const Color(0xFF10B981)
+                            ? _themePrimary
                             : (isDark ? Colors.white38 : Colors.grey[400]),
                         fontWeight: FontWeight.w400,
                       ),
@@ -3281,12 +3288,12 @@ class _AIChatScreenState extends State<AIChatScreen>
                     decoration: BoxDecoration(
                       shape: BoxShape.circle,
                       gradient: _isListening
-                          ? const LinearGradient(
+                          ? LinearGradient(
                               colors: [Color(0xFFEF4444), Color(0xFFDC2626)],
                             )
-                          : const LinearGradient(
+                          : LinearGradient(
                               colors: [
-                                Color(0xFF10B981),
+                                _themePrimary,
                                 Color(0xFF059669),
                               ],
                               begin: Alignment.topLeft,
@@ -3294,7 +3301,7 @@ class _AIChatScreenState extends State<AIChatScreen>
                             ),
                       boxShadow: [
                         BoxShadow(
-                          color: (_isListening ? const Color(0xFFEF4444) : const Color(0xFF10B981))
+                          color: (_isListening ? const Color(0xFFEF4444) : _themePrimary)
                               .withValues(alpha: 0.38),
                           blurRadius: 10,
                           offset: const Offset(0, 3),

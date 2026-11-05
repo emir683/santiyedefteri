@@ -1,7 +1,9 @@
+import 'dart:ui';
 import 'package:flutter/material.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 import '../puanlama_servisi.dart';
+import '../tema_ayarlari.dart';
 
 class PuanlamaDiyalogu extends StatefulWidget {
   const PuanlamaDiyalogu({super.key});
@@ -111,36 +113,36 @@ class _PuanlamaDiyaloguState extends State<PuanlamaDiyalogu> {
           top: 24,
           bottom: keyboardBottom + 24,
         ),
-        child: Container(
-          constraints: const BoxConstraints(maxWidth: 400),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(28),
-            gradient: LinearGradient(
-              begin: Alignment.topLeft,
-              end: Alignment.bottomRight,
-              colors: isDark
-                  ? const [Color(0xFF161F2A), Color(0xFF0F151E)]
-                  : const [Color(0xFFFFFFFF), Color(0xFFF0F7FA)],
-            ),
-            border: Border.all(
-              color: isDark
-                  ? Colors.white.withValues(alpha: 0.12)
-                  : const Color(0xFFB6DDE8),
-              width: 1.2,
-            ),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withValues(alpha: isDark ? 0.45 : 0.15),
-                blurRadius: 36,
-                offset: const Offset(0, 16),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(28),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
+            child: Container(
+              constraints: const BoxConstraints(maxWidth: 400),
+              decoration: BoxDecoration(
+                borderRadius: BorderRadius.circular(28),
+                gradient: LinearGradient(
+                  begin: Alignment.topLeft,
+                  end: Alignment.bottomRight,
+                  colors: AppTheme.cardGradient(isDark),
+                ),
+                border: Border.all(
+                  color: AppTheme.cardBorder(isDark),
+                  width: 1.2,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withValues(alpha: isDark ? 0.65 : 0.15),
+                    blurRadius: 36,
+                    offset: const Offset(0, 16),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Material(
-            color: Colors.transparent,
-            child: Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
-              child: Column(
+              child: Material(
+                color: Colors.transparent,
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 26),
+                  child: Column(
                 mainAxisSize: MainAxisSize.min,
                 children: [
                   // İkon
@@ -389,6 +391,8 @@ class _PuanlamaDiyaloguState extends State<PuanlamaDiyalogu> {
           ),
         ),
       ),
-    );
+    ),
+  ),
+);
   }
 }

@@ -5,6 +5,7 @@ import 'package:intl/date_symbol_data_local.dart';
 import 'package:intl/intl.dart';
 
 import 'firestore_servisi.dart';
+import 'tema_ayarlari.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_empty_state.dart';
@@ -51,7 +52,9 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
 
     final timestamp = fullData['tarih'] as Timestamp?;
     final int gecenGun =
-        timestamp != null ? DateTime.now().difference(timestamp.toDate()).inDays : 0;
+        timestamp != null
+            ? DateTime.now().difference(timestamp.toDate()).inDays
+            : 0;
     final int kalanGun = (30 - gecenGun).clamp(0, 30);
 
     if (islemTipi == 'SANTIYE_SILME') {
@@ -72,7 +75,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
           "'$isciAdi' işçisini ve bu işçi silindiğinde kaldırılan tüm avans kayıtlarını geri getirmek üzeresiniz.";
       final int avansSayisi = (detaylar['silinenAvansSayisi'] ?? 0) as int;
       if (avansSayisi > 0) {
-        icerikOzeti = '• 1 adet İşçi Profili\n• $avansSayisi adet Verilen Avans';
+        icerikOzeti =
+            '• 1 adet İşçi Profili\n• $avansSayisi adet Verilen Avans';
       }
     } else if (islemTipi == 'ODEME_SILME') {
       baslik = 'Ödemeyi Geri Yükle';
@@ -101,7 +105,10 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
               color: isDark ? const Color(0xFF1E2228) : Colors.white,
               borderRadius: BorderRadius.circular(24),
               border: Border.all(
-                color: isDark ? Colors.white.withValues(alpha: 0.12) : const Color(0xFFD8EAF0),
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.12)
+                        : const Color(0xFFD8EAF0),
               ),
               boxShadow: [
                 BoxShadow(
@@ -138,7 +145,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                           style: TextStyle(
                             fontSize: 18,
                             fontWeight: FontWeight.bold,
-                            color: isDark ? Colors.white : const Color(0xFF0F243A),
+                            color:
+                                isDark ? Colors.white : const Color(0xFF0F243A),
                           ),
                         ),
                       ),
@@ -149,7 +157,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                     aciklama,
                     style: TextStyle(
                       fontSize: 14,
-                      color: isDark ? Colors.grey[300] : const Color(0xFF334E68),
+                      color:
+                          isDark ? Colors.grey[300] : const Color(0xFF334E68),
                       height: 1.4,
                     ),
                   ),
@@ -159,7 +168,9 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                       width: double.infinity,
                       padding: const EdgeInsets.all(12),
                       decoration: BoxDecoration(
-                        color: _kBrandTeal.withValues(alpha: isDark ? 0.12 : 0.07),
+                        color: _kBrandTeal.withValues(
+                          alpha: isDark ? 0.12 : 0.07,
+                        ),
                         borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: _kBrandTeal.withValues(alpha: 0.25),
@@ -182,7 +193,10 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                             style: TextStyle(
                               fontSize: 13,
                               height: 1.5,
-                              color: isDark ? Colors.white70 : const Color(0xFF102A43),
+                              color:
+                                  isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF102A43),
                             ),
                           ),
                         ],
@@ -221,7 +235,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                           child: Text(
                             "Vazgeç",
                             style: TextStyle(
-                              color: isDark ? Colors.grey[400] : Colors.grey[600],
+                              color:
+                                  isDark ? Colors.grey[400] : Colors.grey[600],
                             ),
                           ),
                         ),
@@ -261,20 +276,30 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
     setState(() => _geriAliniyorId = historyDocId);
 
     try {
-      final mesaj = await _servis().islemGeriAl(widget.teamId, historyDocId, fullData);
+      final mesaj = await _servis().islemGeriAl(
+        widget.teamId,
+        historyDocId,
+        fullData,
+      );
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Row(
             children: [
-              const Icon(Icons.check_circle_rounded, color: Colors.white, size: 20),
+              const Icon(
+                Icons.check_circle_rounded,
+                color: Colors.white,
+                size: 20,
+              ),
               const SizedBox(width: 10),
               Expanded(child: Text(mesaj)),
             ],
           ),
           backgroundColor: const Color(0xFF0F766E),
           behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
         ),
       );
     } catch (e) {
@@ -328,14 +353,14 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
       setState(() {
         _cakismalar.remove(grup);
       });
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Kayıtlar birleştirildi.')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(const SnackBar(content: Text('Kayıtlar birleştirildi.')));
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Birleştirme hatası: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Birleştirme hatası: $e')));
     } finally {
       if (mounted) {
         setState(() => _duzeltiyor = false);
@@ -357,9 +382,9 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
       );
     } catch (e) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Silme hatası: $e')),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Silme hatası: $e')));
     } finally {
       if (mounted) {
         setState(() => _duzeltiyor = false);
@@ -392,7 +417,10 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
       case 'ISCI_GERI_YUKLEME':
       case 'ODEME_GERI_YUKLEME':
       case 'AVANS_GERI_YUKLEME':
-        return {'icon': Icons.settings_backup_restore_rounded, 'color': _kBrandTeal};
+        return {
+          'icon': Icons.settings_backup_restore_rounded,
+          'color': _kBrandTeal,
+        };
       default:
         return {'icon': Icons.history, 'color': Colors.grey};
     }
@@ -458,7 +486,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
         }
         spans.add(
           TextSpan(
-            text: "${detaylar['isciAdi'] ?? 'bir'} işçisini ve bağlı kayıtlarını geri yükledi$extra.",
+            text:
+                "${detaylar['isciAdi'] ?? 'bir'} işçisini ve bağlı kayıtlarını geri yükledi$extra.",
             style: style,
           ),
         );
@@ -476,7 +505,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
         final odemeSayisi = detaylar['silinenOdemeSayisi'];
         String extra = '';
         if (raporSayisi != null && raporSayisi > 0) {
-          extra = ' ($raporSayisi rapor${odemeSayisi != null && odemeSayisi > 0 ? ', $odemeSayisi ödeme' : ''} dahil)';
+          extra =
+              ' ($raporSayisi rapor${odemeSayisi != null && odemeSayisi > 0 ? ', $odemeSayisi ödeme' : ''} dahil)';
         }
         spans.add(
           TextSpan(
@@ -490,11 +520,13 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
         final odemeSayisi = detaylar['geriYuklenenOdemeSayisi'];
         String extra = '';
         if (raporSayisi != null && raporSayisi > 0) {
-          extra = ' (bağlı $raporSayisi rapor${odemeSayisi != null && odemeSayisi > 0 ? ', $odemeSayisi ödeme' : ''} dahil)';
+          extra =
+              ' (bağlı $raporSayisi rapor${odemeSayisi != null && odemeSayisi > 0 ? ', $odemeSayisi ödeme' : ''} dahil)';
         }
         spans.add(
           TextSpan(
-            text: "${detaylar['santiyeAdi'] ?? 'bir'} şantiyesini ve bağlı kayıtlarını geri yükledi$extra.",
+            text:
+                "${detaylar['santiyeAdi'] ?? 'bir'} şantiyesini ve bağlı kayıtlarını geri yükledi$extra.",
             style: style,
           ),
         );
@@ -527,7 +559,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
       case 'ODEME_SILME':
         spans.add(
           TextSpan(
-            text: "${detaylar['miktar'] ?? ''} TL tutarındaki ödeme kaydını sildi.",
+            text:
+                "${detaylar['miktar'] ?? ''} TL tutarındaki ödeme kaydını sildi.",
             style: style,
           ),
         );
@@ -535,7 +568,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
       case 'ODEME_GERI_YUKLEME':
         spans.add(
           TextSpan(
-            text: "silinen ${detaylar['miktar'] ?? ''} TL ödeme kaydını geri yükledi.",
+            text:
+                "silinen ${detaylar['miktar'] ?? ''} TL ödeme kaydını geri yükledi.",
             style: style,
           ),
         );
@@ -578,17 +612,23 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
   }
 
   Widget _buildCakismaPanel(bool isDark) {
-    final panelBg = isDark ? const Color(0xFF101317) : const Color(0xFFF7FBFD);
-    final panelBorder =
-        isDark ? Colors.white.withValues(alpha: 0.08) : const Color(0xFFD8EAF0);
-
-    return Card(
-      elevation: 2,
-      color: panelBg,
+    return Container(
       margin: const EdgeInsets.fromLTRB(12, 12, 12, 8),
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(16),
-        side: BorderSide(color: panelBorder),
+        border: Border.all(color: AppTheme.cardBorder(isDark)),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.25 : 0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 3),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(14),
@@ -645,17 +685,28 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
 
   Widget _buildCakismaCard(RaporCakismaGrubu grup, bool isDark) {
     final tarih = DateFormat('dd MMM yyyy', 'tr_TR').format(grup.gun);
-    final colorBg = isDark ? const Color(0xFF0F1720) : const Color(0xFFF8FCFE);
     final borderColor =
-        isDark ? Colors.orange.withValues(alpha: 0.25) : const Color(0xFFF3C78A);
+        isDark
+            ? Colors.orange.withValues(alpha: 0.25)
+            : const Color(0xFFF3C78A);
 
-    return Card(
-      elevation: 0,
-      color: colorBg,
+    return Container(
       margin: const EdgeInsets.fromLTRB(12, 4, 12, 10),
-      shape: RoundedRectangleBorder(
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: AppTheme.cardGradient(isDark),
+        ),
         borderRadius: BorderRadius.circular(14),
-        side: BorderSide(color: borderColor),
+        border: Border.all(color: borderColor),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: isDark ? 0.20 : 0.04),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
+          ),
+        ],
       ),
       child: Padding(
         padding: const EdgeInsets.all(12),
@@ -779,37 +830,48 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                               ).format(timestamp.toDate())
                               : '-';
                       final islemTipi = data['islemTipi'] ?? 'BILINMEYEN';
-                      final username = data['kullaniciUsername'] ?? 'Bilinmeyen';
+                      final username =
+                          data['kullaniciUsername'] ?? 'Bilinmeyen';
                       final detaylar =
                           (data['detaylar'] ?? {}) as Map<String, dynamic>;
                       final styleInfo = _getStyleForAction(islemTipi);
 
-                      final bool geriAlinabilir = islemTipi == 'SANTIYE_SILME' ||
+                      final bool geriAlinabilir =
+                          islemTipi == 'SANTIYE_SILME' ||
                           islemTipi == 'ISCI_SILME' ||
                           islemTipi == 'ODEME_SILME' ||
                           islemTipi == 'AVANS_SILME';
                       final bool geriAlindi = data['geriAlindi'] == true;
-                      final int gecenGun = timestamp != null
-                          ? DateTime.now().difference(timestamp.toDate()).inDays
-                          : 0;
+                      final int gecenGun =
+                          timestamp != null
+                              ? DateTime.now()
+                                  .difference(timestamp.toDate())
+                                  .inDays
+                              : 0;
                       final bool suresiDoldu = gecenGun >= 30;
                       final int kalanGun = (30 - gecenGun).clamp(0, 30);
 
-                      return Card(
-                        elevation: 2,
-                        color:
-                            isDark
-                                ? const Color(0xFF101317)
-                                : const Color(0xFFF7FBFD),
+                      return Container(
                         margin: const EdgeInsets.only(bottom: 12),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                          side: BorderSide(
-                            color:
-                                isDark
-                                    ? Colors.white.withValues(alpha: 0.08)
-                                    : const Color(0xFFD8EAF0),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: AppTheme.cardGradient(isDark),
                           ),
+                          borderRadius: BorderRadius.circular(16),
+                          border: Border.all(
+                            color: AppTheme.cardBorder(isDark),
+                          ),
+                          boxShadow: [
+                            BoxShadow(
+                              color: Colors.black.withValues(
+                                alpha: isDark ? 0.25 : 0.05,
+                              ),
+                              blurRadius: 8,
+                              offset: const Offset(0, 2),
+                            ),
+                          ],
                         ),
                         child: Padding(
                           padding: const EdgeInsets.all(16),
@@ -866,15 +928,20 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                         if (geriAlinabilir) ...[
                                           if (geriAlindi)
                                             Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 3,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 3,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: Colors.green.withValues(alpha: 0.12),
-                                                borderRadius: BorderRadius.circular(8),
+                                                color: Colors.green.withValues(
+                                                  alpha: 0.12,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                                 border: Border.all(
-                                                  color: Colors.green.withValues(alpha: 0.35),
+                                                  color: Colors.green
+                                                      .withValues(alpha: 0.35),
                                                 ),
                                               ),
                                               child: Row(
@@ -883,15 +950,18 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                                   Icon(
                                                     Icons.check_circle_rounded,
                                                     size: 12,
-                                                    color: Colors.green.shade400,
+                                                    color:
+                                                        Colors.green.shade400,
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Text(
                                                     'Geri Alındı',
                                                     style: TextStyle(
                                                       fontSize: 11,
-                                                      fontWeight: FontWeight.w600,
-                                                      color: Colors.green.shade400,
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                      color:
+                                                          Colors.green.shade400,
                                                     ),
                                                   ),
                                                 ],
@@ -899,15 +969,21 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                             )
                                           else if (suresiDoldu)
                                             Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 8,
-                                                vertical: 3,
-                                              ),
+                                              padding:
+                                                  const EdgeInsets.symmetric(
+                                                    horizontal: 8,
+                                                    vertical: 3,
+                                                  ),
                                               decoration: BoxDecoration(
-                                                color: Colors.grey.withValues(alpha: 0.12),
-                                                borderRadius: BorderRadius.circular(8),
+                                                color: Colors.grey.withValues(
+                                                  alpha: 0.12,
+                                                ),
+                                                borderRadius:
+                                                    BorderRadius.circular(8),
                                                 border: Border.all(
-                                                  color: Colors.grey.withValues(alpha: 0.25),
+                                                  color: Colors.grey.withValues(
+                                                    alpha: 0.25,
+                                                  ),
                                                 ),
                                               ),
                                               child: Row(
@@ -916,15 +992,23 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                                   Icon(
                                                     Icons.timer_off_outlined,
                                                     size: 12,
-                                                    color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                                    color:
+                                                        isDark
+                                                            ? Colors.grey[400]
+                                                            : Colors.grey[600],
                                                   ),
                                                   const SizedBox(width: 4),
                                                   Text(
                                                     'Süresi Doldu (30g)',
                                                     style: TextStyle(
                                                       fontSize: 11,
-                                                      fontWeight: FontWeight.w500,
-                                                      color: isDark ? Colors.grey[400] : Colors.grey[600],
+                                                      fontWeight:
+                                                          FontWeight.w500,
+                                                      color:
+                                                          isDark
+                                                              ? Colors.grey[400]
+                                                              : Colors
+                                                                  .grey[600],
                                                     ),
                                                   ),
                                                 ],
@@ -949,7 +1033,8 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                                         child:
                                                             CircularProgressIndicator(
                                                               strokeWidth: 2,
-                                                              color: _kBrandTeal,
+                                                              color:
+                                                                  _kBrandTeal,
                                                             ),
                                                       )
                                                       : const Icon(
@@ -968,14 +1053,12 @@ class _IslemGecmisiEkraniState extends State<IslemGecmisiEkrani> {
                                               style: OutlinedButton.styleFrom(
                                                 foregroundColor: _kBrandTeal,
                                                 side: BorderSide(
-                                                  color: _kBrandTeal.withValues(alpha: 
-                                                    0.4,
+                                                  color: _kBrandTeal.withValues(
+                                                    alpha: 0.4,
                                                   ),
                                                 ),
-                                                backgroundColor:
-                                                    _kBrandTeal.withValues(alpha: 
-                                                      0.08,
-                                                    ),
+                                                backgroundColor: _kBrandTeal
+                                                    .withValues(alpha: 0.08),
                                                 padding:
                                                     const EdgeInsets.symmetric(
                                                       horizontal: 10,
