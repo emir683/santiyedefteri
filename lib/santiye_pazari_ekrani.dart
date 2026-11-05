@@ -5146,7 +5146,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
           );
         }
 
-        final double toplamPuan = list.fold(0.0, (sum, r) => sum + r.puan);
+        final double toplamPuan =
+            list.fold(0.0, (total, r) => total + r.puan);
         final double ortalama =
             list.isNotEmpty ? toplamPuan / list.length : 5.0;
 
@@ -5257,7 +5258,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                           fontSize: 12.5,
                           fontStyle: FontStyle.italic,
                           height: 1.35,
-                          color: isDark ? Colors.white80 : Colors.black87,
+                          color: isDark ? Colors.white70 : Colors.black87,
                         ),
                       ),
                       if (ref.referansVerenTelefon.isNotEmpty) ...[
@@ -6344,7 +6345,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                             fontSize: 12.5,
                             fontStyle: FontStyle.italic,
                             height: 1.35,
-                            color: isDark ? Colors.white80 : Colors.black87,
+                            color: isDark ? Colors.white70 : Colors.black87,
                           ),
                         ),
                         if (ref.referansVerenTelefon.isNotEmpty) ...[
@@ -6568,7 +6569,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                             fontSize: 12.5,
                             fontStyle: FontStyle.italic,
                             height: 1.35,
-                            color: isDark ? Colors.white80 : Colors.black87,
+                            color: isDark ? Colors.white70 : Colors.black87,
                           ),
                         ),
                       ],
