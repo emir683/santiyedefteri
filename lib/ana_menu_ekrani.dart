@@ -72,6 +72,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   int _selectedIndex = 0;
   int _sahaAltSekme = 0;
   int _pazarAltSekme = 0;
+  int _pazarProfilAltSekme = 0;
   int _operasyonAltSekme = 0;
   int _finansAltSekme = 0;
   StreamController<_AnaPanelVerisi>? _panelController;
@@ -806,6 +807,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
       SantiyePazariEkrani(
         teamId: widget.teamId,
         baslangicSekmesi: _pazarAltSekme,
+        baslangicProfilAltSekmesi: _pazarProfilAltSekme,
         gomuluMod: true,
         onEkibeAktarildi: () {
           setState(() {
@@ -1547,6 +1549,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     HapticFeedback.selectionClick();
                     setState(() {
                       _pazarAltSekme = 1;
+                      _pazarProfilAltSekme = 0;
                       _selectedIndex = 2;
                     });
                   },
@@ -1590,6 +1593,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     HapticFeedback.selectionClick();
                     setState(() {
                       _pazarAltSekme = 1;
+                      _pazarProfilAltSekme = 0;
                       _selectedIndex = 2;
                     });
                   },
@@ -1627,6 +1631,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     HapticFeedback.selectionClick();
                     setState(() {
                       _pazarAltSekme = 1;
+                      _pazarProfilAltSekme = 1;
                       _selectedIndex = 2;
                     });
                   },
@@ -1664,6 +1669,7 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                     HapticFeedback.selectionClick();
                     setState(() {
                       _pazarAltSekme = 1;
+                      _pazarProfilAltSekme = 2;
                       _selectedIndex = 2;
                     });
                   },

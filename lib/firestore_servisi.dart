@@ -1367,6 +1367,16 @@ class FirestoreServisi {
     return _db.collection('users').limit(120).snapshots();
   }
 
+  /// Şantiye Pazarı'ndaki kullanıcının taraf olduğu (gönderen veya alıcı) tüm anlaşmaları ve mesajları canlı dinler
+  Stream<List<PazarAnlasmaTeklifi>> getPazarAnlasmalariStream() {
+    return _db.collection('pazar_anlasmalari').snapshots().map((snap) {
+      return snap.docs
+          .map((doc) => PazarAnlasmaTeklifi.fromMap(doc.data()))
+          .where((a) => a.gonderenUid == kullaniciId || a.aliciUid == kullaniciId)
+          .toList();
+    });
+  }
+
   /// Kullanıcının gönderdiği veya yanıtladığı anlaşma teklifini/mesajını kendi dokümanında günceller.
   /// (Firestore kurallarında /users/{uid} herkes tarafından okunabilir ve kendi sahibi tarafından güncellenebilir.)
   Future<void> pazarAnlasmasiKaydetVeyaGuncelle(
@@ -1389,17 +1399,21 @@ class FirestoreServisi {
       'pazarAnlasmalari': mevcutList,
     }, SetOptions(merge: true));
 
-    // Karşı tarafa da (aliciUid) bildirim ve anlaşma kaydı ulaştırma:
+    // Global / paylaşımlı pazar_anlasmalari koleksiyonuna HER ZAMAN kaydet (ana veri kaynağı):
+    try {
+      await _db
+          .collection('pazar_anlasmalari')
+          .doc(anlasma.id)
+          .set(anlasma.toMap(), SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('pazar_anlasmalari koleksiyonuna yazma uyarısı: $e');
+    }
+
+    // Karşı tarafa da (aliciUid veya gonderenUid) bildirim ulaştırma:
     try {
       final karsiUid =
           anlasma.aliciUid == kullaniciId ? anlasma.gonderenUid : anlasma.aliciUid;
       if (karsiUid.isNotEmpty && karsiUid != kullaniciId) {
-        // Global / paylaşımlı pazar_anlasmalari koleksiyonuna yaz
-        await _db
-            .collection('pazar_anlasmalari')
-            .doc(anlasma.id)
-            .set(anlasma.toMap(), SetOptions(merge: true));
-
         // Karşı kullanıcının gelen bildirimlerine ekleme
         final sonMsg =
             anlasma.mesajlar.isNotEmpty ? anlasma.mesajlar.last : null;

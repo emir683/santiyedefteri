@@ -16,6 +16,7 @@ import 'widgets/glass_surface.dart';
 class SantiyePazariEkrani extends StatefulWidget {
   final String teamId;
   final int baslangicSekmesi; // 0: İlanlar, 1: Profilim
+  final int baslangicProfilAltSekmesi; // 0: İlanlarım, 1: Favorilerim, 2: Mesajlarım, 3: Portföy, 4: Referanslar, 5: Verdiklerim
   final bool gomuluMod;
   final VoidCallback? onEkibeAktarildi;
 
@@ -23,6 +24,7 @@ class SantiyePazariEkrani extends StatefulWidget {
     super.key,
     required this.teamId,
     this.baslangicSekmesi = 0,
+    this.baslangicProfilAltSekmesi = 0,
     this.gomuluMod = false,
     this.onEkibeAktarildi,
   });
@@ -66,6 +68,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
   void initState() {
     super.initState();
     _seciliSekme = widget.baslangicSekmesi.clamp(0, 1);
+    _profilAltSekme = widget.baslangicProfilAltSekmesi.clamp(0, 5);
   }
 
   @override
@@ -74,6 +77,11 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     if (oldWidget.baslangicSekmesi != widget.baslangicSekmesi) {
       setState(() {
         _seciliSekme = widget.baslangicSekmesi.clamp(0, 1);
+      });
+    }
+    if (oldWidget.baslangicProfilAltSekmesi != widget.baslangicProfilAltSekmesi) {
+      setState(() {
+        _profilAltSekme = widget.baslangicProfilAltSekmesi.clamp(0, 5);
       });
     }
   }
@@ -3984,129 +3992,235 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
       ),
       body: GlassPageSurface(
         preferSoftLightBackground: true,
-        child: StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-          stream: servisi.getSantiyePazariKullanicilariStream(),
-          builder: (context, snapshot) {
-            final docs = snapshot.data?.docs ?? const [];
-            KullaniciSahaProfili benimProfil = const KullaniciSahaProfili();
-            String benimAd = 'Şantiye Üyesi';
-            List<PazarIlanAlarmi> benimAlarmlar = const [];
-            final Set<String> benimFavoriIlanIdleri = Set<String>.from(
-              _yerelFavoriler,
-            );
+        child: StreamBuilder<DocumentSnapshot>(
+          stream: servisi.getKullaniciVeriStream(),
+          builder: (context, userSnap) {
+            final myUserData =
+                userSnap.hasData && userSnap.data!.exists
+                    ? (userSnap.data!.data() as Map<String, dynamic>?)
+                    : null;
 
-            final tumIlanlar = <SantiyePazarIlani>[];
-            final anlasmaMap = <String, PazarAnlasmaTeklifi>{};
+            return StreamBuilder<List<PazarAnlasmaTeklifi>>(
+              stream: servisi.getPazarAnlasmalariStream(),
+              builder: (context, anlasmalarSnap) {
+                final paylasilanAnlasmalar = anlasmalarSnap.data ?? const [];
 
-            for (final doc in docs) {
-              final data = doc.data();
-              final docUid = doc.id;
-              final ad =
-                  (data['adSoyad'] ?? data['username'] ?? 'Şantiye Üyesi')
-                      .toString();
-              final profil = KullaniciSahaProfili.fromUserDoc(data);
+                return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+                  stream: servisi.getSantiyePazariKullanicilariStream(),
+                  builder: (context, snapshot) {
+                    final docs = snapshot.data?.docs ?? const [];
+                    KullaniciSahaProfili benimProfil =
+                        myUserData != null
+                            ? KullaniciSahaProfili.fromUserDoc(myUserData)
+                            : const KullaniciSahaProfili();
+                    String benimAd =
+                        myUserData != null
+                            ? (myUserData['adSoyad'] ?? myUserData['username'] ?? 'Şantiye Üyesi').toString()
+                            : 'Şantiye Üyesi';
+                    final rawAlarmlar = myUserData?['ilanAlarmlari'] as List? ?? const [];
+                    List<PazarIlanAlarmi> benimAlarmlar =
+                        rawAlarmlar
+                            .whereType<Map>()
+                            .map(
+                              (m) => PazarIlanAlarmi.fromMap(
+                                Map<String, dynamic>.from(m),
+                              ),
+                            )
+                            .toList();
 
-              if (docUid == uid) {
-                benimProfil = profil;
-                benimAd = ad;
-                final rawAlarmlar = data['ilanAlarmlari'] as List? ?? const [];
-                benimAlarmlar =
-                    rawAlarmlar
-                        .whereType<Map>()
-                        .map(
-                          (m) => PazarIlanAlarmi.fromMap(
-                            Map<String, dynamic>.from(m),
-                          ),
-                        )
-                        .toList();
-
-                final rawFavs =
-                    data['pazarFavoriIlanlari'] as List? ?? const [];
-                for (final f in rawFavs) {
-                  benimFavoriIlanIdleri.add(f.toString());
-                }
-              }
-
-              final rawIlanlar = data['pazarIlanlari'] as List? ?? const [];
-              for (final item in rawIlanlar) {
-                if (item is Map) {
-                  tumIlanlar.add(
-                    SantiyePazarIlani.fromMap(Map<String, dynamic>.from(item)),
-                  );
-                }
-              }
-
-              if (profil.tamamlandiMi && profil.vitrindeGoster) {
-                final kategori =
-                    profil.kullaniciTipi == KullaniciRolu.muteahhit
-                        ? 'sirket_vitrini'
-                        : (profil.isciVeyaUstaMi ? 'normal_isci' : 'usta_ekip');
-                final seviyeKod =
-                    profil.isciVeyaUstaMi
-                        ? (profil.seviye.toLowerCase().contains('işçi')
-                            ? 'normal_isci'
-                            : 'usta')
-                        : 'ekip';
-                tumIlanlar.add(
-                  SantiyePazarIlani(
-                    id: 'profil_$docUid',
-                    olusturanUid: docUid,
-                    olusturanAd: ad,
-                    kullaniciTipi: profil.kullaniciTipi,
-                    ilanKategorisi: kategori,
-                    kategoriKodu:
-                        profil.brans.toLowerCase().contains('kalıp')
-                            ? 'kalip'
-                            : 'kaba_iscilik',
-                    arananSeviye: seviyeKod,
-                    ucretTipi: profil.isciVeyaUstaMi ? 'gunluk' : 'metrekare',
-                    ucretTutari: profil.gunlukYevmiyeBeklentisi,
-                    tahminiMetrajVeyaGun: profil.calismaKapasitesi,
-                    ekipKisiSayisi: profil.isciVeyaUstaMi ? 1 : 6,
-                    baslik:
-                        profil.sirketAdi.isNotEmpty
-                            ? '${profil.sirketAdi} • ${profil.brans}'
-                            : '$ad • ${profil.brans} (${profil.seviye})',
-                    brans: profil.brans,
-                    seviye: profil.seviye,
-                    sehir: profil.sehir,
-                    sirketAdi: profil.sirketAdi,
-                    kapasiteVeyaUcret: profil.calismaKapasitesi,
-                    aciklama:
-                        profil.hakkinda.isNotEmpty
-                            ? profil.hakkinda
-                            : '${profil.sehir} genelinde ${profil.brans} alanında proje ve şantiye işleri için iletişime geçebilirsiniz.',
-                    telefon: profil.telefon,
-                    tarih: DateTime.now().subtract(const Duration(hours: 3)),
-                    acilMi: profil.isAriyorum || profil.ustaAriyorum,
-                    goruntulenmeSayisi: 85,
-                    favoriSayisi: 12,
-                  ),
-                );
-              }
-
-              final rawAnlasmalar =
-                  data['pazarAnlasmalari'] as List? ?? const [];
-              for (final aItem in rawAnlasmalar) {
-                if (aItem is Map) {
-                  final teklif = PazarAnlasmaTeklifi.fromMap(
-                    Map<String, dynamic>.from(aItem),
-                  );
-                  if (teklif.gonderenUid == uid || teklif.aliciUid == uid) {
-                    final mevcut = anlasmaMap[teklif.id];
-                    if (mevcut == null ||
-                        teklif.guncellenmeTarihi.isAfter(
-                          mevcut.guncellenmeTarihi,
-                        ) ||
-                        teklif.mesajlar.length > mevcut.mesajlar.length) {
-                      anlasmaMap[teklif.id] = teklif;
+                    final Set<String> benimFavoriIlanIdleri = Set<String>.from(
+                      _yerelFavoriler,
+                    );
+                    final rawFavs = myUserData?['pazarFavoriIlanlari'] as List? ?? const [];
+                    for (final f in rawFavs) {
+                      benimFavoriIlanIdleri.add(f.toString());
                     }
-                  }
-                }
-              }
-            }
 
-            tumIlanlar.addAll(_ornekBaslangicIlanlari());
+                    final tumIlanlar = <SantiyePazarIlani>[];
+                    final anlasmaMap = <String, PazarAnlasmaTeklifi>{};
+
+                    // 1. Önce kullanıcının kendi açtığı ilanları KESİN olarak ekle:
+                    final myRawIlanlar = myUserData?['pazarIlanlari'] as List? ?? const [];
+                    for (final item in myRawIlanlar) {
+                      if (item is Map) {
+                        tumIlanlar.add(
+                          SantiyePazarIlani.fromMap(Map<String, dynamic>.from(item)),
+                        );
+                      }
+                    }
+
+                    // Kullanıcının kendi vitrin profili (tamamlandıysa):
+                    if (benimProfil.tamamlandiMi && benimProfil.vitrindeGoster) {
+                      final kategori =
+                          benimProfil.kullaniciTipi == KullaniciRolu.muteahhit
+                              ? 'sirket_vitrini'
+                              : (benimProfil.isciVeyaUstaMi ? 'normal_isci' : 'usta_ekip');
+                      final seviyeKod =
+                          benimProfil.isciVeyaUstaMi
+                              ? (benimProfil.seviye.toLowerCase().contains('işçi')
+                                  ? 'normal_isci'
+                                  : 'usta')
+                              : 'ekip';
+                      tumIlanlar.add(
+                        SantiyePazarIlani(
+                          id: 'profil_$uid',
+                          olusturanUid: uid,
+                          olusturanAd: benimAd,
+                          kullaniciTipi: benimProfil.kullaniciTipi,
+                          ilanKategorisi: kategori,
+                          kategoriKodu:
+                              benimProfil.brans.toLowerCase().contains('kalıp')
+                                  ? 'kalip'
+                                  : 'kaba_iscilik',
+                          arananSeviye: seviyeKod,
+                          ucretTipi: benimProfil.isciVeyaUstaMi ? 'gunluk' : 'metrekare',
+                          ucretTutari: benimProfil.gunlukYevmiyeBeklentisi,
+                          tahminiMetrajVeyaGun: benimProfil.calismaKapasitesi,
+                          ekipKisiSayisi: benimProfil.isciVeyaUstaMi ? 1 : 6,
+                          baslik:
+                              benimProfil.sirketAdi.isNotEmpty
+                                  ? '${benimProfil.sirketAdi} • ${benimProfil.brans}'
+                                  : '$benimAd • ${benimProfil.brans} (${benimProfil.seviye})',
+                          brans: benimProfil.brans,
+                          seviye: benimProfil.seviye,
+                          sehir: benimProfil.sehir,
+                          sirketAdi: benimProfil.sirketAdi,
+                          kapasiteVeyaUcret: benimProfil.calismaKapasitesi,
+                          aciklama:
+                              benimProfil.hakkinda.isNotEmpty
+                                  ? benimProfil.hakkinda
+                                  : '${benimProfil.sehir} genelinde ${benimProfil.brans} alanında proje ve şantiye işleri için iletişime geçebilirsiniz.',
+                          telefon: benimProfil.telefon,
+                          tarih: DateTime.now().subtract(const Duration(hours: 3)),
+                          acilMi: benimProfil.isAriyorum || benimProfil.ustaAriyorum,
+                          goruntulenmeSayisi: 85,
+                          favoriSayisi: 12,
+                        ),
+                      );
+                    }
+
+                    // Kullanıcının kendi dokümanındaki anlaşmalar:
+                    final myRawAnlasmalar = myUserData?['pazarAnlasmalari'] as List? ?? const [];
+                    for (final aItem in myRawAnlasmalar) {
+                      if (aItem is Map) {
+                        final teklif = PazarAnlasmaTeklifi.fromMap(
+                          Map<String, dynamic>.from(aItem),
+                        );
+                        if (teklif.gonderenUid == uid || teklif.aliciUid == uid) {
+                          anlasmaMap[teklif.id] = teklif;
+                        }
+                      }
+                    }
+
+                    // 2. Paylaşımlı 'pazar_anlasmalari' koleksiyonundan gelen anlaşmaları / mesajları birleştir:
+                    for (final teklif in paylasilanAnlasmalar) {
+                      final mevcut = anlasmaMap[teklif.id];
+                      if (mevcut == null ||
+                          teklif.guncellenmeTarihi.isAfter(mevcut.guncellenmeTarihi) ||
+                          teklif.mesajlar.length >= mevcut.mesajlar.length) {
+                        anlasmaMap[teklif.id] = teklif;
+                      }
+                    }
+
+                    // 3. Diğer kullanıcıların ilanlarını, vitrinlerini ve anlaşmalarını ekle:
+                    for (final doc in docs) {
+                      final data = doc.data();
+                      final docUid = doc.id;
+                      if (docUid == uid) continue; // Kullanıcının kendi verisi yukarıda eklendi
+
+                      final ad =
+                          (data['adSoyad'] ?? data['username'] ?? 'Şantiye Üyesi')
+                              .toString();
+                      final profil = KullaniciSahaProfili.fromUserDoc(data);
+
+                      final rawIlanlar = data['pazarIlanlari'] as List? ?? const [];
+                      for (final item in rawIlanlar) {
+                        if (item is Map) {
+                          final ilan = SantiyePazarIlani.fromMap(Map<String, dynamic>.from(item));
+                          if (!tumIlanlar.any((i) => i.id == ilan.id)) {
+                            tumIlanlar.add(ilan);
+                          }
+                        }
+                      }
+
+                      if (profil.tamamlandiMi && profil.vitrindeGoster) {
+                        final profIlanId = 'profil_$docUid';
+                        if (!tumIlanlar.any((i) => i.id == profIlanId)) {
+                          final kategori =
+                              profil.kullaniciTipi == KullaniciRolu.muteahhit
+                                  ? 'sirket_vitrini'
+                                  : (profil.isciVeyaUstaMi ? 'normal_isci' : 'usta_ekip');
+                          final seviyeKod =
+                              profil.isciVeyaUstaMi
+                                  ? (profil.seviye.toLowerCase().contains('işçi')
+                                      ? 'normal_isci'
+                                      : 'usta')
+                                  : 'ekip';
+                          tumIlanlar.add(
+                            SantiyePazarIlani(
+                              id: profIlanId,
+                              olusturanUid: docUid,
+                              olusturanAd: ad,
+                              kullaniciTipi: profil.kullaniciTipi,
+                              ilanKategorisi: kategori,
+                              kategoriKodu:
+                                  profil.brans.toLowerCase().contains('kalıp')
+                                      ? 'kalip'
+                                      : 'kaba_iscilik',
+                              arananSeviye: seviyeKod,
+                              ucretTipi: profil.isciVeyaUstaMi ? 'gunluk' : 'metrekare',
+                              ucretTutari: profil.gunlukYevmiyeBeklentisi,
+                              tahminiMetrajVeyaGun: profil.calismaKapasitesi,
+                              ekipKisiSayisi: profil.isciVeyaUstaMi ? 1 : 6,
+                              baslik:
+                                  profil.sirketAdi.isNotEmpty
+                                      ? '${profil.sirketAdi} • ${profil.brans}'
+                                      : '$ad • ${profil.brans} (${profil.seviye})',
+                              brans: profil.brans,
+                              seviye: profil.seviye,
+                              sehir: profil.sehir,
+                              sirketAdi: profil.sirketAdi,
+                              kapasiteVeyaUcret: profil.calismaKapasitesi,
+                              aciklama:
+                                  profil.hakkinda.isNotEmpty
+                                      ? profil.hakkinda
+                                      : '${profil.sehir} genelinde ${profil.brans} alanında proje ve şantiye işleri için iletişime geçebilirsiniz.',
+                              telefon: profil.telefon,
+                              tarih: DateTime.now().subtract(const Duration(hours: 3)),
+                              acilMi: profil.isAriyorum || profil.ustaAriyorum,
+                              goruntulenmeSayisi: 85,
+                              favoriSayisi: 12,
+                            ),
+                          );
+                        }
+                      }
+
+                      final rawAnlasmalar =
+                          data['pazarAnlasmalari'] as List? ?? const [];
+                      for (final aItem in rawAnlasmalar) {
+                        if (aItem is Map) {
+                          final teklif = PazarAnlasmaTeklifi.fromMap(
+                            Map<String, dynamic>.from(aItem),
+                          );
+                          if (teklif.gonderenUid == uid || teklif.aliciUid == uid) {
+                            final mevcut = anlasmaMap[teklif.id];
+                            if (mevcut == null ||
+                                teklif.guncellenmeTarihi.isAfter(
+                                  mevcut.guncellenmeTarihi,
+                                ) ||
+                                teklif.mesajlar.length > mevcut.mesajlar.length) {
+                              anlasmaMap[teklif.id] = teklif;
+                            }
+                          }
+                        }
+                      }
+                    }
+
+                    for (final ornek in _ornekBaslangicIlanlari()) {
+                      if (!tumIlanlar.any((i) => i.id == ornek.id)) {
+                        tumIlanlar.add(ornek);
+                      }
+                    }
 
             if (benimAlarmlar.isNotEmpty) {
               for (final ilan in tumIlanlar) {
@@ -4586,7 +4700,11 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
               ],
             );
           },
-        ),
+        );
+      },
+    );
+  },
+),
       ),
     );
   }
