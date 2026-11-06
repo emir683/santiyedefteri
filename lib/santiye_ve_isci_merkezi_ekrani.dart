@@ -626,7 +626,7 @@ class SantiyeEkipYardimcisi {
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
                       Text(
-                        '${ekip.ekipAdi} • Hakediş Gir',
+                        '${ekip.ekipAdi} • Hakediş & İlerleme Girişi',
                         style: TextStyle(
                           fontSize: 16.5,
                           fontWeight: FontWeight.w800,
@@ -636,13 +636,101 @@ class SantiyeEkipYardimcisi {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        '${ekip.santiyeAdi} • ${SantiyePazarIlani.ucretTipiBasligi(ekip.anlasmaTipi)}',
+                        '${ekip.santiyeAdi} • Çalışma Modeli: ${ekip.anlasmaTipi == "oda" ? "Oda Bazlı" : (ekip.anlasmaTipi == "gunluk" ? "Günlük Yevmiyeli" : (ekip.anlasmaTipi == "metrekare" ? "Metrekare (m²)" : SantiyePazarIlani.ucretTipiBasligi(ekip.anlasmaTipi)))}',
                         style: TextStyle(
                           fontSize: 11.5,
                           color: isDark ? Colors.white60 : Colors.black54,
                         ),
                       ),
                       const SizedBox(height: 12),
+
+                      // Kategori & İlerleme Bilgi Özeti
+                      Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: AppTheme.primary(context).withValues(alpha: 0.08),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: AppTheme.primary(context).withValues(alpha: 0.2),
+                          ),
+                        ),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (ekip.anlasmaTipi == 'gunluk') ...[
+                              Text(
+                                'Günlük Yevmiye Usulü Çalışma',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primary(context),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Metraj hesabı yapılmaz. Çalışılan gün sayısı günlük ekip yevmiyesi (${ekip.birimUcret.toStringAsFixed(0)} ₺) üzerinden hakedişe yansıtılır.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                ),
+                              ),
+                            ] else if (ekip.anlasmaTipi == 'oda' || ekip.isBirimi.toLowerCase() == 'oda') ...[
+                              Text(
+                                'Oda / Bölüm Bazlı İlerleme',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primary(context),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Toplam Anlaşma: ${ekip.toplamAnlasmaMiktari.toStringAsFixed(0)} Oda • Biten: ${ekip.tamamlananMiktar.toStringAsFixed(0)} Oda • Kalan: ${(ekip.toplamAnlasmaMiktari - ekip.tamamlananMiktar).clamp(0, 999999).toStringAsFixed(0)} Oda\nOda Başı Ücret: ${ekip.birimUcret.toStringAsFixed(0)} ₺',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                ),
+                              ),
+                            ] else if (ekip.anlasmaTipi == 'metrekare' || ekip.isBirimi.toLowerCase() == 'm²') ...[
+                              Text(
+                                'Metrekare (m²) Bazlı İlerleme',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primary(context),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Toplam: ${ekip.toplamAnlasmaMiktari.toStringAsFixed(0)} m² • Biten: ${ekip.tamamlananMiktar.toStringAsFixed(0)} m² • Kalan: ${(ekip.toplamAnlasmaMiktari - ekip.tamamlananMiktar).clamp(0, 999999).toStringAsFixed(0)} m²\nm² Birim Fiyatı: ${ekip.birimUcret.toStringAsFixed(0)} ₺',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                ),
+                              ),
+                            ] else ...[
+                              Text(
+                                'İlerleme & Hakediş Durumu',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: AppTheme.primary(context),
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                'Toplam Hedef: ${ekip.toplamAnlasmaMiktari.toStringAsFixed(0)} ${ekip.birimEtiketi} • Tamamlanan: ${ekip.tamamlananMiktar.toStringAsFixed(0)} ${ekip.birimEtiketi}',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  color: isDark ? Colors.white70 : Colors.black87,
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 12),
+
                       PanelGlassWidgets.buildInset(
                         context: ctx,
                         padding: const EdgeInsets.symmetric(
@@ -655,12 +743,15 @@ class SantiyeEkipYardimcisi {
                             decimal: true,
                           ),
                           decoration: InputDecoration(
-                            labelText:
-                                ekip.anlasmaTipi == 'metrekare'
-                                    ? 'İlerleme (m²)'
-                                    : (ekip.anlasmaTipi == 'goturu'
-                                        ? 'İlerleme Oranı (%)'
-                                        : 'Çalışılan Gün'),
+                            labelText: ekip.anlasmaTipi == 'gunluk'
+                                ? 'Çalışılan Gün Sayısı (Örn: 1 veya 0.5)'
+                                : (ekip.anlasmaTipi == 'oda' || ekip.isBirimi.toLowerCase() == 'oda'
+                                    ? 'Bugün Kaç Oda Tamamlandı? (Örn: 2)'
+                                    : (ekip.anlasmaTipi == 'metrekare'
+                                        ? 'Bugün Kaç m² Yapıldı? (Örn: 120)'
+                                        : (ekip.anlasmaTipi == 'goturu'
+                                            ? 'İlerleme Oranı (%)'
+                                            : 'Yapılan Miktar (${ekip.birimEtiketi})'))),
                             border: InputBorder.none,
                           ),
                         ),
@@ -675,7 +766,11 @@ class SantiyeEkipYardimcisi {
                         child: TextField(
                           controller: aciklamaCtrl,
                           decoration: InputDecoration(
-                            labelText: 'Açıklama (Örn: 2. Kat Sıva)',
+                            labelText: ekip.anlasmaTipi == 'gunluk'
+                                ? 'Açıklama (Örn: Tam gün çalışma)'
+                                : (ekip.anlasmaTipi == 'oda'
+                                    ? 'Açıklama (Örn: 3. ve 4. Odaların Sıvası)'
+                                    : 'Açıklama (Örn: 2. Kat İmalatı)'),
                             border: InputBorder.none,
                           ),
                         ),
@@ -692,7 +787,7 @@ class SantiyeEkipYardimcisi {
                         ),
                         icon: Icon(Icons.check_circle_outline_rounded, size: 18),
                         label: Text(
-                          'Kaydet',
+                          'Kaydet & Hakedişe Ekle',
                           style: TextStyle(fontWeight: FontWeight.w800),
                         ),
                         onPressed: () async {
@@ -708,7 +803,7 @@ class SantiyeEkipYardimcisi {
                             eklenecekMiktar: miktar,
                             aciklama:
                                 aciklamaCtrl.text.trim().isEmpty
-                                    ? 'Hakediş Girişi'
+                                    ? (ekip.anlasmaTipi == 'gunluk' ? 'Günlük Puantaj' : 'Hakediş Girişi')
                                     : aciklamaCtrl.text.trim(),
                             tarih: DateTime.now(),
                           );

@@ -1491,6 +1491,7 @@ class FirestoreServisi {
         santiyeAdi: hedefSantiyeAdi,
         kisiSayisi: ozelEkip.kisiSayisi,
         anlasmaTipi: ozelEkip.anlasmaTipi,
+        isBirimi: ozelEkip.isBirimi,
         birimUcret: ozelEkip.birimUcret,
         toplamAnlasmaMiktari: ozelEkip.toplamAnlasmaMiktari,
         olusturulmaTarihi: DateTime.now(),
@@ -1523,6 +1524,7 @@ class FirestoreServisi {
         santiyeAdi: hedefSantiyeAdi,
         kisiSayisi: guncelOzelEkip.kisiSayisi,
         anlasmaTipi: guncelOzelEkip.anlasmaTipi,
+        isBirimi: guncelOzelEkip.isBirimi,
         birimUcret: guncelOzelEkip.birimUcret,
         toplamAnlasmaMiktari: guncelOzelEkip.toplamAnlasmaMiktari,
         bagliIsciId: isciRef.id,
@@ -1795,6 +1797,7 @@ class FirestoreServisi {
       santiyeAdi: ozelEkip.santiyeAdi,
       kisiSayisi: ozelEkip.kisiSayisi,
       anlasmaTipi: ozelEkip.anlasmaTipi,
+      isBirimi: ozelEkip.isBirimi,
       birimUcret: ozelEkip.birimUcret,
       toplamAnlasmaMiktari: ozelEkip.toplamAnlasmaMiktari,
       tamamlananMiktar: ozelEkip.tamamlananMiktar,
@@ -1819,13 +1822,11 @@ class FirestoreServisi {
   }) async {
     final yeniTamamlanan = ekip.tamamlananMiktar + eklenecekMiktar;
     double eklenecekTutar = 0;
-    if (ekip.anlasmaTipi == 'metrekare') {
-      eklenecekTutar = eklenecekMiktar * ekip.birimUcret;
-    } else if (ekip.anlasmaTipi == 'goturu') {
+    if (ekip.anlasmaTipi == 'goturu') {
       // Götürü işte eklenecekMiktar % ilerleme olarak hesaplanır
       eklenecekTutar = (eklenecekMiktar / 100.0) * ekip.birimUcret;
     } else {
-      // Günlük ekip yevmiyesi
+      // metrekare (m²), oda, daire, adet, ton veya gunluk (çalışılan gün x yevmiye)
       eklenecekTutar = eklenecekMiktar * ekip.birimUcret;
     }
     final yeniToplamHakedis = ekip.toplamHakedisTutari + eklenecekTutar;

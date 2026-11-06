@@ -941,6 +941,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     required String label,
     required bool selected,
     required VoidCallback onTap,
+    IconData? icon,
   }) {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     return InkWell(
@@ -963,16 +964,32 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                     : Colors.white.withValues(alpha: 0.08),
           ),
         ),
-        child: Text(
-          label,
-          style: TextStyle(
-            fontSize: 11.5,
-            fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
-            color:
-                selected
-                    ? _themeContrastIcon
-                    : (isDark ? Colors.white70 : Colors.black87),
-          ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            if (icon != null) ...[
+              Icon(
+                icon,
+                size: 14,
+                color:
+                    selected
+                        ? _themeContrastIcon
+                        : (isDark ? Colors.white70 : Colors.black87),
+              ),
+              const SizedBox(width: 5),
+            ],
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: selected ? FontWeight.w800 : FontWeight.w600,
+                color:
+                    selected
+                        ? _themeContrastIcon
+                        : (isDark ? Colors.white70 : Colors.black87),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -989,6 +1006,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     required List<PazarAnlasmaTeklifi> anlasmalar,
     required bool favorideMi,
     required Function(bool yeniDurum) onFavoriToggle,
+    KullaniciSahaProfili? benimProfil,
   }) async {
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final benimIlanim = ilan.olusturanUid == benimUid;
@@ -1140,7 +1158,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               ),
                               const SizedBox(width: 6),
                               Text(
-                                'Bu ilan vitrinde Öne Çıkarılmıştır ⭐',
+                                'Bu ilan vitrinde Öne Çıkarılmıştır',
                                 style: TextStyle(
                                   fontSize: 12,
                                   fontWeight: FontWeight.w700,
@@ -1624,6 +1642,30 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                             style: TextStyle(fontWeight: FontWeight.w800),
                           ),
                           onPressed: () {
+                            if (benimProfil?.kullaniciTipi == KullaniciRolu.muteahhit &&
+                                ilan.ilanKategorisi == 'is_ilani') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Müteahhit kimliğiyle iş teklifi alamaz veya iş alamazsınız. Müteahhitler yalnızca usta/taşeron kiralayabilir.',
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              return;
+                            }
+                            if (benimProfil?.kullaniciTipi == KullaniciRolu.muteahhit &&
+                                ilan.ilanKategorisi == 'is_ilani') {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                const SnackBar(
+                                  content: Text(
+                                    'Müteahhit kimliğiyle iş teklifi alamaz veya işe teklif veremezsiniz. Müteahhitler yalnızca usta/taşeron kiralayabilir.',
+                                  ),
+                                  backgroundColor: Colors.redAccent,
+                                ),
+                              );
+                              return;
+                            }
                             Navigator.pop(ctx);
                             if (mevcutAnlasma != null) {
                               _mesajlasmaSohbetModalAc(
@@ -1641,6 +1683,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 benimAd: benimAd,
                                 benimTelefon: benimTelefon,
                                 ilan: ilan,
+                                benimProfil: benimProfil,
                               );
                             }
                           },
@@ -2426,6 +2469,10 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                             santiyeAdi: seciliSantiyeAdi,
                                             kisiSayisi: anlasma.ekipKisiSayisi,
                                             anlasmaTipi: anlasma.ucretTipi,
+                                            isBirimi:
+                                                anlasma.isBirimi.isNotEmpty
+                                                    ? anlasma.isBirimi
+                                                    : anlasma.birimMetni,
                                             birimUcret: anlasma.birimUcret,
                                             toplamAnlasmaMiktari:
                                                 anlasma.ucretTipi == 'goturu'
@@ -2570,7 +2617,35 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     required String benimAd,
     required String benimTelefon,
     required SantiyePazarIlani ilan,
+    KullaniciSahaProfili? benimProfil,
   }) async {
+    // Rol Güvenliği: Müteahhit olan biri iş teklifi alamaz / iş alamaz
+    if (benimProfil?.kullaniciTipi == KullaniciRolu.muteahhit &&
+        ilan.ilanKategorisi == 'is_ilani') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Müteahhit kimliğiyle iş teklifi alamaz veya iş alamazsınız. Müteahhitler yalnızca usta/taşeron kiralayabilir.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+    // Rol Güvenliği: Müteahhit olan biri iş teklifi alamaz / iş alamaz
+    if (benimProfil?.kullaniciTipi == KullaniciRolu.muteahhit &&
+        ilan.ilanKategorisi == 'is_ilani') {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text(
+            'Müteahhit kimliğiyle iş teklifi alamaz veya iş alamazsınız. Müteahhitler yalnızca usta/taşeron kiralayabilir.',
+          ),
+          backgroundColor: Colors.redAccent,
+        ),
+      );
+      return;
+    }
+
     final ekipAdiCtrl = TextEditingController(
       text: _bransdanEkipAdiUret(ilan.brans, ilan.arananSeviye),
     );
@@ -2581,7 +2656,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
       text:
           ilan.tahminiMetrajVeyaGun.isNotEmpty
               ? ilan.tahminiMetrajVeyaGun
-              : '1000',
+              : '20',
     );
     final kisiSayisiCtrl = TextEditingController(
       text: ilan.ekipKisiSayisi.toString(),
@@ -2695,15 +2770,31 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   items: const [
                                     DropdownMenuItem(
                                       value: 'metrekare',
-                                      child: Text('m² Hesabı'),
+                                      child: Text('m² Metraj Hesabı'),
                                     ),
                                     DropdownMenuItem(
-                                      value: 'goturu',
-                                      child: Text('Götürü'),
+                                      value: 'oda',
+                                      child: Text('Oda Bazlı (Sıva/Boya)'),
                                     ),
                                     DropdownMenuItem(
                                       value: 'gunluk',
-                                      child: Text('Günlük'),
+                                      child: Text('Günlük Yevmiyeli'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'adet',
+                                      child: Text('Adet / Parça Montaj'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'daire',
+                                      child: Text('Daire / Bölüm'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'ton',
+                                      child: Text('Ton Bazlı (Demir)'),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'goturu',
+                                      child: Text('Götürü Paket'),
                                     ),
                                   ],
                                   onChanged: (v) {
@@ -2733,9 +2824,17 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   labelText:
                                       seciliUcretTipi == 'metrekare'
                                           ? 'm² Ücreti (₺)'
-                                          : (seciliUcretTipi == 'goturu'
-                                              ? 'Toplam ₺'
-                                              : 'Günlük ₺'),
+                                          : (seciliUcretTipi == 'oda'
+                                              ? 'Oda Başı (₺)'
+                                              : (seciliUcretTipi == 'gunluk'
+                                                  ? 'Günlük Yevmiye (₺)'
+                                                  : (seciliUcretTipi == 'adet'
+                                                      ? 'Adet Fiyatı (₺)'
+                                                      : (seciliUcretTipi == 'daire'
+                                                          ? 'Daire Başı (₺)'
+                                                          : (seciliUcretTipi == 'ton'
+                                                              ? 'Ton Fiyatı (₺)'
+                                                              : 'Toplam Paket ₺'))))),
                                   border: InputBorder.none,
                                 ),
                               ),
@@ -2743,6 +2842,82 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                           ),
                         ],
                       ),
+                      const SizedBox(height: 10),
+
+                      // İkinci Satır: Miktar ve Kişi Sayısı
+                      Row(
+                        children: [
+                          if (seciliUcretTipi != 'gunluk' && seciliUcretTipi != 'goturu') ...[
+                            Expanded(
+                              child: PanelGlassWidgets.buildInset(
+                                context: context,
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 12,
+                                  vertical: 2,
+                                ),
+                                child: TextField(
+                                  controller: miktarCtrl,
+                                  keyboardType: const TextInputType.numberWithOptions(
+                                    decimal: true,
+                                  ),
+                                  decoration: InputDecoration(
+                                    labelText: seciliUcretTipi == 'oda'
+                                        ? 'Toplam Oda Sayısı (Örn: 20)'
+                                        : (seciliUcretTipi == 'metrekare'
+                                            ? 'Toplam Metraj (m²)'
+                                            : (seciliUcretTipi == 'adet'
+                                                ? 'Toplam Adet'
+                                                : (seciliUcretTipi == 'daire'
+                                                    ? 'Toplam Daire'
+                                                    : 'Toplam Ton'))),
+                                    border: InputBorder.none,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                          ],
+                          Expanded(
+                            child: PanelGlassWidgets.buildInset(
+                              context: context,
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 12,
+                                vertical: 2,
+                              ),
+                              child: TextField(
+                                controller: kisiSayisiCtrl,
+                                keyboardType: TextInputType.number,
+                                decoration: const InputDecoration(
+                                  labelText: 'Ekip Kişi Sayısı',
+                                  border: InputBorder.none,
+                                ),
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                      if (seciliUcretTipi == 'gunluk') ...[
+                        const SizedBox(height: 6),
+                        Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 6),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.1),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Row(
+                            children: const [
+                              Icon(Icons.info_outline_rounded, size: 14, color: Color(0xFF10B981)),
+                              SizedBox(width: 6),
+                              Expanded(
+                                child: Text(
+                                  'Günlük anlaşmalarda metraj hesabı yapılmaz; çalışılan gün x günlük yevmiye şeklinde hakediş hesaplanır.',
+                                  style: TextStyle(fontSize: 10.5, color: Color(0xFF065F46)),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
                       const SizedBox(height: 10),
 
                       PanelGlassWidgets.buildInset(
@@ -2823,6 +2998,21 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                         kullaniciAd: benimAd,
                                       );
 
+                                  String birim = 'm²';
+                                  if (seciliUcretTipi == 'oda') {
+                                    birim = 'Oda';
+                                  } else if (seciliUcretTipi == 'adet') {
+                                    birim = 'Adet';
+                                  } else if (seciliUcretTipi == 'daire') {
+                                    birim = 'Daire';
+                                  } else if (seciliUcretTipi == 'ton') {
+                                    birim = 'Ton';
+                                  } else if (seciliUcretTipi == 'gunluk') {
+                                    birim = 'Gün';
+                                  } else if (seciliUcretTipi == 'goturu') {
+                                    birim = '%';
+                                  }
+
                                   final yeniAnlasma = PazarAnlasmaTeklifi(
                                     id: anlasmaId,
                                     ilanId: ilan.id,
@@ -2842,8 +3032,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                     santiyeId: seciliSantiyeId,
                                     santiyeAdi: seciliSantiyeAdi,
                                     ucretTipi: seciliUcretTipi,
+                                    isBirimi: birim,
                                     birimUcret: ucret,
-                                    tahminiIsMiktari: miktar,
+                                    tahminiIsMiktari: seciliUcretTipi == 'gunluk' ? 1 : miktar,
                                     ekipKisiSayisi: kisi,
                                     durum: 'bekliyor',
                                     mesajlar: [
@@ -3063,7 +3254,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     );
   }
 
-  /// 🌟 YENİ İLAN YAYINLAMA MODALI (Row Overflow Düzeltildi - Expanded eklendi)
+  /// YENİ İLAN YAYINLAMA MODALI (Row Overflow Düzeltildi - Expanded eklendi)
   Future<void> _yeniIlanDialogAc(
     BuildContext context,
     FirestoreServisi servisi,
@@ -3181,7 +3372,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                     mainAxisSize: MainAxisSize.min,
                     crossAxisAlignment: CrossAxisAlignment.stretch,
                     children: [
-                      // 🌟 ÜST BAR - OVERFLOW FIXED: Expanded kullanılarak sağdaki taşma çözüldü!
+                      // ÜST BAR - OVERFLOW FIXED: Expanded kullanılarak sağdaki taşma çözüldü!
                       Row(
                         children: [
                           PanelGlassWidgets.buildIconBadge(
@@ -3287,6 +3478,17 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               icon: Icons.hail_rounded,
                               selected: seciliMod == 0,
                               onTap: () {
+                                if (profil.kullaniciTipi == KullaniciRolu.isciUsta) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Usta/İşçi kimliğiyle iş veren ilanı açılamaz. İş ilanı vermek için taşeron veya müteahhit profili gereklidir.',
+                                      ),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                  return;
+                                }
                                 setModalState(() {
                                   seciliMod = 0;
                                   baslikOnerisiUret(setModalState);
@@ -3300,6 +3502,17 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               icon: Icons.handyman_rounded,
                               selected: seciliMod == 1,
                               onTap: () {
+                                if (profil.kullaniciTipi == KullaniciRolu.muteahhit) {
+                                  ScaffoldMessenger.of(context).showSnackBar(
+                                    const SnackBar(
+                                      content: Text(
+                                        'Müteahhit kimliğiyle iş arama ilanı açılamaz. Müteahhitler sadece iş ilanı verebilir veya şirket vitrini oluşturabilir.',
+                                      ),
+                                      backgroundColor: Colors.orange,
+                                    ),
+                                  );
+                                  return;
+                                }
                                 setModalState(() {
                                   seciliMod = 1;
                                   baslikOnerisiUret(setModalState);
@@ -3339,7 +3552,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                           runSpacing: 6,
                           children: [
                             _buildFilterChoiceChip(
-                              label: '👷 Genel Şantiye Düz İşçisi',
+                              icon: Icons.engineering_rounded,
+                              label: 'Genel Şantiye Düz İşçisi',
                               selected: seciliArananTur == 'normal_isci',
                               onTap:
                                   () => setModalState(() {
@@ -3350,7 +3564,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   }),
                             ),
                             _buildFilterChoiceChip(
-                              label: '👥 Taşeron / Usta Ekibi',
+                              icon: Icons.groups_rounded,
+                              label: 'Taşeron / Usta Ekibi',
                               selected: seciliArananTur == 'ekip',
                               onTap:
                                   () => setModalState(() {
@@ -3360,7 +3575,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   }),
                             ),
                             _buildFilterChoiceChip(
-                              label: '🔨 Kıdemli Usta / Kalfa',
+                              icon: Icons.handyman_rounded,
+                              label: 'Kıdemli Usta / Kalfa',
                               selected: seciliArananTur == 'usta',
                               onTap:
                                   () => setModalState(() {
@@ -3369,7 +3585,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   }),
                             ),
                             _buildFilterChoiceChip(
-                              label: '🚜 İş Makinesi Operatörü',
+                              icon: Icons.agriculture_rounded,
+                              label: 'İş Makinesi Operatörü',
                               selected: seciliArananTur == 'operator',
                               onTap:
                                   () => setModalState(() {
@@ -3395,7 +3612,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                           runSpacing: 6,
                           children: [
                             _buildFilterChoiceChip(
-                              label: '🔨 Bireysel Kıdemli Usta',
+                              icon: Icons.handyman_rounded,
+                              label: 'Bireysel Kıdemli Usta',
                               selected: seciliArananTur == 'usta',
                               onTap:
                                   () => setModalState(() {
@@ -3404,7 +3622,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   }),
                             ),
                             _buildFilterChoiceChip(
-                              label: '👥 Ekip Başı (Taşeron Ekip)',
+                              icon: Icons.groups_rounded,
+                              label: 'Ekip Başı (Taşeron Ekip)',
                               selected: seciliArananTur == 'ekip',
                               onTap:
                                   () => setModalState(() {
@@ -3413,7 +3632,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   }),
                             ),
                             _buildFilterChoiceChip(
-                              label: '👷 Genel Şantiye Düz İşçisi',
+                              icon: Icons.engineering_rounded,
+                              label: 'Genel Şantiye Düz İşçisi',
                               selected: seciliArananTur == 'normal_isci',
                               onTap:
                                   () => setModalState(() {
@@ -3423,7 +3643,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   }),
                             ),
                             _buildFilterChoiceChip(
-                              label: '🚜 İş Makinesi Operatörü',
+                              icon: Icons.agriculture_rounded,
+                              label: 'İş Makinesi Operatörü',
                               selected: seciliArananTur == 'operator',
                               onTap:
                                   () => setModalState(() {
@@ -3758,39 +3979,45 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                         runSpacing: 6,
                         children: [
                           FilterChip(
-                            label: Text('🛏️ Koğuş / Kalacak Yer'),
+                            avatar: const Icon(Icons.hotel_rounded, size: 16),
+                            label: const Text('Koğuş / Kalacak Yer'),
                             selected: konaklamaVarMi,
                             onSelected:
                                 (v) => setModalState(() => konaklamaVarMi = v),
                           ),
                           FilterChip(
-                            label: Text('🍲 Yemek Dahil (3 Öğün)'),
+                            avatar: const Icon(Icons.restaurant_rounded, size: 16),
+                            label: const Text('Yemek Dahil (3 Öğün)'),
                             selected: yemekVarMi,
                             onSelected:
                                 (v) => setModalState(() => yemekVarMi = v),
                           ),
                           FilterChip(
-                            label: Text('🚌 Servis / Ulaşım Desteği'),
+                            avatar: const Icon(Icons.directions_bus_rounded, size: 16),
+                            label: const Text('Servis / Ulaşım Desteği'),
                             selected: ulasimServisVarMi,
                             onSelected:
                                 (v) =>
                                     setModalState(() => ulasimServisVarMi = v),
                           ),
                           FilterChip(
-                            label: Text('🦺 İSG & KKD Şantiyeden'),
+                            avatar: const Icon(Icons.security_rounded, size: 16),
+                            label: const Text('İSG & KKD Şantiyeden'),
                             selected: isgKkdSaglanacakMi,
                             onSelected:
                                 (v) =>
                                     setModalState(() => isgKkdSaglanacakMi = v),
                           ),
                           FilterChip(
-                            label: Text('⏱️ Fazla Mesai İmkanı'),
+                            avatar: const Icon(Icons.more_time_rounded, size: 16),
+                            label: const Text('Fazla Mesai İmkanı'),
                             selected: fazlaMesaiVarMi,
                             onSelected:
                                 (v) => setModalState(() => fazlaMesaiVarMi = v),
                           ),
                           FilterChip(
-                            label: Text('💵 Avans İmkanı Var'),
+                            avatar: const Icon(Icons.payments_rounded, size: 16),
+                            label: const Text('Avans İmkanı Var'),
                             selected: avansImkaniVarMi,
                             onSelected:
                                 (v) =>
@@ -3798,7 +4025,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                           ),
                           if (seciliMod == 1)
                             FilterChip(
-                              label: Text('🌍 Şehir Dışına Gidebilirim'),
+                              avatar: const Icon(Icons.flight_takeoff_rounded, size: 16),
+                              label: const Text('Şehir Dışına Gidebilirim'),
                               selected: sehirDisinaGiderMi,
                               onSelected:
                                   (v) => setModalState(
@@ -3806,7 +4034,8 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   ),
                             ),
                           FilterChip(
-                            label: Text('⚡ ACİL İlan'),
+                            avatar: const Icon(Icons.bolt_rounded, size: 16, color: Colors.red),
+                            label: const Text('ACİL İlan'),
                             selected: acilMi,
                             onSelected: (v) => setModalState(() => acilMi = v),
                           ),
@@ -4324,7 +4553,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 const SizedBox(width: 6),
                                 _buildSurePaketChip(
                                   baslik: '1 Hafta',
-                                  altBaslik: '⭐ Premium',
+                                  altBaslik: 'Premium',
                                   secili: seciliIlanSuresiGun == 7,
                                   onTap: () => setModalState(() => seciliIlanSuresiGun = 7),
                                   isDark: isDark,
@@ -4332,7 +4561,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 const SizedBox(width: 6),
                                 _buildSurePaketChip(
                                   baslik: '2 Hafta',
-                                  altBaslik: '⭐ Premium',
+                                  altBaslik: 'Premium',
                                   secili: seciliIlanSuresiGun == 14,
                                   onTap: () => setModalState(() => seciliIlanSuresiGun = 14),
                                   isDark: isDark,
@@ -4340,7 +4569,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 const SizedBox(width: 6),
                                 _buildSurePaketChip(
                                   baslik: '1 Ay',
-                                  altBaslik: '⭐ Ultra',
+                                  altBaslik: 'Ultra',
                                   secili: seciliIlanSuresiGun == 30,
                                   onTap: () => setModalState(() => seciliIlanSuresiGun = 30),
                                   isDark: isDark,
@@ -4349,7 +4578,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                             ),
                             const SizedBox(height: 10),
 
-                            // Vitrinde Öne Çıkar Switch
+                            // Vitrinde Öne Çıkar Switch (Overflow korumalı)
                             SwitchListTile.adaptive(
                               contentPadding: EdgeInsets.zero,
                               title: Row(
@@ -4360,11 +4589,14 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                     color: Color(0xFFD97706),
                                   ),
                                   const SizedBox(width: 6),
-                                  const Text(
-                                    'İlanı Vitrinde Öne Çıkar',
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w800,
+                                  const Expanded(
+                                    child: Text(
+                                      'İlanı Vitrinde Öne Çıkar',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -4380,7 +4612,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Text(
-                                      '⭐ Premium',
+                                      'Premium',
                                       style: TextStyle(
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.w800,
@@ -4399,22 +4631,25 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   (v) => setModalState(() => oneCikarildiMi = v),
                             ),
 
-                            // Acil İlan Etiketi Switch
+                            // Acil İlan Etiketi Switch (Overflow korumalı)
                             SwitchListTile.adaptive(
                               contentPadding: EdgeInsets.zero,
                               title: Row(
                                 children: [
                                   const Icon(
-                                    Icons.local_fire_department_rounded,
+                                    Icons.bolt_rounded,
                                     size: 18,
                                     color: Colors.red,
                                   ),
                                   const SizedBox(width: 6),
-                                  const Text(
-                                    'Acil İlan Etiketi Ekle',
-                                    style: TextStyle(
-                                      fontSize: 12.5,
-                                      fontWeight: FontWeight.w800,
+                                  const Expanded(
+                                    child: Text(
+                                      'Acil İlan Etiketi Ekle',
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                   ),
                                   const SizedBox(width: 6),
@@ -4430,7 +4665,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Text(
-                                      '🚨 Premium',
+                                      'Acil',
                                       style: TextStyle(
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.w800,
@@ -5112,7 +5347,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                 WidgetsBinding.instance.addPostFrameCallback((_) {
                   BildirimServisi().pazarAnlasmaBildirimiGonder(
                     bildirimKey: bKey,
-                    baslik: '🤝 Şantiye Pazarı: ${anlasma.ekipAdi}',
+                    baslik: 'Şantiye Pazarı: ${anlasma.ekipAdi}',
                     detay:
                         '${anlasma.mesajlar.last['gonderenAd']}: ${anlasma.mesajlar.last['mesaj']}',
                   );
@@ -5227,7 +5462,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                     widget.gomuluMod ? 110 : 32,
                   ),
                   children: [
-                    // 🌟 1. ÜST SEKME SEÇİCİ: İlanlar • Profilim (Yönetim Merkezi)
+                    // 1. ÜST SEKME SEÇİCİ: İlanlar • Profilim (Yönetim Merkezi)
                     PanelGlassWidgets.buildCard(
                       context: context,
                       padding: const EdgeInsets.all(6),
@@ -5251,7 +5486,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                     ),
                     const SizedBox(height: 10),
 
-                    // 🌟 SEKME 0: İLANLAR (Arama & Filtre Kontrol Çubuğu)
+                    // SEKME 0: İLANLAR (Arama & Filtre Kontrol Çubuğu)
                     if (_seciliSekme == 0) ...[
                       Row(
                         children: [
@@ -5518,11 +5753,12 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               onFavoriToggle:
                                   (yeni) => favoriDegistir(ilan, yeni),
                               isDark: isDark,
+                              benimProfil: benimProfil,
                             ),
                           );
                         }),
                     ] else ...[
-                      // 🌟 SEKME 1: PROFİLİM & YÖNETİM MERKEZİ (İlanlarım, Favorilerim, Mesajlarım)
+                      // SEKME 1: PROFİLİM & YÖNETİM MERKEZİ (İlanlarım, Favorilerim, Mesajlarım)
                       _buildProfilimMerkezi(
                         context: context,
                         servisi: servisi,
@@ -5628,7 +5864,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     );
   }
 
-  /// 🌟 PROFİLİM MERKEZİ (İlanlarım, Favorilerim, Mesajlarım tek yerde)
+  /// PROFİLİM MERKEZİ (İlanlarım, Favorilerim, Mesajlarım tek yerde)
   Widget _buildProfilimMerkezi({
     required BuildContext context,
     required FirestoreServisi servisi,
@@ -5975,6 +6211,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                   favorideMi: favoriIlanIdleri.contains(ilan.id),
                   onFavoriToggle: (yeni) => onFavoriToggle(ilan, yeni),
                   isDark: isDark,
+                  benimProfil: benimProfil,
                 ),
               ),
             ),
@@ -6034,6 +6271,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                   favorideMi: true,
                   onFavoriToggle: (yeni) => onFavoriToggle(ilan, yeni),
                   isDark: isDark,
+                  benimProfil: benimProfil,
                 ),
               ),
             ),
@@ -7222,7 +7460,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        '✅ Referans ve değerlendirme başarıyla kaydedildi.',
+                                        'Referans ve değerlendirme başarıyla kaydedildi.',
                                       ),
                                       backgroundColor: Color(0xFF10B981),
                                     ),
@@ -7439,7 +7677,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   ScaffoldMessenger.of(context).showSnackBar(
                                     const SnackBar(
                                       content: Text(
-                                        '✅ Geçmiş iş / proje başarıyla eklendi.',
+                                        'Geçmiş iş / proje başarıyla eklendi.',
                                       ),
                                       backgroundColor: Color(0xFF10B981),
                                     ),
@@ -8295,6 +8533,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     required bool favorideMi,
     required Function(bool yeniDurum) onFavoriToggle,
     required bool isDark,
+    KullaniciSahaProfili? benimProfil,
   }) {
     final katAdi = InsaatKategorileri.kategoriAdi(ilan.kategoriKodu);
 
@@ -8311,6 +8550,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
             anlasmalar: anlasmalar,
             favorideMi: favorideMi,
             onFavoriToggle: onFavoriToggle,
+            benimProfil: benimProfil,
           ),
       child: PanelGlassWidgets.buildCard(
         context: context,

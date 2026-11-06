@@ -745,9 +745,10 @@ class PazarAnlasmaTeklifi {
   final String ekipAdi; // Örn: "Sıvacı Ekibi", "Kalıpçı Ekibi", "Demir Ustası"
   final String santiyeId;
   final String santiyeAdi;
-  final String ucretTipi; // 'metrekare' | 'goturu' | 'gunluk'
+  final String ucretTipi; // 'metrekare' | 'goturu' | 'gunluk' | 'oda' | 'adet' | 'daire' | 'ton'
+  final String isBirimi; // 'm²', 'oda', 'adet', 'daire', 'ton', 'gün', '%'
   final double birimUcret;
-  final double tahminiIsMiktari; // m², gün veya 1 paket
+  final double tahminiIsMiktari; // m², oda, gün veya 1 paket
   final int ekipKisiSayisi;
   final String durum; // 'bekliyor' | 'karsi_teklif' | 'onaylandi' | 'ekibe_aktarildi' | 'reddedildi'
   final List<Map<String, dynamic>> mesajlar;
@@ -769,6 +770,7 @@ class PazarAnlasmaTeklifi {
     this.santiyeId = '',
     this.santiyeAdi = 'Genel Şantiye',
     required this.ucretTipi,
+    this.isBirimi = '',
     required this.birimUcret,
     this.tahminiIsMiktari = 1,
     this.ekipKisiSayisi = 1,
@@ -776,6 +778,27 @@ class PazarAnlasmaTeklifi {
     this.mesajlar = const [],
     required this.guncellenmeTarihi,
   });
+
+  String get birimMetni {
+    if (isBirimi.isNotEmpty) return isBirimi;
+    switch (ucretTipi) {
+      case 'oda':
+        return 'Oda';
+      case 'adet':
+        return 'Adet';
+      case 'daire':
+        return 'Daire';
+      case 'ton':
+        return 'Ton';
+      case 'goturu':
+        return 'Paket';
+      case 'gunluk':
+        return 'Gün';
+      case 'metrekare':
+      default:
+        return 'm²';
+    }
+  }
 
   double get toplamTahminiTutar {
     if (ucretTipi == 'goturu') return birimUcret;
@@ -799,6 +822,7 @@ class PazarAnlasmaTeklifi {
       'santiyeId': santiyeId,
       'santiyeAdi': santiyeAdi,
       'ucretTipi': ucretTipi,
+      'isBirimi': isBirimi,
       'birimUcret': birimUcret,
       'tahminiIsMiktari': tahminiIsMiktari,
       'ekipKisiSayisi': ekipKisiSayisi,
@@ -833,6 +857,7 @@ class PazarAnlasmaTeklifi {
       santiyeId: (map['santiyeId'] ?? '').toString(),
       santiyeAdi: (map['santiyeAdi'] ?? 'Genel Şantiye').toString(),
       ucretTipi: (map['ucretTipi'] ?? 'metrekare').toString(),
+      isBirimi: (map['isBirimi'] ?? '').toString(),
       birimUcret: ((map['birimUcret'] ?? 0) as num).toDouble(),
       tahminiIsMiktari: ((map['tahminiIsMiktari'] ?? 1) as num).toDouble(),
       ekipKisiSayisi: ((map['ekipKisiSayisi'] ?? 1) as num).toInt(),
@@ -858,10 +883,11 @@ class SantiyeOzelEkibi {
   final String santiyeId;
   final String santiyeAdi;
   final int kisiSayisi;
-  final String anlasmaTipi; // 'metrekare' | 'goturu' | 'gunluk'
-  final double birimUcret; // m² birim fiyatı, götürü paket tutarı veya günlük ekip yevmiyesi
-  final double toplamAnlasmaMiktari; // Toplam m², toplam gün veya 100 (%)
-  final double tamamlananMiktar; // Yapılan m², çalışılan gün veya tamamlanan %
+  final String anlasmaTipi; // 'metrekare' | 'goturu' | 'gunluk' | 'oda' | 'adet' | 'daire' | 'ton'
+  final String isBirimi; // 'm²', 'oda', 'adet', 'daire', 'ton', 'gün', '%'
+  final double birimUcret; // m² birim fiyatı, oda fiyatı, götürü paket tutarı veya günlük ekip yevmiyesi
+  final double toplamAnlasmaMiktari; // Toplam m², toplam oda, toplam gün veya 100 (%)
+  final double tamamlananMiktar; // Yapılan m², biten oda, çalışılan gün veya tamamlanan %
   final double toplamHakedisTutari;
   final double odenenTutar;
   final String? bagliIsciId; // İşçiler sekmesindeki karşılığı
@@ -879,6 +905,7 @@ class SantiyeOzelEkibi {
     required this.santiyeAdi,
     this.kisiSayisi = 1,
     required this.anlasmaTipi,
+    this.isBirimi = '',
     required this.birimUcret,
     this.toplamAnlasmaMiktari = 100,
     this.tamamlananMiktar = 0,
@@ -898,7 +925,16 @@ class SantiyeOzelEkibi {
   }
 
   String get birimEtiketi {
+    if (isBirimi.isNotEmpty) return isBirimi;
     switch (anlasmaTipi) {
+      case 'oda':
+        return 'Oda';
+      case 'adet':
+        return 'Adet';
+      case 'daire':
+        return 'Daire';
+      case 'ton':
+        return 'Ton';
       case 'metrekare':
         return 'm²';
       case 'goturu':
@@ -921,6 +957,7 @@ class SantiyeOzelEkibi {
       'santiyeAdi': santiyeAdi,
       'kisiSayisi': kisiSayisi,
       'anlasmaTipi': anlasmaTipi,
+      'isBirimi': isBirimi,
       'birimUcret': birimUcret,
       'toplamAnlasmaMiktari': toplamAnlasmaMiktari,
       'tamamlananMiktar': tamamlananMiktar,
@@ -952,6 +989,7 @@ class SantiyeOzelEkibi {
       santiyeAdi: (map['santiyeAdi'] ?? 'Genel Şantiye').toString(),
       kisiSayisi: ((map['kisiSayisi'] ?? 1) as num).toInt(),
       anlasmaTipi: (map['anlasmaTipi'] ?? 'metrekare').toString(),
+      isBirimi: (map['isBirimi'] ?? '').toString(),
       birimUcret: ((map['birimUcret'] ?? 0) as num).toDouble(),
       toplamAnlasmaMiktari:
           ((map['toplamAnlasmaMiktari'] ?? 100) as num).toDouble(),
