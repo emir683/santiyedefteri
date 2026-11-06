@@ -1020,6 +1020,45 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
                                     isPersonalTeam: isPersonalTeam,
                                   ),
                                 const SizedBox(height: 14),
+                                // AKTIF SAHA GOREVI & ANLASMA KARTI (ISCI & EKIP PARANTEZI GOSTERIMI)
+                                StreamBuilder<List<PazarAnlasmaTeklifi>>(
+                                  stream: servisi.getPazarAnlasmalariStream(),
+                                  builder: (context, anlasmaSnap) {
+                                    final anlasmalar =
+                                        anlasmaSnap.data ??
+                                        const <PazarAnlasmaTeklifi>[];
+                                    final uid =
+                                        FirebaseAuth.instance.currentUser?.uid ??
+                                        '';
+                                    final aktifAnlasmalar =
+                                        anlasmalar.where((a) {
+                                          final benIlgiliMiyim =
+                                              (a.aliciUid == uid ||
+                                                  a.gonderenUid == uid);
+                                          return benIlgiliMiyim &&
+                                              a.durum == 'ekibe_aktarildi';
+                                        }).toList();
+
+                                    if (aktifAnlasmalar.isEmpty) {
+                                      return const SizedBox.shrink();
+                                    }
+
+                                    return Column(
+                                      children: [
+                                        for (final anlasma in aktifAnlasmalar)
+                                          Padding(
+                                            padding: const EdgeInsets.only(
+                                              bottom: 14.0,
+                                            ),
+                                            child: _buildAktifGorevKarti(
+                                              anlasma: anlasma,
+                                              benimUid: uid,
+                                            ),
+                                          ),
+                                      ],
+                                    );
+                                  },
+                                ),
                                 // 1. SEKME ÖZETİ: ŞANTİYELER, İŞÇİLER & EKİPLER
                                 _buildSahaVeIsciSekmeOzetiKarti(
                                   servisi: servisi,
@@ -1265,6 +1304,273 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
   }
 
   /// 1. ALT SEKME ÖZET KARTI: ŞANTİYELER, İŞÇİLER & EKİPLER
+  Widget _buildAktifGorevKarti({
+    required PazarAnlasmaTeklifi anlasma,
+    required String benimUid,
+  }) {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final themeProvider = Provider.of<ThemeProvider>(context);
+    final karsiAd =
+        anlasma.aliciUid == benimUid ? anlasma.gonderenAd : anlasma.aliciAd;
+    final isCrew = anlasma.ekipKisiSayisi > 1;
+
+    return _buildPanelGlassCard(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              _buildPanelGlassIconBadge(
+                icon: Icons.verified_rounded,
+                accentColor: const Color(0xFF10B981),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 7,
+                            vertical: 2,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(
+                              0xFF10B981,
+                            ).withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(6),
+                            border: Border.all(
+                              color: const Color(
+                                0xFF10B981,
+                              ).withValues(alpha: 0.35),
+                            ),
+                          ),
+                          child: const Text(
+                            'AKTİF SAHA GÖREVİ',
+                            style: TextStyle(
+                              fontSize: 10,
+                              fontWeight: FontWeight.w800,
+                              color: Color(0xFF10B981),
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 3),
+                    Text(
+                      anlasma.santiyeAdi.isNotEmpty
+                          ? anlasma.santiyeAdi
+                          : 'Ana Şantiye',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w800,
+                        color: isDark ? Colors.white : const Color(0xFF102A43),
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color:
+                  isDark
+                      ? Colors.white.withValues(alpha: 0.04)
+                      : Colors.black.withValues(alpha: 0.03),
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color:
+                    isDark
+                        ? Colors.white.withValues(alpha: 0.08)
+                        : Colors.black.withValues(alpha: 0.06),
+              ),
+            ),
+            child: Column(
+              children: [
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.business_rounded,
+                      size: 14,
+                      color: Colors.grey,
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'İşveren: ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        karsiAd,
+                        style: TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white : Colors.black87,
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    Icon(
+                      isCrew ? Icons.groups_rounded : Icons.person_rounded,
+                      size: 14,
+                      color: const Color(0xFFD97706),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      isCrew ? 'Ekip Parantezi: ' : 'Göreviniz: ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                    Expanded(
+                      child: Text(
+                        isCrew
+                            ? '[${anlasma.ekipAdi}] (${anlasma.ekipKisiSayisi} Kişi)'
+                            : '${anlasma.brans} Ustası',
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w700,
+                          color: Color(0xFFD97706),
+                        ),
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 6),
+                Row(
+                  children: [
+                    const Icon(
+                      Icons.payments_outlined,
+                      size: 14,
+                      color: Color(0xFF0F7C86),
+                    ),
+                    const SizedBox(width: 6),
+                    Text(
+                      'Anlaşma: ',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                    Text(
+                      '${anlasma.birimUcret.toStringAsFixed(0)} ₺ (${anlasma.ucretTipi})',
+                      style: const TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: Color(0xFF0F7C86),
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _pazarAltSekme = 1; // Profilim / Mesajlarım
+                      _selectedIndex = 2; // Şantiye Pazarı
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: themeProvider.accentColor.withValues(
+                        alpha: isDark ? 0.20 : 0.10,
+                      ),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.forum_outlined,
+                          size: 15,
+                          color: themeProvider.accentColor,
+                        ),
+                        const SizedBox(width: 6),
+                        Text(
+                          'İşveren İle İletişim',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: themeProvider.accentColor,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
+              Expanded(
+                child: InkWell(
+                  borderRadius: BorderRadius.circular(10),
+                  onTap: () {
+                    HapticFeedback.selectionClick();
+                    setState(() {
+                      _selectedIndex = 1; // Saha & İşçiler sekmesi
+                    });
+                  },
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    decoration: BoxDecoration(
+                      color: const Color(
+                        0xFF10B981,
+                      ).withValues(alpha: isDark ? 0.20 : 0.12),
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    child: const Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.assignment_turned_in_rounded,
+                          size: 15,
+                          color: Color(0xFF10B981),
+                        ),
+                        SizedBox(width: 6),
+                        Text(
+                          'Şantiye Detayı',
+                          style: TextStyle(
+                            fontSize: 11.5,
+                            fontWeight: FontWeight.w700,
+                            color: Color(0xFF10B981),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSahaVeIsciSekmeOzetiKarti({
     required FirestoreServisi servisi,
     required _AnaPanelVerisi panel,

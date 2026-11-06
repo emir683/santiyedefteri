@@ -17,6 +17,8 @@ import 'puanlama_servisi.dart';
 import 'package:share_plus/share_plus.dart';
 import 'package:intl/intl.dart';
 import 'tema_ayarlari.dart';
+import 'models/kullanici_saha_profili.dart';
+import 'santiye_ve_isci_merkezi_ekrani.dart';
 
 const double _shellDockBodyPadding = 132;
 const double _shellDockFabPadding = 96;
@@ -1031,114 +1033,206 @@ class _IsciEkraniState extends State<IsciEkrani>
           ),
           body: GlassPageSurface(
             preferSoftLightBackground: true,
-            child: StreamBuilder<List<Isci>>(
-              stream: servisi.getIscilerStream(widget.teamId),
-              builder: (context, snapshot) {
-                if (snapshot.connectionState == ConnectionState.waiting) {
-                  return ListView(
-                    padding: EdgeInsets.fromLTRB(
-                      16,
-                      FloatingLiquidAppBar.topPadding(context, extra: 4),
-                      16,
-                      _shellDockBodyPadding,
-                    ),
-                    children: [
-                      _buildSearchField(isDark),
-                      const SizedBox(height: 16),
-                      const ShimmerYukleniyor(satirSayisi: 6, shrinkWrap: true),
-                    ],
-                  );
-                }
+            child: StreamBuilder<List<SantiyeOzelEkibi>>(
+              stream: servisi.getSantiyeOzelEkipleriStream(widget.teamId),
+              builder: (context, ekiplerSnap) {
+                final ozelEkipler =
+                    ekiplerSnap.data ?? const <SantiyeOzelEkibi>[];
 
-                final gercekIsciler = snapshot.hasData
-                    ? [...snapshot.data!]
-                    : <Isci>[];
-                gercekIsciler.sort((a, b) => _turkceMetinKarsilastir(a.ad, b.ad));
-
-                // Arama filtresi
-                final searchFiltreli = gercekIsciler.where((i) {
-                  if (_searchQuery.isEmpty) return true;
-                  return _turkceKucukHarf(i.ad).contains(_searchQuery);
-                }).toList();
-
-                // Üye rolunde: sadece kendi bağlı işçisini göster
-                final filtrelenmisIsciler = isFinans
-                    ? searchFiltreli
-                    : searchFiltreli
-                        .where((i) => i.linkedUserId == user?.uid)
-                        .toList();
-
-                return AnimatedBuilder(
-                  animation: _demoAnimController,
-                  builder: (context, child) {
-                    final bool demoAktif =
-                        _turAktif || _demoAnimController.value > 0.01;
-
-                    return ListView(
-                      padding: EdgeInsets.fromLTRB(
-                        16,
-                        FloatingLiquidAppBar.topPadding(context, extra: 4),
-                        16,
-                        _shellDockBodyPadding,
-                      ),
-                      children: [
-                        Padding(
-                          padding: const EdgeInsets.only(bottom: 12.0),
-                          child: _buildSearchField(isDark),
+                return StreamBuilder<List<Isci>>(
+                  stream: servisi.getIscilerStream(widget.teamId),
+                  builder: (context, snapshot) {
+                    if (snapshot.connectionState == ConnectionState.waiting) {
+                      return ListView(
+                        padding: EdgeInsets.fromLTRB(
+                          16,
+                          FloatingLiquidAppBar.topPadding(context, extra: 4),
+                          16,
+                          _shellDockBodyPadding,
                         ),
+                        children: [
+                          _buildSearchField(isDark),
+                          const SizedBox(height: 16),
+                          const ShimmerYukleniyor(satirSayisi: 6, shrinkWrap: true),
+                        ],
+                      );
+                    }
 
-                        // Örnek / Demo Veriler (Tur esnasında animasyonla içeri akar, bitince süzülerek kaybolur)
-                        if (demoAktif)
-                          FadeTransition(
-                            opacity: _demoFadeAnimation,
-                            child: SlideTransition(
-                              position: _demoSlideAnimation,
-                              child: Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  for (int i = 0; i < _demoIsciler.length; i++)
-                                    _buildIsciKarti(
-                                      isci: _demoIsciler[i],
-                                      isDark: isDark,
-                                      isFinans: isFinans,
-                                      servisi: servisi,
-                                      tumIsciler: filtrelenmisIsciler,
-                                      badgeKey: i == 0 ? _demoCardBadgeKey : null,
-                                      moreKey: i == 0 ? _demoCardMoreKey : null,
-                                      isDemo: true,
-                                    ),
-                                ],
-                              ),
+                    final gercekIsciler = snapshot.hasData
+                        ? [...snapshot.data!]
+                        : <Isci>[];
+                    gercekIsciler.sort((a, b) => _turkceMetinKarsilastir(a.ad, b.ad));
+
+                    // Arama filtresi
+                    final searchFiltreli = gercekIsciler.where((i) {
+                      if (_searchQuery.isEmpty) return true;
+                      return _turkceKucukHarf(i.ad).contains(_searchQuery);
+                    }).toList();
+
+                    // Üye rolunde: sadece kendi bağlı işçisini göster
+                    final filtrelenmisIsciler = isFinans
+                        ? searchFiltreli
+                        : searchFiltreli
+                            .where((i) => i.linkedUserId == user?.uid)
+                            .toList();
+
+                    return AnimatedBuilder(
+                      animation: _demoAnimController,
+                      builder: (context, child) {
+                        final bool demoAktif =
+                            _turAktif || _demoAnimController.value > 0.01;
+
+                        return ListView(
+                          padding: EdgeInsets.fromLTRB(
+                            16,
+                            FloatingLiquidAppBar.topPadding(context, extra: 4),
+                            16,
+                            _shellDockBodyPadding,
+                          ),
+                          children: [
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 12.0),
+                              child: _buildSearchField(isDark),
                             ),
-                          ),
 
-                        // Gerçek İşçi Listesi
-                        for (final isci in filtrelenmisIsciler)
-                          _buildIsciKarti(
-                            isci: isci,
-                            isDark: isDark,
-                            isFinans: isFinans,
-                            servisi: servisi,
-                            tumIsciler: filtrelenmisIsciler,
-                          ),
+                            // Özel Taşeron Ekipleri (Hakediş & Puantaj Parantezi)
+                            if (ozelEkipler.isNotEmpty && _searchQuery.isEmpty) ...[
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 8.0, top: 2.0),
+                                child: Row(
+                                  children: [
+                                    const Icon(
+                                      Icons.groups_rounded,
+                                      size: 16,
+                                      color: Color(0xFFD97706),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Taşeron Ekipler & Anlaşmalar',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color:
+                                            isDark
+                                                ? Colors.white70
+                                                : const Color(0xFF102A43),
+                                      ),
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 6,
+                                        vertical: 1.5,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: const Color(
+                                          0xFFD97706,
+                                        ).withValues(alpha: 0.15),
+                                        borderRadius: BorderRadius.circular(8),
+                                      ),
+                                      child: Text(
+                                        '${ozelEkipler.length} Ekip',
+                                        style: const TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w800,
+                                          color: Color(0xFFD97706),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              for (final ekip in ozelEkipler)
+                                Padding(
+                                  padding: const EdgeInsets.only(bottom: 12.0),
+                                  child: SantiyeEkipYardimcisi.buildOzelEkipKarti(
+                                    context: context,
+                                    teamId: widget.teamId,
+                                    ekip: ekip,
+                                    servisi: servisi,
+                                    privacyHidden: !isFinans,
+                                    isDark: isDark,
+                                  ),
+                                ),
+                              Padding(
+                                padding: const EdgeInsets.symmetric(vertical: 8.0),
+                                child: Row(
+                                  children: [
+                                    Icon(
+                                      Icons.person_outline_rounded,
+                                      size: 16,
+                                      color: _themeContrastIcon,
+                                    ),
+                                    const SizedBox(width: 6),
+                                    Text(
+                                      'Tüm Personel & Çalışanlar',
+                                      style: TextStyle(
+                                        fontSize: 13,
+                                        fontWeight: FontWeight.w800,
+                                        color:
+                                            isDark
+                                                ? Colors.white70
+                                                : const Color(0xFF102A43),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
 
-                        // Veri Yok Uyarısı (Sadece demo aktif değilken ve liste boşken gösterilir)
-                        if (!demoAktif && filtrelenmisIsciler.isEmpty)
-                          GlassEmptyState(
-                            icon: isFinans ? Icons.badge_outlined : Icons.link_off_rounded,
-                            title: isFinans ? "Kayıtlı Çalışan Bulunmuyor" : "Bağlı Çalışan Bulunamadı",
-                            description: isFinans
-                                ? "Ekibinizdeki ustaları ve personeli ekleyerek puantaj ve hakediş takiplerini gerçekleştirebilirsiniz."
-                                : "Hesabınız henüz bir çalışan profili ile eşleştirilmemiş. Lütfen yöneticiniz ile iletişime geçiniz.",
-                            actionLabel: isFinans ? "Yeni Çalışan Ekle" : null,
-                            actionIcon: isFinans ? Icons.person_add_alt_1_rounded : null,
-                            onAction: isFinans ? () => _isciEkleVeyaDuzenleDialog(servisi) : null,
-                          ),
-                      ],
+                            // Örnek / Demo Veriler (Tur esnasında animasyonla içeri akar, bitince süzülerek kaybolur)
+                            if (demoAktif)
+                              FadeTransition(
+                                opacity: _demoFadeAnimation,
+                                child: SlideTransition(
+                                  position: _demoSlideAnimation,
+                                  child: Column(
+                                    mainAxisSize: MainAxisSize.min,
+                                    children: [
+                                      for (int i = 0; i < _demoIsciler.length; i++)
+                                        _buildIsciKarti(
+                                          isci: _demoIsciler[i],
+                                          isDark: isDark,
+                                          isFinans: isFinans,
+                                          servisi: servisi,
+                                          tumIsciler: filtrelenmisIsciler,
+                                          badgeKey: i == 0 ? _demoCardBadgeKey : null,
+                                          moreKey: i == 0 ? _demoCardMoreKey : null,
+                                          isDemo: true,
+                                        ),
+                                    ],
+                                  ),
+                                ),
+                              ),
+
+                            // Gerçek İşçi Listesi
+                            for (final isci in filtrelenmisIsciler)
+                              _buildIsciKarti(
+                                isci: isci,
+                                isDark: isDark,
+                                isFinans: isFinans,
+                                servisi: servisi,
+                                tumIsciler: filtrelenmisIsciler,
+                              ),
+
+                            // Veri Yok Uyarısı (Sadece demo aktif değilken ve liste boşken gösterilir)
+                            if (!demoAktif && filtrelenmisIsciler.isEmpty)
+                              GlassEmptyState(
+                                icon: isFinans ? Icons.badge_outlined : Icons.link_off_rounded,
+                                title: isFinans ? "Kayıtlı Çalışan Bulunmuyor" : "Bağlı Çalışan Bulunamadı",
+                                description: isFinans
+                                    ? "Ekibinizdeki ustaları ve personeli ekleyerek puantaj ve hakediş takiplerini gerçekleştirebilirsiniz."
+                                    : "Hesabınız henüz bir çalışan profili ile eşleştirilmemiş. Lütfen yöneticiniz ile iletişime geçiniz.",
+                                actionLabel: isFinans ? "Yeni Çalışan Ekle" : null,
+                                actionIcon: isFinans ? Icons.person_add_alt_1_rounded : null,
+                                onAction: isFinans ? () => _isciEkleVeyaDuzenleDialog(servisi) : null,
+                              ),
+                          ],
+                        );
+                      },
                     );
                   },
                 );
-
               },
             ),
           ),
@@ -1266,12 +1360,46 @@ class _IsciEkraniState extends State<IsciEkrani>
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Text(
-                            isci.ad,
-                            style: const TextStyle(
-                              fontWeight: FontWeight.bold,
-                              fontSize: 16,
-                            ),
+                          Row(
+                            children: [
+                              Expanded(
+                                child: Text(
+                                  isci.ad,
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    fontSize: 16,
+                                  ),
+                                ),
+                              ),
+                              if (isci.isciTuru == 'Taşeron Ekip' ||
+                                  isci.ad.startsWith('['))
+                                Container(
+                                  margin: const EdgeInsets.only(left: 6),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 6,
+                                    vertical: 2,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(
+                                      0xFFD97706,
+                                    ).withValues(alpha: 0.15),
+                                    borderRadius: BorderRadius.circular(6),
+                                    border: Border.all(
+                                      color: const Color(
+                                        0xFFD97706,
+                                      ).withValues(alpha: 0.35),
+                                    ),
+                                  ),
+                                  child: const Text(
+                                    '👥 Ekip',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: Color(0xFFD97706),
+                                    ),
+                                  ),
+                                ),
+                            ],
                           ),
                           const SizedBox(height: 4),
                           if (isFinans)

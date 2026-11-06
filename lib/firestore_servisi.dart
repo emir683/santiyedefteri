@@ -1440,6 +1440,179 @@ class FirestoreServisi {
     }
   }
 
+  /// Pazar yerinde yapılan bir anlaşmayı (Bireysel Usta veya Ekip Parantezi) işverenin takımına ve şantiyesine dahil eder
+  Future<void> pazarAnlasmasiniEkibeDahilEt({
+    required String isverenTeamId,
+    required String uyeUid,
+    required String uyeAd,
+    required String uyeTelefon,
+    required SantiyeOzelEkibi? ozelEkip,
+    required PazarAnlasmaTeklifi anlasma,
+    required String hedefSantiyeId,
+    required String hedefSantiyeAdi,
+  }) async {
+    if (isverenTeamId.isEmpty) {
+      throw Exception("İşveren takım kimliği (teamId) bulunamadı.");
+    }
+
+    // 1. Üyeyi takımın 'uyeler' listesine ekle (Firestore okuma/yazma erişim izni için zorunlu)
+    if (uyeUid.isNotEmpty) {
+      try {
+        await _db.collection('teams').doc(isverenTeamId).update({
+          'uyeler': FieldValue.arrayUnion([uyeUid]),
+        });
+      } catch (e) {
+        debugPrint('Takım uyeler dizisine ekleme hatası: $e');
+      }
+
+      // Üyenin profilinde bağlı olduğu şantiye ve işveren bilgisini kaydet
+      try {
+        await _db.collection('users').doc(uyeUid).set({
+          'aktifGorevTeamId': isverenTeamId,
+          'aktifGorevSantiyeAdi': hedefSantiyeAdi,
+          'aktifGorevEkipAdi': anlasma.ekipAdi,
+          'aktifGorevGuncelleme': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+      } catch (e) {
+        debugPrint('Kullanıcı aktif görev kaydı hatası: $e');
+      }
+    }
+
+    // 2. Ekip mi, bireysel usta mı?
+    if (anlasma.ekipKisiSayisi > 1 && ozelEkip != null) {
+      final guncelOzelEkip = SantiyeOzelEkibi(
+        id: ozelEkip.id,
+        ekipAdi: ozelEkip.ekipAdi,
+        brans: ozelEkip.brans,
+        ekipBasiAd: ozelEkip.ekipBasiAd,
+        ekipBasiTelefon: ozelEkip.ekipBasiTelefon,
+        ekipBasiUid: ozelEkip.ekipBasiUid,
+        santiyeId: hedefSantiyeId,
+        santiyeAdi: hedefSantiyeAdi,
+        kisiSayisi: ozelEkip.kisiSayisi,
+        anlasmaTipi: ozelEkip.anlasmaTipi,
+        birimUcret: ozelEkip.birimUcret,
+        toplamAnlasmaMiktari: ozelEkip.toplamAnlasmaMiktari,
+        olusturulmaTarihi: DateTime.now(),
+      );
+
+      final double gunlukKarsilik = guncelOzelEkip.anlasmaTipi == 'gunluk'
+          ? guncelOzelEkip.birimUcret
+          : (guncelOzelEkip.birimUcret > 0 ? guncelOzelEkip.birimUcret : 2500);
+
+      // İşçiler koleksiyonuna "Ekip Parantezi" ile ekle
+      final isciAdi = '[${guncelOzelEkip.ekipAdi}] ${guncelOzelEkip.ekipBasiAd} (${guncelOzelEkip.kisiSayisi} Kişi)';
+      final isciRef = await _ekipRef(isverenTeamId).collection('workers').add(
+        Isci(
+          ad: isciAdi,
+          gunlukMaas: gunlukKarsilik,
+          linkedUserId: uyeUid.isNotEmpty ? uyeUid : null,
+          isciTuru: 'Taşeron Ekip',
+        ).toMap(),
+      );
+
+      final ekipDocRef = _ekipRef(isverenTeamId).collection('santiye_ekipleri').doc();
+      final kaydedilecekEkip = SantiyeOzelEkibi(
+        id: ekipDocRef.id,
+        ekipAdi: guncelOzelEkip.ekipAdi,
+        brans: guncelOzelEkip.brans,
+        ekipBasiAd: guncelOzelEkip.ekipBasiAd,
+        ekipBasiTelefon: guncelOzelEkip.ekipBasiTelefon,
+        ekipBasiUid: guncelOzelEkip.ekipBasiUid,
+        santiyeId: hedefSantiyeId,
+        santiyeAdi: hedefSantiyeAdi,
+        kisiSayisi: guncelOzelEkip.kisiSayisi,
+        anlasmaTipi: guncelOzelEkip.anlasmaTipi,
+        birimUcret: guncelOzelEkip.birimUcret,
+        toplamAnlasmaMiktari: guncelOzelEkip.toplamAnlasmaMiktari,
+        bagliIsciId: isciRef.id,
+        olusturulmaTarihi: DateTime.now(),
+      );
+      await ekipDocRef.set(kaydedilecekEkip.toMap());
+    } else {
+      // Tek kişilik usta / işçi olarak ekle
+      final isciAdi = uyeAd.isNotEmpty ? uyeAd : anlasma.ekipAdi;
+      final double yevmiye = anlasma.birimUcret > 0 ? anlasma.birimUcret : 2000;
+      await _ekipRef(isverenTeamId).collection('workers').add(
+        Isci(
+          ad: isciAdi,
+          gunlukMaas: yevmiye,
+          linkedUserId: uyeUid.isNotEmpty ? uyeUid : null,
+          isciTuru: 'Usta / İşçi',
+        ).toMap(),
+      );
+    }
+
+    // 3. Anlaşma durumunu güncelle ve sistem mesajı ekle
+    final yeniMesajlar = [
+      ...anlasma.mesajlar,
+      {
+        'gonderenUid': kullaniciId,
+        'gonderenAd': 'Sistem',
+        'mesaj':
+            '🤝 Anlaşma onaylandı! ${anlasma.ekipAdi} ${anlasma.ekipKisiSayisi > 1 ? "ekibi" : "ustası"} "$hedefSantiyeAdi" şantiyesine ve işçi kadrosuna dahil edildi.',
+        'tarih': DateTime.now().toIso8601String(),
+      },
+    ];
+
+    final guncelAnlasma = PazarAnlasmaTeklifi(
+      id: anlasma.id,
+      ilanId: anlasma.ilanId,
+      ilanBaslik: anlasma.ilanBaslik,
+      gonderenUid: anlasma.gonderenUid,
+      gonderenAd: anlasma.gonderenAd,
+      gonderenTelefon: anlasma.gonderenTelefon,
+      gonderenTeamId: anlasma.gonderenTeamId,
+      aliciUid: anlasma.aliciUid,
+      aliciAd: anlasma.aliciAd,
+      aliciTelefon: anlasma.aliciTelefon,
+      brans: anlasma.brans,
+      ekipAdi: anlasma.ekipAdi,
+      santiyeId: hedefSantiyeId,
+      santiyeAdi: hedefSantiyeAdi,
+      ucretTipi: anlasma.ucretTipi,
+      birimUcret: anlasma.birimUcret,
+      tahminiIsMiktari: anlasma.tahminiIsMiktari,
+      ekipKisiSayisi: anlasma.ekipKisiSayisi,
+      durum: 'ekibe_aktarildi',
+      mesajlar: yeniMesajlar,
+      guncellenmeTarihi: DateTime.now(),
+    );
+
+    await pazarAnlasmasiKaydetVeyaGuncelle(guncelAnlasma);
+
+    // 4. İşi alan kişiye bildirim gönder
+    if (uyeUid.isNotEmpty) {
+      try {
+        await _db.collection('users').doc(uyeUid).collection('bildirimler').add({
+          'baslik': 'Tebrikler! Anlaşmanız Onaylandı 🤝',
+          'mesaj':
+              '"$hedefSantiyeAdi" şantiyesine ${anlasma.ekipKisiSayisi > 1 ? "[${anlasma.ekipAdi}] ekibiyle" : "usta olarak"} dahil edildiniz.',
+          'tarih': FieldValue.serverTimestamp(),
+          'okundu': false,
+          'tur': 'pazar_anlasma_onay',
+          'teamId': isverenTeamId,
+          'santiyeAdi': hedefSantiyeAdi,
+        });
+      } catch (e) {
+        debugPrint('Bildirim oluşturma hatası: $e');
+      }
+    }
+
+    // 5. İşlem günlüğü kaydet
+    try {
+      await logIslem(isverenTeamId, 'PAZAR_TRANSFER', {
+        'uyeUid': uyeUid,
+        'uyeAd': uyeAd,
+        'ekipAdi': anlasma.ekipAdi,
+        'santiye': hedefSantiyeAdi,
+        'kisiSayisi': anlasma.ekipKisiSayisi,
+      });
+    } catch (e) {
+      debugPrint('Log işlemi hatası: $e');
+    }
+  }
+
   /// Kullanıcının benzer ilan ve arama bildirim alarmlarını kaydeder
   Future<void> ilanAlarmlariniKaydet(List<PazarIlanAlarmi> alarmlar) async {
     await _kullaniciRef.set({

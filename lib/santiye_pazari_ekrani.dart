@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 import 'package:url_launcher/url_launcher.dart';
 
 import 'bildirim_servisi.dart';
+import 'data_models.dart';
 import 'data/turkiye_il_ilce.dart';
 import 'firestore_servisi.dart';
 import 'format_yardimcisi.dart';
@@ -1912,91 +1913,68 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               ),
                     ),
 
-                    if (!aktarildiMi && widget.teamId.isNotEmpty) ...[
+                    if (aktarildiMi) ...[
+                      const SizedBox(height: 6),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          vertical: 8,
+                          horizontal: 12,
+                        ),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFF10B981).withValues(alpha: 0.12),
+                          borderRadius: BorderRadius.circular(10),
+                          border: Border.all(
+                            color: const Color(0xFF10B981).withValues(alpha: 0.3),
+                          ),
+                        ),
+                        child: Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            const Icon(
+                              Icons.check_circle_rounded,
+                              size: 16,
+                              color: Color(0xFF10B981),
+                            ),
+                            const SizedBox(width: 6),
+                            Flexible(
+                              child: Text(
+                                'Anlaşma onaylandı ve "${anlasma.santiyeAdi}" şantiyesine aktarıldı.',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w700,
+                                  color: Color(0xFF10B981),
+                                ),
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    ] else if (widget.teamId.isNotEmpty) ...[
                       const SizedBox(height: 6),
                       InkWell(
-                        onTap: () async {
-                          final ozelEkip = SantiyeOzelEkibi(
-                            id: '',
-                            ekipAdi: anlasma.ekipAdi,
-                            brans: anlasma.brans,
-                            ekipBasiAd: karsiTarafAd,
-                            ekipBasiTelefon:
-                                anlasma.aliciTelefon.isNotEmpty
-                                    ? anlasma.aliciTelefon
-                                    : anlasma.gonderenTelefon,
-                            ekipBasiUid:
-                                anlasma.gonderenUid == benimUid
-                                    ? anlasma.aliciUid
-                                    : anlasma.gonderenUid,
-                            santiyeId: anlasma.santiyeId,
-                            santiyeAdi: anlasma.santiyeAdi,
-                            kisiSayisi: anlasma.ekipKisiSayisi,
-                            anlasmaTipi: anlasma.ucretTipi,
-                            birimUcret: anlasma.birimUcret,
-                            toplamAnlasmaMiktari:
-                                anlasma.ucretTipi == 'goturu'
-                                    ? 100
-                                    : anlasma.tahminiIsMiktari,
-                            olusturulmaTarihi: DateTime.now(),
-                          );
+                        onTap: () {
+                          final karsiTarafUid = anlasma.gonderenUid == benimUid
+                              ? anlasma.aliciUid
+                              : anlasma.gonderenUid;
+                          final karsiTarafTelefon = anlasma.aliciTelefon.isNotEmpty
+                              ? anlasma.aliciTelefon
+                              : anlasma.gonderenTelefon;
 
-                          await servisi.santiyeOzelEkibiEkle(
-                            widget.teamId,
-                            ozelEkip,
-                            iscilereDeEkle: true,
-                          );
-
-                          final yeniMesajlar = [
-                            ...anlasma.mesajlar,
-                            {
-                              'gonderenUid': benimUid,
-                              'gonderenAd': benimAd,
-                              'mesaj':
-                                  '🤝 Anlaşma onaylandı! ${anlasma.ekipAdi} ekibi Şantiyeler & İşçiler sekmesine eklendi.',
-                              'tarih': DateTime.now().toIso8601String(),
+                          _anlasmaOnayVeEkibeAktarModal(
+                            parentContext: context,
+                            servisi: servisi,
+                            anlasma: anlasma,
+                            benimUid: benimUid,
+                            benimAd: benimAd,
+                            karsiTarafUid: karsiTarafUid,
+                            karsiTarafAd: karsiTarafAd,
+                            karsiTarafTelefon: karsiTarafTelefon,
+                            onTamamlandi: () {
+                              setModalState(() {});
                             },
-                          ];
-
-                          final guncel = PazarAnlasmaTeklifi(
-                            id: anlasma.id,
-                            ilanId: anlasma.ilanId,
-                            ilanBaslik: anlasma.ilanBaslik,
-                            gonderenUid: anlasma.gonderenUid,
-                            gonderenAd: anlasma.gonderenAd,
-                            gonderenTelefon: anlasma.gonderenTelefon,
-                            gonderenTeamId: anlasma.gonderenTeamId,
-                            aliciUid: anlasma.aliciUid,
-                            aliciAd: anlasma.aliciAd,
-                            aliciTelefon: anlasma.aliciTelefon,
-                            brans: anlasma.brans,
-                            ekipAdi: anlasma.ekipAdi,
-                            santiyeId: anlasma.santiyeId,
-                            santiyeAdi: anlasma.santiyeAdi,
-                            ucretTipi: anlasma.ucretTipi,
-                            birimUcret: anlasma.birimUcret,
-                            tahminiIsMiktari: anlasma.tahminiIsMiktari,
-                            ekipKisiSayisi: anlasma.ekipKisiSayisi,
-                            durum: 'ekibe_aktarildi',
-                            mesajlar: yeniMesajlar,
-                            guncellenmeTarihi: DateTime.now(),
                           );
-
-                          await servisi.pazarAnlasmasiKaydetVeyaGuncelle(
-                            guncel,
-                          );
-                          setModalState(() {});
-                          if (context.mounted) {
-                            ScaffoldMessenger.of(context).showSnackBar(
-                              SnackBar(
-                                content: Text(
-                                  '"${anlasma.ekipAdi}" İşçiler & Ekipler sekmesine eklendi!',
-                                ),
-                                backgroundColor: _themePrimary,
-                              ),
-                            );
-                          }
-                          widget.onEkibeAktarildi?.call();
                         },
                         child: Container(
                           padding: const EdgeInsets.symmetric(
@@ -2025,7 +2003,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               const SizedBox(width: 6),
                               Flexible(
                                 child: Text(
-                                  'Anlaşmayı Onayla & Şantiyeye / İşçilere Ekle',
+                                  anlasma.ekipKisiSayisi > 1
+                                      ? 'Ekip Parantezi ile Şantiyeye Dahil Et'
+                                      : 'Ustayı Şantiyeye & Kadroya Ekle',
                                   maxLines: 1,
                                   overflow: TextOverflow.ellipsis,
                                   style: TextStyle(
@@ -2092,6 +2072,340 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               ),
                         ),
                       ],
+                    ),
+                  ],
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  Future<void> _anlasmaOnayVeEkibeAktarModal({
+    required BuildContext parentContext,
+    required FirestoreServisi servisi,
+    required PazarAnlasmaTeklifi anlasma,
+    required String benimUid,
+    required String benimAd,
+    required String karsiTarafUid,
+    required String karsiTarafAd,
+    required String karsiTarafTelefon,
+    required VoidCallback onTamamlandi,
+  }) async {
+    final isDark = Theme.of(parentContext).brightness == Brightness.dark;
+    final isCrew = anlasma.ekipKisiSayisi > 1;
+
+    // İşverenin şantiyelerini yükle
+    List<Santiye> mevcutSantiyeler = [];
+    try {
+      mevcutSantiyeler = await servisi.getSantiyelerStream(widget.teamId).first;
+    } catch (_) {}
+
+    String seciliSantiyeId = anlasma.santiyeId;
+    String seciliSantiyeAdi =
+        anlasma.santiyeAdi.isNotEmpty ? anlasma.santiyeAdi : 'Ana Şantiye';
+
+    if (seciliSantiyeId.isEmpty && mevcutSantiyeler.isNotEmpty) {
+      final eslesen = mevcutSantiyeler.firstWhere(
+        (s) =>
+            s.ad.trim().toLowerCase() ==
+            seciliSantiyeAdi.trim().toLowerCase(),
+        orElse: () => mevcutSantiyeler.first,
+      );
+      seciliSantiyeId = eslesen.id ?? '';
+      seciliSantiyeAdi = eslesen.ad;
+    }
+
+    final santiyeAdiCtrl = TextEditingController(text: seciliSantiyeAdi);
+    bool yukleniyor = false;
+
+    if (!parentContext.mounted) return;
+
+    await showModalBottomSheet(
+      context: parentContext,
+      backgroundColor: Colors.transparent,
+      isScrollControlled: true,
+      builder: (bCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Container(
+              padding: EdgeInsets.fromLTRB(
+                16,
+                16,
+                16,
+                MediaQuery.viewInsetsOf(context).bottom + 20,
+              ),
+              child: PanelGlassWidgets.buildModalSheet(
+                context: context,
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Row(
+                      children: [
+                        PanelGlassWidgets.buildIconBadge(
+                          context: context,
+                          icon:
+                              isCrew
+                                  ? Icons.groups_rounded
+                                  : Icons.person_add_alt_1_rounded,
+                          accentColor: _themeContrastIcon,
+                        ),
+                        const SizedBox(width: 10),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                isCrew
+                                    ? 'Ekip Parantezi ile Dahil Et'
+                                    : 'Ustayı Şantiyeye Dahil Et',
+                                style: TextStyle(
+                                  fontSize: 16,
+                                  fontWeight: FontWeight.w800,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF102A43),
+                                ),
+                              ),
+                              Text(
+                                isCrew
+                                    ? '[${anlasma.ekipAdi}] (${anlasma.ekipKisiSayisi} Kişi)'
+                                    : '$karsiTarafAd • ${anlasma.brans}',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  color:
+                                      isDark ? Colors.white70 : Colors.black54,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.close_rounded, size: 20),
+                          onPressed: () => Navigator.pop(bCtx),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Bilgilendirme Kutusu
+                    Container(
+                      padding: const EdgeInsets.all(12),
+                      decoration: BoxDecoration(
+                        color: const Color(0xFF0F7C86).withValues(alpha: 0.10),
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: const Color(0xFF0F7C86).withValues(alpha: 0.25),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Row(
+                            children: [
+                              const Icon(
+                                Icons.info_outline_rounded,
+                                size: 16,
+                                color: Color(0xFF0F7C86),
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                isCrew
+                                    ? 'Ekip Entegrasyon Detayları'
+                                    : 'Personel Entegrasyon Detayları',
+                                style: const TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w800,
+                                  color: Color(0xFF0F7C86),
+                                ),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            isCrew
+                                ? '• İşçiler kadronuza "[${anlasma.ekipAdi}] $karsiTarafAd (${anlasma.ekipKisiSayisi} Kişi)" paranteziyle eklenecektir.\n• Şantiyeler sekmesinde bu ekibe özel hakediş, ilerleme ve puantaj yönetimi aktif olacaktır.\n• Ekip başının hesabına takım erişim yetkisi tanımlanacaktır.'
+                                : '• $karsiTarafAd, şantiyenizin İşçiler listesine usta olarak eklenecektir.\n• Günlük yevmiyesi veya anlaşma tutarı otomatik tanımlanacaktır.\n• Çalışanın hesabına şantiye yetkilendirmesi tanımlanacaktır.',
+                            style: TextStyle(
+                              fontSize: 11.5,
+                              height: 1.4,
+                              color: isDark ? Colors.white70 : Colors.black87,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+
+                    // Şantiye Seçimi
+                    Text(
+                      'Hedef Şantiye:',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w700,
+                        color: isDark ? Colors.white70 : Colors.black87,
+                      ),
+                    ),
+                    const SizedBox(height: 6),
+                    if (mevcutSantiyeler.isNotEmpty)
+                      PanelGlassWidgets.buildInset(
+                        context: context,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 10,
+                          vertical: 2,
+                        ),
+                        child: DropdownButtonHideUnderline(
+                          child: DropdownButton<String>(
+                            value:
+                                mevcutSantiyeler.any(
+                                      (s) => s.id == seciliSantiyeId,
+                                    )
+                                    ? seciliSantiyeId
+                                    : mevcutSantiyeler.first.id,
+                            isExpanded: true,
+                            items:
+                                mevcutSantiyeler.map((s) {
+                                  return DropdownMenuItem<String>(
+                                    value: s.id,
+                                    child: Text(
+                                      s.ad,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  );
+                                }).toList(),
+                            onChanged: (val) {
+                              if (val != null) {
+                                final secilen = mevcutSantiyeler.firstWhere(
+                                  (s) => s.id == val,
+                                );
+                                setModalState(() {
+                                  seciliSantiyeId = secilen.id ?? '';
+                                  seciliSantiyeAdi = secilen.ad;
+                                  santiyeAdiCtrl.text = secilen.ad;
+                                });
+                              }
+                            },
+                          ),
+                        ),
+                      )
+                    else
+                      PanelGlassWidgets.buildInset(
+                        context: context,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 2,
+                        ),
+                        child: TextField(
+                          controller: santiyeAdiCtrl,
+                          decoration: const InputDecoration(
+                            hintText: 'Şantiye adı (Örn: Merkez Şantiye)',
+                            border: InputBorder.none,
+                          ),
+                          onChanged: (v) => seciliSantiyeAdi = v.trim(),
+                        ),
+                      ),
+                    const SizedBox(height: 16),
+
+                    ElevatedButton.icon(
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: const Color(0xFF0F7C86),
+                        foregroundColor: Colors.white,
+                        minimumSize: const Size(double.infinity, 48),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                      ),
+                      icon:
+                          yukleniyor
+                              ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                  color: Colors.white,
+                                ),
+                              )
+                              : const Icon(Icons.handshake_rounded),
+                      label: Text(
+                        yukleniyor
+                            ? 'Dahil Ediliyor...'
+                            : 'Onayla & Şantiyeye Dahil Et',
+                        style: const TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                        ),
+                      ),
+                      onPressed:
+                          yukleniyor
+                              ? null
+                              : () async {
+                                setModalState(() => yukleniyor = true);
+                                try {
+                                  final ozelEkip =
+                                      isCrew
+                                          ? SantiyeOzelEkibi(
+                                            id: '',
+                                            ekipAdi: anlasma.ekipAdi,
+                                            brans: anlasma.brans,
+                                            ekipBasiAd: karsiTarafAd,
+                                            ekipBasiTelefon: karsiTarafTelefon,
+                                            ekipBasiUid: karsiTarafUid,
+                                            santiyeId: seciliSantiyeId,
+                                            santiyeAdi: seciliSantiyeAdi,
+                                            kisiSayisi: anlasma.ekipKisiSayisi,
+                                            anlasmaTipi: anlasma.ucretTipi,
+                                            birimUcret: anlasma.birimUcret,
+                                            toplamAnlasmaMiktari:
+                                                anlasma.ucretTipi == 'goturu'
+                                                    ? 100
+                                                    : anlasma.tahminiIsMiktari,
+                                            olusturulmaTarihi: DateTime.now(),
+                                          )
+                                          : null;
+
+                                  await servisi.pazarAnlasmasiniEkibeDahilEt(
+                                    isverenTeamId: widget.teamId,
+                                    uyeUid: karsiTarafUid,
+                                    uyeAd: karsiTarafAd,
+                                    uyeTelefon: karsiTarafTelefon,
+                                    ozelEkip: ozelEkip,
+                                    anlasma: anlasma,
+                                    hedefSantiyeId: seciliSantiyeId,
+                                    hedefSantiyeAdi: seciliSantiyeAdi,
+                                  );
+
+                                  if (bCtx.mounted) Navigator.pop(bCtx);
+                                  onTamamlandi();
+                                  if (parentContext.mounted) {
+                                    ScaffoldMessenger.of(
+                                      parentContext,
+                                    ).showSnackBar(
+                                      SnackBar(
+                                        content: Text(
+                                          isCrew
+                                              ? '"${anlasma.ekipAdi}" ekibi Şantiyeler & İşçiler bölümüne eklendi!'
+                                              : '$karsiTarafAd işçi kadronuza eklendi!',
+                                        ),
+                                        backgroundColor: const Color(0xFF0F7C86),
+                                      ),
+                                    );
+                                  }
+                                  widget.onEkibeAktarildi?.call();
+                                } catch (e) {
+                                  setModalState(() => yukleniyor = false);
+                                  if (parentContext.mounted) {
+                                    ScaffoldMessenger.of(
+                                      parentContext,
+                                    ).showSnackBar(
+                                      SnackBar(content: Text('Hata oluştu: $e')),
+                                    );
+                                  }
+                                }
+                              },
                     ),
                   ],
                 ),
