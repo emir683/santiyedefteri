@@ -5488,126 +5488,331 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
 
                     // SEKME 0: İLANLAR (Arama & Filtre Kontrol Çubuğu)
                     if (_seciliSekme == 0) ...[
-                      Row(
-                        children: [
-                          Expanded(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
-                              onTap: () => _aramaModalAc(context),
-                              child: PanelGlassWidgets.buildInset(
-                                context: context,
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 8,
+                      // 1. ARAMA VE BİLDİRİM / ALARM ÇUBUĞU
+                      PanelGlassWidgets.buildCard(
+                        context: context,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 3,
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.search_rounded,
+                              size: 20,
+                              color: _themeContrastIcon,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: TextField(
+                                controller: _aramaCtrl,
+                                onChanged: (val) {
+                                  setState(() {
+                                    _aramaMetni = val;
+                                  });
+                                },
+                                style: TextStyle(
+                                  fontSize: 13.5,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark
+                                          ? Colors.white
+                                          : const Color(0xFF102A43),
                                 ),
-                                borderColor:
-                                    _aramaMetni.isNotEmpty
-                                        ? _themeContrastIcon
-                                        : null,
-                                child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                decoration: InputDecoration(
+                                  hintText:
+                                      'İlan ara (iş, usta, şehir, kalıp, sıva...)',
+                                  hintStyle: TextStyle(
+                                    fontSize: 12.5,
+                                    fontWeight: FontWeight.normal,
+                                    color:
+                                        isDark
+                                            ? Colors.white38
+                                            : Colors.black38,
+                                  ),
+                                  border: InputBorder.none,
+                                  isDense: true,
+                                  contentPadding: const EdgeInsets.symmetric(
+                                    vertical: 9,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            if (_aramaMetni.isNotEmpty)
+                              GestureDetector(
+                                onTap: () {
+                                  setState(() {
+                                    _aramaCtrl.clear();
+                                    _aramaMetni = '';
+                                  });
+                                },
+                                child: const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 4),
+                                  child: Icon(
+                                    Icons.cancel_rounded,
+                                    size: 18,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                              ),
+                            const SizedBox(width: 4),
+                            Container(
+                              height: 18,
+                              width: 1,
+                              color: isDark ? Colors.white12 : Colors.black12,
+                            ),
+                            const SizedBox(width: 4),
+                            // Alarm / Bildirim Butonu
+                            InkWell(
+                              borderRadius: BorderRadius.circular(10),
+                              onTap:
+                                  () => _ilanAlarmiModalAc(
+                                    context: context,
+                                    servisi: servisi,
+                                    mevcutAlarmlar: benimAlarmlar,
+                                  ),
+                              child: Padding(
+                                padding: const EdgeInsets.all(6),
+                                child: Stack(
+                                  clipBehavior: Clip.none,
                                   children: [
                                     Icon(
-                                      Icons.search_rounded,
-                                      size: 16,
-                                      color: _themeContrastIcon,
-                                    ),
-                                    const SizedBox(width: 4),
-                                    Flexible(
-                                      child: Text(
-                                        _aramaMetni.isEmpty
-                                            ? 'Ara'
-                                            : _aramaMetni,
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight:
-                                              _aramaMetni.isEmpty
-                                                  ? FontWeight.w600
-                                                  : FontWeight.w800,
-                                          color:
-                                              isDark
+                                      Icons.notifications_active_rounded,
+                                      size: 20,
+                                      color:
+                                          benimAlarmlar.isNotEmpty
+                                              ? const Color(0xFF0F7C86)
+                                              : (isDark
                                                   ? Colors.white70
-                                                  : const Color(0xFF102A43),
-                                        ),
-                                      ),
+                                                  : Colors.black54),
                                     ),
-                                    if (_aramaMetni.isNotEmpty) ...[
-                                      const SizedBox(width: 4),
-                                      GestureDetector(
-                                        onTap:
-                                            () => setState(() {
-                                              _aramaCtrl.clear();
-                                              _aramaMetni = '';
-                                            }),
-                                        child: Icon(
-                                          Icons.close_rounded,
-                                          size: 14,
-                                          color: Colors.grey,
+                                    if (benimAlarmlar.isNotEmpty)
+                                      Positioned(
+                                        right: -2,
+                                        top: -2,
+                                        child: Container(
+                                          padding: const EdgeInsets.all(3),
+                                          decoration: const BoxDecoration(
+                                            color: Color(0xFF0F7C86),
+                                            shape: BoxShape.circle,
+                                          ),
+                                          constraints: const BoxConstraints(
+                                            minWidth: 8,
+                                            minHeight: 8,
+                                          ),
                                         ),
                                       ),
-                                    ],
                                   ],
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
 
-                          Expanded(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
+                      // 2. KATEGORİ SEÇİM ŞERİDİ (Yatay Kaydırılabilir)
+                      SingleChildScrollView(
+                        scrollDirection: Axis.horizontal,
+                        physics: const BouncingScrollPhysics(),
+                        child: Row(
+                          children: [
+                            _buildPazarKategoriFiltreChip(
+                              label: 'Tüm İlanlar',
+                              secili: _seciliKategori == 'tumu',
+                              icon: Icons.grid_view_rounded,
+                              isDark: isDark,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _seciliKategori = 'tumu');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _buildPazarKategoriFiltreChip(
+                              label: 'İş İlanları',
+                              secili: _seciliKategori == 'is_ilani',
+                              icon: Icons.business_center_rounded,
+                              isDark: isDark,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _seciliKategori = 'is_ilani');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _buildPazarKategoriFiltreChip(
+                              label: 'Usta & Ekipler',
+                              secili: _seciliKategori == 'usta_ekip',
+                              icon: Icons.handyman_rounded,
+                              isDark: isDark,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(() => _seciliKategori = 'usta_ekip');
+                              },
+                            ),
+                            const SizedBox(width: 8),
+                            _buildPazarKategoriFiltreChip(
+                              label: 'Şirketler & Tedarik',
+                              secili: _seciliKategori == 'sirket_vitrini',
+                              icon: Icons.apartment_rounded,
+                              isDark: isDark,
+                              onTap: () {
+                                HapticFeedback.selectionClick();
+                                setState(
+                                  () => _seciliKategori = 'sirket_vitrini',
+                                );
+                              },
+                            ),
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+
+                      // 3. ALT BİLGİ VE FİLTRE/SIRALAMA KONTROL ŞERİDİ
+                      Padding(
+                        padding: const EdgeInsets.symmetric(horizontal: 2),
+                        child: Row(
+                          children: [
+                            // Sonuç Sayısı ve Temizle Butonu
+                            Expanded(
+                              child: Row(
+                                children: [
+                                  Text(
+                                    '${filtreliIlanlar.length} ilan',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w700,
+                                      color:
+                                          isDark
+                                              ? Colors.white60
+                                              : Colors.black54,
+                                    ),
+                                  ),
+                                  if (_aktifFiltreSayisi > 0 ||
+                                      _aramaMetni.isNotEmpty) ...[
+                                    const SizedBox(width: 6),
+                                    GestureDetector(
+                                      onTap: () {
+                                        HapticFeedback.selectionClick();
+                                        setState(() {
+                                          _seciliKategori = 'tumu';
+                                          _seciliInsaatKategorisi = 'tumu';
+                                          _seciliSehir = 'Tüm Türkiye';
+                                          _seciliSeviyeFiltre = 'tumu';
+                                          _seciliUcretTipiFiltre = 'tumu';
+                                          _seciliProjeTipi = 'tumu';
+                                          _aramaCtrl.clear();
+                                          _aramaMetni = '';
+                                        });
+                                      },
+                                      child: Container(
+                                        padding: const EdgeInsets.symmetric(
+                                          horizontal: 6,
+                                          vertical: 2,
+                                        ),
+                                        decoration: BoxDecoration(
+                                          color: Colors.redAccent.withValues(
+                                            alpha: 0.12,
+                                          ),
+                                          borderRadius: BorderRadius.circular(
+                                            6,
+                                          ),
+                                        ),
+                                        child: Row(
+                                          mainAxisSize: MainAxisSize.min,
+                                          children: const [
+                                            Icon(
+                                              Icons.close_rounded,
+                                              size: 11,
+                                              color: Colors.redAccent,
+                                            ),
+                                            SizedBox(width: 2),
+                                            Text(
+                                              'Temizle',
+                                              style: TextStyle(
+                                                fontSize: 10.5,
+                                                fontWeight: FontWeight.w700,
+                                                color: Colors.redAccent,
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ],
+                              ),
+                            ),
+                            // Detaylı Filtre Butonu
+                            InkWell(
+                              borderRadius: BorderRadius.circular(10),
                               onTap: () => _filtreModalAc(context),
-                              child: PanelGlassWidgets.buildInset(
-                                context: context,
+                              child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 8,
+                                  horizontal: 10,
+                                  vertical: 5,
                                 ),
-                                borderColor:
-                                    _aktifFiltreSayisi > 0
-                                        ? _themeContrastIcon
-                                        : null,
+                                decoration: BoxDecoration(
+                                  color:
+                                      _aktifFiltreSayisi > 0
+                                          ? _themePrimary.withValues(
+                                            alpha: 0.15,
+                                          )
+                                          : (isDark
+                                              ? Colors.white.withValues(
+                                                alpha: 0.06,
+                                              )
+                                              : Colors.black.withValues(
+                                                alpha: 0.04,
+                                              )),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color:
+                                        _aktifFiltreSayisi > 0
+                                            ? _themePrimary.withValues(
+                                              alpha: 0.5,
+                                            )
+                                            : (isDark
+                                                ? Colors.white12
+                                                : Colors.black12),
+                                  ),
+                                ),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.tune_rounded,
-                                      size: 15,
-                                      color: _themeContrastIcon,
-                                    ),
-                                    const SizedBox(width: 3),
-                                    Flexible(
-                                      child: Text(
-                                        _aktifFiltreSayisi == 0
-                                            ? 'Filtrele'
-                                            : 'Filtre ($_aktifFiltreSayisi)',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight:
-                                              _aktifFiltreSayisi > 0
-                                                  ? FontWeight.w800
-                                                  : FontWeight.w600,
-                                          color:
-                                              isDark
+                                      size: 14,
+                                      color:
+                                          _aktifFiltreSayisi > 0
+                                              ? _themePrimary
+                                              : (isDark
                                                   ? Colors.white70
-                                                  : const Color(0xFF102A43),
-                                        ),
+                                                  : Colors.black87),
+                                    ),
+                                    const SizedBox(width: 4),
+                                    Text(
+                                      _aktifFiltreSayisi > 0
+                                          ? 'Filtre ($_aktifFiltreSayisi)'
+                                          : 'Filtrele',
+                                      style: TextStyle(
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color:
+                                            _aktifFiltreSayisi > 0
+                                                ? _themePrimary
+                                                : (isDark
+                                                    ? Colors.white70
+                                                    : Colors.black87),
                                       ),
                                     ),
                                   ],
                                 ),
                               ),
                             ),
-                          ),
-                          const SizedBox(width: 6),
-
-                          Expanded(
-                            child: InkWell(
-                              borderRadius: BorderRadius.circular(12),
+                            const SizedBox(width: 6),
+                            // Sıralama Butonu
+                            InkWell(
+                              borderRadius: BorderRadius.circular(10),
                               onTap: () {
                                 HapticFeedback.selectionClick();
                                 setState(
@@ -5615,90 +5820,57 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                       _siralaTarihYeniMi = !_siralaTarihYeniMi,
                                 );
                               },
-                              child: PanelGlassWidgets.buildInset(
-                                context: context,
+                              child: Container(
                                 padding: const EdgeInsets.symmetric(
-                                  horizontal: 8,
-                                  vertical: 8,
+                                  horizontal: 10,
+                                  vertical: 5,
+                                ),
+                                decoration: BoxDecoration(
+                                  color:
+                                      isDark
+                                          ? Colors.white.withValues(alpha: 0.06)
+                                          : Colors.black.withValues(
+                                            alpha: 0.04,
+                                          ),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color:
+                                        isDark
+                                            ? Colors.white12
+                                            : Colors.black12,
+                                  ),
                                 ),
                                 child: Row(
-                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Icon(
                                       Icons.swap_vert_rounded,
-                                      size: 15,
-                                      color: _themeContrastIcon,
+                                      size: 14,
+                                      color:
+                                          isDark
+                                              ? Colors.white70
+                                              : Colors.black87,
                                     ),
-                                    const SizedBox(width: 3),
-                                    Flexible(
-                                      child: Text(
-                                        _siralaTarihYeniMi
-                                            ? 'En Yeni'
-                                            : 'En Eski',
-                                        maxLines: 1,
-                                        overflow: TextOverflow.ellipsis,
-                                        style: TextStyle(
-                                          fontSize: 11.5,
-                                          fontWeight: FontWeight.w700,
-                                          color:
-                                              isDark
-                                                  ? Colors.white70
-                                                  : const Color(0xFF102A43),
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 6),
-
-                          InkWell(
-                            borderRadius: BorderRadius.circular(12),
-                            onTap:
-                                () => _ilanAlarmiModalAc(
-                                  context: context,
-                                  servisi: servisi,
-                                  mevcutAlarmlar: benimAlarmlar,
-                                ),
-                            child: PanelGlassWidgets.buildInset(
-                              context: context,
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 8,
-                              ),
-                              borderColor:
-                                  benimAlarmlar.isNotEmpty
-                                      ? const Color(
-                                        0xFF0F7C86,
-                                      ).withValues(alpha: 0.6)
-                                      : null,
-                              child: Row(
-                                children: [
-                                  Icon(
-                                    Icons.notifications_active_rounded,
-                                    size: 16,
-                                    color: _themeContrastIcon,
-                                  ),
-                                  if (benimAlarmlar.isNotEmpty) ...[
                                     const SizedBox(width: 3),
                                     Text(
-                                      '${benimAlarmlar.length}',
+                                      _siralaTarihYeniMi ? 'En Yeni' : 'En Eski',
                                       style: TextStyle(
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w800,
-                                        color: _themeContrastIcon,
+                                        fontSize: 11.5,
+                                        fontWeight: FontWeight.w700,
+                                        color:
+                                            isDark
+                                              ? Colors.white70
+                                              : Colors.black87,
                                       ),
                                     ),
                                   ],
-                                ],
+                                ),
                               ),
                             ),
-                          ),
-                        ],
+                          ],
+                        ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
 
                       // İLANLAR LİSTESİ
                       if (filtreliIlanlar.isEmpty)
@@ -5859,6 +6031,64 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
               ),
             ],
           ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildPazarKategoriFiltreChip({
+    required String label,
+    required bool secili,
+    required IconData icon,
+    required bool isDark,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      borderRadius: BorderRadius.circular(10),
+      onTap: onTap,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 180),
+        padding: const EdgeInsets.symmetric(horizontal: 11, vertical: 6.5),
+        decoration: BoxDecoration(
+          color:
+              secili
+                  ? _themePrimary
+                  : (isDark
+                      ? Colors.white.withValues(alpha: 0.06)
+                      : Colors.black.withValues(alpha: 0.04)),
+          borderRadius: BorderRadius.circular(10),
+          border: Border.all(
+            color:
+                secili
+                    ? _themePrimary
+                    : (isDark ? Colors.white12 : Colors.black12),
+            width: secili ? 1.4 : 1,
+          ),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              icon,
+              size: 14,
+              color:
+                  secili
+                      ? Colors.white
+                      : (isDark ? Colors.white70 : const Color(0xFF102A43)),
+            ),
+            const SizedBox(width: 5),
+            Text(
+              label,
+              style: TextStyle(
+                fontSize: 11.5,
+                fontWeight: secili ? FontWeight.w800 : FontWeight.w600,
+                color:
+                    secili
+                        ? Colors.white
+                        : (isDark ? Colors.white70 : const Color(0xFF102A43)),
+              ),
+            ),
+          ],
         ),
       ),
     );
@@ -8520,7 +8750,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     );
   }
 
-  /// Sadeleştirilmiş Kısa Özet İlan Kartı (Görüntülenme Sayısı ve Favorileme Entegre)
+  /// Yeni Nesil Düzenli, Modern & Anlaşılabilir İlan Kartı
   Widget _buildKompaktIlanKarti({
     required BuildContext context,
     required FirestoreServisi servisi,
@@ -8536,6 +8766,23 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     KullaniciSahaProfili? benimProfil,
   }) {
     final katAdi = InsaatKategorileri.kategoriAdi(ilan.kategoriKodu);
+    final katIkon = InsaatKategorileri.kategoriIkonu(ilan.kategoriKodu);
+
+    // İlan Türü Etiketi (İş İlanı, Usta/Ekip, Şirket Vitrini)
+    String turEtiketi = 'İş İlanı';
+    Color turRengi = const Color(0xFF0284C7); // Sky blue
+    IconData turIkon = Icons.business_center_rounded;
+
+    if (ilan.ilanKategorisi == 'usta_ekip' ||
+        ilan.ilanKategorisi == 'normal_isci') {
+      turEtiketi = ilan.arananSeviye == 'ekip' ? 'Ekip İlanı' : 'Usta İlanı';
+      turRengi = const Color(0xFF059669); // Emerald green
+      turIkon = Icons.handyman_rounded;
+    } else if (ilan.ilanKategorisi == 'sirket_vitrini') {
+      turEtiketi = 'Şirket / Tedarik';
+      turRengi = const Color(0xFF7C3AED); // Purple
+      turIkon = Icons.apartment_rounded;
+    }
 
     return InkWell(
       borderRadius: BorderRadius.circular(16),
@@ -8555,166 +8802,301 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
       child: PanelGlassWidgets.buildCard(
         context: context,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        borderAccent: ilan.oneCikarildiMi
-            ? Colors.amber.shade600
-            : (alarmEslesiyor ? _themePrimary.withValues(alpha: 0.6) : null),
+        borderAccent:
+            ilan.oneCikarildiMi
+                ? Colors.amber.shade600
+                : (alarmEslesiyor
+                    ? _themePrimary.withValues(alpha: 0.6)
+                    : null),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            // Üst Kısım: Fotoğraf (varsa), Başlık, Acil Rozeti ve Favori Butonu
+            // 1. ÜST ROZET VE AKSİYON ŞERİDİ
+            Row(
+              children: [
+                // İlan Türü Rozeti
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 7,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: turRengi.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(6),
+                    border: Border.all(color: turRengi.withValues(alpha: 0.3)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(turIkon, size: 12, color: turRengi),
+                      const SizedBox(width: 4),
+                      Text(
+                        turEtiketi,
+                        style: TextStyle(
+                          fontSize: 10.5,
+                          fontWeight: FontWeight.w800,
+                          color: turRengi,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                if (ilan.oneCikarildiMi) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.amber.withValues(alpha: 0.18),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.amber.shade700.withValues(alpha: 0.4),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Icon(
+                          Icons.star_rounded,
+                          size: 12,
+                          color: Colors.amber.shade700,
+                        ),
+                        const SizedBox(width: 2),
+                        Text(
+                          'ÖNE ÇIKAN',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.amber.shade800,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                if (ilan.acilMi) ...[
+                  const SizedBox(width: 6),
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 6,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.redAccent.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(6),
+                      border: Border.all(
+                        color: Colors.redAccent.withValues(alpha: 0.3),
+                      ),
+                    ),
+                    child: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: const [
+                        Icon(
+                          Icons.bolt_rounded,
+                          size: 12,
+                          color: Colors.redAccent,
+                        ),
+                        SizedBox(width: 2),
+                        Text(
+                          'ACİL',
+                          style: TextStyle(
+                            fontSize: 10,
+                            fontWeight: FontWeight.w800,
+                            color: Colors.redAccent,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+                const Spacer(),
+                // Favori İkonu
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: () => onFavoriToggle(!favorideMi),
+                  child: Padding(
+                    padding: const EdgeInsets.only(left: 8, bottom: 2),
+                    child: Icon(
+                      favorideMi
+                          ? Icons.favorite_rounded
+                          : Icons.favorite_border_rounded,
+                      size: 21,
+                      color:
+                          favorideMi
+                              ? Colors.redAccent
+                              : (isDark ? Colors.white38 : Colors.grey.shade400),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 9),
+
+            // 2. ORTA GÖVDE: FOTOĞRAF / İKON + BAŞLIK + LOKASYON & BRANŞ
             Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                if (ilan.fotograflar.isNotEmpty) ...[
-                  ClipRRect(
-                    borderRadius: BorderRadius.circular(10),
-                    child: Container(
-                      width: 52,
-                      height: 52,
-                      color: Colors.black12,
-                      child: Stack(
-                        fit: StackFit.expand,
-                        children: [
-                          PazarGorselYardimcisi.buildGorsel(
-                            ilan.fotograflar.first,
-                            fit: BoxFit.cover,
-                          ),
-                          if (ilan.fotograflar.length > 1)
-                            Positioned(
-                              bottom: 2,
-                              right: 2,
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 4,
-                                  vertical: 1,
+                // Sol Görsel Kutusu (66x66 standart ölçü)
+                ClipRRect(
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    width: 66,
+                    height: 66,
+                    decoration: BoxDecoration(
+                      color:
+                          isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : const Color(0xFFF1F5F9),
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(
+                        color:
+                            isDark
+                                ? Colors.white12
+                                : Colors.black.withValues(alpha: 0.06),
+                      ),
+                    ),
+                    child:
+                        ilan.fotograflar.isNotEmpty
+                            ? Stack(
+                              fit: StackFit.expand,
+                              children: [
+                                PazarGorselYardimcisi.buildGorsel(
+                                  ilan.fotograflar.first,
+                                  fit: BoxFit.cover,
                                 ),
-                                decoration: BoxDecoration(
-                                  color: Colors.black87,
-                                  borderRadius: BorderRadius.circular(4),
-                                ),
-                                child: Text(
-                                  '+${ilan.fotograflar.length}',
-                                  style: const TextStyle(
-                                    fontSize: 8.5,
-                                    fontWeight: FontWeight.w800,
-                                    color: Colors.white,
+                                if (ilan.fotograflar.length > 1)
+                                  Positioned(
+                                    bottom: 2,
+                                    right: 2,
+                                    child: Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 4,
+                                        vertical: 1,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: Colors.black.withValues(
+                                          alpha: 0.75,
+                                        ),
+                                        borderRadius: BorderRadius.circular(4),
+                                      ),
+                                      child: Text(
+                                        '+${ilan.fotograflar.length}',
+                                        style: const TextStyle(
+                                          fontSize: 9,
+                                          fontWeight: FontWeight.w800,
+                                          color: Colors.white,
+                                        ),
+                                      ),
+                                    ),
                                   ),
+                              ],
+                            )
+                            : Center(
+                              child: Icon(
+                                katIkon,
+                                size: 30,
+                                color: _themeContrastIcon.withValues(
+                                  alpha: 0.75,
                                 ),
                               ),
                             ),
-                        ],
-                      ),
-                    ),
                   ),
-                  const SizedBox(width: 10),
-                ],
+                ),
+                const SizedBox(width: 12),
+
+                // Sağ Detay Bilgileri
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Başlık
+                      Text(
+                        ilan.baslik,
+                        maxLines: 2,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 14.5,
+                          fontWeight: FontWeight.w800,
+                          height: 1.25,
+                          color:
+                              isDark ? Colors.white : const Color(0xFF102A43),
+                        ),
+                      ),
+                      const SizedBox(height: 5),
+
+                      // Branş & Kapasite Bilgisi
                       Row(
-                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          Expanded(
+                          Icon(
+                            Icons.construction_rounded,
+                            size: 13,
+                            color: isDark ? Colors.white54 : Colors.black45,
+                          ),
+                          const SizedBox(width: 4),
+                          Flexible(
                             child: Text(
-                              ilan.baslik,
-                              maxLines: 2,
+                              katAdi,
+                              maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                fontSize: 14.5,
-                                fontWeight: FontWeight.w800,
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w700,
                                 color:
                                     isDark
-                                        ? Colors.white
-                                        : const Color(0xFF102A43),
+                                        ? Colors.white70
+                                        : const Color(0xFF334E68),
                               ),
                             ),
                           ),
-                          if (ilan.oneCikarildiMi) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                          if (ilan.ekipKisiSayisi > 0) ...[
+                            Text(
+                              ' • ${ilan.ekipKisiSayisi} Kişi',
+                              style: TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: isDark ? Colors.white54 : Colors.black45,
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.amber.withValues(alpha: 0.18),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: Colors.amber.shade700.withValues(
-                                    alpha: 0.4,
-                                  ),
+                            ),
+                          ] else if (ilan.seviye.isNotEmpty) ...[
+                            Flexible(
+                              child: Text(
+                                ' • ${ilan.seviye}',
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: TextStyle(
+                                  fontSize: 11.5,
+                                  fontWeight: FontWeight.w600,
+                                  color:
+                                      isDark ? Colors.white54 : Colors.black45,
                                 ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.star_rounded,
-                                    size: 12,
-                                    color: Colors.amber.shade700,
-                                  ),
-                                  const SizedBox(width: 2),
-                                  Text(
-                                    'ÖNE ÇIKAN',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.amber.shade800,
-                                    ),
-                                  ),
-                                ],
                               ),
                             ),
                           ],
-                          if (ilan.acilMi) ...[
-                            const SizedBox(width: 6),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 6,
-                                vertical: 2,
+                        ],
+                      ),
+                      const SizedBox(height: 3),
+
+                      // Lokasyon
+                      Row(
+                        children: [
+                          const Icon(
+                            Icons.location_on_outlined,
+                            size: 13,
+                            color: Color(0xFF0E7490),
+                          ),
+                          const SizedBox(width: 3),
+                          Expanded(
+                            child: Text(
+                              '${ilan.sehir}${ilan.ilce.isNotEmpty ? " / ${ilan.ilce}" : ""}',
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: const TextStyle(
+                                fontSize: 11.5,
+                                fontWeight: FontWeight.w600,
+                                color: Color(0xFF0E7490),
                               ),
-                              decoration: BoxDecoration(
-                                color: Colors.redAccent.withValues(alpha: 0.15),
-                                borderRadius: BorderRadius.circular(6),
-                                border: Border.all(
-                                  color: Colors.redAccent.withValues(
-                                    alpha: 0.3,
-                                  ),
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    Icons.bolt_rounded,
-                                    size: 12,
-                                    color: Colors.redAccent,
-                                  ),
-                                  SizedBox(width: 2),
-                                  Text(
-                                    'ACİL',
-                                    style: TextStyle(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w800,
-                                      color: Colors.redAccent,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                          const SizedBox(width: 6),
-                          // Favori İkonu
-                          GestureDetector(
-                            onTap: () => onFavoriToggle(!favorideMi),
-                            child: Icon(
-                              favorideMi
-                                  ? Icons.favorite_rounded
-                                  : Icons.favorite_border_rounded,
-                              size: 20,
-                              color:
-                                  favorideMi ? Colors.redAccent : Colors.grey,
                             ),
                           ),
                         ],
@@ -8724,106 +9106,157 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                 ),
               ],
             ),
-            const SizedBox(height: 8),
 
-            // Rozetler & Görüntülenme / Favori İstatistikleri
+            // 3. AYRAÇ ÇİZGİSİ
+            Container(
+              margin: const EdgeInsets.only(top: 10, bottom: 8),
+              height: 0.8,
+              color:
+                  isDark
+                      ? Colors.white10
+                      : Colors.black.withValues(alpha: 0.05),
+            ),
+
+            // 4. ALT ŞERİT: FİNANSAL ÜCRET + METRAJ & KALAN SÜRE / İSTATİSTİKLER
             Row(
               children: [
-                Expanded(
-                  child: Wrap(
-                    spacing: 6,
-                    runSpacing: 6,
+                // Fiyat / Ücret Bilgisi (Belirgin ve Net)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFF0F766E).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: const Color(0xFF0F766E).withValues(alpha: 0.25),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
                     children: [
-                      if (ilan.kategoriKodu.isNotEmpty)
-                        _buildMiniBadge(
-                          icon: Icons.foundation_rounded,
-                          text: katAdi,
-                          color: _themeContrastIcon,
-                        ),
-                      _buildMiniBadge(
-                        icon: Icons.location_on_outlined,
-                        text:
-                            '${ilan.sehir}${ilan.ilce.isNotEmpty ? " / ${ilan.ilce}" : ""}',
-                        color: const Color(0xFF0E7490),
+                      const Icon(
+                        Icons.payments_outlined,
+                        size: 13.5,
+                        color: Color(0xFF0F766E),
                       ),
-                      if (ilan.webSitesi.isNotEmpty)
-                        _buildMiniBadge(
-                          icon: Icons.language_rounded,
-                          text: 'Web',
-                          color: _themeContrastIcon,
+                      const SizedBox(width: 4),
+                      Text(
+                        ilan.ucretEtiketi,
+                        style: const TextStyle(
+                          fontSize: 12,
+                          fontWeight: FontWeight.w900,
+                          color: Color(0xFF0F766E),
                         ),
-                      if (ilan.tahminiMetrajVeyaGun.isNotEmpty)
-                        _buildMiniBadge(
-                          icon: Icons.straighten_rounded,
-                          text: ilan.tahminiMetrajVeyaGun,
-                          color: const Color(0xFF0E7490),
-                        ),
-                      _buildMiniBadge(
-                        icon: Icons.payments_outlined,
-                        text: ilan.ucretEtiketi,
-                        color: const Color(0xFFD97706),
                       ),
-                      if (ilan.olusturanUid == benimUid)
-                        _buildMiniBadge(
-                          icon: ilan.suresiDolduMu
-                              ? Icons.timer_off_rounded
-                              : Icons.hourglass_top_rounded,
-                          text: ilan.suresiDolduMu
-                              ? 'Süresi Doldu'
-                              : 'Kalan: ${ilan.kalanSureMetni}',
-                          color: ilan.suresiDolduMu
-                              ? Colors.red
-                              : const Color(0xFF10B981),
-                        ),
                     ],
                   ),
                 ),
-                const SizedBox(width: 6),
-                // Kaç kişi gördü / favoriledi minyatür istatistik
-                Column(
-                  crossAxisAlignment: CrossAxisAlignment.end,
-                  children: [
-                    Row(
+                if (ilan.tahminiMetrajVeyaGun.isNotEmpty) ...[
+                  const SizedBox(width: 6),
+                  Flexible(
+                    child: Text(
+                      '(${ilan.tahminiMetrajVeyaGun})',
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: isDark ? Colors.white54 : Colors.black45,
+                      ),
+                    ),
+                  ),
+                ],
+                const Spacer(),
+
+                // Sağ Taraf: İlan Sahibi ise Kalan Süre, Değilse Görüntülenme / Beğeni
+                if (ilan.olusturanUid == benimUid)
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 7,
+                      vertical: 3,
+                    ),
+                    decoration: BoxDecoration(
+                      color:
+                          ilan.suresiDolduMu
+                              ? Colors.red.withValues(alpha: 0.12)
+                              : const Color(0xFF10B981).withValues(alpha: 0.12),
+                      borderRadius: BorderRadius.circular(7),
+                      border: Border.all(
+                        color:
+                            ilan.suresiDolduMu
+                                ? Colors.red.withValues(alpha: 0.28)
+                                : const Color(0xFF10B981).withValues(
+                                  alpha: 0.28,
+                                ),
+                      ),
+                    ),
+                    child: Row(
                       mainAxisSize: MainAxisSize.min,
                       children: [
                         Icon(
-                          Icons.remove_red_eye_rounded,
-                          size: 11,
-                          color: Colors.grey,
+                          ilan.suresiDolduMu
+                              ? Icons.timer_off_rounded
+                              : Icons.hourglass_top_rounded,
+                          size: 12,
+                          color:
+                              ilan.suresiDolduMu
+                                  ? Colors.red
+                                  : const Color(0xFF10B981),
                         ),
                         const SizedBox(width: 3),
                         Text(
-                          '${ilan.goruntulenmeSayisi}',
+                          ilan.suresiDolduMu
+                              ? 'Süresi Doldu'
+                              : 'Kalan: ${ilan.kalanSureMetni}',
                           style: TextStyle(
                             fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.grey,
+                            fontWeight: FontWeight.w800,
+                            color:
+                                ilan.suresiDolduMu
+                                    ? Colors.red
+                                    : const Color(0xFF10B981),
                           ),
                         ),
                       ],
                     ),
-                    const SizedBox(height: 2),
-                    Row(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Icon(
-                          Icons.favorite_rounded,
-                          size: 11,
-                          color: Colors.redAccent,
+                  )
+                else
+                  Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(
+                        Icons.visibility_outlined,
+                        size: 12,
+                        color: isDark ? Colors.white38 : Colors.grey.shade600,
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${ilan.goruntulenmeSayisi}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: isDark ? Colors.white38 : Colors.grey.shade600,
                         ),
-                        const SizedBox(width: 3),
-                        Text(
-                          '${ilan.favoriSayisi + (favorideMi ? 1 : 0)}',
-                          style: TextStyle(
-                            fontSize: 10.5,
-                            fontWeight: FontWeight.w700,
-                            color: Colors.redAccent,
-                          ),
+                      ),
+                      const SizedBox(width: 8),
+                      Icon(
+                        Icons.favorite_rounded,
+                        size: 12,
+                        color: Colors.redAccent.withValues(alpha: 0.8),
+                      ),
+                      const SizedBox(width: 3),
+                      Text(
+                        '${ilan.favoriSayisi + (favorideMi ? 1 : 0)}',
+                        style: TextStyle(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w700,
+                          color: Colors.redAccent.withValues(alpha: 0.8),
                         ),
-                      ],
-                    ),
-                  ],
-                ),
+                      ),
+                    ],
+                  ),
               ],
             ),
           ],

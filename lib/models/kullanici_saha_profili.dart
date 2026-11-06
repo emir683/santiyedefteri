@@ -406,6 +406,11 @@ class InsaatKategorileri {
     final bul = tumu.firstWhere((e) => e['id'] == id, orElse: () => const {});
     return (bul['baslik'] as String?) ?? id;
   }
+
+  static IconData kategoriIkonu(String id) {
+    final bul = tumu.firstWhere((e) => e['id'] == id, orElse: () => const {});
+    return (bul['ikon'] as IconData?) ?? Icons.engineering_rounded;
+  }
 }
 
 /// Şantiye Pazarı İlan / Şirket / İş Arıyorum modeli
