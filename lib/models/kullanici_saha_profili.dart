@@ -455,6 +455,11 @@ class SantiyePazarIlani {
   final int favoriSayisi;
   final List<String> favorileyenUidler;
 
+  // Süre & Premium Alanları
+  final int ilanSuresiGun; // 3 (ücretsiz), 7 (1 hafta), 14 (2 hafta), 30 (1 ay)
+  final DateTime? bitisTarihi;
+  final bool oneCikarildiMi; // Vitrinde öne çıkarılan ilan
+
   const SantiyePazarIlani({
     required this.id,
     required this.olusturanUid,
@@ -496,7 +501,35 @@ class SantiyePazarIlani {
     this.goruntulenmeSayisi = 0,
     this.favoriSayisi = 0,
     this.favorileyenUidler = const [],
+    this.ilanSuresiGun = 3,
+    this.bitisTarihi,
+    this.oneCikarildiMi = false,
   });
+
+  bool get suresiDolduMu {
+    final bitis = bitisTarihi ?? tarih.add(Duration(days: ilanSuresiGun));
+    return DateTime.now().isAfter(bitis);
+  }
+
+  Duration get kalanSure {
+    final bitis = bitisTarihi ?? tarih.add(Duration(days: ilanSuresiGun));
+    return bitis.difference(DateTime.now());
+  }
+
+  String get kalanSureMetni {
+    final sure = kalanSure;
+    if (sure.isNegative) return 'Süresi Doldu';
+    final gun = sure.inDays;
+    final saat = sure.inHours % 24;
+    final dakika = sure.inMinutes % 60;
+    if (gun > 0) {
+      return '$gun gün $saat saat';
+    } else if (saat > 0) {
+      return '$saat saat $dakika dk';
+    } else {
+      return '$dakika dakika kaldı';
+    }
+  }
 
   static String ucretTipiBasligi(String tip) {
     switch (tip) {
@@ -620,6 +653,9 @@ class SantiyePazarIlani {
       'goruntulenmeSayisi': goruntulenmeSayisi,
       'favoriSayisi': favoriSayisi,
       'favorileyenUidler': favorileyenUidler,
+      'ilanSuresiGun': ilanSuresiGun,
+      'bitisTarihi': bitisTarihi != null ? Timestamp.fromDate(bitisTarihi!) : null,
+      'oneCikarildiMi': oneCikarildiMi,
     };
   }
 
@@ -631,6 +667,17 @@ class SantiyePazarIlani {
     } else if (rawDate is String) {
       parsedDate = DateTime.tryParse(rawDate) ?? DateTime.now();
     }
+
+    final int suresiGun = ((map['ilanSuresiGun'] ?? 3) as num).toInt();
+    DateTime? parsedBitis;
+    final rawBitis = map['bitisTarihi'];
+    if (rawBitis is Timestamp) {
+      parsedBitis = rawBitis.toDate();
+    } else if (rawBitis is String) {
+      parsedBitis = DateTime.tryParse(rawBitis);
+    }
+    parsedBitis ??= parsedDate.add(Duration(days: suresiGun));
+
     return SantiyePazarIlani(
       id: (map['id'] ?? '').toString(),
       olusturanUid: (map['olusturanUid'] ?? '').toString(),
@@ -675,6 +722,9 @@ class SantiyePazarIlani {
       goruntulenmeSayisi: ((map['goruntulenmeSayisi'] ?? 0) as num).toInt(),
       favoriSayisi: ((map['favoriSayisi'] ?? 0) as num).toInt(),
       favorileyenUidler: List<String>.from(map['favorileyenUidler'] as List? ?? const []),
+      ilanSuresiGun: suresiGun,
+      bitisTarihi: parsedBitis,
+      oneCikarildiMi: map['oneCikarildiMi'] == true,
     );
   }
 }

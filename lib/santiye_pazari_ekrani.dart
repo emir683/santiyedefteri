@@ -13,6 +13,9 @@ import 'format_yardimcisi.dart';
 import 'models/kullanici_saha_profili.dart';
 import 'widgets/floating_liquid_app_bar.dart';
 import 'widgets/glass_surface.dart';
+import 'kufur_filtre_servisi.dart';
+import 'pazar_foto_servisi.dart';
+import 'kullanici_ilan_limit_servisi.dart';
 
 class SantiyePazariEkrani extends StatefulWidget {
   final String teamId;
@@ -151,20 +154,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
             InteractiveViewer(
               child: ClipRRect(
                 borderRadius: BorderRadius.circular(16),
-                child: Image.network(
+                child: PazarGorselYardimcisi.buildGorsel(
                   imageUrl,
                   fit: BoxFit.contain,
-                  errorBuilder: (_, __, ___) => Container(
-                    padding: const EdgeInsets.all(24),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFF0F172A),
-                      borderRadius: BorderRadius.circular(16),
-                    ),
-                    child: const Text(
-                      'Fotoğraf yüklenemedi',
-                      style: TextStyle(color: Colors.white),
-                    ),
-                  ),
                 ),
               ),
             ),
@@ -1076,6 +1068,91 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                       ),
                       const SizedBox(height: 6),
 
+                      // İLAN SAHİBİNE ÖZEL SÜRE BİLGİSİ (Sadece ilanı koyan kişi görebilir)
+                      if (ilan.olusturanUid == benimUid) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: ilan.suresiDolduMu
+                                ? Colors.red.withValues(alpha: 0.12)
+                                : const Color(0xFF10B981).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: ilan.suresiDolduMu
+                                  ? Colors.red.withValues(alpha: 0.4)
+                                  : const Color(0xFF10B981).withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                ilan.suresiDolduMu
+                                    ? Icons.timer_off_rounded
+                                    : Icons.hourglass_top_rounded,
+                                size: 16,
+                                color: ilan.suresiDolduMu
+                                    ? Colors.red
+                                    : const Color(0xFF10B981),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  ilan.suresiDolduMu
+                                      ? 'Bu ilanın yayın süresi doldu (Pazarda gizlendi).'
+                                      : 'Kalan İlan Süreniz: ${ilan.kalanSureMetni} (Sadece siz görebilirsiniz)',
+                                  style: TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w700,
+                                    color: ilan.suresiDolduMu
+                                        ? Colors.red
+                                        : const Color(0xFF10B981),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
+                      if (ilan.oneCikarildiMi) ...[
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 12,
+                            vertical: 6,
+                          ),
+                          decoration: BoxDecoration(
+                            color: Colors.amber.withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: Colors.amber.shade700.withValues(alpha: 0.4),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              Icon(
+                                Icons.star_rounded,
+                                size: 16,
+                                color: Colors.amber.shade800,
+                              ),
+                              const SizedBox(width: 6),
+                              Text(
+                                'Bu ilan vitrinde Öne Çıkarılmıştır ⭐',
+                                style: TextStyle(
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w700,
+                                  color: Colors.amber.shade900,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                      ],
+
                       // GÖRÜNTÜLENME & FAVORİ SAYACI ŞERİDİ
                       PanelGlassWidgets.buildInset(
                         context: ctx,
@@ -1143,20 +1220,11 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   borderRadius: BorderRadius.circular(12),
                                   child: Stack(
                                     children: [
-                                      Image.network(
+                                      PazarGorselYardimcisi.buildGorsel(
                                         url,
                                         width: 170,
                                         height: 130,
                                         fit: BoxFit.cover,
-                                        errorBuilder: (_, __, ___) => Container(
-                                          width: 170,
-                                          height: 130,
-                                          color: Colors.black12,
-                                          child: const Icon(
-                                            Icons.broken_image_rounded,
-                                            color: Colors.grey,
-                                          ),
-                                        ),
                                       ),
                                       Positioned(
                                         bottom: 6,
@@ -2431,12 +2499,20 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     if (temiz.isEmpty) return;
     msgCtrl.clear();
 
+    // Küfür & Argo Sansürü ve Admin İhbarı
+    final guvenliMesaj = await KufurFiltreServisi.sansurleVeBildir(
+      metin: temiz,
+      kaynak: 'Pazar Mesajlaşması',
+      kullaniciUid: benimUid,
+      kullaniciAd: benimAd,
+    );
+
     final guncelMesajlar = [
       ...anlasma.mesajlar,
       {
         'gonderenUid': benimUid,
         'gonderenAd': benimAd,
-        'mesaj': temiz,
+        'mesaj': guvenliMesaj,
         'tarih': DateTime.now().toIso8601String(),
       },
     ];
@@ -2444,7 +2520,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     anlasma.mesajlar.add({
       'gonderenUid': benimUid,
       'gonderenAd': benimAd,
-      'mesaj': temiz,
+      'mesaj': guvenliMesaj,
       'tarih': DateTime.now().toIso8601String(),
     });
     setModalState(() {});
@@ -2739,6 +2815,14 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   final anlasmaId =
                                       'anlasma_${DateTime.now().millisecondsSinceEpoch}';
 
+                                  final guvenliIlkMesaj =
+                                      await KufurFiltreServisi.sansurleVeBildir(
+                                        metin: mesajCtrl.text.trim(),
+                                        kaynak: 'Pazar İlk Teklif Mesajı',
+                                        kullaniciUid: benimUid,
+                                        kullaniciAd: benimAd,
+                                      );
+
                                   final yeniAnlasma = PazarAnlasmaTeklifi(
                                     id: anlasmaId,
                                     ilanId: ilan.id,
@@ -2766,7 +2850,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                       {
                                         'gonderenUid': benimUid,
                                         'gonderenAd': benimAd,
-                                        'mesaj': mesajCtrl.text.trim(),
+                                        'mesaj': guvenliIlkMesaj,
                                         'tarih':
                                             DateTime.now().toIso8601String(),
                                       },
@@ -2984,8 +3068,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     BuildContext context,
     FirestoreServisi servisi,
     KullaniciSahaProfili profil,
-    String kullaniciAd,
-  ) async {
+    String kullaniciAd, {
+    List<SantiyePazarIlani> mevcutIlanlar = const [],
+  }) async {
     final baslikCtrl = TextEditingController();
     final aciklamaCtrl = TextEditingController();
     final tahminiMiktarCtrl = TextEditingController(text: '3.000 m²');
@@ -2996,7 +3081,12 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     final makineKapasiteCtrl = TextEditingController();
     final webSitesiCtrl = TextEditingController(text: profil.webSitesi);
     final List<String> fotograflar = List<String>.from(profil.fotograflar);
-    final fotoUrlCtrl = TextEditingController();
+
+    int seciliIlanSuresiGun = 3; // 3 gün (ücretsiz), 7 gün (1 hafta), 14 gün (2 hafta), 30 gün (1 ay)
+    bool oneCikarildiMi = false;
+    bool fotoYukleniyor = false;
+
+    final limitDurumu = KullaniciIlanLimitServisi.limitHesapla(mevcutIlanlar);
 
     int seciliMod =
         profil.kullaniciTipi == KullaniciRolu.muteahhit
@@ -3122,6 +3212,68 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                         ],
                       ),
                       const SizedBox(height: 12),
+
+                      // İlan Hakları & Limit Durumu Kartı
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        margin: const EdgeInsets.only(bottom: 12),
+                        decoration: BoxDecoration(
+                          color: (limitDurumu.yayinlayabilirMi
+                                  ? const Color(0xFF0F7C86)
+                                  : Colors.red)
+                              .withValues(alpha: 0.10),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: (limitDurumu.yayinlayabilirMi
+                                    ? const Color(0xFF0F7C86)
+                                    : Colors.red)
+                                .withValues(alpha: 0.25),
+                          ),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              limitDurumu.yayinlayabilirMi
+                                  ? Icons.assignment_turned_in_rounded
+                                  : Icons.warning_amber_rounded,
+                              size: 18,
+                              color: limitDurumu.yayinlayabilirMi
+                                  ? const Color(0xFF0F7C86)
+                                  : Colors.red,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'İlan Yayınlama Haklarınız: Haftalık ${limitDurumu.kalanHaftalikHak}/1 • Aylık ${limitDurumu.kalanAylikHak}/4',
+                                    style: TextStyle(
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w800,
+                                      color: limitDurumu.yayinlayabilirMi
+                                          ? const Color(0xFF0F7C86)
+                                          : Colors.red,
+                                    ),
+                                  ),
+                                  Text(
+                                    limitDurumu.yayinlayabilirMi
+                                        ? 'Standart üyelikle haftada 1 ücretsiz, ayda en fazla 4 ilan açabilirsiniz.'
+                                        : (limitDurumu.engelMesaji ?? 'Kota doldu.'),
+                                    style: TextStyle(
+                                      fontSize: 10.5,
+                                      color: isDark ? Colors.white60 : Colors.black54,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
 
                       // İlan Amacı Seçici (3 Mod)
                       PanelGlassWidgets.buildInset(
@@ -3889,7 +4041,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                       ),
                       const SizedBox(height: 10),
 
-                      // Fotoğraflar / Proje Görselleri
+                      // Fotoğraflar / Proje Görselleri (Gerçek Fotoğraf Seçme & NSFW Koruması)
                       PanelGlassWidgets.buildInset(
                         context: context,
                         padding: const EdgeInsets.all(12),
@@ -3944,69 +4096,126 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   ),
                               ],
                             ),
-                            const SizedBox(height: 8),
+                            const SizedBox(height: 10),
+
+                            // Cihazdan Gerçek Fotoğraf Seç Butonu (NSFW Korumalı)
                             Row(
                               children: [
                                 Expanded(
-                                  child: TextField(
-                                    controller: fotoUrlCtrl,
-                                    decoration: InputDecoration(
-                                      hintText: 'Fotoğraf Linki (URL)',
-                                      hintStyle: TextStyle(
-                                        fontSize: 12,
-                                        color:
-                                            isDark
-                                                ? Colors.white38
-                                                : Colors.black38,
+                                  child: ElevatedButton.icon(
+                                    style: ElevatedButton.styleFrom(
+                                      backgroundColor: _themePrimary.withValues(
+                                        alpha: 0.12,
                                       ),
-                                      isDense: true,
-                                      contentPadding:
-                                          const EdgeInsets.symmetric(
-                                            horizontal: 10,
-                                            vertical: 8,
+                                      foregroundColor: _themeContrastIcon,
+                                      elevation: 0,
+                                      padding: const EdgeInsets.symmetric(
+                                        vertical: 12,
+                                        horizontal: 12,
+                                      ),
+                                      shape: RoundedRectangleBorder(
+                                        borderRadius: BorderRadius.circular(10),
+                                        side: BorderSide(
+                                          color: _themePrimary.withValues(
+                                            alpha: 0.3,
                                           ),
-                                      border: OutlineInputBorder(
-                                        borderRadius: BorderRadius.circular(8),
-                                        borderSide: BorderSide(
-                                          color: (isDark
-                                                  ? Colors.white
-                                                  : Colors.black)
-                                              .withValues(alpha: 0.15),
                                         ),
                                       ),
                                     ),
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                ElevatedButton.icon(
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor: _themePrimary,
-                                    foregroundColor: Colors.white,
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 12,
-                                      vertical: 10,
+                                    icon:
+                                        fotoYukleniyor
+                                            ? const SizedBox(
+                                              width: 16,
+                                              height: 16,
+                                              child: CircularProgressIndicator(
+                                                strokeWidth: 2,
+                                              ),
+                                            )
+                                            : const Icon(
+                                              Icons.add_photo_alternate_rounded,
+                                              size: 18,
+                                            ),
+                                    label: Text(
+                                      fotoYukleniyor
+                                          ? 'Taranıyor & Yükleniyor...'
+                                          : 'Cihazdan Fotoğraf Seç & Yükle',
+                                      style: const TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: FontWeight.w800,
+                                      ),
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(8),
-                                    ),
+                                    onPressed:
+                                        fotoYukleniyor
+                                            ? null
+                                            : () async {
+                                              final myUid =
+                                                  FirebaseAuth
+                                                      .instance
+                                                      .currentUser
+                                                      ?.uid ??
+                                                  '';
+                                              setModalState(
+                                                () => fotoYukleniyor = true,
+                                              );
+                                              final analiz =
+                                                  await PazarFotoServisi
+                                                      .fotoSecVeYukle(
+                                                        kullaniciUid: myUid,
+                                                        kullaniciAd:
+                                                            kullaniciAd,
+                                                      );
+                                              setModalState(
+                                                () => fotoYukleniyor = false,
+                                              );
+
+                                              if (!analiz.guvenliMi) {
+                                                if (context.mounted) {
+                                                  showDialog(
+                                                    context: context,
+                                                    builder:
+                                                        (dCtx) => AlertDialog(
+                                                          title: const Row(
+                                                            children: [
+                                                              Icon(
+                                                                Icons
+                                                                    .security_rounded,
+                                                                color:
+                                                                    Colors.red,
+                                                              ),
+                                                              SizedBox(
+                                                                width: 8,
+                                                              ),
+                                                              Text(
+                                                                'Güvenlik Uyarısı',
+                                                              ),
+                                                            ],
+                                                          ),
+                                                          content: Text(
+                                                            analiz.redNedeni ??
+                                                                'Fotoğraf yüklenemedi.',
+                                                          ),
+                                                          actions: [
+                                                            TextButton(
+                                                              onPressed:
+                                                                  () =>
+                                                                      Navigator.pop(
+                                                                        dCtx,
+                                                                      ),
+                                                              child: const Text(
+                                                                'Anladım',
+                                                              ),
+                                                            ),
+                                                          ],
+                                                        ),
+                                                  );
+                                                }
+                                              } else if (analiz.url != null) {
+                                                setModalState(() {
+                                                  fotograflar.add(analiz.url!);
+                                                });
+                                              }
+                                            },
                                   ),
-                                  icon: const Icon(
-                                    Icons.add_rounded,
-                                    size: 16,
-                                  ),
-                                  label: const Text(
-                                    'Ekle',
-                                    style: TextStyle(fontSize: 12),
-                                  ),
-                                  onPressed: () {
-                                    final url = fotoUrlCtrl.text.trim();
-                                    if (url.isNotEmpty) {
-                                      setModalState(() {
-                                        fotograflar.add(url);
-                                        fotoUrlCtrl.clear();
-                                      });
-                                    }
-                                  },
                                 ),
                               ],
                             ),
@@ -4022,26 +4231,13 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   itemBuilder: (ctx, i) {
                                     return Stack(
                                       children: [
-                                        ClipRRect(
-                                          borderRadius:
-                                              BorderRadius.circular(8),
-                                          child: Image.network(
-                                            fotograflar[i],
-                                            width: 75,
-                                            height: 75,
-                                            fit: BoxFit.cover,
-                                            errorBuilder:
-                                                (_, __, ___) => Container(
-                                                  width: 75,
-                                                  height: 75,
-                                                  color: Colors.black12,
-                                                  child: const Icon(
-                                                    Icons
-                                                        .broken_image_rounded,
-                                                    size: 20,
-                                                    color: Colors.grey,
-                                                  ),
-                                                ),
+                                        PazarGorselYardimcisi.buildGorsel(
+                                          fotograflar[i],
+                                          width: 75,
+                                          height: 75,
+                                          fit: BoxFit.cover,
+                                          borderRadius: BorderRadius.circular(
+                                            8,
                                           ),
                                         ),
                                         Positioned(
@@ -4076,6 +4272,223 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                           ],
                         ),
                       ),
+                      const SizedBox(height: 12),
+
+                      // İlan Süresi & Paket Seçimi (3 gün, 1 hafta, 2 hafta, 1 ay)
+                      PanelGlassWidgets.buildInset(
+                        context: context,
+                        padding: const EdgeInsets.all(12),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Row(
+                              children: [
+                                Icon(
+                                  Icons.timer_outlined,
+                                  size: 17,
+                                  color: _themeContrastIcon,
+                                ),
+                                const SizedBox(width: 6),
+                                Text(
+                                  'İlan Süresi',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color:
+                                        isDark
+                                            ? Colors.white
+                                            : const Color(0xFF102A43),
+                                  ),
+                                ),
+                                const Spacer(),
+                                Text(
+                                  'Kalan süreyi sadece siz görürsünüz',
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: isDark ? Colors.white54 : Colors.grey[600],
+                                    fontStyle: FontStyle.italic,
+                                  ),
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 8),
+                            Row(
+                              children: [
+                                _buildSurePaketChip(
+                                  baslik: '3 Gün',
+                                  altBaslik: 'Ücretsiz',
+                                  secili: seciliIlanSuresiGun == 3,
+                                  onTap: () => setModalState(() => seciliIlanSuresiGun = 3),
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(width: 6),
+                                _buildSurePaketChip(
+                                  baslik: '1 Hafta',
+                                  altBaslik: '⭐ Premium',
+                                  secili: seciliIlanSuresiGun == 7,
+                                  onTap: () => setModalState(() => seciliIlanSuresiGun = 7),
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(width: 6),
+                                _buildSurePaketChip(
+                                  baslik: '2 Hafta',
+                                  altBaslik: '⭐ Premium',
+                                  secili: seciliIlanSuresiGun == 14,
+                                  onTap: () => setModalState(() => seciliIlanSuresiGun = 14),
+                                  isDark: isDark,
+                                ),
+                                const SizedBox(width: 6),
+                                _buildSurePaketChip(
+                                  baslik: '1 Ay',
+                                  altBaslik: '⭐ Ultra',
+                                  secili: seciliIlanSuresiGun == 30,
+                                  onTap: () => setModalState(() => seciliIlanSuresiGun = 30),
+                                  isDark: isDark,
+                                ),
+                              ],
+                            ),
+                            const SizedBox(height: 10),
+
+                            // Vitrinde Öne Çıkar Switch
+                            SwitchListTile.adaptive(
+                              contentPadding: EdgeInsets.zero,
+                              title: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.star_rounded,
+                                    size: 18,
+                                    color: Color(0xFFD97706),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    'İlanı Vitrinde Öne Çıkar',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: const Color(
+                                        0xFFD97706,
+                                      ).withValues(alpha: 0.15),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      '⭐ Premium',
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: Color(0xFFD97706),
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              subtitle: const Text(
+                                'İlanınız pazarın en başında altın çerçeveyle gösterilir.',
+                                style: TextStyle(fontSize: 10.5),
+                              ),
+                              value: oneCikarildiMi,
+                              onChanged:
+                                  (v) => setModalState(() => oneCikarildiMi = v),
+                            ),
+
+                            // Acil İlan Etiketi Switch
+                            SwitchListTile.adaptive(
+                              contentPadding: EdgeInsets.zero,
+                              title: Row(
+                                children: [
+                                  const Icon(
+                                    Icons.local_fire_department_rounded,
+                                    size: 18,
+                                    color: Colors.red,
+                                  ),
+                                  const SizedBox(width: 6),
+                                  const Text(
+                                    'Acil İlan Etiketi Ekle',
+                                    style: TextStyle(
+                                      fontSize: 12.5,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 1.5,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withValues(
+                                        alpha: 0.15,
+                                      ),
+                                      borderRadius: BorderRadius.circular(6),
+                                    ),
+                                    child: const Text(
+                                      '🚨 Premium',
+                                      style: TextStyle(
+                                        fontSize: 9.5,
+                                        fontWeight: FontWeight.w800,
+                                        color: Colors.red,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              subtitle: const Text(
+                                'Kırmızı acil rozetiyle ustaların ve ekiplerin dikkatini hemen çeker.',
+                                style: TextStyle(fontSize: 10.5),
+                              ),
+                              value: acilMi,
+                              onChanged: (v) => setModalState(() => acilMi = v),
+                            ),
+
+                            // Tanıtım Kampanyası Bilgilendirmesi
+                            if (seciliIlanSuresiGun > 3 || oneCikarildiMi || acilMi) ...[
+                              const SizedBox(height: 6),
+                              Container(
+                                padding: const EdgeInsets.all(8),
+                                decoration: BoxDecoration(
+                                  color: const Color(
+                                    0xFF10B981,
+                                  ).withValues(alpha: 0.12),
+                                  borderRadius: BorderRadius.circular(8),
+                                  border: Border.all(
+                                    color: const Color(
+                                      0xFF10B981,
+                                    ).withValues(alpha: 0.3),
+                                  ),
+                                ),
+                                child: const Row(
+                                  children: [
+                                    Icon(
+                                      Icons.card_giftcard_rounded,
+                                      size: 16,
+                                      color: Color(0xFF10B981),
+                                    ),
+                                    SizedBox(width: 6),
+                                    Expanded(
+                                      child: Text(
+                                        'Tanıtım Kampanyası: Premium süre ve öne çıkarma özellikleri şimdilik ücretsizdir!',
+                                        style: TextStyle(
+                                          fontSize: 10.5,
+                                          fontWeight: FontWeight.w700,
+                                          color: Color(0xFF10B981),
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ],
+                        ),
+                      ),
                       const SizedBox(height: 16),
 
                       ElevatedButton(
@@ -4091,6 +4504,40 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                             kaydediliyor
                                 ? null
                                 : () async {
+                                  // İlan Limiti Kontrolü
+                                  if (!limitDurumu.yayinlayabilirMi) {
+                                    if (context.mounted) {
+                                      showDialog(
+                                        context: context,
+                                        builder:
+                                            (dCtx) => AlertDialog(
+                                              title: const Row(
+                                                children: [
+                                                  Icon(
+                                                    Icons.warning_amber_rounded,
+                                                    color: Colors.orange,
+                                                  ),
+                                                  SizedBox(width: 8),
+                                                  Text('İlan Limiti'),
+                                                ],
+                                              ),
+                                              content: Text(
+                                                limitDurumu.engelMesaji ??
+                                                    'Haftalık 1 veya aylık 4 ilan kotanızı doldurdunuz.',
+                                              ),
+                                              actions: [
+                                                TextButton(
+                                                  onPressed:
+                                                      () => Navigator.pop(dCtx),
+                                                  child: const Text('Anladım'),
+                                                ),
+                                              ],
+                                            ),
+                                      );
+                                    }
+                                    return;
+                                  }
+
                                   if (baslikCtrl.text.trim().isEmpty) {
                                     baslikOnerisiUret(setModalState);
                                   }
@@ -4124,6 +4571,33 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                   final myUid =
                                       FirebaseAuth.instance.currentUser?.uid ??
                                       '';
+
+                                  // Küfür ve Argo Sansürü & Admin İhbarı
+                                  final sansurluBaslik =
+                                      await KufurFiltreServisi.sansurleVeBildir(
+                                        metin: baslikCtrl.text.trim(),
+                                        kaynak: 'İlan Başlığı',
+                                        kullaniciUid: myUid,
+                                        kullaniciAd: kullaniciAd,
+                                      );
+
+                                  final hamAciklama =
+                                      aciklamaCtrl.text.trim().isEmpty
+                                          ? '$seciliSehir projesinde $katBaslik alanında detaylı bilgi için iletişime geçebilirsiniz.'
+                                          : aciklamaCtrl.text.trim();
+
+                                  final sansurluAciklama =
+                                      await KufurFiltreServisi.sansurleVeBildir(
+                                        metin: hamAciklama,
+                                        kaynak: 'İlan Açıklaması',
+                                        kullaniciUid: myUid,
+                                        kullaniciAd: kullaniciAd,
+                                      );
+
+                                  final bitisTarihi = DateTime.now().add(
+                                    Duration(days: seciliIlanSuresiGun),
+                                  );
+
                                   final yeniIlan = SantiyePazarIlani(
                                     id:
                                         'pazar_${DateTime.now().millisecondsSinceEpoch}',
@@ -4156,7 +4630,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                     deneyimYili: seciliDeneyim,
                                     belgeGerekliMi: belgeGerekliMi,
                                     baslamaTarihiTipi: seciliBaslamaTarihi,
-                                    baslik: baslikCtrl.text.trim(),
+                                    baslik: sansurluBaslik,
                                     brans: katBaslik,
                                     seviye:
                                         SantiyePazarIlani.arananSeviyeBasligi(
@@ -4171,10 +4645,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                                 .isNotEmpty
                                             ? makineKapasiteCtrl.text.trim()
                                             : '$ucret ₺',
-                                    aciklama:
-                                        aciklamaCtrl.text.trim().isEmpty
-                                            ? '$seciliSehir projesinde $katBaslik alanında detaylı bilgi için iletişime geçebilirsiniz.'
-                                            : aciklamaCtrl.text.trim(),
+                                    aciklama: sansurluAciklama,
                                     telefon: telefonCtrl.text.trim(),
                                     webSitesi: webSitesiCtrl.text.trim(),
                                     fotograflar: fotograflar,
@@ -4182,6 +4653,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                     acilMi: acilMi,
                                     goruntulenmeSayisi: 1,
                                     favoriSayisi: 0,
+                                    ilanSuresiGun: seciliIlanSuresiGun,
+                                    bitisTarihi: bitisTarihi,
+                                    oneCikarildiMi: oneCikarildiMi,
                                   );
 
                                   await servisi.pazarIlaniEkle(
@@ -4282,6 +4756,73 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                 style: TextStyle(
                   fontSize: 9.5,
                   color: selected ? Colors.white70 : Colors.grey,
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildSurePaketChip({
+    required String baslik,
+    required String altBaslik,
+    required bool secili,
+    required VoidCallback onTap,
+    required bool isDark,
+  }) {
+    Color seciliRenk = const Color(0xFF10B981);
+    if (altBaslik.contains('Ultra')) {
+      seciliRenk = const Color(0xFFD97706);
+    } else if (altBaslik.contains('Premium')) {
+      seciliRenk = const Color(0xFF0F7C86);
+    }
+
+    return Expanded(
+      child: InkWell(
+        borderRadius: BorderRadius.circular(10),
+        onTap: onTap,
+        child: Container(
+          padding: const EdgeInsets.symmetric(vertical: 8, horizontal: 4),
+          decoration: BoxDecoration(
+            color:
+                secili
+                    ? seciliRenk
+                    : (isDark
+                        ? Colors.white.withValues(alpha: 0.05)
+                        : Colors.black.withValues(alpha: 0.04)),
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(
+              color:
+                  secili
+                      ? Colors.transparent
+                      : (isDark ? Colors.white12 : Colors.black12),
+            ),
+          ),
+          child: Column(
+            children: [
+              Text(
+                baslik,
+                style: TextStyle(
+                  fontSize: 12,
+                  fontWeight: FontWeight.w800,
+                  color:
+                      secili
+                          ? Colors.white
+                          : (isDark ? Colors.white70 : Colors.black87),
+                ),
+              ),
+              const SizedBox(height: 2),
+              Text(
+                altBaslik,
+                style: TextStyle(
+                  fontSize: 9.5,
+                  fontWeight: FontWeight.w700,
+                  color:
+                      secili
+                          ? Colors.white70
+                          : (isDark ? Colors.white38 : Colors.black45),
                 ),
               ),
             ],
@@ -4590,6 +5131,11 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
             // Pazar İlanları Filtreleme
             final filtreliIlanlar =
                 tumIlanlar.where((ilan) {
+                  // Süresi dolmuş ilanlar pazarda listelenmez (otomatik yayından kalkar)
+                  if (ilan.suresiDolduMu) {
+                    return false;
+                  }
+
                   if (_seciliKategori == 'is_ilani' &&
                       ilan.ilanKategorisi != 'is_ilani') {
                     return false;
@@ -4644,6 +5190,10 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                 }).toList();
 
             filtreliIlanlar.sort((a, b) {
+              // Öne çıkarılan ilanlar her zaman listenin en başında gösterilir
+              if (a.oneCikarildiMi && !b.oneCikarildiMi) return -1;
+              if (!a.oneCikarildiMi && b.oneCikarildiMi) return 1;
+
               return _siralaTarihYeniMi
                   ? b.tarih.compareTo(a.tarih)
                   : a.tarih.compareTo(b.tarih);
@@ -5008,6 +5558,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                           servisi,
                           benimProfil,
                           benimAd,
+                          mevcutIlanlar: benimIlanlarim,
                         ),
                   ),
                 ),
@@ -5197,6 +5748,167 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
 
         // 3. Alt Sekme İçeriği
         if (_profilAltSekme == 0) ...[
+          // İLAN YAYINLAMA HAKLARI KARTI
+          Builder(
+            builder: (ctx) {
+              final limit = KullaniciIlanLimitServisi.limitHesapla(ilanlarim);
+              return Container(
+                margin: const EdgeInsets.only(bottom: 10),
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  gradient: LinearGradient(
+                    colors: [
+                      const Color(0xFF0F7C86).withValues(alpha: 0.15),
+                      const Color(0xFF0E7490).withValues(alpha: 0.08),
+                    ],
+                  ),
+                  borderRadius: BorderRadius.circular(14),
+                  border: Border.all(
+                    color: const Color(0xFF0F7C86).withValues(alpha: 0.3),
+                  ),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        const Icon(
+                          Icons.verified_user_rounded,
+                          size: 18,
+                          color: Color(0xFF0F7C86),
+                        ),
+                        const SizedBox(width: 8),
+                        Text(
+                          'İlan Yayınlama Haklarınız',
+                          style: TextStyle(
+                            fontSize: 13.5,
+                            fontWeight: FontWeight.w800,
+                            color:
+                                isDark
+                                    ? Colors.white
+                                    : const Color(0xFF102A43),
+                          ),
+                        ),
+                        const Spacer(),
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 3,
+                          ),
+                          decoration: BoxDecoration(
+                            color: (limit.yayinlayabilirMi
+                                    ? const Color(0xFF10B981)
+                                    : Colors.red)
+                                .withValues(alpha: 0.15),
+                            borderRadius: BorderRadius.circular(8),
+                          ),
+                          child: Text(
+                            limit.yayinlayabilirMi
+                                ? 'Aktif Kota'
+                                : 'Kota Doldu',
+                            style: TextStyle(
+                              fontSize: 10.5,
+                              fontWeight: FontWeight.w800,
+                              color:
+                                  limit.yayinlayabilirMi
+                                      ? const Color(0xFF10B981)
+                                      : Colors.red,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 10),
+                    Row(
+                      children: [
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  isDark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.white.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Bu Haftaki Kalan',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${limit.kalanHaftalikHak} / ${IlanLimitDurumu.haftalikLimit} İlan',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF0F7C86),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 8,
+                              horizontal: 10,
+                            ),
+                            decoration: BoxDecoration(
+                              color:
+                                  isDark
+                                      ? Colors.white.withValues(alpha: 0.05)
+                                      : Colors.white.withValues(alpha: 0.7),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                const Text(
+                                  'Bu Ayki Kalan',
+                                  style: TextStyle(
+                                    fontSize: 10.5,
+                                    color: Colors.grey,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                Text(
+                                  '${limit.kalanAylikHak} / ${IlanLimitDurumu.aylikLimit} İlan',
+                                  style: const TextStyle(
+                                    fontSize: 13,
+                                    fontWeight: FontWeight.w800,
+                                    color: Color(0xFF0E7490),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Haftada en fazla 1, ayda ise en fazla 4 ilan yayınlayabilirsiniz.',
+                      style: TextStyle(
+                        fontSize: 10.5,
+                        color: isDark ? Colors.white60 : Colors.black54,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
           // İLANLARIM
           if (ilanlarim.isEmpty)
             PanelGlassWidgets.buildCard(
@@ -5240,6 +5952,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                             servisi,
                             benimProfil,
                             benimAd,
+                            mevcutIlanlar: ilanlarim,
                           ),
                     ),
                   ],
@@ -5745,21 +6458,11 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                       ),
                                   child: ClipRRect(
                                     borderRadius: BorderRadius.circular(10),
-                                    child: Image.network(
+                                    child: PazarGorselYardimcisi.buildGorsel(
                                       imgUrl,
                                       width: 110,
                                       height: 80,
                                       fit: BoxFit.cover,
-                                      errorBuilder:
-                                          (_, __, ___) => Container(
-                                            width: 110,
-                                            height: 80,
-                                            color: Colors.black12,
-                                            child: const Icon(
-                                              Icons.broken_image_rounded,
-                                              color: Colors.grey,
-                                            ),
-                                          ),
                                     ),
                                   ),
                                 );
@@ -7612,8 +8315,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
       child: PanelGlassWidgets.buildCard(
         context: context,
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
-        borderAccent:
-            alarmEslesiyor ? _themePrimary.withValues(alpha: 0.6) : null,
+        borderAccent: ilan.oneCikarildiMi
+            ? Colors.amber.shade600
+            : (alarmEslesiyor ? _themePrimary.withValues(alpha: 0.6) : null),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
@@ -7631,15 +8335,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                       child: Stack(
                         fit: StackFit.expand,
                         children: [
-                          Image.network(
+                          PazarGorselYardimcisi.buildGorsel(
                             ilan.fotograflar.first,
                             fit: BoxFit.cover,
-                            errorBuilder:
-                                (_, __, ___) => const Icon(
-                                  Icons.image_outlined,
-                                  size: 22,
-                                  color: Colors.grey,
-                                ),
                           ),
                           if (ilan.fotograflar.length > 1)
                             Positioned(
@@ -7692,6 +8390,43 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               ),
                             ),
                           ),
+                          if (ilan.oneCikarildiMi) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.amber.withValues(alpha: 0.18),
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(
+                                  color: Colors.amber.shade700.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.star_rounded,
+                                    size: 12,
+                                    color: Colors.amber.shade700,
+                                  ),
+                                  const SizedBox(width: 2),
+                                  Text(
+                                    'ÖNE ÇIKAN',
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w800,
+                                      color: Colors.amber.shade800,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
                           if (ilan.acilMi) ...[
                             const SizedBox(width: 6),
                             Container(
@@ -7788,6 +8523,18 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                         text: ilan.ucretEtiketi,
                         color: const Color(0xFFD97706),
                       ),
+                      if (ilan.olusturanUid == benimUid)
+                        _buildMiniBadge(
+                          icon: ilan.suresiDolduMu
+                              ? Icons.timer_off_rounded
+                              : Icons.hourglass_top_rounded,
+                          text: ilan.suresiDolduMu
+                              ? 'Süresi Doldu'
+                              : 'Kalan: ${ilan.kalanSureMetni}',
+                          color: ilan.suresiDolduMu
+                              ? Colors.red
+                              : const Color(0xFF10B981),
+                        ),
                     ],
                   ),
                 ),
