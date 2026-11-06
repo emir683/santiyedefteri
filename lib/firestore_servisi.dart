@@ -1369,12 +1369,27 @@ class FirestoreServisi {
 
   /// Şantiye Pazarı'ndaki kullanıcının taraf olduğu (gönderen veya alıcı) tüm anlaşmaları ve mesajları canlı dinler
   Stream<List<PazarAnlasmaTeklifi>> getPazarAnlasmalariStream() {
-    return _db.collection('pazar_anlasmalari').snapshots().map((snap) {
-      return snap.docs
-          .map((doc) => PazarAnlasmaTeklifi.fromMap(doc.data()))
-          .where((a) => a.gonderenUid == kullaniciId || a.aliciUid == kullaniciId)
-          .toList();
-    });
+    if (kullaniciId.isEmpty) {
+      return Stream.value(const []);
+    }
+    return _db
+        .collection('pazar_anlasmalari')
+        .snapshots()
+        .map((snap) {
+          return snap.docs
+              .map((doc) => PazarAnlasmaTeklifi.fromMap(doc.data()))
+              .where(
+                (a) =>
+                    a.gonderenUid == kullaniciId || a.aliciUid == kullaniciId,
+              )
+              .toList();
+        })
+        .handleError((e) {
+          debugPrint(
+            'pazar_anlasmalari stream hatasi (kurallar henüz güncellenmemiş veya izin yok): $e',
+          );
+          return <PazarAnlasmaTeklifi>[];
+        });
   }
 
   /// Kullanıcının gönderdiği veya yanıtladığı anlaşma teklifini/mesajını kendi dokümanında günceller.

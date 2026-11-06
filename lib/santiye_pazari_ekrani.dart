@@ -4529,13 +4529,21 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                             : const Color(0xFF102A43),
                                   ),
                                 ),
-                                const Spacer(),
-                                Text(
-                                  'Kalan süreyi sadece siz görürsünüz',
-                                  style: TextStyle(
-                                    fontSize: 10,
-                                    color: isDark ? Colors.white54 : Colors.grey[600],
-                                    fontStyle: FontStyle.italic,
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    'Kalan süreyi sadece siz görürsünüz',
+                                    textAlign: TextAlign.end,
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                    style: TextStyle(
+                                      fontSize: 10,
+                                      color:
+                                          isDark
+                                              ? Colors.white54
+                                              : Colors.grey[600],
+                                      fontStyle: FontStyle.italic,
+                                    ),
                                   ),
                                 ),
                               ],
@@ -9119,56 +9127,70 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
 
             // 4. ALT ŞERİT: FİNANSAL ÜCRET + METRAJ & KALAN SÜRE / İSTATİSTİKLER
             Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                // Fiyat / Ücret Bilgisi (Belirgin ve Net)
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 8,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFF0F766E).withValues(alpha: 0.12),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(
-                      color: const Color(0xFF0F766E).withValues(alpha: 0.25),
-                    ),
-                  ),
+                // Sol Bölüm: Fiyat / Ücret Bilgisi (ve Varsa Metraj)
+                Flexible(
                   child: Row(
                     mainAxisSize: MainAxisSize.min,
                     children: [
-                      const Icon(
-                        Icons.payments_outlined,
-                        size: 13.5,
-                        color: Color(0xFF0F766E),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        ilan.ucretEtiketi,
-                        style: const TextStyle(
-                          fontSize: 12,
-                          fontWeight: FontWeight.w900,
-                          color: Color(0xFF0F766E),
+                      Flexible(
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 8,
+                            vertical: 4,
+                          ),
+                          decoration: BoxDecoration(
+                            color: const Color(0xFF0F766E).withValues(alpha: 0.12),
+                            borderRadius: BorderRadius.circular(8),
+                            border: Border.all(
+                              color: const Color(0xFF0F766E).withValues(alpha: 0.25),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Icon(
+                                Icons.payments_outlined,
+                                size: 13.5,
+                                color: Color(0xFF0F766E),
+                              ),
+                              const SizedBox(width: 4),
+                              Flexible(
+                                child: Text(
+                                  ilan.ucretEtiketi,
+                                  maxLines: 1,
+                                  overflow: TextOverflow.ellipsis,
+                                  style: const TextStyle(
+                                    fontSize: 12,
+                                    fontWeight: FontWeight.w900,
+                                    color: Color(0xFF0F766E),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
                         ),
                       ),
+                      if (ilan.tahminiMetrajVeyaGun.isNotEmpty) ...[
+                        const SizedBox(width: 5),
+                        Flexible(
+                          child: Text(
+                            '(${ilan.tahminiMetrajVeyaGun})',
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              fontSize: 11,
+                              fontWeight: FontWeight.w600,
+                              color: isDark ? Colors.white54 : Colors.black45,
+                            ),
+                          ),
+                        ),
+                      ],
                     ],
                   ),
                 ),
-                if (ilan.tahminiMetrajVeyaGun.isNotEmpty) ...[
-                  const SizedBox(width: 6),
-                  Flexible(
-                    child: Text(
-                      '(${ilan.tahminiMetrajVeyaGun})',
-                      maxLines: 1,
-                      overflow: TextOverflow.ellipsis,
-                      style: TextStyle(
-                        fontSize: 11,
-                        fontWeight: FontWeight.w600,
-                        color: isDark ? Colors.white54 : Colors.black45,
-                      ),
-                    ),
-                  ),
-                ],
-                const Spacer(),
+                const SizedBox(width: 8),
 
                 // Sağ Taraf: İlan Sahibi ise Kalan Süre, Değilse Görüntülenme / Beğeni
                 if (ilan.olusturanUid == benimUid)
