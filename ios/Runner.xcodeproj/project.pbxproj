@@ -388,8 +388,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.emrcore.santiyepuantajdefteri;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
+				CODE_SIGN_STYLE = Manual;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				DEVELOPMENT_TEAM = QML2RQ244F;
+				PROVISIONING_PROFILE_SPECIFIER = "SantiyePuantajDefteri_AppStore";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};
@@ -595,8 +597,10 @@
 				PRODUCT_BUNDLE_IDENTIFIER = com.emrcore.santiyepuantajdefteri;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				CODE_SIGN_ENTITLEMENTS = Runner/Runner.entitlements;
+				CODE_SIGN_STYLE = Manual;
 				SWIFT_OBJC_BRIDGING_HEADER = "Runner/Runner-Bridging-Header.h";
 				DEVELOPMENT_TEAM = QML2RQ244F;
+				PROVISIONING_PROFILE_SPECIFIER = "SantiyePuantajDefteri_AppStore";
 				SWIFT_VERSION = 5.0;
 				VERSIONING_SYSTEM = "apple-generic";
 			};

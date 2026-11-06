@@ -83,19 +83,29 @@ def main():
         log(f"❌ Profil Base64 çözme hatası: {e}")
         sys.exit(1)
 
-    # Provisioning Profile UUID ile macOS sistem dizinine yerleştir
+    # Provisioning Profile UUID ve İsim ile macOS sistem dizinine yerleştir
     profiles_dir = os.path.expanduser('~/Library/MobileDevice/Provisioning Profiles')
     os.makedirs(profiles_dir, exist_ok=True)
     try:
         output = subprocess.check_output(['security', 'cms', '-D', '-i', pp_path])
         plist = plistlib.loads(output)
         uuid = plist.get('UUID', 'embedded')
-        target_path = os.path.join(profiles_dir, f"{uuid}.mobileprovision")
-        shutil.copyfile(pp_path, target_path)
-        log(f"✅ Provisioning Profile sisteme yüklendi: `{uuid}.mobileprovision`")
+        name = plist.get('Name', 'SantiyePuantajDefteri_AppStore')
+        target_uuid_path = os.path.join(profiles_dir, f"{uuid}.mobileprovision")
+        target_name_path = os.path.join(profiles_dir, f"{name}.mobileprovision")
+        shutil.copyfile(pp_path, target_uuid_path)
+        shutil.copyfile(pp_path, target_name_path)
+        log(f"✅ Provisioning Profile sisteme yüklendi: `{uuid}.mobileprovision` & `{name}.mobileprovision`")
+
+        entitlements = plist.get('Entitlements', {})
+        log(f"📋 Profildeki Yetkiler: {list(entitlements.keys())}")
+        if 'com.apple.developer.applesignin' in entitlements:
+            log(f"  ✅ Sign in with Apple aktif: {entitlements['com.apple.developer.applesignin']}")
+        else:
+            log("  ❌ DİKKAT: Profilde 'com.apple.developer.applesignin' YETKİSİ BULUNAMADI!")
     except Exception as e:
         log(f"⚠️ UUID çıkarılamadı, standart isimle kopyalanıyor: {e}")
-        shutil.copyfile(pp_path, os.path.join(profiles_dir, "app.mobileprovision"))
+        shutil.copyfile(pp_path, os.path.join(profiles_dir, "SantiyePuantajDefteri_AppStore.mobileprovision"))
 
     # 3. Geçici Keychain Oluştur
     subprocess.run(['security', 'create-keychain', '-p', keychain_pass, keychain_path], check=True)
