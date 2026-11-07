@@ -252,11 +252,37 @@ class _SistemYonetimEkraniState extends State<SistemYonetimEkrani>
                 return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
                   stream: FirebaseFirestore.instance
                       .collection('admin_bildirimler')
-                      .where('durum', isEqualTo: 'incelenecek')
-                      .snapshots(),
+                      .snapshots()
+                      .handleError((_) => null),
                   builder: (context, bildirimSnap) {
-                    final bekleyenSikayet =
-                        bildirimSnap.data?.docs.length ?? 0;
+                    int bekleyenSikayet = 0;
+                    final Set<String> sayilanSikayetIdleri = {};
+
+                    // 1. users dokümanlarındaki şikayetleri say
+                    for (final uDoc in userDocs) {
+                      final uData = uDoc.data();
+                      final rawSikayetler = uData['gonderilenSikayetler'] as List? ?? [];
+                      for (final item in rawSikayetler) {
+                        if (item is Map && item['durum'] != 'cozuldu') {
+                          final sId = (item['id'] ?? item['ilanId']).toString();
+                          if (sayilanSikayetIdleri.add(sId)) {
+                            bekleyenSikayet++;
+                          }
+                        }
+                      }
+                    }
+
+                    // 2. admin_bildirimler koleksiyonundaki şikayetleri say
+                    final adminDocs = bildirimSnap.data?.docs ?? [];
+                    for (final aDoc in adminDocs) {
+                      final aData = aDoc.data();
+                      if (aData['durum'] != 'cozuldu') {
+                        final sId = aDoc.id;
+                        if (sayilanSikayetIdleri.add(sId)) {
+                          bekleyenSikayet++;
+                        }
+                      }
+                    }
 
                     return SingleChildScrollView(
                       padding: const EdgeInsets.symmetric(
@@ -1211,53 +1237,82 @@ class _SistemYonetimEkraniState extends State<SistemYonetimEkrani>
   // ---------------------------------------------------------------------------
   Widget _buildSikayetlerSekmesi() {
     return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
-      stream: FirebaseFirestore.instance
-          .collection('admin_bildirimler')
-          .orderBy('tarih', descending: true)
-          .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(
-            child: CircularProgressIndicator(color: Colors.white),
-          );
-        }
+      stream: FirebaseFirestore.instance.collection('users').snapshots(),
+      builder: (context, userSnap) {
+        return StreamBuilder<QuerySnapshot<Map<String, dynamic>>>(
+          stream: FirebaseFirestore.instance
+              .collection('admin_bildirimler')
+              .snapshots()
+              .handleError((_) => null),
+          builder: (context, adminSnap) {
+            final Map<String, Map<String, dynamic>> sikayetlerMap = {};
 
-        final bildirimDocs = snapshot.data?.docs ?? [];
+            // 1. users koleksiyonundan garantili şikayetleri al
+            final userDocs = userSnap.data?.docs ?? [];
+            for (final uDoc in userDocs) {
+              final uData = uDoc.data();
+              final rawSikayetler = uData['gonderilenSikayetler'] as List? ?? [];
+              for (final item in rawSikayetler) {
+                if (item is Map) {
+                  final map = Map<String, dynamic>.from(item);
+                  final id = (map['id'] ?? '${map['ilanId']}_${map['sikayetEdenUid']}').toString();
+                  map['kaynakKullaniciDocId'] = uDoc.id;
+                  sikayetlerMap[id] = map;
+                }
+              }
+            }
 
-        if (bildirimDocs.isEmpty) {
-          return Center(
-            child: Column(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                Icon(
-                  Icons.verified_user_rounded,
-                  size: 44,
-                  color: Colors.white.withValues(alpha: 0.5),
-                ),
-                const SizedBox(height: 10),
-                const Text(
-                  'Aktif Şikayet veya İhbar Yok',
-                  style: TextStyle(
-                      fontWeight: FontWeight.w800,
-                      fontSize: 14,
-                      color: Colors.white),
-                ),
-                const SizedBox(height: 4),
-                const Text(
-                  'Topluluk kurallarına aykırı bir bildirim bulunmuyor.',
-                  style: TextStyle(color: Colors.white54, fontSize: 11),
-                ),
-              ],
-            ),
-          );
-        }
+            // 2. admin_bildirimler koleksiyonundan gelenleri ekle
+            final adminDocs = adminSnap.data?.docs ?? [];
+            for (final aDoc in adminDocs) {
+              final aData = Map<String, dynamic>.from(aDoc.data());
+              final id = aDoc.id;
+              aData['adminDocId'] = aDoc.id;
+              if (!sikayetlerMap.containsKey(id)) {
+                sikayetlerMap[id] = aData;
+              }
+            }
 
-        return ListView.builder(
-          padding: const EdgeInsets.all(12),
-          itemCount: bildirimDocs.length,
-          itemBuilder: (context, index) {
-            final doc = bildirimDocs[index];
-            final data = doc.data();
+            final tumSikayetler = sikayetlerMap.values.toList();
+            tumSikayetler.sort((a, b) {
+              final tA = (a['tarihMs'] as num?)?.toInt() ?? 0;
+              final tB = (b['tarihMs'] as num?)?.toInt() ?? 0;
+              return tB.compareTo(tA);
+            });
+
+            if (tumSikayetler.isEmpty) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(
+                      Icons.verified_user_rounded,
+                      size: 44,
+                      color: Colors.white.withValues(alpha: 0.5),
+                    ),
+                    const SizedBox(height: 10),
+                    const Text(
+                      'Aktif Şikayet veya İhbar Yok',
+                      style: TextStyle(
+                          fontWeight: FontWeight.w800,
+                          fontSize: 14,
+                          color: Colors.white),
+                    ),
+                    const SizedBox(height: 4),
+                    const Text(
+                      'Topluluk kurallarına aykırı bir bildirim bulunmuyor.',
+                      style: TextStyle(color: Colors.white54, fontSize: 11),
+                    ),
+                  ],
+                ),
+              );
+            }
+
+            return ListView.builder(
+              padding: const EdgeInsets.all(12),
+              itemCount: tumSikayetler.length,
+              itemBuilder: (context, index) {
+                final data = tumSikayetler[index];
             final ilanId = (data['ilanId'] ?? '').toString();
             final ilanBaslik = (data['ilanBaslik'] ?? 'İlan').toString();
             final sikayetEdilenUid = (data['sikayetEdilenUid'] ??
@@ -1374,7 +1429,7 @@ class _SistemYonetimEkraniState extends State<SistemYonetimEkrani>
                           onPressed: () async {
                             await _kullaniciIlaniSil(
                                 sikayetEdilenUid, ilanId);
-                            await doc.reference.update({'durum': 'cozuldu'});
+                            await _sikayetiDurumGuncelle(data, 'cozuldu');
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 const SnackBar(
@@ -1399,7 +1454,7 @@ class _SistemYonetimEkraniState extends State<SistemYonetimEkrani>
                         onPressed: () async {
                           final yeniDurum =
                               cozulduMu ? 'incelenecek' : 'cozuldu';
-                          await doc.reference.update({'durum': yeniDurum});
+                          await _sikayetiDurumGuncelle(data, yeniDurum);
                         },
                         child: Text(
                           cozulduMu ? 'Yeniden Aç' : 'Çözüldü Olarak İşaretle',
@@ -1416,6 +1471,46 @@ class _SistemYonetimEkraniState extends State<SistemYonetimEkrani>
         );
       },
     );
+  },
+);
+}
+
+  Future<void> _sikayetiDurumGuncelle(
+      Map<String, dynamic> data, String yeniDurum) async {
+    try {
+      final adminDocId = data['adminDocId'] as String?;
+      if (adminDocId != null && adminDocId.isNotEmpty) {
+        await FirebaseFirestore.instance
+            .collection('admin_bildirimler')
+            .doc(adminDocId)
+            .update({'durum': yeniDurum});
+      }
+
+      final kaynakKullaniciDocId = data['kaynakKullaniciDocId'] as String?;
+      final sikayetId = data['id'] as String?;
+      if (kaynakKullaniciDocId != null && kaynakKullaniciDocId.isNotEmpty) {
+        final uRef = FirebaseFirestore.instance
+            .collection('users')
+            .doc(kaynakKullaniciDocId);
+        final uDoc = await uRef.get();
+        if (uDoc.exists) {
+          final uData = uDoc.data() ?? {};
+          final list = List<Map<String, dynamic>>.from(
+            (uData['gonderilenSikayetler'] as List? ?? [])
+                .map((e) => Map<String, dynamic>.from(e as Map)),
+          );
+          final idx = list.indexWhere((item) =>
+              item['id'] == sikayetId || item['ilanId'] == data['ilanId']);
+          if (idx >= 0) {
+            list[idx]['durum'] = yeniDurum;
+            await uRef
+                .set({'gonderilenSikayetler': list}, SetOptions(merge: true));
+          }
+        }
+      }
+    } catch (e) {
+      debugPrint('Şikayet durum güncelleme hatası: $e');
+    }
   }
 
   Future<void> _kullaniciIlaniSil(String hedefUid, String ilanId) async {

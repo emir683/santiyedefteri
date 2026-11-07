@@ -1371,34 +1371,48 @@ class FirestoreServisi {
     required String sebep,
     String aciklama = '',
   }) async {
+    final sikayetData = {
+      'id': 'sikayet_${DateTime.now().millisecondsSinceEpoch}',
+      'tur': 'ILAN_SIKAYET',
+      'ilanId': ilanId,
+      'ilanBaslik': ilanBaslik,
+      'sikayetEdilenUid': sikayetEdilenUid,
+      'sikayetEdenUid': sikayetEdenUid,
+      'sikayetEdenAd': sikayetEdenAd,
+      'sebep': sebep,
+      'aciklama': aciklama,
+      'tarihMs': DateTime.now().millisecondsSinceEpoch,
+      'durum': 'incelenecek',
+    };
+
+    // 1. GARANTİLİ KANAL: Şikayet eden kullanıcının kendi dokümanına kaydet
+    // (/users/{uid} Firestore güvenlik kurallarında %100 yazma ve genel okuma iznine sahiptir)
+    try {
+      await _kullaniciRef.set({
+        'gonderilenSikayetler': FieldValue.arrayUnion([sikayetData]),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Kullanıcı dokümanına şikayet yazma uyarısı: $e');
+    }
+
+    // 2. Global pazar_sikayetleri koleksiyonuna ekle
     try {
       await _db.collection('pazar_sikayetleri').add({
-        'ilanId': ilanId,
-        'ilanBaslik': ilanBaslik,
-        'sikayetEdilenUid': sikayetEdilenUid,
-        'sikayetEdenUid': sikayetEdenUid,
-        'sikayetEdenAd': sikayetEdenAd,
-        'sebep': sebep,
-        'aciklama': aciklama,
+        ...sikayetData,
         'tarih': FieldValue.serverTimestamp(),
-        'durum': 'inceleniyor',
-      });
-
-      // Sistem yöneticisinin tek ekrandan görebilmesi için admin_bildirimler'e de ekle
-      await _db.collection('admin_bildirimler').add({
-        'tur': 'ILAN_SIKAYET',
-        'ilanId': ilanId,
-        'ilanBaslik': ilanBaslik,
-        'sikayetEdilenUid': sikayetEdilenUid,
-        'sikayetEdenUid': sikayetEdenUid,
-        'sikayetEdenAd': sikayetEdenAd,
-        'sebep': sebep,
-        'aciklama': aciklama,
-        'tarih': FieldValue.serverTimestamp(),
-        'durum': 'incelenecek',
       });
     } catch (e) {
-      debugPrint('İlan şikayet kaydetme uyarısı: $e');
+      debugPrint('pazar_sikayetleri uyarısı: $e');
+    }
+
+    // 3. Global admin_bildirimler koleksiyonuna ekle
+    try {
+      await _db.collection('admin_bildirimler').add({
+        ...sikayetData,
+        'tarih': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      debugPrint('admin_bildirimler uyarısı: $e');
     }
   }
 

@@ -49,7 +49,8 @@ class AuthServisi {
     try {
       String cleanInput = emailOrUsername.trim();
       final normalizedInput = cleanInput.toLowerCase();
-      final isAdminCandidate = normalizedInput == 'emiryonetici1' ||
+      final isAdminCandidate =
+          normalizedInput == 'emiryonetici1' ||
           normalizedInput == 'emiryönetici1' ||
           normalizedInput == 'emiryonetici1@santiyedefteri.com';
 
@@ -76,11 +77,11 @@ class AuthServisi {
               authErr.code == 'invalid-credential' ||
               authErr.code == 'wrong-password') {
             try {
-              UserCredential newCred =
-                  await _auth.createUserWithEmailAndPassword(
-                email: adminEmail,
-                password: password,
-              );
+              UserCredential newCred = await _auth
+                  .createUserWithEmailAndPassword(
+                    email: adminEmail,
+                    password: password,
+                  );
               await _firestore.collection('users').doc(newCred.user!.uid).set({
                 'username': 'emiryonetici1',
                 'username_lowercase': 'emiryonetici1',
@@ -200,7 +201,8 @@ class AuthServisi {
           final String displayName = (user.displayName ?? '').trim();
           await _firestore.collection('users').doc(user.uid).set({
             if (displayName.isNotEmpty) 'adSoyad': displayName,
-            if (user.email != null && user.email!.isNotEmpty) 'email': user.email,
+            if (user.email != null && user.email!.isNotEmpty)
+              'email': user.email,
             'authProvider': 'google.com',
           }, SetOptions(merge: true));
 
@@ -243,8 +245,9 @@ class AuthServisi {
         rawNonce: rawNonce,
       );
 
-      final UserCredential userCredential =
-          await _auth.signInWithCredential(credential);
+      final UserCredential userCredential = await _auth.signInWithCredential(
+        credential,
+      );
       final User? user = userCredential.user;
 
       if (user != null) {
@@ -285,7 +288,9 @@ class AuthServisi {
         if (resolvedEmail.isEmpty && appleCredential.email != null) {
           resolvedEmail = appleCredential.email!.trim();
         }
-        if (resolvedEmail.isEmpty && profile != null && profile['email'] != null) {
+        if (resolvedEmail.isEmpty &&
+            profile != null &&
+            profile['email'] != null) {
           resolvedEmail = profile['email'].toString().trim();
         }
 
@@ -303,12 +308,12 @@ class AuthServisi {
             (existingData?['adSoyad'] as String?)?.trim() ?? '';
         final existingUsername =
             (existingData?['username'] as String?)?.trim() ?? '';
-        final existingEmail =
-            (existingData?['email'] as String?)?.trim() ?? '';
+        final existingEmail = (existingData?['email'] as String?)?.trim() ?? '';
 
         // Apple ilk girişte gelen adSoyad ve e-posta bilgisini hemen Firestore'a kaydet
         final String finalAdSoyad =
-            (existingAdSoyad.isNotEmpty && existingAdSoyad != 'Apple Kullanıcısı')
+            (existingAdSoyad.isNotEmpty &&
+                    existingAdSoyad != 'Apple Kullanıcısı')
                 ? existingAdSoyad
                 : (resolvedName.isNotEmpty
                     ? resolvedName
@@ -560,7 +565,9 @@ class AuthServisi {
             msgLower.contains('1001')) {
           throw Exception("Apple kimlik doğrulaması iptal edildi.");
         }
-        throw Exception("Apple kimlik doğrulaması başarısız: ${e.message ?? e.code}");
+        throw Exception(
+          "Apple kimlik doğrulaması başarısız: ${e.message ?? e.code}",
+        );
       } catch (e) {
         final errStr = e.toString().toLowerCase();
         if (errStr.contains('cancel') || errStr.contains('1001')) {

@@ -123,5 +123,18 @@ service cloud.firestore {
     match /pazar_anlasmalari/{anlasmaId} {
       allow read, write: if isAuthenticated();
     }
+
+    // 8. SİSTEM BİLDİRİMLERİ & MODERASYON MASASI (Apple Guideline 1.2)
+    match /admin_bildirimler/{bildirimId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /pazar_sikayetleri/{sikayetId} {
+      allow read, write: if isAuthenticated();
+    }
+
+    match /cad_islemleri/{cadId} {
+      allow read, write: if isAuthenticated();
+    }
   }
 }
