@@ -11,6 +11,7 @@ import 'cad_intent_service.dart';
 import 'cad_webgl_ekrani.dart';
 import 'cad_arkaplan_servisi.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'widgets/glass_surface.dart';
 import 'tema_ayarlari.dart';
 
@@ -602,6 +603,16 @@ class _DwgGoruntuleyiciEkraniState extends State<DwgGoruntuleyiciEkrani> {
         );
 
         await _saveProjectToRecent(newProj);
+
+        try {
+          FirebaseFirestore.instance.collection('cad_islemleri').doc(fileId).set({
+            'fileId': fileId,
+            'fileName': fileName,
+            'fileSize': fileSize,
+            'tarih': FieldValue.serverTimestamp(),
+            'durum': 'tamamlandi',
+          }, SetOptions(merge: true));
+        } catch (_) {}
 
         // Kullanıcı bu süreçte "Arka Plana Al" butonuna bastıysa işlem arka plan servisinde zaten sürüyor
         if (_runInBackgroundRequested) {
