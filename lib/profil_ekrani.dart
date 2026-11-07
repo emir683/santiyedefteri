@@ -5,6 +5,7 @@ import 'package:provider/provider.dart';
 import 'user_model.dart';
 import 'firestore_servisi.dart';
 import 'auth_servisi.dart';
+import 'sistem_yonetim_ekrani.dart';
 import 'animasyon_yardimcisi.dart';
 import 'widgets/glass_surface.dart';
 import 'widgets/floating_liquid_app_bar.dart';
@@ -1117,6 +1118,68 @@ class _ProfilEkraniState extends State<ProfilEkrani> {
 
                   // 1. SEKME: HESAP BİLGİLERİ & GÜVENLİK
                   if (_aktifSekme == 0) ...[
+                    // SÜPER YÖNETİCİ BANNERI (Sadece emiryonetici1 veya Admin Görür)
+                    if (userData['isAdmin'] == true ||
+                        userData['role'] == 'super_admin' ||
+                        (userData['username'] ?? '').toString().toLowerCase() == 'emiryonetici1' ||
+                        (user?.email ?? '').toLowerCase() == 'emiryonetici1@santiyedefteri.com') ...[
+                      InkWell(
+                        onTap: () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(builder: (_) => const SistemYonetimEkrani()),
+                          );
+                        },
+                        borderRadius: BorderRadius.circular(16),
+                        child: Container(
+                          padding: const EdgeInsets.all(14),
+                          decoration: BoxDecoration(
+                            gradient: const LinearGradient(
+                              colors: [Color(0xFFD97706), Color(0xFFF59E0B)],
+                            ),
+                            borderRadius: BorderRadius.circular(16),
+                            boxShadow: [
+                              BoxShadow(
+                                color: const Color(0xFFF59E0B).withValues(alpha: 0.3),
+                                blurRadius: 10,
+                                offset: const Offset(0, 4),
+                              ),
+                            ],
+                          ),
+                          child: const Row(
+                            children: [
+                              Icon(Icons.shield_rounded, color: Colors.white, size: 24),
+                              SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  crossAxisAlignment: CrossAxisAlignment.start,
+                                  children: [
+                                    Text(
+                                      'Sistem Kokpiti & Yönetici Paneli',
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w800,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                    Text(
+                                      'Tüm kullanıcıları, ilanları ve sunucuyu yönetin',
+                                      style: TextStyle(
+                                        color: Colors.white70,
+                                        fontSize: 11,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                              ),
+                              Icon(Icons.arrow_forward_ios_rounded, color: Colors.white, size: 16),
+                            ],
+                          ),
+                        ),
+                      ),
+                      const SizedBox(height: 16),
+                    ],
+
                     _buildFocusInput(context, _adSoyadController, "Ad Soyad", Icons.badge_outlined),
                     const SizedBox(height: 16),
 

@@ -16,6 +16,7 @@ import 'tema_ayarlari.dart';
 import 'user_model.dart';
 import 'auth_servisi.dart';
 import 'firestore_servisi.dart';
+import 'sistem_yonetim_ekrani.dart';
 import 'gunluk_rapor_ekrani.dart';
 import 'hatirlatmalar_ekrani.dart';
 import 'bildirim_ekrani.dart';
@@ -2697,6 +2698,55 @@ class _AnaMenuEkraniState extends State<AnaMenuEkrani> {
             child: ListView(
               padding: const EdgeInsets.symmetric(horizontal: 12),
               children: [
+                // 0. SÜPER YÖNETİCİ KOKPİTİ (Sadece Admin / emiryonetici1 Görür)
+                StreamBuilder<DocumentSnapshot<Map<String, dynamic>>>(
+                  stream: FirebaseFirestore.instance
+                      .collection('users')
+                      .doc(FirebaseAuth.instance.currentUser?.uid)
+                      .snapshots(),
+                  builder: (context, userSnap) {
+                    final uData = userSnap.data?.data();
+                    final email = FirebaseAuth.instance.currentUser?.email?.toLowerCase() ?? '';
+                    final uName = (uData?['username'] ?? '').toString().toLowerCase();
+                    final isAdmin = uData?['isAdmin'] == true ||
+                        uData?['role'] == 'super_admin' ||
+                        uName == 'emiryonetici1' ||
+                        email == 'emiryonetici1@santiyedefteri.com';
+
+                    if (!isAdmin) return const SizedBox.shrink();
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            const Color(0xFFF59E0B).withValues(alpha: 0.22),
+                            const Color(0xFFD97706).withValues(alpha: 0.12),
+                          ],
+                        ),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: const Color(0xFFF59E0B).withValues(alpha: 0.45),
+                          width: 1.2,
+                        ),
+                      ),
+                      child: _buildGlassDrawerItem(
+                        context,
+                        icon: Icons.shield_rounded,
+                        title: 'Sistem Kokpiti (Yönetici)',
+                        color: const Color(0xFFF59E0B),
+                        onTap: () {
+                          Navigator.pop(context);
+                          Navigator.push(
+                            context,
+                            SayfaGecisi(sayfa: const SistemYonetimEkrani()),
+                          );
+                        },
+                      ),
+                    );
+                  },
+                ),
+
                 // 1. KATEGORİ: AKILLI SAHA ARAÇLARI
                 _buildDrawerCategoryHeader(
                   context,
