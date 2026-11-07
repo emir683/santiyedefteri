@@ -56,14 +56,14 @@ class DefaultFirebaseOptions {
 
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAC5tmzKSpqMgx-V5lNZ4TVyY7J9nvGH8U',
-    appId: '1:250320257023:ios:51d6e06996b081cf06b1ca',
+    appId: '1:250320257023:ios:3585398f6d89835206b1ca',
     messagingSenderId: '250320257023',
     projectId: 'santiye-yonetim-app',
     storageBucket: 'santiye-yonetim-app.firebasestorage.app',
     androidClientId:
-        '250320257023-storl5i479r7is37ms382jcn89j2gpbj.apps.googleusercontent.com',
+        '250320257023-4emedpsvdjsdunron35hgavrh79cu5rj.apps.googleusercontent.com',
     iosClientId:
-        '250320257023-pab7el0d4m6dff3vd0bpld3njft0k8k9.apps.googleusercontent.com',
+        '250320257023-3h4o7pcu19krg2j3hf9reqf35ha9bjrd.apps.googleusercontent.com',
     iosBundleId: 'com.emrcore.santiyepuantajdefteri',
   );
 
