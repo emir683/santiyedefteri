@@ -1361,6 +1361,55 @@ class FirestoreServisi {
     }
   }
 
+  /// Apple Guideline 1.2 uyumlu: Uygunsuz veya kural dışı ilanı şikayet eder
+  Future<void> pazarIlaniniSikayetEt({
+    required String ilanId,
+    required String ilanBaslik,
+    required String sikayetEdilenUid,
+    required String sikayetEdenUid,
+    required String sikayetEdenAd,
+    required String sebep,
+    String aciklama = '',
+  }) async {
+    try {
+      await _db.collection('pazar_sikayetleri').add({
+        'ilanId': ilanId,
+        'ilanBaslik': ilanBaslik,
+        'sikayetEdilenUid': sikayetEdilenUid,
+        'sikayetEdenUid': sikayetEdenUid,
+        'sikayetEdenAd': sikayetEdenAd,
+        'sebep': sebep,
+        'aciklama': aciklama,
+        'tarih': FieldValue.serverTimestamp(),
+        'durum': 'inceleniyor',
+      });
+    } catch (e) {
+      debugPrint('İlan şikayet kaydetme uyarısı: $e');
+    }
+  }
+
+  /// Apple Guideline 1.2 uyumlu: Kötü niyetli veya tacizkar kullanıcıyı engeller
+  Future<void> kullaniciyiEngelle(String hedefUid) async {
+    try {
+      await _kullaniciRef.set({
+        'engellenenKullanicilar': FieldValue.arrayUnion([hedefUid]),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Kullanıcı engelleme uyarısı: $e');
+    }
+  }
+
+  /// Engellenen kullanıcının engelini kaldırır
+  Future<void> kullaniciEngeliniKaldir(String hedefUid) async {
+    try {
+      await _kullaniciRef.set({
+        'engellenenKullanicilar': FieldValue.arrayRemove([hedefUid]),
+      }, SetOptions(merge: true));
+    } catch (e) {
+      debugPrint('Engel kaldırma uyarısı: $e');
+    }
+  }
+
   /// Şantiye Pazarı için kayıtlı kullanıcıların saha profillerini ve ilanlarını canlı dinler
   Stream<QuerySnapshot<Map<String, dynamic>>>
   getSantiyePazariKullanicilariStream() {

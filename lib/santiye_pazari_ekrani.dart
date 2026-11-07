@@ -1078,8 +1078,53 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               onFavoriToggle(yeni);
                             },
                           ),
+                          if (!benimIlanim)
+                            PopupMenuButton<String>(
+                              icon: const Icon(Icons.more_vert_rounded, size: 20),
+                              tooltip: 'Diğer İşlemler',
+                              onSelected: (val) {
+                                if (val == 'sikayet') {
+                                  _ilanSikayetModalAc(
+                                    context: context,
+                                    servisi: servisi,
+                                    ilan: ilan,
+                                    benimUid: benimUid,
+                                    benimAd: benimAd,
+                                  );
+                                } else if (val == 'engelle') {
+                                  _kullaniciEngelleOnayDialog(
+                                    context: context,
+                                    servisi: servisi,
+                                    hedefUid: ilan.olusturanUid,
+                                    hedefAd: ilan.olusturanAd,
+                                  );
+                                }
+                              },
+                              itemBuilder: (pCtx) => [
+                                const PopupMenuItem(
+                                  value: 'sikayet',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.flag_outlined, color: Colors.redAccent, size: 20),
+                                      SizedBox(width: 8),
+                                      Text('İlanı Şikayet Et / Bildir', style: TextStyle(fontSize: 13, color: Colors.redAccent)),
+                                    ],
+                                  ),
+                                ),
+                                const PopupMenuItem(
+                                  value: 'engelle',
+                                  child: Row(
+                                    children: [
+                                      Icon(Icons.block_rounded, color: Colors.orangeAccent, size: 20),
+                                      SizedBox(width: 8),
+                                      Text('Kullanıcıyı Engelle', style: TextStyle(fontSize: 13)),
+                                    ],
+                                  ),
+                                ),
+                              ],
+                            ),
                           IconButton(
-                            icon: Icon(Icons.close_rounded, size: 20),
+                            icon: const Icon(Icons.close_rounded, size: 20),
                             onPressed: () => Navigator.pop(ctx),
                           ),
                         ],
@@ -1748,11 +1793,17 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               style: TextStyle(fontWeight: FontWeight.w800),
                             ),
                             onPressed: () async {
-                              await servisi.pazarIlaniSil(ilan.id);
+                              if (ilan.id.startsWith('profil_')) {
+                                await servisi.sahaProfiliniGuncelle({
+                                  'vitrindeGoster': false,
+                                });
+                              } else {
+                                await servisi.pazarIlaniSil(ilan.id);
+                              }
                               if (ctx.mounted) Navigator.pop(ctx);
                               if (context.mounted) {
                                 ScaffoldMessenger.of(context).showSnackBar(
-                                  SnackBar(
+                                  const SnackBar(
                                     content: Text(
                                       'İlanınız yayından kaldırıldı.',
                                     ),
@@ -1761,6 +1812,38 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               }
                             },
                           ),
+                      ],
+
+                      // İlanı Şikayet Et (Kullanıcı tarafından oluşturulan içerik - UGC Moderasyonu)
+                      if (!benimIlanim) ...[
+                        const SizedBox(height: 16),
+                        Center(
+                          child: TextButton.icon(
+                            icon: const Icon(
+                              Icons.flag_outlined,
+                              size: 15,
+                              color: Colors.grey,
+                            ),
+                            label: const Text(
+                              'Bu ilanda uygunsuz bir durum mu var? Bildir',
+                              style: TextStyle(
+                                fontSize: 12,
+                                color: Colors.grey,
+                                decoration: TextDecoration.underline,
+                              ),
+                            ),
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              _ilanSikayetModalAc(
+                                context: context,
+                                servisi: servisi,
+                                ilan: ilan,
+                                benimUid: benimUid,
+                                benimAd: benimAd,
+                              );
+                            },
+                          ),
+                        ),
                       ],
                     ],
                   ),
@@ -1771,6 +1854,363 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
         );
       },
     );
+  }
+
+  /// Apple Guideline 1.2 Uyumlu İlan Bildirme / Şikayet Etme Modalı
+  Future<void> _ilanSikayetModalAc({
+    required BuildContext context,
+    required FirestoreServisi servisi,
+    required SantiyePazarIlani ilan,
+    required String benimUid,
+    required String benimAd,
+  }) async {
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    String seciliSebep = 'Yanıltıcı / Sahte İlan';
+    final aciklamaCtrl = TextEditingController();
+    bool kullaniciyiDaEngelle = true;
+    bool gonderiliyor = false;
+
+    final sebepler = [
+      'Yanıltıcı / Sahte İlan',
+      'Müstehcen / Uygunsuz İçerik',
+      'Hakaret, Küfür veya Tehdit',
+      'Dolandırıcılık / Güvensiz İşlem',
+      'Telif veya Marka İhlali',
+      'Diğer Kural İhlali',
+    ];
+
+    await showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (sCtx) {
+        return StatefulBuilder(
+          builder: (context, setModalState) {
+            return Padding(
+              padding: EdgeInsets.only(
+                bottom: MediaQuery.of(sCtx).viewInsets.bottom,
+              ),
+              child: Container(
+                constraints: BoxConstraints(
+                  maxHeight: MediaQuery.sizeOf(sCtx).height * 0.85,
+                ),
+                padding: const EdgeInsets.fromLTRB(16, 16, 16, 24),
+                child: PanelGlassWidgets.buildModalSheet(
+                  context: sCtx,
+                  child: SingleChildScrollView(
+                    child: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      crossAxisAlignment: CrossAxisAlignment.stretch,
+                      children: [
+                        // Üst Başlık
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.redAccent.withValues(alpha: 0.15),
+                                borderRadius: BorderRadius.circular(10),
+                              ),
+                              child: const Icon(
+                                Icons.flag_rounded,
+                                color: Colors.redAccent,
+                                size: 22,
+                              ),
+                            ),
+                            const SizedBox(width: 10),
+                            const Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    'İlanı Bildir / Şikayet Et',
+                                    style: TextStyle(
+                                      fontSize: 16,
+                                      fontWeight: FontWeight.w800,
+                                    ),
+                                  ),
+                                  Text(
+                                    'Topluluk kurallarına aykırı içerik',
+                                    style: TextStyle(
+                                      fontSize: 11.5,
+                                      color: Colors.grey,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                            IconButton(
+                              icon: const Icon(Icons.close_rounded, size: 20),
+                              onPressed: () => Navigator.pop(sCtx),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 12),
+
+                        // Bilgi Kutusu
+                        Container(
+                          padding: const EdgeInsets.all(10),
+                          decoration: BoxDecoration(
+                            color: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : const Color(0xFFF1F5F9),
+                            borderRadius: BorderRadius.circular(10),
+                            border: Border.all(
+                              color: isDark
+                                  ? Colors.white10
+                                  : const Color(0xFFE2E8F0),
+                            ),
+                          ),
+                          child: Row(
+                            children: [
+                              const Icon(
+                                Icons.security_rounded,
+                                size: 16,
+                                color: Color(0xFF0F7C86),
+                              ),
+                              const SizedBox(width: 8),
+                              Expanded(
+                                child: Text(
+                                  'Topluluk kurallarımız gereği bildirilen ilanlar moderatörlerimizce incelenip 24 saat içerisinde yayından kaldırılır.',
+                                  style: TextStyle(
+                                    fontSize: 11,
+                                    color: isDark
+                                        ? Colors.white70
+                                        : const Color(0xFF475569),
+                                  ),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        const Text(
+                          'Şikayet Sebebi:',
+                          style: TextStyle(
+                            fontSize: 12.5,
+                            fontWeight: FontWeight.w700,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+
+                        // Sebepler Listesi
+                        ...sebepler.map((sebep) {
+                          final secili = seciliSebep == sebep;
+                          return InkWell(
+                            onTap: () => setModalState(() => seciliSebep = sebep),
+                            borderRadius: BorderRadius.circular(8),
+                            child: Padding(
+                              padding: const EdgeInsets.symmetric(
+                                vertical: 6,
+                                horizontal: 4,
+                              ),
+                              child: Row(
+                                children: [
+                                  Icon(
+                                    secili
+                                        ? Icons.radio_button_checked_rounded
+                                        : Icons.radio_button_off_rounded,
+                                    size: 18,
+                                    color: secili
+                                        ? Colors.redAccent
+                                        : Colors.grey,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Expanded(
+                                    child: Text(
+                                      sebep,
+                                      style: TextStyle(
+                                        fontSize: 12.5,
+                                        fontWeight: secili
+                                            ? FontWeight.w700
+                                            : FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          );
+                        }),
+
+                        const SizedBox(height: 12),
+                        const Text(
+                          'Ek Açıklama (İsteğe bağlı):',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        const SizedBox(height: 6),
+                        TextField(
+                          controller: aciklamaCtrl,
+                          maxLines: 2,
+                          style: const TextStyle(fontSize: 12.5),
+                          decoration: InputDecoration(
+                            hintText: 'Durumu kısaca açıklayabilirsiniz...',
+                            hintStyle: const TextStyle(fontSize: 12),
+                            filled: true,
+                            fillColor: isDark
+                                ? Colors.white.withValues(alpha: 0.05)
+                                : Colors.black.withValues(alpha: 0.03),
+                            contentPadding: const EdgeInsets.all(10),
+                            border: OutlineInputBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              borderSide: BorderSide(
+                                color: isDark
+                                    ? Colors.white12
+                                    : Colors.black12,
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 10),
+
+                        // Kullanıcıyı Engelle Checkbox
+                        CheckboxListTile(
+                          contentPadding: EdgeInsets.zero,
+                          value: kullaniciyiDaEngelle,
+                          dense: true,
+                          title: const Text(
+                            'Bu kullanıcıyı da engelle (İlanlarını bir daha görme)',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          activeColor: Colors.redAccent,
+                          controlAffinity: ListTileControlAffinity.leading,
+                          onChanged: (val) => setModalState(
+                            () => kullaniciyiDaEngelle = val ?? false,
+                          ),
+                        ),
+                        const SizedBox(height: 14),
+
+                        // Gönder Butonu
+                        ElevatedButton(
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.redAccent,
+                            foregroundColor: Colors.white,
+                            minimumSize: const Size(double.infinity, 46),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          onPressed: gonderiliyor
+                              ? null
+                              : () async {
+                                  setModalState(() => gonderiliyor = true);
+                                  await servisi.pazarIlaniniSikayetEt(
+                                    ilanId: ilan.id,
+                                    ilanBaslik: ilan.baslik,
+                                    sikayetEdilenUid: ilan.olusturanUid,
+                                    sikayetEdenUid: benimUid,
+                                    sikayetEdenAd: benimAd,
+                                    sebep: seciliSebep,
+                                    aciklama: aciklamaCtrl.text.trim(),
+                                  );
+                                  if (kullaniciyiDaEngelle) {
+                                    await servisi.kullaniciyiEngelle(
+                                      ilan.olusturanUid,
+                                    );
+                                  }
+                                  if (!sCtx.mounted) return;
+                                  Navigator.pop(sCtx);
+                                  if (context.mounted) {
+                                    ScaffoldMessenger.of(context).showSnackBar(
+                                      const SnackBar(
+                                        content: Text(
+                                          'Bildiriminiz iletildi. İçerik ve kullanıcı incelemeye alındı.',
+                                        ),
+                                        backgroundColor: Color(0xFF10B981),
+                                      ),
+                                    );
+                                  }
+                                },
+                          child: gonderiliyor
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    color: Colors.white,
+                                  ),
+                                )
+                              : const Text(
+                                  'Şikayeti Gönder',
+                                  style: TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w800,
+                                  ),
+                                ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+
+  /// Apple Guideline 1.2 Uyumlu Kullanıcı Engelleme Onay Dialogu
+  Future<void> _kullaniciEngelleOnayDialog({
+    required BuildContext context,
+    required FirestoreServisi servisi,
+    required String hedefUid,
+    required String hedefAd,
+  }) async {
+    final onay = await showDialog<bool>(
+      context: context,
+      builder: (dCtx) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.block_rounded, color: Colors.orangeAccent),
+            SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                'Kullanıcıyı Engelle',
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800),
+              ),
+            ),
+          ],
+        ),
+        content: Text(
+          '$hedefAd adlı kullanıcıyı engellemek istediğinizden emin misiniz? Bu kullanıcının paylaştığı ilanlar, vitrinler ve mesajlar artık size gösterilmeyecektir.',
+          style: const TextStyle(fontSize: 13),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(dCtx, false),
+            child: const Text('Vazgeç'),
+          ),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.redAccent,
+              foregroundColor: Colors.white,
+            ),
+            onPressed: () => Navigator.pop(dCtx, true),
+            child: const Text('Engelle'),
+          ),
+        ],
+      ),
+    );
+
+    if (onay == true) {
+      await servisi.kullaniciyiEngelle(hedefUid);
+      if (context.mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('$hedefAd engellendi. İlanları artık listelenmeyecek.'),
+            backgroundColor: Colors.orange,
+          ),
+        );
+      }
+    }
   }
 
   Widget _buildSartItem({
@@ -4553,7 +4993,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                               children: [
                                 _buildSurePaketChip(
                                   baslik: '3 Gün',
-                                  altBaslik: 'Ücretsiz',
+                                  altBaslik: 'Hızlı',
                                   secili: seciliIlanSuresiGun == 3,
                                   onTap: () => setModalState(() => seciliIlanSuresiGun = 3),
                                   isDark: isDark,
@@ -4561,7 +5001,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 const SizedBox(width: 6),
                                 _buildSurePaketChip(
                                   baslik: '1 Hafta',
-                                  altBaslik: 'Premium',
+                                  altBaslik: 'Standart',
                                   secili: seciliIlanSuresiGun == 7,
                                   onTap: () => setModalState(() => seciliIlanSuresiGun = 7),
                                   isDark: isDark,
@@ -4569,7 +5009,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 const SizedBox(width: 6),
                                 _buildSurePaketChip(
                                   baslik: '2 Hafta',
-                                  altBaslik: 'Premium',
+                                  altBaslik: 'Geniş',
                                   secili: seciliIlanSuresiGun == 14,
                                   onTap: () => setModalState(() => seciliIlanSuresiGun = 14),
                                   isDark: isDark,
@@ -4577,7 +5017,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 const SizedBox(width: 6),
                                 _buildSurePaketChip(
                                   baslik: '1 Ay',
-                                  altBaslik: 'Ultra',
+                                  altBaslik: 'Tam Süre',
                                   secili: seciliIlanSuresiGun == 30,
                                   onTap: () => setModalState(() => seciliIlanSuresiGun = 30),
                                   isDark: isDark,
@@ -4620,7 +5060,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                       borderRadius: BorderRadius.circular(6),
                                     ),
                                     child: const Text(
-                                      'Premium',
+                                      'Öne Çıkan',
                                       style: TextStyle(
                                         fontSize: 9.5,
                                         fontWeight: FontWeight.w800,
@@ -4710,14 +5150,14 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 child: const Row(
                                   children: [
                                     Icon(
-                                      Icons.card_giftcard_rounded,
+                                      Icons.info_outline_rounded,
                                       size: 16,
                                       color: Color(0xFF10B981),
                                     ),
                                     SizedBox(width: 6),
                                     Expanded(
                                       child: Text(
-                                        'Tanıtım Kampanyası: Premium süre ve öne çıkarma özellikleri şimdilik ücretsizdir!',
+                                        'Bilgi: İlan süresi ve öne çıkarma özellikleri tüm üyelerimize tamamen ücretsizdir.',
                                         style: TextStyle(
                                           fontSize: 10.5,
                                           fontWeight: FontWeight.w700,
@@ -4729,6 +5169,46 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                                 ),
                               ),
                             ],
+                          ],
+                        ),
+                      ),
+                      const SizedBox(height: 14),
+
+                      // Apple Guideline 1.2 Uyumlu Topluluk Şartları & EULA Bildirimi
+                      Container(
+                        padding: const EdgeInsets.all(12),
+                        decoration: BoxDecoration(
+                          color: isDark
+                              ? Colors.white.withValues(alpha: 0.05)
+                              : const Color(0xFFF1F5F9),
+                          borderRadius: BorderRadius.circular(12),
+                          border: Border.all(
+                            color: isDark
+                                ? Colors.white12
+                                : const Color(0xFFE2E8F0),
+                          ),
+                        ),
+                        child: Row(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            Icon(
+                              Icons.gavel_rounded,
+                              size: 18,
+                              color: _themePrimary,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                'İlan yayınlayarak Şantiye Pazarı Topluluk Şartlarını (EULA) kabul etmiş olursunuz. Müstehcen, yanıltıcı, hakaret içeren veya kural dışı içeriklere kesinlikle sıfır tolerans uygulanır. İhlal içeren ilanlar derhal kaldırılır ve hesaplar kalıcı olarak engellenir.',
+                                style: TextStyle(
+                                  fontSize: 11,
+                                  height: 1.35,
+                                  color: isDark
+                                      ? Colors.white70
+                                      : const Color(0xFF475569),
+                                ),
+                              ),
+                            ),
                           ],
                         ),
                       ),
@@ -5016,9 +5496,9 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
     required bool isDark,
   }) {
     Color seciliRenk = const Color(0xFF10B981);
-    if (altBaslik.contains('Ultra')) {
+    if (altBaslik.contains('Tam Süre')) {
       seciliRenk = const Color(0xFFD97706);
-    } else if (altBaslik.contains('Premium')) {
+    } else if (altBaslik.contains('Geniş') || altBaslik.contains('Standart')) {
       seciliRenk = const Color(0xFF0F7C86);
     }
 
@@ -5134,6 +5614,10 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                       benimFavoriIlanIdleri.add(f.toString());
                     }
 
+                    // Engellenen kullanıcıların içeriklerini filtreleme (Apple Guideline 1.2)
+                    final rawEngellenen = myUserData?['engellenenKullanicilar'] as List? ?? const [];
+                    final Set<String> engellenenUids = rawEngellenen.map((e) => e.toString()).toSet();
+
                     final tumIlanlar = <SantiyePazarIlani>[];
                     final anlasmaMap = <String, PazarAnlasmaTeklifi>{};
 
@@ -5225,6 +5709,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                       final data = doc.data();
                       final docUid = doc.id;
                       if (docUid == uid) continue; // Kullanıcının kendi verisi yukarıda eklendi
+                      if (engellenenUids.contains(docUid)) continue; // Engellenen kullanıcıyı atla
 
                       final ad =
                           (data['adSoyad'] ?? data['username'] ?? 'Şantiye Üyesi')
@@ -5235,6 +5720,7 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                       for (final item in rawIlanlar) {
                         if (item is Map) {
                           final ilan = SantiyePazarIlani.fromMap(Map<String, dynamic>.from(item));
+                          if (engellenenUids.contains(ilan.olusturanUid)) continue;
                           if (!tumIlanlar.any((i) => i.id == ilan.id)) {
                             tumIlanlar.add(ilan);
                           }
@@ -6774,6 +7260,34 @@ class _SantiyePazariEkraniState extends State<SantiyePazariEkrani> {
                             ],
                           ),
                         ),
+                        if (hedefUid != benimUid)
+                          PopupMenuButton<String>(
+                            icon: const Icon(Icons.more_vert_rounded, size: 20),
+                            tooltip: 'Kullanıcı İşlemleri',
+                            onSelected: (val) {
+                              if (val == 'engelle') {
+                                Navigator.pop(ctx);
+                                _kullaniciEngelleOnayDialog(
+                                  context: context,
+                                  servisi: servisi,
+                                  hedefUid: hedefUid,
+                                  hedefAd: hedefAd,
+                                );
+                              }
+                            },
+                            itemBuilder: (pCtx) => [
+                              const PopupMenuItem(
+                                value: 'engelle',
+                                child: Row(
+                                  children: [
+                                    Icon(Icons.block_rounded, color: Colors.orangeAccent, size: 20),
+                                    SizedBox(width: 8),
+                                    Text('Kullanıcıyı Engelle', style: TextStyle(fontSize: 13)),
+                                  ],
+                                ),
+                              ),
+                            ],
+                          ),
                         IconButton(
                           icon: const Icon(Icons.close_rounded, size: 20),
                           onPressed: () => Navigator.pop(ctx),
