@@ -1383,6 +1383,20 @@ class FirestoreServisi {
         'tarih': FieldValue.serverTimestamp(),
         'durum': 'inceleniyor',
       });
+
+      // Sistem yöneticisinin tek ekrandan görebilmesi için admin_bildirimler'e de ekle
+      await _db.collection('admin_bildirimler').add({
+        'tur': 'ILAN_SIKAYET',
+        'ilanId': ilanId,
+        'ilanBaslik': ilanBaslik,
+        'sikayetEdilenUid': sikayetEdilenUid,
+        'sikayetEdenUid': sikayetEdenUid,
+        'sikayetEdenAd': sikayetEdenAd,
+        'sebep': sebep,
+        'aciklama': aciklama,
+        'tarih': FieldValue.serverTimestamp(),
+        'durum': 'incelenecek',
+      });
     } catch (e) {
       debugPrint('İlan şikayet kaydetme uyarısı: $e');
     }
